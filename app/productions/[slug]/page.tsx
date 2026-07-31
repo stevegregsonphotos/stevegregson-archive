@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getProduction, productions } from "@/lib/productions";
+
+import { ProductionGallery } from "../../../components/ProductionGallery";
+import { getProduction, productions } from "../../../lib/productions";
 
 type ProductionPageProps = {
   params: Promise<{
@@ -89,30 +91,15 @@ export default async function ProductionPage({
         </dl>
       </section>
 
-      <section
-        className="curated-production-gallery"
-        aria-label={`${production.title} photography`}
-      >
-        {production.images.map((image, index) => (
-          <figure
-            className={`curated-production-shot curated-production-shot-${image.layout}`}
-            key={image.src}
-          >
-            <Image
-              src={`${imageDirectory}/${image.src}`}
-              alt={image.alt}
-              width={2000}
-              height={1333}
-              sizes="(max-width: 768px) 100vw, 90vw"
-            />
-
-            <figcaption>
-              {String(index + 2).padStart(2, "0")} /{" "}
-              {String(production.images.length + 1).padStart(2, "0")}
-            </figcaption>
-          </figure>
-        ))}
-      </section>
+      <ProductionGallery
+        title={production.title}
+        imageDirectory={imageDirectory}
+        hero={{
+          src: production.hero,
+          alt: production.heroAlt,
+        }}
+        images={production.images}
+      />
 
       {production.nextProduction ? (
         <Link
@@ -140,7 +127,7 @@ export default async function ProductionPage({
           <p>Continue exploring</p>
 
           <Link href="/productions">
-            Return to productions <span>→</span>
+            Return to productions <span aria-hidden="true">→</span>
           </Link>
         </section>
       )}
