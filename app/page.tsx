@@ -1,19 +1,56 @@
+import Image from "next/image";
+import Link from "next/link";
+
 export default function Home() {
   return (
-    <main className="min-h-screen bg-stone-50 text-stone-900">
-      <section className="mx-auto flex min-h-screen max-w-7xl flex-col justify-center px-8 md:px-16">
-        <p className="mb-4 text-sm uppercase tracking-[0.3em] text-stone-500">
-          Theatre Photographer
-        </p>
+    <main className="homepage">
+<section className="homepage-hero relative">
+        <Image
+          src="/images/homepage-hero.jpg"
+          alt="A dramatic theatre production photographed by Steve Gregson"
+          fill
+          priority
+          sizes="100vw"
+          className="homepage-hero-image"
+        />
 
-        <h1 className="max-w-4xl text-6xl font-light leading-tight md:text-8xl">
-          Steve Gregson
-        </h1>
+        <div className="homepage-hero-overlay" />
 
-        <p className="mt-8 max-w-2xl text-xl leading-relaxed text-stone-600">
-          An evolving photographic archive documenting theatre, performance,
-          and the artists who bring stories to life.
-        </p>
+        <div className="selected-work">
+          <span>Selected work</span>
+          <span>2020–2026</span>
+        </div>
+
+        <div className="hero-content">
+          <p className="hero-location">
+            London · United Kingdom · International
+          </p>
+
+          <h1>
+            Theatre photography
+            <br />
+            that lives beyond
+            <br />
+            the closing night.
+          </h1>
+
+          <p className="hero-subheading">
+            Great photography ensures it is never forgotten.
+          </p>
+        </div>
+
+        <div className="hero-footer">
+          <div className="hero-categories">
+            <Link href="/archive">Production photography</Link>
+            <Link href="/archive">Campaign imagery</Link>
+            <Link href="/archive">Rehearsal &amp; backstage</Link>
+          </div>
+
+          <Link href="/archive" className="explore-link">
+            <span>Explore</span>
+            <span className="explore-line" aria-hidden="true" />
+          </Link>
+        </div>
       </section>
     </main>
   );
