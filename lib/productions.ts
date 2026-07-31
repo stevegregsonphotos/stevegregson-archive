@@ -24,6 +24,7 @@ export type Production = {
   slug: string;
   title: string;
   venue: string;
+  year?: number;
   description: string;
   hero: string;
   heroAlt: string;
@@ -41,6 +42,7 @@ export const productions: Production[] = [
     slug: "lonely-londoners",
     title: "The Lonely Londoners",
     venue: "Kiln Theatre",
+    year: 2025,
     description:
       "Dress rehearsal photography created for the production’s publicity campaign.",
     hero:
