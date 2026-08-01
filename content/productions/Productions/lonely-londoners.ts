@@ -81,12 +81,5 @@ export const lonelyLondoners: Production = {
     },
   ],
 
-  nextProduction: {
-    slug: "alice-in-wonderland",
-    title: "Alice in Wonderland",
-    venue: "Marylebone Theatre",
-    year: 2025,
-    image:
-      "/images/productions/alice-in-wonderland/A1_02664-Edit-Edit.jpg",
+  
   },
-};

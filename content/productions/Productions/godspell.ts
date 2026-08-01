@@ -12,146 +12,116 @@ export const godspell: Production = {
   hero: "GODSPELL-Genesis-58.jpg",
 
   heroAlt:
-    "The company of Godspell at Mountview, photographed by Steve Gregson",
+    "Godspell at Mountview, photographed by Steve Gregson",
 
   credits: [
-    {
-      role: "Venue",
-      name: "Mountview",
-    },
-    {
-      role: "Director",
-      name: "Shane Dempsey",
-    },
+    { role: "Venue", name: "Mountview" },
+    { role: "Director", name: "Shane Dempsey" },
     {
       role: "Musical Director",
       name: "James Bowen-Thomas",
     },
-    {
-      role: "Choreographer",
-      name: "Julia Cave",
-    },
-    {
-      role: "Lighting Design",
-      name: "Mark Dymock",
-    },
+    { role: "Choreographer", name: "Julia Cave" },
+    { role: "Lighting Design", name: "Mark Dymock" },
     {
       role: "Set & Costume Design",
       name: "George P Martin",
     },
-    {
-      role: "Sound Design",
-      name: "Matthew Giles",
-    },
-    {
-      role: "Commissioned by",
-      name: "Mountview",
-    },
-    {
-      role: "Photography",
-      name: "Steve Gregson",
-    },
+    { role: "Sound Design", name: "Matthew Giles" },
+    { role: "Commissioned by", name: "Mountview" },
+    { role: "Photography", name: "Steve Gregson" },
   ],
 
   images: [
     {
       src: "GODSPELL-Revelation-136-2.jpg",
-      alt: "The Godspell company performing beneath dramatic stage lighting",
+      alt: "Godspell production photograph",
       layout: "wide",
     },
     {
       src: "GODSPELL-Genesis-329.jpg",
-      alt: "Two performers in an intimate scene from Godspell",
+      alt: "Godspell production photograph",
       layout: "left",
     },
     {
       src: "GODSPELL-Genesis-381.jpg",
-      alt: "A performer reaching towards another figure across the stage",
+      alt: "Godspell production photograph",
       layout: "right",
     },
     {
       src: "GODSPELL-Revelation-181-2.jpg",
-      alt: "The Godspell company performing in vivid red light",
+      alt: "Godspell production photograph",
       layout: "full",
     },
     {
       src: "GODSPELL-Genesis-249.jpg",
-      alt: "A performer framed by the illuminated Godspell set",
+      alt: "Godspell production photograph",
       layout: "left-small",
     },
     {
       src: "GODSPELL-Revelation-266.jpg",
-      alt: "A solitary performer standing beneath blue stage lighting",
+      alt: "Godspell production photograph",
       layout: "right-small",
     },
     {
       src: "GODSPELL-Revelation-184.jpg",
-      alt: "A central performer surrounded by the Godspell company",
+      alt: "Godspell production photograph",
       layout: "wide-left",
     },
     {
       src: "GODSPELL-Revelation-190-2.jpg",
-      alt: "The Godspell company gathered around the central staircase",
+      alt: "Godspell production photograph",
       layout: "wide-right",
     },
     {
       src: "GODSPELL-Revelation-24.jpg",
-      alt: "A performer in red before billowing white fabric",
+      alt: "Godspell production photograph",
       layout: "medium",
     },
     {
       src: "GODSPELL-Revelation-33-2.jpg",
-      alt: "A performer in red seated within a circle of light",
+      alt: "Godspell production photograph",
       layout: "left-small",
     },
     {
       src: "GODSPELL-Revelation-27-2.jpg",
-      alt: "The company gathered around a performer in red",
+      alt: "Godspell production photograph",
       layout: "wide",
     },
     {
       src: "GODSPELL-Revelation-32-2.jpg",
-      alt: "The Godspell company silhouetted around a central figure",
+      alt: "Godspell production photograph",
       layout: "full",
     },
     {
       src: "GODSPELL-Revelation-372-2.jpg",
-      alt: "A performer raised above the company in golden light",
+      alt: "Godspell production photograph",
       layout: "left",
     },
     {
       src: "GODSPELL-Revelation-374.jpg",
-      alt: "The Godspell company reaching towards an elevated performer",
+      alt: "Godspell production photograph",
       layout: "right",
     },
     {
       src: "GODSPELL-Genesis-388.jpg",
-      alt: "A performer framed within the illuminated set",
+      alt: "Godspell production photograph",
       layout: "medium",
     },
     {
       src: "GODSPELL-Genesis-397.jpg",
-      alt: "Two performers beneath the illuminated Love Reigns sign",
+      alt: "Godspell production photograph",
       layout: "right-small",
     },
     {
       src: "GODSPELL-Genesis-395.jpg",
-      alt: "The Godspell set illuminated in warm golden light",
+      alt: "Godspell production photograph",
       layout: "wide-left",
     },
     {
       src: "GODSPELL-Revelation-380-2.jpg",
-      alt: "The company gathered beneath a glowing cross",
+      alt: "Godspell production photograph",
       layout: "full",
     },
   ],
-
-  nextProduction: {
-    slug: "lonely-londoners",
-    title: "The Lonely Londoners",
-    venue: "Kiln Theatre",
-    year: 2025,
-    image:
-      "/images/productions/lonely-londoners/ProofOnly-LonelyLondoners-113-Enhanced-NR-Edit.jpg",
-  },
 };

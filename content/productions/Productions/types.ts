@@ -12,18 +12,13 @@ export type GalleryLayout =
 export type ProductionCredit = {
   role: string;
   name: string;
+  website?: string;
 };
 
 export type ProductionImage = {
   src: string;
   alt: string;
   layout: GalleryLayout;
-};
-
-export type ProductionLink = {
-  slug: string;
-  title: string;
-  image: string;
 };
 
 export type Production = {
@@ -36,5 +31,4 @@ export type Production = {
   heroAlt: string;
   credits: ProductionCredit[];
   images: ProductionImage[];
-  nextProduction?: ProductionLink;
 };
