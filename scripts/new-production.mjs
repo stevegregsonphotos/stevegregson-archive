@@ -1,22 +1,32 @@
-import { access, mkdir, readdir, writeFile } from "node:fs/promises";
+import {
+  access,
+  mkdir,
+  readFile,
+  readdir,
+  writeFile,
+} from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import readline from "node:readline/promises";
 
 const projectRoot = process.cwd();
+
 const imagesRoot = path.join(
   projectRoot,
   "public",
   "images",
   "productions",
 );
-const contentRoot = path.join(
+
+const productionsRoot = path.join(
   projectRoot,
   "content",
   "productions",
 );
 
-const supportedExtensions = new Set([
+const indexPath = path.join(productionsRoot, "index.ts");
+
+const supportedImageExtensions = new Set([
   ".jpg",
   ".jpeg",
   ".png",
@@ -45,6 +55,22 @@ function createSlug(value) {
     .replace(/^-+|-+$/g, "");
 }
 
+function createVariableName(slug) {
+  return slug
+    .split("-")
+    .map((part, index) => {
+      if (index === 0) {
+        return part;
+      }
+
+      return (
+        part.charAt(0).toUpperCase() +
+        part.slice(1)
+      );
+    })
+    .join("");
+}
+
 function escapeText(value) {
   return value
     .replaceAll("\\", "\\\\")
@@ -62,7 +88,9 @@ async function pathExists(targetPath) {
 
 async function askRequired(terminal, question) {
   while (true) {
-    const answer = (await terminal.question(question)).trim();
+    const answer = (
+      await terminal.question(question)
+    ).trim();
 
     if (answer) {
       return answer;
@@ -73,7 +101,29 @@ async function askRequired(terminal, question) {
 }
 
 async function askOptional(terminal, question) {
-  return (await terminal.question(question)).trim();
+  return (
+    await terminal.question(question)
+  ).trim();
+}
+
+async function askYesNo(
+  terminal,
+  question,
+  defaultAnswer = false,
+) {
+  const hint = defaultAnswer ? "[Y/n]" : "[y/N]";
+
+  const answer = (
+    await terminal.question(`${question} ${hint}: `)
+  )
+    .trim()
+    .toLowerCase();
+
+  if (!answer) {
+    return defaultAnswer;
+  }
+
+  return answer === "y" || answer === "yes";
 }
 
 function createCredit(role, name) {
@@ -107,11 +157,77 @@ function formatImages(images, title) {
 
       return `    {
       src: "${escapeText(filename)}",
-      alt: "${escapeText(title)} production photograph",
+      alt: "${escapeText(
+        `${title} production photograph`,
+      )}",
       layout: "${layout}",
     },`;
     })
     .join("\n");
+}
+
+async function getImageFiles(imageDirectory) {
+  const entries = await readdir(imageDirectory, {
+    withFileTypes: true,
+  });
+
+  return entries
+    .filter((entry) => entry.isFile())
+    .map((entry) => entry.name)
+    .filter((filename) =>
+      supportedImageExtensions.has(
+        path.extname(filename).toLowerCase(),
+      ),
+    )
+    .sort((a, b) =>
+      a.localeCompare(b, undefined, {
+        numeric: true,
+        sensitivity: "base",
+      }),
+    );
+}
+
+async function updateProductionIndex({
+  slug,
+  variableName,
+}) {
+  const importLine =
+    `import { ${variableName} } from "./${slug}";`;
+
+  let indexContents = await readFile(
+    indexPath,
+    "utf8",
+  );
+
+  if (
+    indexContents.includes(`from "./${slug}"`) ||
+    indexContents.includes(`${variableName},`)
+  ) {
+    throw new Error(
+      `${slug} already appears in content/productions/index.ts`,
+    );
+  }
+
+  const productionsArrayPattern =
+    /export const productions: Production\[\] = \[\n/;
+
+  if (!productionsArrayPattern.test(indexContents)) {
+    throw new Error(
+      "Could not find the productions array in content/productions/index.ts",
+    );
+  }
+
+  indexContents = indexContents.replace(
+    "export const productions",
+    `${importLine}\n\nexport const productions`,
+  );
+
+  indexContents = indexContents.replace(
+    productionsArrayPattern,
+    `export const productions: Production[] = [\n  ${variableName},\n`,
+  );
+
+  await writeFile(indexPath, indexContents, "utf8");
 }
 
 async function main() {
@@ -121,7 +237,9 @@ async function main() {
   });
 
   try {
-    console.log("\nSteve Gregson Archive — New Production\n");
+    console.log(
+      "\nSteve Gregson Archive — New Production\n",
+    );
 
     const title = await askRequired(
       terminal,
@@ -135,19 +253,46 @@ async function main() {
       `Folder slug [${suggestedSlug}]: `,
     );
 
-    const slug = createSlug(slugAnswer || suggestedSlug);
+    const slug = createSlug(
+      slugAnswer || suggestedSlug,
+    );
 
-    const imageDirectory = path.join(imagesRoot, slug);
+    const variableName = createVariableName(slug);
+
+    const imageDirectory = path.join(
+      imagesRoot,
+      slug,
+    );
+
+    const productionFilePath = path.join(
+      productionsRoot,
+      `${slug}.ts`,
+    );
 
     if (!(await pathExists(imageDirectory))) {
       throw new Error(
         [
-          `The image folder does not exist:`,
+          "The image folder does not exist:",
           imageDirectory,
           "",
-          `Create this folder first:`,
+          "Create this folder first:",
           `public/images/productions/${slug}/`,
         ].join("\n"),
+      );
+    }
+
+    if (await pathExists(productionFilePath)) {
+      throw new Error(
+        `content/productions/${slug}.ts already exists.`,
+      );
+    }
+
+    const imageFiles =
+      await getImageFiles(imageDirectory);
+
+    if (imageFiles.length === 0) {
+      throw new Error(
+        `No supported images were found in public/images/productions/${slug}/`,
       );
     }
 
@@ -164,7 +309,9 @@ async function main() {
     const year = Number.parseInt(yearText, 10);
 
     if (!Number.isInteger(year)) {
-      throw new Error("The year must be a number.");
+      throw new Error(
+        "The year must be a whole number.",
+      );
     }
 
     const description =
@@ -177,6 +324,11 @@ async function main() {
     const director = await askOptional(
       terminal,
       "Director (optional): ",
+    );
+
+    const associateDirector = await askOptional(
+      terminal,
+      "Associate director (optional): ",
     );
 
     const musicalDirector = await askOptional(
@@ -194,9 +346,19 @@ async function main() {
       "Lighting designer (optional): ",
     );
 
+    const setDesigner = await askOptional(
+      terminal,
+      "Set designer (optional): ",
+    );
+
+    const costumeDesigner = await askOptional(
+      terminal,
+      "Costume designer (optional): ",
+    );
+
     const setCostumeDesigner = await askOptional(
       terminal,
-      "Set and costume designer (optional): ",
+      "Combined set and costume designer (optional): ",
     );
 
     const soundDesigner = await askOptional(
@@ -209,29 +371,28 @@ async function main() {
       "Commissioned by (optional): ",
     );
 
-    const directoryEntries = await readdir(imageDirectory, {
-      withFileTypes: true,
-    });
+    const additionalCredits = [];
 
-    const imageFiles = directoryEntries
-      .filter((entry) => entry.isFile())
-      .map((entry) => entry.name)
-      .filter((filename) =>
-        supportedExtensions.has(
-          path.extname(filename).toLowerCase(),
-        ),
+    while (
+      await askYesNo(
+        terminal,
+        "Add another creative credit?",
       )
-      .sort((a, b) =>
-        a.localeCompare(b, undefined, {
-          numeric: true,
-          sensitivity: "base",
-        }),
+    ) {
+      const role = await askRequired(
+        terminal,
+        "Credit role: ",
       );
 
-    if (imageFiles.length === 0) {
-      throw new Error(
-        `No supported image files were found in public/images/productions/${slug}/`,
+      const name = await askRequired(
+        terminal,
+        "Credit name: ",
       );
+
+      additionalCredits.push({
+        role,
+        name,
+      });
     }
 
     console.log("\nAvailable images:\n");
@@ -255,7 +416,9 @@ async function main() {
       heroIndex < 0 ||
       heroIndex >= imageFiles.length
     ) {
-      throw new Error("That hero image number is invalid.");
+      throw new Error(
+        "That hero image number is invalid.",
+      );
     }
 
     const hero = imageFiles[heroIndex];
@@ -268,10 +431,17 @@ async function main() {
       createCredit("Venue", venue),
       createCredit("Director", director),
       createCredit(
+        "Associate Director",
+        associateDirector,
+      ),
+      createCredit(
         "Musical Director",
         musicalDirector,
       ),
-      createCredit("Choreographer", choreographer),
+      createCredit(
+        "Choreographer",
+        choreographer,
+      ),
       createCredit(
         "Lighting Design",
         lightingDesigner,
@@ -280,27 +450,25 @@ async function main() {
         "Set & Costume Design",
         setCostumeDesigner,
       ),
-      createCredit("Sound Design", soundDesigner),
+      createCredit("Set Design", setDesigner),
+      createCredit(
+        "Costume Design",
+        costumeDesigner,
+      ),
+      createCredit(
+        "Sound Design",
+        soundDesigner,
+      ),
+      ...additionalCredits,
       createCredit(
         "Commissioned by",
         commissionedBy,
       ),
-      createCredit("Photography", "Steve Gregson"),
+      createCredit(
+        "Photography",
+        "Steve Gregson",
+      ),
     ];
-
-    const variableName = slug
-      .split("-")
-      .map((part, index) => {
-        if (index === 0) {
-          return part;
-        }
-
-        return (
-          part.charAt(0).toUpperCase() +
-          part.slice(1)
-        );
-      })
-      .join("");
 
     const fileContents = `import type { Production } from "./types";
 
@@ -330,44 +498,59 @@ ${formatImages(galleryImages, title)}
 };
 `;
 
-    await mkdir(contentRoot, {
+    await mkdir(productionsRoot, {
       recursive: true,
     });
 
-    const outputPath = path.join(
-      contentRoot,
-      `${slug}.ts`,
+    await writeFile(
+      productionFilePath,
+      fileContents,
+      "utf8",
     );
 
-    if (await pathExists(outputPath)) {
-      const overwrite = (
-        await terminal.question(
-          `\n${slug}.ts already exists. Replace it? (yes/no): `,
-        )
-      )
-        .trim()
-        .toLowerCase();
-
-      if (overwrite !== "yes") {
-        console.log("\nNo file was changed.");
-        return;
-      }
+    try {
+      await updateProductionIndex({
+        slug,
+        variableName,
+      });
+    } catch (error) {
+      console.error(
+        "\nThe production file was created, but index.ts was not updated.",
+      );
+      console.error(error.message);
+      console.error(
+        `\nCreated file: content/productions/${slug}.ts`,
+      );
+      process.exitCode = 1;
+      return;
     }
 
-    await writeFile(outputPath, fileContents, "utf8");
+    console.log(
+      "\nProduction created successfully.\n",
+    );
 
-    console.log("\nProduction file created successfully:");
     console.log(
-      `content/productions/${slug}.ts`,
+      `Production file: content/productions/${slug}.ts`,
     );
+
     console.log(
-      `\n${galleryImages.length + 1} photographs found.`,
+      `Image folder: public/images/productions/${slug}/`,
     );
+
     console.log(
-      "The generated layouts are a starting point and can be curated manually.",
+      `Page URL: /productions/${slug}`,
     );
+
     console.log(
-      "\nThe live website has not been changed.",
+      `Photographs: ${galleryImages.length + 1}`,
+    );
+
+    console.log(
+      "\nThe production was added to content/productions/index.ts automatically.",
+    );
+
+    console.log(
+      "The generated image order and layouts are a starting point and can be curated in the production file.",
     );
   } finally {
     terminal.close();
@@ -375,7 +558,10 @@ ${formatImages(galleryImages, title)}
 }
 
 main().catch((error) => {
-  console.error("\nProduction generator failed:\n");
+  console.error(
+    "\nProduction generator failed:\n",
+  );
+
   console.error(error.message);
   process.exitCode = 1;
 });

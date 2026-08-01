@@ -7,7 +7,10 @@ import { godspell } from "./godspell";
 import { lonelyLondoners } from "./lonely-londoners";
 import { theCode } from "./the-code";
 
+import { footfallsAndRockaby } from "./footfalls-and-rockaby";
+
 export const productions: Production[] = [
+  footfallsAndRockaby,
   godspell,
   theCode,
   extraordinaryWomen,
