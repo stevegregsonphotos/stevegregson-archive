@@ -74,12 +74,10 @@ export const lonelyLondoners: Production = {
       alt: "The Lonely Londoners production photograph",
       layout: "medium",
     },
-    {
+        {
       src: "ProofOnly-LonelyLondoners-88-Enhanced-NR-Edit.jpg",
       alt: "The Lonely Londoners production photograph",
       layout: "full",
     },
   ],
-
-  
-  },
+};
