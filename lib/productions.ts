@@ -12,6 +12,7 @@ export type GalleryLayout =
 export type ProductionCredit = {
   role: string;
   name: string;
+  website?: string;
 };
 
 export type ProductionImage = {
@@ -52,8 +53,16 @@ export const productions: Production[] = [
       "The Lonely Londoners at Kiln Theatre, photographed by Steve Gregson",
 
     credits: [
-      { role: "Venue", name: "Kiln Theatre" },
-      { role: "Director", name: "Ebenezer Bamgboye" },
+     {
+  role: "Venue",
+  name: "Kiln Theatre",
+  website: "https://kilntheatre.com",
+},
+      {
+  role: "Director",
+  name: "Ebenezer Bamgboye",
+  website: "https://www.ebenezerbamgboye.com",
+},
       { role: "Lighting Design", name: "Elliot Griggs" },
       {
         role: "Set & Costume Design",
@@ -217,12 +226,13 @@ export const productions: Production[] = [
     ],
 
     nextProduction: {
-      slug: "girl-in-the-machine",
-      title: "Girl In The Machine",
-      venue: "Young Vic Theatre",
-      year: 2025,
-      image: "/images/productions/girl-in-the-machine/hero.jpg",
-    },
+  slug: "godspell",
+  title: "Godspell",
+  venue: "Mountview",
+  year: 2026,
+  image:
+    "/images/productions/godspell/GODSPELL-Genesis-58.jpg",
+},
   },
 
   {
@@ -347,6 +357,380 @@ export const productions: Production[] = [
         "/images/productions/lonely-londoners/ProofOnly-LonelyLondoners-113-Enhanced-NR-Edit.jpg",
     },
   },
+  {
+  slug: "godspell",
+  title: "Godspell",
+  venue: "Mountview",
+  year: 2026,
+
+  description:
+    "Dress rehearsal photography created for the production’s publicity campaign.",
+
+  hero: "GODSPELL-Genesis-58.jpg",
+
+  heroAlt:
+    "Godspell at Mountview, photographed by Steve Gregson",
+
+  credits: [
+    {
+      role: "Venue",
+      name: "Mountview",
+    },
+    {
+      role: "Director",
+      name: "Shane Dempsey",
+    },
+    {
+      role: "Musical Director",
+      name: "James Bowen-Thomas",
+    },
+    {
+      role: "Choreographer",
+      name: "Julia Cave",
+    },
+    {
+      role: "Lighting Design",
+      name: "Mark Dymock",
+    },
+    {
+      role: "Set & Costume Design",
+      name: "George P Martin",
+    },
+    {
+      role: "Sound Design",
+      name: "Matthew Giles",
+    },
+    {
+      role: "Commissioned by",
+      name: "Mountview",
+    },
+    {
+      role: "Photography",
+      name: "Steve Gregson",
+    },
+  ],
+
+  images: [
+    {
+      src: "GODSPELL-Revelation-136-2.jpg",
+      alt: "Godspell production photograph",
+      layout: "wide",
+    },
+    {
+      src: "GODSPELL-Genesis-329.jpg",
+      alt: "Godspell production photograph",
+      layout: "left",
+    },
+    {
+      src: "GODSPELL-Genesis-381.jpg",
+      alt: "Godspell production photograph",
+      layout: "right",
+    },
+    {
+      src: "GODSPELL-Revelation-181-2.jpg",
+      alt: "Godspell production photograph",
+      layout: "full",
+    },
+    {
+      src: "GODSPELL-Genesis-249.jpg",
+      alt: "Godspell production photograph",
+      layout: "left-small",
+    },
+    {
+      src: "GODSPELL-Revelation-266.jpg",
+      alt: "Godspell production photograph",
+      layout: "right-small",
+    },
+    {
+      src: "GODSPELL-Revelation-184.jpg",
+      alt: "Godspell production photograph",
+      layout: "wide-left",
+    },
+    {
+      src: "GODSPELL-Revelation-190-2.jpg",
+      alt: "Godspell production photograph",
+      layout: "wide-right",
+    },
+    {
+      src: "GODSPELL-Revelation-24.jpg",
+      alt: "Godspell production photograph",
+      layout: "medium",
+    },
+    {
+      src: "GODSPELL-Revelation-33-2.jpg",
+      alt: "Godspell production photograph",
+      layout: "left-small",
+    },
+    {
+      src: "GODSPELL-Revelation-27-2.jpg",
+      alt: "Godspell production photograph",
+      layout: "wide",
+    },
+    {
+      src: "GODSPELL-Revelation-32-2.jpg",
+      alt: "Godspell production photograph",
+      layout: "full",
+    },
+    {
+      src: "GODSPELL-Revelation-372-2.jpg",
+      alt: "Godspell production photograph",
+      layout: "left",
+    },
+    {
+      src: "GODSPELL-Revelation-374.jpg",
+      alt: "Godspell production photograph",
+      layout: "right",
+    },
+    {
+      src: "GODSPELL-Genesis-388.jpg",
+      alt: "Godspell production photograph",
+      layout: "medium",
+    },
+    {
+      src: "GODSPELL-Genesis-397.jpg",
+      alt: "Godspell production photograph",
+      layout: "right-small",
+    },
+    {
+      src: "GODSPELL-Genesis-395.jpg",
+      alt: "Godspell production photograph",
+      layout: "wide-left",
+    },
+    {
+      src: "GODSPELL-Revelation-380-2.jpg",
+      alt: "Godspell production photograph",
+      layout: "full",
+    },{
+  src: "GODSPELL-Revelation-380-2.jpg",
+  alt: "Godspell production photograph",
+  layout: "full",
+},
+],
+
+nextProduction: {
+  slug: "the-code",
+  title: "The Code",
+  venue: "Southwark Elephant Playhouse",
+  year: 2025,
+  image:
+    "/images/productions/the-code/A1_00042-Edit.jpg",
+},
+},
+
+{
+  slug: "the-code",
+  title: "The Code",
+  venue: "Southwark Elephant Playhouse",
+  year: 2025,
+
+  description:
+    "Dress rehearsal photography created for the production’s publicity campaign.",
+
+  hero: "A1_00042-Edit.jpg",
+
+  heroAlt:
+    "The Code at Southwark Elephant Playhouse, photographed by Steve Gregson",
+
+  credits: [
+    {
+      role: "Venue",
+      name: "Southwark Elephant Playhouse",
+    },
+    {
+      role: "Director",
+      name: "Christopher Renshaw",
+    },
+    {
+      role: "Lighting Design",
+      name: "Jack Weir",
+    },
+    {
+      role: "Set & Costume Design",
+      name: "Ethan Cheek",
+    },
+    {
+      role: "Commissioned by",
+      name: "Deus Ex Machina Productions",
+    },
+    {
+      role: "Photography",
+      name: "Steve Gregson",
+    },
+  ],
+
+  images: [
+    {
+      src: "A1_08140.jpg",
+      alt: "A silhouetted performer standing before illuminated blinds in The Code",
+      layout: "left-small",
+    },
+    {
+      src: "A_100683.jpg",
+      alt: "Two performers seated together in The Code",
+      layout: "wide",
+    },
+    {
+      src: "A1_08326.jpg",
+      alt: "A performer seated at a drinks trolley during The Code",
+      layout: "right",
+    },
+    {
+      src: "A1_09448-Edit.jpg",
+      alt: "A performer in formal costume holding a drink in The Code",
+      layout: "left",
+    },
+    {
+      src: "A1_09554-Edit-Edit-2.jpg",
+      alt: "Two performers sharing an intimate moment in The Code",
+      layout: "full",
+    },
+    {
+      src: "A1_09554-Edit-Edit.jpg",
+      alt: "Two performers seated together on the set of The Code",
+      layout: "wide-left",
+    },
+    {
+      src: "A1_09554-Edit.jpg",
+      alt: "A close dramatic scene between two performers in The Code",
+      layout: "wide-right",
+    },
+    {
+      src: "A1_09791.jpg",
+      alt: "Two performers in a tense exchange during The Code",
+      layout: "left",
+    },
+    {
+      src: "A1_09801.jpg",
+      alt: "A seated performer confronted by another character in The Code",
+      layout: "right",
+    },
+    {
+      src: "A9_05819-Edit.jpg",
+      alt: "A wide view of the illuminated set for The Code",
+      layout: "wide",
+    },
+    {
+      src: "A9_05899-Edit.jpg",
+      alt: "The company positioned across the stage in The Code",
+      layout: "full",
+    },
+    {
+      src: "A_100642.jpg",
+      alt: "A solitary figure silhouetted against the blinds in The Code",
+      layout: "left-small",
+    },
+    {
+      src: "A_101276.jpg",
+      alt: "A performer standing beneath the Hollywoodland sign in The Code",
+      layout: "medium",
+    },
+    {
+      src: "A_101855-Edit.jpg",
+      alt: "A performer behind a drinks trolley in The Code",
+      layout: "right-small",
+    },
+    {
+      src: "A_101899.jpg",
+      alt: "Two performers holding drinks during The Code",
+      layout: "wide-left",
+    },
+    {
+      src: "A_102062.jpg",
+      alt: "A performer seated on the floor of the set in The Code",
+      layout: "full",
+    },
+    {
+},
+],
+},
+
+{
+  slug: "extraordinary-women",
+  title: "Extraordinary Women",
+  venue: "Jermyn Street Theatre",
+  year: 2025,
+
+  description:
+    "Dress rehearsal photography created for the production’s publicity campaign.",
+
+  hero: "A9_03345.jpg",
+
+  heroAlt:
+    "Extraordinary Women at Jermyn Street Theatre, photographed by Steve Gregson",
+
+  credits: [
+    {
+      role: "Venue",
+      name: "Jermyn Street Theatre",
+    },
+    {
+      role: "Director",
+      name: "Paul Foster",
+    },
+    {
+      role: "Choreographer",
+      name: "Jo Goodwin",
+    },
+    {
+      role: "Lighting Design",
+      name: "Alex Musgrave",
+    },
+    {
+      role: "Set Design",
+      name: "Alex Marker",
+    },
+    {
+      role: "Costume Design",
+      name: "Carla Joy Evans",
+    },
+    {
+      role: "Commissioned by",
+      name: "Jermyn Street Theatre",
+    },
+    {
+      role: "Photography",
+      name: "Steve Gregson",
+    },
+  ],
+
+  images: [
+    {
+      src: "A9_01916.jpg",
+      alt: "The company of Extraordinary Women gathered in a colourful ensemble scene",
+      layout: "wide",
+    },
+    {
+      src: "A1_00344.jpg",
+      alt: "A performer in period costume during Extraordinary Women",
+      layout: "left",
+    },
+    {
+      src: "A1_00516-2.jpg",
+      alt: "A performer in a beaded costume beneath warm stage lighting",
+      layout: "right-small",
+    },
+    {
+      src: "A1_00715.jpg",
+      alt: "Two performers dancing together during Extraordinary Women",
+      layout: "wide-left",
+    },
+    {
+      src: "A1_01210.jpg",
+      alt: "A performer raising a bottle during Extraordinary Women",
+      layout: "left-small",
+    },
+    {
+      src: "A9_02401-Edit.jpg",
+      alt: "A performer in a top hat addressing the audience during Extraordinary Women",
+      layout: "right",
+    },
+    {
+      src: "A1_00516.jpg",
+      alt: "A performer standing beside the bar during Extraordinary Women",
+      layout: "full",
+    },
+  ]    
+},
 ];
 
 export function getProduction(slug: string) {
@@ -358,4 +742,23 @@ export function getProduction(slug: string) {
     (production) =>
       production.slug.trim().toLowerCase() === normalisedSlug,
   );
+}
+
+export function getNextProduction(slug: string) {
+  const normalisedSlug = decodeURIComponent(slug)
+    .trim()
+    .toLowerCase();
+
+  const currentIndex = productions.findIndex(
+    (production) =>
+      production.slug.trim().toLowerCase() === normalisedSlug,
+  );
+
+  if (currentIndex === -1 || productions.length < 2) {
+    return undefined;
+  }
+
+  const nextIndex = (currentIndex + 1) % productions.length;
+
+  return productions[nextIndex];
 }

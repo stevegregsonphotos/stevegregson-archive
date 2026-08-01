@@ -2,9 +2,14 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getDirectoryUrl } from "../../../lib/directory";
+
 import { ProductionGallery } from "../../../components/ProductionGallery";
-import { getProduction } from "../../../lib/productions";
+import { getDirectoryUrl } from "../../../lib/directory";
+import {
+  getNextProduction,
+  getProduction,
+  productions,
+} from "../../../lib/productions";
 
 type ProductionPageProps = {
   params: Promise<{
@@ -12,7 +17,11 @@ type ProductionPageProps = {
   }>;
 };
 
-
+export function generateStaticParams() {
+  return productions.map((production) => ({
+    slug: production.slug,
+  }));
+}
 
 export async function generateMetadata({
   params,
@@ -42,6 +51,7 @@ export default async function ProductionPage({
     notFound();
   }
 
+  const nextProduction = getNextProduction(slug);
   const imageDirectory = `/images/productions/${production.slug}`;
 
   return (
@@ -77,32 +87,33 @@ export default async function ProductionPage({
           </p>
         </div>
 
-<dl className="curated-production-credits">
-  {production.credits.map((credit) => {
-    const creditUrl =
-      credit.website ?? getDirectoryUrl(credit.name);
+        <dl className="curated-production-credits">
+          {production.credits.map((credit) => {
+            const creditUrl =
+              credit.website ?? getDirectoryUrl(credit.name);
 
-    return (
-      <div key={`${credit.role}-${credit.name}`}>
-        <dt>{credit.role}</dt>
+            return (
+              <div key={`${credit.role}-${credit.name}`}>
+                <dt>{credit.role}</dt>
 
-        <dd>
-          {creditUrl ? (
-            <a
-              href={creditUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {credit.name} <span aria-hidden="true">↗</span>
-            </a>
-          ) : (
-            credit.name
-          )}
-        </dd>
-      </div>
-    );
-  })}
-</dl>
+                <dd>
+                  {creditUrl ? (
+                    <a
+                      href={creditUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {credit.name}{" "}
+                      <span aria-hidden="true">↗</span>
+                    </a>
+                  ) : (
+                    credit.name
+                  )}
+                </dd>
+              </div>
+            );
+          })}
+        </dl>
       </section>
 
       <ProductionGallery
@@ -115,58 +126,42 @@ export default async function ProductionPage({
         images={production.images}
       />
 
-     {production.nextProduction ? (
-  <Link
-    href={`/productions/${production.nextProduction.slug}`}
-    className="next-production-panel"
-    style={{
-      backgroundImage: `
-        linear-gradient(
-          90deg,
-          rgba(5, 5, 5, 0.82) 0%,
-          rgba(5, 5, 5, 0.38) 48%,
-          rgba(5, 5, 5, 0.12) 100%
-        ),
-        url("${production.nextProduction.image}")
-      `,
-    }}
-  >
-    <div className="next-production-content">
-      <p className="next-production-label">
-        Continue exploring
-      </p>
+      {nextProduction ? (
+        <Link
+          href={`/productions/${nextProduction.slug}`}
+          className="curated-production-next"
+          style={{
+            backgroundImage: `
+              linear-gradient(
+                90deg,
+                rgba(8, 7, 6, 0.84),
+                rgba(8, 7, 6, 0.12)
+              ),
+              url("/images/productions/${nextProduction.slug}/${nextProduction.hero}")
+            `,
+          }}
+        >
+          <span>Continue exploring</span>
 
-      <h2>{production.nextProduction.title}</h2>
+          <h2>{nextProduction.title}</h2>
 
-      <p className="next-production-meta">
-        {production.nextProduction.venue}
-        <span aria-hidden="true"> · </span>
-        {production.nextProduction.year}
-      </p>
+          <p>
+            {nextProduction.venue}
+            <span aria-hidden="true"> · </span>
+            {nextProduction.year}
+            <b aria-hidden="true"> ↗</b>
+          </p>
+        </Link>
+      ) : (
+        <section className="production-archive-return">
+          <p>Continue exploring</p>
 
-      <span className="next-production-enter">
-        Enter production
-        <span aria-hidden="true">→</span>
-      </span>
-    </div>
-
-    <span
-      className="next-production-number"
-      aria-hidden="true"
-    >
-      Next
-    </span>
-  </Link>
-) : (
-  <section className="production-archive-return">
-    <p>Continue exploring</p>
-
-    <Link href="/productions">
-      Return to productions
-      <span aria-hidden="true">→</span>
-    </Link>
-  </section>
-)}
+          <Link href="/archive">
+            Return to archive
+            <span aria-hidden="true">→</span>
+          </Link>
+        </section>
+      )}
     </main>
   );
 }

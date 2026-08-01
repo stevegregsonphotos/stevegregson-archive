@@ -23,15 +23,31 @@ export const directory = {
     },
   },
 
-  people: {
-    "Lucía Sánchez Roldán": {
-      url: "https://www.luciasanchezroldan.com",
-    },
-
-    "Mark Dymock": {
-      url: "https://www.markdymock.com",
-    },
+people: {
+  "Lucía Sánchez Roldán": {
+    url: "https://www.luciasanchezroldan.com",
   },
+
+  "Mark Dymock": {
+    url: "https://www.markdymock.com",
+  },
+
+  "Laura Ann Price": {
+    url: "https://www.lauraannprice.co.uk/",
+  },
+
+  "George P Martin": {
+    url: "https://www.georgepmartin.com",
+  },
+
+  "Elliot Griggs": {
+    url: "https://www.elliotgriggs.co.uk/",
+  },
+
+  "Jack Weir": {
+    url: "https://www.jackweirlighting.com",
+  },
+}
 };
 type DirectoryEntry = {
   url: string;

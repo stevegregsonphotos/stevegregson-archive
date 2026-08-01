@@ -1,33 +1,11 @@
 import Link from "next/link";
-
-const productions = [
-  {
-    title: "The Lonely Londoners",
-    venue: "Jermyn Street Theatre",
-    year: "2025",
-    href: "/productions/lonely-londoners",
-  },
-  {
-    title: "Alice in Wonderland",
-    venue: "Theatre Production",
-    year: "2025",
-    href: "/productions/alice-in-wonderland",
-  },
-  {
-    title: "Girl in the Machine",
-    venue: "Theatre Production",
-    year: "2024",
-    href: "/productions/girl-in-the-machine",
-  },
-  {
-    title: "Extraordinary Women",
-    venue: "Theatre Production",
-    year: "2024",
-    href: "/productions/extraordinary-women",
-  },
-];
+import { productions } from "../../lib/productions";
 
 export default function ProductionsPage() {
+  const sortedProductions = [...productions].sort((a, b) => {
+    return (b.year ?? 0) - (a.year ?? 0);
+  });
+
   return (
     <main className="productions-page">
       <section className="productions-intro">
@@ -42,22 +20,29 @@ export default function ProductionsPage() {
       </section>
 
       <section className="productions-list" aria-label="Productions">
-        {productions.map((production, index) => (
+        {sortedProductions.map((production, index) => (
           <Link
-            href={production.href}
+            href={`/productions/${production.slug}`}
             className="production-row"
-            key={production.href}
+            key={production.slug}
           >
             <span className="production-number">
               {String(index + 1).padStart(2, "0")}
             </span>
 
-            <span className="production-title">{production.title}</span>
+            <span className="production-title">
+              {production.title}
+            </span>
 
             <span className="production-meta">
               {production.venue}
-              <span aria-hidden="true"> · </span>
-              {production.year}
+
+              {production.year ? (
+                <>
+                  <span aria-hidden="true"> · </span>
+                  {production.year}
+                </>
+              ) : null}
             </span>
 
             <span className="production-arrow" aria-hidden="true">
