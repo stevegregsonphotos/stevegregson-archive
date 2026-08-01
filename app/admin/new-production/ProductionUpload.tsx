@@ -6,6 +6,8 @@ import {
   useState,
 } from "react";
 
+import ProductionWebsitePreview from "../../../components/admin/ProductionWebsitePreview";
+
 type PreviewImage = {
   filename: string;
   filepath: string;
@@ -108,6 +110,8 @@ export default function ProductionUpload() {
     selectedHeroPath,
     setSelectedHeroPath,
   ] = useState<string | null>(null);
+  const [showWebsitePreview, setShowWebsitePreview] =
+  useState(false);
 
   const [productionFields, setProductionFields] =
     useState<EditableProductionFields>({
@@ -141,7 +145,9 @@ export default function ProductionUpload() {
     setIsUploading(true);
     setResult(null);
     setSelectedHeroPath(null);
-    setProductionFields({
+    setProductionFields
+    setShowWebsitePreview(false);({
+        
       ...EMPTY_PRODUCTION_FIELDS,
     });
 
@@ -799,6 +805,34 @@ export default function ProductionUpload() {
                   />
                 </label>
               </section>
+              <section className="backstage-section">
+  <div className="backstage-section-heading">
+    <h2>Review</h2>
+
+    <p>Preview before publishing</p>
+  </div>
+
+  <button
+    type="button"
+    className="backstage-button backstage-button-primary"
+    disabled={!selectedHero}
+    onClick={() => setShowWebsitePreview(true)}
+  >
+    Preview website
+    <span aria-hidden="true">→</span>
+  </button>
+
+  {!selectedHero ? (
+    <p
+      style={{
+        marginTop: "1rem",
+        color: "rgba(242, 238, 230, 0.55)",
+      }}
+    >
+      Select a hero image before opening the website preview.
+    </p>
+  ) : null}
+</section>
 
               <section
                 style={{
@@ -845,6 +879,18 @@ export default function ProductionUpload() {
           ) : null}
         </div>
       ) : null}
+      {showWebsitePreview &&
+selectedHero &&
+result?.contents ? (
+  <ProductionWebsitePreview
+    fields={productionFields}
+    hero={selectedHero}
+    images={result.contents.images}
+    onClose={() =>
+      setShowWebsitePreview(false)
+    }
+  />
+) : null}
     </section>
   );
 }
