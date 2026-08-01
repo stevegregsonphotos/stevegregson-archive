@@ -1,6 +1,20 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import {
+  FormEvent,
+  useMemo,
+  useState,
+} from "react";
+
+type PreviewImage = {
+  filename: string;
+  filepath: string;
+  previewUrl: string;
+  width: number | null;
+  height: number | null;
+  orientation: "landscape" | "portrait" | "square" | "unknown";
+  heroScore: number;
+};
 
 type UploadResult = {
   ok: boolean;
@@ -13,9 +27,12 @@ type UploadResult = {
   };
   contents?: {
     imageCount: number;
-    images: string[];
+    previewCount: number;
+    previewLimitReached: boolean;
+    images: PreviewImage[];
     detailsFiles: string[];
     otherFiles: string[];
+    suggestedHeroPath: string | null;
   };
 };
 
@@ -38,12 +55,23 @@ function filenameOnly(filepath: string) {
 export default function ProductionUpload() {
   const [isUploading, setIsUploading] = useState(false);
   const [result, setResult] = useState<UploadResult | null>(null);
+  const [selectedHeroPath, setSelectedHeroPath] =
+    useState<string | null>(null);
+
+  const selectedHero = useMemo(() => {
+    return (
+      result?.contents?.images.find(
+        (image) => image.filepath === selectedHeroPath,
+      ) ?? null
+    );
+  }, [result, selectedHeroPath]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     setIsUploading(true);
     setResult(null);
+    setSelectedHeroPath(null);
 
     const formData = new FormData(event.currentTarget);
 
@@ -57,7 +85,14 @@ export default function ProductionUpload() {
       );
 
       const data = (await response.json()) as UploadResult;
+
       setResult(data);
+
+      if (data.contents?.suggestedHeroPath) {
+        setSelectedHeroPath(
+          data.contents.suggestedHeroPath,
+        );
+      }
     } catch {
       setResult({
         ok: false,
@@ -124,7 +159,9 @@ export default function ProductionUpload() {
             opacity: isUploading ? 0.55 : 1,
           }}
         >
-          {isUploading ? "Inspecting archive…" : "Create preview"}
+          {isUploading
+            ? "Creating thumbnails…"
+            : "Create preview"}
         </button>
       </form>
 
@@ -133,14 +170,17 @@ export default function ProductionUpload() {
           role="status"
           style={{
             marginTop: "3rem",
-            borderTop: "1px solid rgba(242, 238, 230, 0.18)",
+            borderTop:
+              "1px solid rgba(242, 238, 230, 0.18)",
             paddingTop: "2rem",
           }}
         >
           <p
             style={{
               margin: 0,
-              color: result.ok ? "#c7a369" : "#ffb3a7",
+              color: result.ok
+                ? "#c7a369"
+                : "#ffb3a7",
             }}
           >
             {result.message}
@@ -176,6 +216,11 @@ export default function ProductionUpload() {
                   {result.contents.imageCount}
                 </dd>
 
+                <dt>Thumbnails created</dt>
+                <dd style={{ margin: 0 }}>
+                  {result.contents.previewCount}
+                </dd>
+
                 <dt>Details files found</dt>
                 <dd style={{ margin: 0 }}>
                   {result.contents.detailsFiles.length}
@@ -187,9 +232,265 @@ export default function ProductionUpload() {
                 </dd>
               </dl>
 
+              {result.contents.previewLimitReached ? (
+                <p
+                  style={{
+                    marginTop: "1.5rem",
+                    color: "rgba(242, 238, 230, 0.58)",
+                  }}
+                >
+                  This archive contains more than 120 images.
+                  The first 120 are shown in this preview.
+                </p>
+              ) : null}
+
               <section
                 style={{
-                  marginTop: "3rem",
+                  marginTop: "4rem",
+                  borderTop:
+                    "1px solid rgba(242, 238, 230, 0.18)",
+                  paddingTop: "2rem",
+                }}
+              >
+                <p
+                  style={{
+                    margin: "0 0 1rem",
+                    color: "#c7a369",
+                    fontSize: "0.55rem",
+                    fontWeight: 700,
+                    letterSpacing: "0.18em",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  Selected hero
+                </p>
+
+                {selectedHero ? (
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns:
+                        "minmax(0, 2fr) minmax(14rem, 1fr)",
+                      gap: "2rem",
+                      alignItems: "end",
+                    }}
+                  >
+                    <img
+                      src={selectedHero.previewUrl}
+                      alt={`Preview of ${selectedHero.filename}`}
+                      style={{
+                        display: "block",
+                        width: "100%",
+                        maxHeight: "68vh",
+                        objectFit: "contain",
+                        objectPosition: "left bottom",
+                        background: "#080808",
+                      }}
+                    />
+
+                    <div>
+                      <h2
+                        style={{
+                          margin: 0,
+                          fontFamily:
+                            '"Iowan Old Style", "Palatino Linotype", Georgia, serif',
+                          fontSize:
+                            "clamp(2rem, 4vw, 4rem)",
+                          fontWeight: 400,
+                          lineHeight: 1,
+                        }}
+                      >
+                        {selectedHero.filename}
+                      </h2>
+
+                      <p
+                        style={{
+                          color:
+                            "rgba(242, 238, 230, 0.62)",
+                          lineHeight: 1.6,
+                        }}
+                      >
+                        {selectedHero.width &&
+                        selectedHero.height
+                          ? `${selectedHero.width} × ${selectedHero.height} · `
+                          : ""}
+                        {selectedHero.orientation}
+                      </p>
+
+                      {selectedHero.filepath ===
+                      result.contents.suggestedHeroPath ? (
+                        <p
+                          style={{
+                            color: "#c7a369",
+                            fontSize: "0.55rem",
+                            fontWeight: 700,
+                            letterSpacing: "0.16em",
+                            textTransform: "uppercase",
+                          }}
+                        >
+                          Automatic suggestion
+                        </p>
+                      ) : (
+                        <p
+                          style={{
+                            color: "#c7a369",
+                            fontSize: "0.55rem",
+                            fontWeight: 700,
+                            letterSpacing: "0.16em",
+                            textTransform: "uppercase",
+                          }}
+                        >
+                          Your selection
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <p>No hero image is currently selected.</p>
+                )}
+              </section>
+
+              <section
+                style={{
+                  marginTop: "4rem",
+                  borderTop:
+                    "1px solid rgba(242, 238, 230, 0.18)",
+                  paddingTop: "2rem",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    gap: "2rem",
+                    alignItems: "baseline",
+                  }}
+                >
+                  <h2
+                    style={{
+                      margin: 0,
+                      fontFamily:
+                        '"Iowan Old Style", "Palatino Linotype", Georgia, serif',
+                      fontSize:
+                        "clamp(2rem, 4vw, 4rem)",
+                      fontWeight: 400,
+                    }}
+                  >
+                    Photographs
+                  </h2>
+
+                  <p
+                    style={{
+                      margin: 0,
+                      color:
+                        "rgba(242, 238, 230, 0.5)",
+                      fontSize: "0.55rem",
+                      letterSpacing: "0.14em",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    Select an image to use as the hero
+                  </p>
+                </div>
+
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns:
+                      "repeat(auto-fill, minmax(13rem, 1fr))",
+                    gap: "1rem",
+                    marginTop: "2rem",
+                  }}
+                >
+                  {result.contents.images.map((image) => {
+                    const isSelected =
+                      image.filepath === selectedHeroPath;
+
+                    return (
+                      <button
+                        type="button"
+                        key={image.filepath}
+                        onClick={() =>
+                          setSelectedHeroPath(
+                            image.filepath,
+                          )
+                        }
+                        aria-pressed={isSelected}
+                        style={{
+                          padding: 0,
+                          overflow: "hidden",
+                          border: isSelected
+                            ? "2px solid #c7a369"
+                            : "1px solid rgba(242, 238, 230, 0.16)",
+                          background: "#080808",
+                          color: "inherit",
+                          cursor: "pointer",
+                          textAlign: "left",
+                        }}
+                      >
+                        <div
+                          style={{
+                            aspectRatio: "4 / 3",
+                            background: "#080808",
+                          }}
+                        >
+                          <img
+                            src={image.previewUrl}
+                            alt={`Preview of ${image.filename}`}
+                            loading="lazy"
+                            style={{
+                              display: "block",
+                              width: "100%",
+                              height: "100%",
+                              objectFit: "contain",
+                            }}
+                          />
+                        </div>
+
+                        <div
+                          style={{
+                            padding: "0.85rem",
+                          }}
+                        >
+                          <p
+                            style={{
+                              margin: 0,
+                              overflow: "hidden",
+                              fontSize: "0.68rem",
+                              lineHeight: 1.35,
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {image.filename}
+                          </p>
+
+                          <p
+                            style={{
+                              margin: "0.4rem 0 0",
+                              color: isSelected
+                                ? "#c7a369"
+                                : "rgba(242, 238, 230, 0.42)",
+                              fontSize: "0.48rem",
+                              fontWeight: 700,
+                              letterSpacing: "0.13em",
+                              textTransform: "uppercase",
+                            }}
+                          >
+                            {isSelected
+                              ? "Selected hero"
+                              : image.orientation}
+                          </p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+
+              <section
+                style={{
+                  marginTop: "4rem",
                   borderTop:
                     "1px solid rgba(242, 238, 230, 0.18)",
                   paddingTop: "2rem",
@@ -200,62 +501,31 @@ export default function ProductionUpload() {
                     margin: 0,
                     fontFamily:
                       '"Iowan Old Style", "Palatino Linotype", Georgia, serif',
-                    fontSize: "clamp(2rem, 4vw, 4rem)",
+                    fontSize:
+                      "clamp(2rem, 4vw, 4rem)",
                     fontWeight: 400,
                   }}
                 >
                   Details files
                 </h2>
 
-                {result.contents.detailsFiles.length > 0 ? (
+                {result.contents.detailsFiles.length >
+                0 ? (
                   <ul>
-                    {result.contents.detailsFiles.map((filepath) => (
-                      <li key={filepath}>
-                        {filenameOnly(filepath)}
-                      </li>
-                    ))}
+                    {result.contents.detailsFiles.map(
+                      (filepath) => (
+                        <li key={filepath}>
+                          {filenameOnly(filepath)}
+                        </li>
+                      ),
+                    )}
                   </ul>
                 ) : (
-                  <p>No text, RTF, Word or PDF details file was found.</p>
+                  <p>
+                    No text, RTF, Word or PDF details
+                    file was found.
+                  </p>
                 )}
-              </section>
-
-              <section
-                style={{
-                  marginTop: "3rem",
-                  borderTop:
-                    "1px solid rgba(242, 238, 230, 0.18)",
-                  paddingTop: "2rem",
-                }}
-              >
-                <h2
-                  style={{
-                    margin: 0,
-                    fontFamily:
-                      '"Iowan Old Style", "Palatino Linotype", Georgia, serif',
-                    fontSize: "clamp(2rem, 4vw, 4rem)",
-                    fontWeight: 400,
-                  }}
-                >
-                  Photographs
-                </h2>
-
-                <ol
-                  style={{
-                    columns: "18rem",
-                    gap: "3rem",
-                    marginTop: "2rem",
-                    paddingLeft: "1.25rem",
-                    color: "rgba(242, 238, 230, 0.68)",
-                    lineHeight: 1.8,
-                  }}
-                >
-                  {result.contents.images.map((filepath) => (
-                    <li key={filepath}>
-                      {filenameOnly(filepath)}
-                    </li>
-                  ))}
-                </ol>
               </section>
             </>
           ) : null}

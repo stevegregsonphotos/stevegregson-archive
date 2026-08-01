@@ -1,8 +1,10 @@
 import JSZip from "jszip";
+import sharp from "sharp";
 
 export const runtime = "nodejs";
 
 const MAX_UPLOAD_SIZE = 500 * 1024 * 1024;
+const MAX_PREVIEW_IMAGES = 120;
 
 const IMAGE_EXTENSIONS = new Set([
   ".jpg",
@@ -17,6 +19,16 @@ const DETAILS_EXTENSIONS = new Set([
   ".docx",
   ".pdf",
 ]);
+
+type PreviewImage = {
+  filename: string;
+  filepath: string;
+  previewUrl: string;
+  width: number | null;
+  height: number | null;
+  orientation: "landscape" | "portrait" | "square" | "unknown";
+  heroScore: number;
+};
 
 function getExtension(filename: string) {
   const finalDot = filename.lastIndexOf(".");
@@ -41,6 +53,103 @@ function createSuggestedSlug(filename: string) {
     .replace(/['’]/g, "")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
+}
+
+function getOrientation(
+  width: number | null,
+  height: number | null,
+): PreviewImage["orientation"] {
+  if (!width || !height) {
+    return "unknown";
+  }
+
+  const ratio = width / height;
+
+  if (ratio > 1.08) {
+    return "landscape";
+  }
+
+  if (ratio < 0.92) {
+    return "portrait";
+  }
+
+  return "square";
+}
+
+function calculateHeroScore(
+  width: number | null,
+  height: number | null,
+) {
+  if (!width || !height) {
+    return 0;
+  }
+
+  const ratio = width / height;
+  const pixelScore = Math.min((width * height) / 1_000_000, 20);
+
+  // Give landscape photographs a modest advantage because they generally
+  // suit the full-width production hero more naturally.
+  const landscapeScore =
+    ratio >= 1.35 && ratio <= 2.1
+      ? 30
+      : ratio > 1
+        ? 15
+        : 0;
+
+  return pixelScore + landscapeScore;
+}
+
+async function createPreviewImage(
+  zip: JSZip,
+  filepath: string,
+): Promise<PreviewImage | null> {
+  const entry = zip.file(filepath);
+
+  if (!entry) {
+    return null;
+  }
+
+  try {
+    const sourceBuffer = await entry.async("nodebuffer");
+
+    const image = sharp(sourceBuffer, {
+      failOn: "none",
+    }).rotate();
+
+    const metadata = await image.metadata();
+
+    const width = metadata.width ?? null;
+    const height = metadata.height ?? null;
+
+    const thumbnailBuffer = await image
+      .clone()
+      .resize({
+        width: 420,
+        height: 300,
+        fit: "inside",
+        withoutEnlargement: true,
+      })
+      .jpeg({
+        quality: 72,
+        progressive: true,
+      })
+      .toBuffer();
+
+    return {
+      filename: getFilename(filepath),
+      filepath,
+      previewUrl: `data:image/jpeg;base64,${thumbnailBuffer.toString(
+        "base64",
+      )}`,
+      width,
+      height,
+      orientation: getOrientation(width, height),
+      heroScore: calculateHeroScore(width, height),
+    };
+  } catch (error) {
+    console.error(`Could not preview ${filepath}:`, error);
+    return null;
+  }
 }
 
 export async function POST(request: Request) {
@@ -114,7 +223,7 @@ export async function POST(request: Request) {
         }),
       );
 
-    const images = allFiles.filter((filepath) =>
+    const imagePaths = allFiles.filter((filepath) =>
       IMAGE_EXTENSIONS.has(getExtension(filepath)),
     );
 
@@ -128,6 +237,31 @@ export async function POST(request: Request) {
         !DETAILS_EXTENSIONS.has(getExtension(filepath)),
     );
 
+    const previewPaths = imagePaths.slice(0, MAX_PREVIEW_IMAGES);
+
+    // Process previews one at a time to avoid large bursts of memory usage.
+    const previewImages: PreviewImage[] = [];
+
+    for (const filepath of previewPaths) {
+      const preview = await createPreviewImage(zip, filepath);
+
+      if (preview) {
+        previewImages.push(preview);
+      }
+    }
+
+    previewImages.sort((a, b) =>
+      a.filename.localeCompare(b.filename, undefined, {
+        numeric: true,
+        sensitivity: "base",
+      }),
+    );
+
+    const suggestedHero =
+      [...previewImages].sort(
+        (a, b) => b.heroScore - a.heroScore,
+      )[0] ?? null;
+
     return Response.json({
       ok: true,
       message: "Archive inspected successfully.",
@@ -138,10 +272,14 @@ export async function POST(request: Request) {
         suggestedSlug: createSuggestedSlug(upload.name),
       },
       contents: {
-        imageCount: images.length,
-        images,
+        imageCount: imagePaths.length,
+        previewCount: previewImages.length,
+        previewLimitReached:
+          imagePaths.length > MAX_PREVIEW_IMAGES,
+        images: previewImages,
         detailsFiles,
         otherFiles,
+        suggestedHeroPath: suggestedHero?.filepath ?? null,
       },
     });
   } catch (error) {

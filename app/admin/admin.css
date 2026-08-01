@@ -1,0 +1,226 @@
+.backstage-page {
+  min-height: 100vh;
+  padding: 10rem 6vw 7rem;
+  background: #11100f;
+  color: #f2eee6;
+}
+
+.backstage-shell {
+  width: min(100%, 88rem);
+  margin: 0 auto;
+}
+
+.backstage-eyebrow {
+  margin: 0;
+  color: #c7a369;
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.backstage-title {
+  margin: 1.4rem 0 0;
+  font-family:
+    "Iowan Old Style",
+    "Palatino Linotype",
+    Georgia,
+    serif;
+  font-size: clamp(4.5rem, 9vw, 9rem);
+  font-weight: 400;
+  letter-spacing: -0.06em;
+  line-height: 0.88;
+}
+
+.backstage-lead {
+  max-width: 44rem;
+  margin: 2.5rem 0 0;
+  color: rgba(242, 238, 230, 0.68);
+  font-size: 1rem;
+  line-height: 1.75;
+}
+
+.backstage-section {
+  margin-top: 4rem;
+  border-top: 1px solid rgba(242, 238, 230, 0.18);
+  padding-top: 2rem;
+}
+
+.backstage-section-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+.backstage-section-heading h2 {
+  margin: 0;
+  font-family:
+    "Iowan Old Style",
+    "Palatino Linotype",
+    Georgia,
+    serif;
+  font-size: clamp(2rem, 4vw, 4.5rem);
+  font-weight: 400;
+  letter-spacing: -0.045em;
+  line-height: 1;
+}
+
+.backstage-section-heading p {
+  margin: 0;
+  color: rgba(242, 238, 230, 0.48);
+  font-size: 0.52rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.backstage-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(18rem, 0.75fr);
+  gap: 3rem;
+  align-items: start;
+}
+
+.backstage-panel {
+  border: 1px solid rgba(242, 238, 230, 0.16);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.backstage-panel-inner {
+  padding: 1.5rem;
+}
+
+.backstage-status {
+  color: #c7a369;
+  font-size: 0.54rem;
+  font-weight: 700;
+  letter-spacing: 0.17em;
+  text-transform: uppercase;
+}
+
+.backstage-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.8rem;
+  border: 1px solid rgba(242, 238, 230, 0.48);
+  padding: 1rem 1.4rem;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: 0.56rem;
+  font-weight: 700;
+  letter-spacing: 0.17em;
+  text-transform: uppercase;
+  transition:
+    background-color 180ms ease,
+    color 180ms ease,
+    opacity 180ms ease;
+}
+
+.backstage-button:hover {
+  background: #f2eee6;
+  color: #11100f;
+}
+
+.backstage-button:disabled {
+  cursor: wait;
+  opacity: 0.5;
+}
+
+.backstage-button-primary {
+  border-color: #c7a369;
+  background: #c7a369;
+  color: #11100f;
+}
+
+.backstage-button-primary:hover {
+  background: #f2eee6;
+}
+
+.backstage-image-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+  gap: 1rem;
+}
+
+.backstage-image-card {
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid rgba(242, 238, 230, 0.16);
+  background: #080808;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.backstage-image-card[aria-pressed="true"] {
+  border: 2px solid #c7a369;
+}
+
+.backstage-image-frame {
+  aspect-ratio: 4 / 3;
+  background: #080808;
+}
+
+.backstage-image-frame img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.backstage-image-copy {
+  padding: 0.85rem;
+}
+
+.backstage-image-name {
+  margin: 0;
+  overflow: hidden;
+  font-size: 0.68rem;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.backstage-image-meta {
+  margin: 0.4rem 0 0;
+  color: rgba(242, 238, 230, 0.42);
+  font-size: 0.48rem;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.backstage-image-card[aria-pressed="true"]
+  .backstage-image-meta {
+  color: #c7a369;
+}
+
+@media (max-width: 900px) {
+  .backstage-workspace {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .backstage-page {
+    padding: 9rem 1.4rem 5rem;
+  }
+
+  .backstage-title {
+    font-size: clamp(4rem, 22vw, 7rem);
+  }
+
+  .backstage-section-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.8rem;
+  }
+
+  .backstage-image-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
