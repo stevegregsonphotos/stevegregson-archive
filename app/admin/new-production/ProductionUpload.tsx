@@ -105,6 +105,15 @@ type UploadResult = {
 
 type EditableProductionFields = ExtractedProductionFields;
 
+type VisionReview = {
+  hero: string;
+  heroReason: string;
+  keep: string[];
+  remove: string[];
+  sequence: string[];
+  editorialSummary: string;
+};
+
 function formatBytes(bytes: number) {
   if (bytes < 1024) {
     return `${bytes} bytes`;
@@ -204,7 +213,9 @@ const EMPTY_PRODUCTION_FIELDS: EditableProductionFields = {
 };
 
 export default function ProductionUpload() {
-  const [isUploading, setIsUploading] = useState(false);
+  const [isUploading, setIsUploading] =
+    useState(false);
+
   const [result, setResult] =
     useState<UploadResult | null>(null);
 
@@ -212,21 +223,21 @@ export default function ProductionUpload() {
     selectedHeroPath,
     setSelectedHeroPath,
   ] = useState<string | null>(null);
+
   const [showWebsitePreview, setShowWebsitePreview] =
-  useState(false);
-  type VisionReview = {
-  hero: string;
-  heroReason: string;
-  keep: string[];
-  remove: string[];
-  sequence: string[];
-  editorialSummary: string;
-};
+    useState(false);
 
-const [isReviewing, setIsReviewing] = useState(false);
+  const [isReviewing, setIsReviewing] =
+    useState(false);
 
-const [visionReview, setVisionReview] =
-  useState<VisionReview | null>(null);
+  const [visionReview, setVisionReview] =
+    useState<VisionReview | null>(null);
+
+  const [productionArchive, setProductionArchive] =
+    useState<File | null>(null);
+
+  const [isPublishing, setIsPublishing] =
+    useState(false);
 
   const [productionFields, setProductionFields] =
     useState<EditableProductionFields>({
@@ -328,6 +339,7 @@ const [visionReview, setVisionReview] =
     setSelectedHeroPath(null);
     setShowWebsitePreview(false);
     setVisionReview(null);
+    setProductionArchive(null);
     setProductionFields({
       ...EMPTY_PRODUCTION_FIELDS,
     });
@@ -335,6 +347,21 @@ const [visionReview, setVisionReview] =
     const formData = new FormData(
       event.currentTarget,
     );
+
+    const archive = formData.get(
+      "productionArchive",
+    );
+
+    if (!(archive instanceof File)) {
+      setResult({
+        ok: false,
+        message: "Please choose a ZIP archive.",
+      });
+      setIsUploading(false);
+      return;
+    }
+
+    setProductionArchive(archive);
 
     try {
       const response = await fetch(
@@ -370,7 +397,8 @@ const [visionReview, setVisionReview] =
       setIsUploading(false);
     }
   }
-async function runVisionReview() {
+
+  async function runVisionReview() {
   if (!result?.contents) {
     return;
   }
