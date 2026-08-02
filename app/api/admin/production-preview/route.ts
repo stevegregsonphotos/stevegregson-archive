@@ -20,6 +20,28 @@ const DETAILS_EXTENSIONS = new Set([
   ".pdf",
 ]);
 
+type GalleryLayout =
+  | "wide"
+  | "left"
+  | "right"
+  | "medium"
+  | "full"
+  | "left-small"
+  | "right-small"
+  | "wide-left"
+  | "wide-right";
+
+type ImageMetrics = {
+  resolutionScore: number;
+  sharpness: number;
+  brightness: number;
+  contrast: number;
+  entropy: number;
+  technicalScore: number;
+  duplicateScore: number;
+  galleryScore: number;
+};
+
 type PreviewImage = {
   filename: string;
   filepath: string;
@@ -28,6 +50,15 @@ type PreviewImage = {
   height: number | null;
   orientation: "landscape" | "portrait" | "square" | "unknown";
   heroScore: number;
+  fingerprint: string;
+  metrics: ImageMetrics;
+  suggestion: {
+    include: boolean;
+    order: number | null;
+    layout: GalleryLayout;
+    duplicateOf: string | null;
+    explanation: string[];
+  };
 };
 
 type ExtractedProductionFields = {
@@ -127,28 +158,171 @@ function getOrientation(
   return "square";
 }
 
-function calculateHeroScore(
+function clamp(value: number, minimum = 0, maximum = 100) {
+  return Math.min(maximum, Math.max(minimum, value));
+}
+
+function roundScore(value: number) {
+  return Math.round(clamp(value));
+}
+
+function calculateEntropy(pixels: Uint8Array) {
+  const histogram = new Array<number>(256).fill(0);
+
+  for (const pixel of pixels) {
+    histogram[pixel] += 1;
+  }
+
+  let entropy = 0;
+
+  for (const count of histogram) {
+    if (count === 0) continue;
+
+    const probability = count / pixels.length;
+    entropy -= probability * Math.log2(probability);
+  }
+
+  return entropy;
+}
+
+function calculateSharpness(
+  pixels: Uint8Array,
+  width: number,
+  height: number,
+) {
+  if (width < 3 || height < 3) return 0;
+
+  const values: number[] = [];
+
+  for (let y = 1; y < height - 1; y += 1) {
+    for (let x = 1; x < width - 1; x += 1) {
+      const index = y * width + x;
+      values.push(
+        4 * pixels[index] -
+          pixels[index - 1] -
+          pixels[index + 1] -
+          pixels[index - width] -
+          pixels[index + width],
+      );
+    }
+  }
+
+  const mean =
+    values.reduce((sum, value) => sum + value, 0) /
+    values.length;
+
+  return (
+    values.reduce(
+      (sum, value) => sum + (value - mean) ** 2,
+      0,
+    ) / values.length
+  );
+}
+
+function createDifferenceHash(
+  pixels: Uint8Array,
+  width: number,
+  height: number,
+) {
+  if (width !== 9 || height !== 8) return "";
+
+  let bits = "";
+
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width - 1; x += 1) {
+      bits +=
+        pixels[y * width + x] >
+        pixels[y * width + x + 1]
+          ? "1"
+          : "0";
+    }
+  }
+
+  return (
+    bits
+      .match(/.{1,4}/g)
+      ?.map((group) =>
+        Number.parseInt(group, 2).toString(16),
+      )
+      .join("") ?? ""
+  );
+}
+
+function hammingDistance(first: string, second: string) {
+  if (!first || !second || first.length !== second.length) {
+    return Number.POSITIVE_INFINITY;
+  }
+
+  let distance = 0;
+
+  for (let index = 0; index < first.length; index += 1) {
+    const xor =
+      Number.parseInt(first[index], 16) ^
+      Number.parseInt(second[index], 16);
+
+    distance += xor.toString(2).replaceAll("0", "").length;
+  }
+
+  return distance;
+}
+
+function calculateResolutionScore(
   width: number | null,
   height: number | null,
 ) {
-  if (!width || !height) {
-    return 0;
-  }
+  if (!width || !height) return 0;
+
+  return roundScore(
+    (((width * height) / 1_000_000) / 24) * 100,
+  );
+}
+
+function calculateTechnicalScore(metrics: {
+  resolutionScore: number;
+  sharpness: number;
+  brightness: number;
+  contrast: number;
+  entropy: number;
+}) {
+  const exposureScore =
+    100 -
+    Math.min(
+      Math.abs(metrics.brightness - 50) * 1.5,
+      100,
+    );
+
+  return roundScore(
+    metrics.resolutionScore * 0.16 +
+      metrics.sharpness * 0.34 +
+      exposureScore * 0.18 +
+      metrics.contrast * 0.16 +
+      metrics.entropy * 0.16,
+  );
+}
+
+function calculateHeroScore(
+  width: number | null,
+  height: number | null,
+  technicalScore: number,
+  contrast: number,
+) {
+  if (!width || !height) return 0;
 
   const ratio = width / height;
-  const pixelScore = Math.min(
-    (width * height) / 1_000_000,
-    20,
+  const ratioScore =
+    ratio >= 1.45 && ratio <= 2.05
+      ? 100
+      : ratio > 1.15
+        ? 72
+        : ratio > 1
+          ? 48
+          : 12;
+
+  return roundScore(
+    ratioScore * 0.48 +
+      technicalScore * 0.37 +
+      contrast * 0.15,
   );
-
-  const landscapeScore =
-    ratio >= 1.35 && ratio <= 2.1
-      ? 30
-      : ratio > 1
-        ? 15
-        : 0;
-
-  return pixelScore + landscapeScore;
 }
 
 function emptyExtractedFields(): ExtractedProductionFields {
@@ -379,20 +553,22 @@ async function createPreviewImage(
 ): Promise<PreviewImage | null> {
   const entry = zip.file(filepath);
 
-  if (!entry) {
-    return null;
-  }
+  if (!entry) return null;
 
   try {
-    const sourceBuffer =
-      await entry.async("nodebuffer");
+    const sourceBuffer = await entry.async("nodebuffer");
 
-    const image = sharp(sourceBuffer, {
+    const orientedBuffer = await sharp(sourceBuffer, {
       failOn: "none",
-    }).rotate();
+    })
+      .rotate()
+      .toBuffer();
+
+    const image = sharp(orientedBuffer, {
+      failOn: "none",
+    });
 
     const metadata = await image.metadata();
-
     const width = metadata.width ?? null;
     const height = metadata.height ?? null;
 
@@ -410,6 +586,82 @@ async function createPreviewImage(
       })
       .toBuffer();
 
+    const analysis = await image
+      .clone()
+      .greyscale()
+      .resize({
+        width: 96,
+        height: 96,
+        fit: "fill",
+      })
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+
+    const pixels = new Uint8Array(analysis.data);
+
+    const mean =
+      pixels.reduce((sum, value) => sum + value, 0) /
+      pixels.length;
+
+    const variance =
+      pixels.reduce(
+        (sum, value) => sum + (value - mean) ** 2,
+        0,
+      ) / pixels.length;
+
+    const brightness = roundScore((mean / 255) * 100);
+    const contrast = roundScore(
+      (Math.sqrt(variance) / 72) * 100,
+    );
+    const entropy = roundScore(
+      (calculateEntropy(pixels) / 8) * 100,
+    );
+    const sharpness = roundScore(
+      (Math.log10(
+        calculateSharpness(
+          pixels,
+          analysis.info.width,
+          analysis.info.height,
+        ) + 1,
+      ) /
+        4.2) *
+        100,
+    );
+    const resolutionScore =
+      calculateResolutionScore(width, height);
+
+    const technicalScore = calculateTechnicalScore({
+      resolutionScore,
+      sharpness,
+      brightness,
+      contrast,
+      entropy,
+    });
+
+    const hash = await image
+      .clone()
+      .greyscale()
+      .resize({
+        width: 9,
+        height: 8,
+        fit: "fill",
+      })
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+
+    const fingerprint = createDifferenceHash(
+      new Uint8Array(hash.data),
+      hash.info.width,
+      hash.info.height,
+    );
+
+    const heroScore = calculateHeroScore(
+      width,
+      height,
+      technicalScore,
+      contrast,
+    );
+
     return {
       filename: getFilename(filepath),
       filepath,
@@ -419,16 +671,147 @@ async function createPreviewImage(
       width,
       height,
       orientation: getOrientation(width, height),
-      heroScore: calculateHeroScore(width, height),
+      heroScore,
+      fingerprint,
+      metrics: {
+        resolutionScore,
+        sharpness,
+        brightness,
+        contrast,
+        entropy,
+        technicalScore,
+        duplicateScore: 0,
+        galleryScore: technicalScore,
+      },
+      suggestion: {
+        include: true,
+        order: null,
+        layout: "wide",
+        duplicateOf: null,
+        explanation: [],
+      },
     };
   } catch (error) {
-    console.error(
-      `Could not preview ${filepath}:`,
-      error,
-    );
-
+    console.error(`Could not preview ${filepath}:`, error);
     return null;
   }
+}
+
+function curateImages(images: PreviewImage[]) {
+  const ranked = [...images].sort(
+    (a, b) =>
+      b.metrics.technicalScore -
+      a.metrics.technicalScore,
+  );
+
+  for (let index = 0; index < ranked.length; index += 1) {
+    const image = ranked[index];
+
+    for (
+      let comparisonIndex = 0;
+      comparisonIndex < index;
+      comparisonIndex += 1
+    ) {
+      const comparison = ranked[comparisonIndex];
+      const distance = hammingDistance(
+        image.fingerprint,
+        comparison.fingerprint,
+      );
+
+      if (distance <= 8) {
+        image.suggestion.duplicateOf =
+          comparison.filepath;
+        image.metrics.duplicateScore = roundScore(
+          100 - (distance / 8) * 100,
+        );
+        break;
+      }
+    }
+  }
+
+  const available = ranked.filter(
+    (image) => !image.suggestion.duplicateOf,
+  );
+
+  const targetCount = Math.min(
+    24,
+    Math.max(8, Math.round(available.length * 0.55)),
+  );
+
+  const selected = available
+    .map((image) => {
+      image.metrics.galleryScore = roundScore(
+        image.metrics.technicalScore * 0.72 +
+          image.heroScore * 0.23 +
+          (image.orientation === "portrait" ? 5 : 0),
+      );
+
+      return image;
+    })
+    .sort(
+      (a, b) =>
+        b.metrics.galleryScore -
+        a.metrics.galleryScore,
+    )
+    .slice(0, targetCount);
+
+  const selectedPaths = new Set(
+    selected.map((image) => image.filepath),
+  );
+
+  selected.forEach((image, index) => {
+    image.suggestion.include = true;
+    image.suggestion.order = index + 1;
+
+    if (image.orientation === "portrait") {
+      image.suggestion.layout =
+        index % 2 === 0 ? "left" : "right";
+    } else if (image.orientation === "square") {
+      image.suggestion.layout = "medium";
+    } else {
+      const layouts: GalleryLayout[] = [
+        "wide",
+        "wide-left",
+        "wide-right",
+        "full",
+      ];
+      image.suggestion.layout =
+        layouts[index % layouts.length];
+    }
+
+    image.suggestion.explanation = [
+      image.metrics.sharpness >= 70
+        ? "Strong technical sharpness"
+        : "Acceptable technical sharpness",
+      image.metrics.contrast >= 55
+        ? "Strong tonal separation"
+        : "Moderate tonal separation",
+      "Selected for the suggested gallery edit",
+    ];
+  });
+
+  images
+    .filter((image) => !selectedPaths.has(image.filepath))
+    .forEach((image) => {
+      image.suggestion.include = false;
+      image.suggestion.order = null;
+      image.suggestion.explanation = image.suggestion.duplicateOf
+        ? [
+            `Visually similar to ${getFilename(
+              image.suggestion.duplicateOf,
+            )}`,
+          ]
+        : ["Lower local gallery score"];
+    });
+
+  return {
+    selectedCount: selected.length,
+    excludedCount: images.length - selected.length,
+    duplicateCount: images.filter(
+      (image) => Boolean(image.suggestion.duplicateOf),
+    ).length,
+    selectedPaths: selected.map((image) => image.filepath),
+  };
 }
 
 export async function POST(request: Request) {
@@ -579,6 +962,8 @@ export async function POST(request: Request) {
       ),
     );
 
+    const curation = curateImages(previewImages);
+
     const suggestedHero =
       [...previewImages].sort(
         (a, b) =>
@@ -588,7 +973,7 @@ export async function POST(request: Request) {
     return Response.json({
       ok: true,
       message:
-        "Archive inspected successfully.",
+        "Archive inspected and locally curated successfully.",
       archive: {
         name: upload.name,
         size: upload.size,
@@ -614,6 +999,7 @@ export async function POST(request: Request) {
           suggestedHero?.filepath ??
           null,
         extractedDetails,
+        curation,
       },
     });
   } catch (error) {

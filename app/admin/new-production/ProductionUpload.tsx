@@ -8,6 +8,28 @@ import {
 
 import ProductionWebsitePreview from "../../../components/admin/ProductionWebsitePreview";
 
+type GalleryLayout =
+  | "wide"
+  | "left"
+  | "right"
+  | "medium"
+  | "full"
+  | "left-small"
+  | "right-small"
+  | "wide-left"
+  | "wide-right";
+
+type ImageMetrics = {
+  resolutionScore: number;
+  sharpness: number;
+  brightness: number;
+  contrast: number;
+  entropy: number;
+  technicalScore: number;
+  duplicateScore: number;
+  galleryScore: number;
+};
+
 type PreviewImage = {
   filename: string;
   filepath: string;
@@ -20,6 +42,15 @@ type PreviewImage = {
     | "square"
     | "unknown";
   heroScore: number;
+  fingerprint: string;
+  metrics: ImageMetrics;
+  suggestion: {
+    include: boolean;
+    order: number | null;
+    layout: GalleryLayout;
+    duplicateOf: string | null;
+    explanation: string[];
+  };
 };
 
 type ExtractedProductionFields = {
@@ -63,6 +94,12 @@ type UploadResult = {
     otherFiles: string[];
     suggestedHeroPath: string | null;
     extractedDetails: ExtractedProductionDetails;
+    curation: {
+      selectedCount: number;
+      excludedCount: number;
+      duplicateCount: number;
+      selectedPaths: string[];
+    };
   };
 };
 
@@ -82,6 +119,71 @@ function formatBytes(bytes: number) {
 
 function filenameOnly(filepath: string) {
   return filepath.split("/").at(-1) ?? filepath;
+}
+
+function scoreLabel(score: number) {
+  if (score >= 85) return "Excellent";
+  if (score >= 72) return "Strong";
+  if (score >= 58) return "Good";
+  if (score >= 42) return "Fair";
+  return "Weak";
+}
+
+function starRating(score: number) {
+  if (score >= 88) return "★★★★★";
+  if (score >= 74) return "★★★★☆";
+  if (score >= 58) return "★★★☆☆";
+  if (score >= 42) return "★★☆☆☆";
+  return "★☆☆☆☆";
+}
+
+function imageStatus(image: PreviewImage) {
+  if (image.suggestion.duplicateOf) {
+    return "Near duplicate";
+  }
+
+  if (image.suggestion.include) {
+    return "Gallery selection";
+  }
+
+  return "Alternative";
+}
+
+function editorialAssessment(image: PreviewImage) {
+  const assessment: string[] = [];
+
+  if (image.heroScore >= 85) {
+    assessment.push("Excellent hero candidate");
+  } else if (image.heroScore >= 70) {
+    assessment.push("Strong hero potential");
+  }
+
+  if (image.metrics.sharpness >= 70) {
+    assessment.push("Excellent sharpness");
+  } else if (image.metrics.sharpness >= 55) {
+    assessment.push("Good technical sharpness");
+  }
+
+  if (
+    image.metrics.brightness >= 30 &&
+    image.metrics.brightness <= 70
+  ) {
+    assessment.push("Balanced exposure");
+  }
+
+  if (image.metrics.contrast >= 60) {
+    assessment.push("Strong tonal separation");
+  }
+
+  if (image.orientation === "landscape") {
+    assessment.push("Suitable for wide presentation");
+  }
+
+  if (image.suggestion.include) {
+    assessment.push("Included in the suggested edit");
+  }
+
+  return assessment.slice(0, 5);
 }
 
 const EMPTY_PRODUCTION_FIELDS: EditableProductionFields = {
@@ -127,6 +229,72 @@ export default function ProductionUpload() {
     );
   }, [result, selectedHeroPath]);
 
+  const curatedImages = useMemo(() => {
+    const images = result?.contents?.images ?? [];
+
+    return images
+      .filter((image) => image.suggestion.include)
+      .sort(
+        (first, second) =>
+          (first.suggestion.order ??
+            Number.MAX_SAFE_INTEGER) -
+          (second.suggestion.order ??
+            Number.MAX_SAFE_INTEGER),
+      );
+  }, [result]);
+
+  const excludedImages = useMemo(() => {
+    const images = result?.contents?.images ?? [];
+
+    return images
+      .filter((image) => !image.suggestion.include)
+      .sort(
+        (first, second) =>
+          second.metrics.galleryScore -
+          first.metrics.galleryScore,
+      );
+  }, [result]);
+
+  const displayedImages = useMemo(() => {
+    return [...curatedImages, ...excludedImages];
+  }, [curatedImages, excludedImages]);
+
+  const editorialSummary = useMemo(() => {
+    if (!result?.contents) {
+      return null;
+    }
+
+    const selected = curatedImages;
+    const landscapes = selected.filter(
+      (image) => image.orientation === "landscape",
+    ).length;
+    const portraits = selected.filter(
+      (image) => image.orientation === "portrait",
+    ).length;
+    const averageTechnical =
+      selected.length > 0
+        ? Math.round(
+            selected.reduce(
+              (total, image) =>
+                total + image.metrics.technicalScore,
+              0,
+            ) / selected.length,
+          )
+        : 0;
+
+    return {
+      landscapes,
+      portraits,
+      averageTechnical,
+      recommendation:
+        averageTechnical >= 75
+          ? "Excellent upload. Only a light manual review is recommended."
+          : averageTechnical >= 60
+            ? "Strong upload. Review the alternatives before publishing."
+            : "A useful first edit. A closer manual review is recommended.",
+    };
+  }, [result, curatedImages]);
+
   function updateProductionField(
     field: keyof EditableProductionFields,
     value: string,
@@ -145,9 +313,8 @@ export default function ProductionUpload() {
     setIsUploading(true);
     setResult(null);
     setSelectedHeroPath(null);
-    setProductionFields
-    setShowWebsitePreview(false);({
-        
+    setShowWebsitePreview(false);
+    setProductionFields({
       ...EMPTY_PRODUCTION_FIELDS,
     });
 
@@ -358,6 +525,181 @@ export default function ProductionUpload() {
                 </p>
               ) : null}
 
+              {editorialSummary ? (
+                <section className="backstage-section">
+                  <div className="backstage-section-heading">
+                    <h2>Editorial review</h2>
+
+                    <p>Backstage picture edit</p>
+                  </div>
+
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns:
+                        "repeat(4, minmax(0, 1fr))",
+                      gap: "1rem",
+                    }}
+                  >
+                    {[
+                      {
+                        label: "Suggested edit",
+                        value:
+                          result.contents.curation
+                            .selectedCount,
+                      },
+                      {
+                        label: "Alternatives",
+                        value:
+                          result.contents.curation
+                            .excludedCount,
+                      },
+                      {
+                        label: "Near duplicates",
+                        value:
+                          result.contents.curation
+                            .duplicateCount,
+                      },
+                      {
+                        label: "Average quality",
+                        value: `${editorialSummary.averageTechnical}%`,
+                      },
+                    ].map(({ label, value }) => (
+                      <div
+                        key={label}
+                        style={{
+                          border:
+                            "1px solid rgba(242, 238, 230, 0.16)",
+                          padding: "1.25rem",
+                          background:
+                            "rgba(255, 255, 255, 0.025)",
+                        }}
+                      >
+                        <p
+                          style={{
+                            margin: 0,
+                            color: "#c7a369",
+                            fontSize: "0.5rem",
+                            fontWeight: 700,
+                            letterSpacing: "0.15em",
+                            textTransform: "uppercase",
+                          }}
+                        >
+                          {label}
+                        </p>
+
+                        <p
+                          style={{
+                            margin: "0.55rem 0 0",
+                            fontFamily:
+                              '"Iowan Old Style", "Palatino Linotype", Georgia, serif',
+                            fontSize: "2rem",
+                            lineHeight: 1,
+                          }}
+                        >
+                          {value}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns:
+                        "minmax(0, 1fr) minmax(16rem, 0.7fr)",
+                      gap: "2rem",
+                      marginTop: "1.5rem",
+                      borderTop:
+                        "1px solid rgba(242, 238, 230, 0.14)",
+                      paddingTop: "1.5rem",
+                    }}
+                  >
+                    <div>
+                      <p
+                        style={{
+                          margin: 0,
+                          color: "#c7a369",
+                          fontSize: "0.5rem",
+                          fontWeight: 700,
+                          letterSpacing: "0.15em",
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        Recommendation
+                      </p>
+
+                      <p
+                        style={{
+                          maxWidth: "42rem",
+                          margin: "0.65rem 0 0",
+                          fontFamily:
+                            '"Iowan Old Style", "Palatino Linotype", Georgia, serif',
+                          fontSize: "1.45rem",
+                          lineHeight: 1.35,
+                        }}
+                      >
+                        {editorialSummary.recommendation}
+                      </p>
+                    </div>
+
+                    <dl
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns:
+                          "repeat(2, minmax(0, 1fr))",
+                        gap: "1rem",
+                        margin: 0,
+                      }}
+                    >
+                      <div>
+                        <dt
+                          style={{
+                            color:
+                              "rgba(242, 238, 230, 0.45)",
+                            fontSize: "0.48rem",
+                            fontWeight: 700,
+                            letterSpacing: "0.13em",
+                            textTransform: "uppercase",
+                          }}
+                        >
+                          Landscape
+                        </dt>
+                        <dd
+                          style={{
+                            margin: "0.3rem 0 0",
+                          }}
+                        >
+                          {editorialSummary.landscapes}
+                        </dd>
+                      </div>
+
+                      <div>
+                        <dt
+                          style={{
+                            color:
+                              "rgba(242, 238, 230, 0.45)",
+                            fontSize: "0.48rem",
+                            fontWeight: 700,
+                            letterSpacing: "0.13em",
+                            textTransform: "uppercase",
+                          }}
+                        >
+                          Portrait
+                        </dt>
+                        <dd
+                          style={{
+                            margin: "0.3rem 0 0",
+                          }}
+                        >
+                          {editorialSummary.portraits}
+                        </dd>
+                      </div>
+                    </dl>
+                  </div>
+                </section>
+              ) : null}
+
               <section
                 style={{
                   marginTop: "4rem",
@@ -454,6 +796,51 @@ export default function ProductionUpload() {
                           ? "Automatic suggestion"
                           : "Your selection"}
                       </p>
+
+                      <div
+                        style={{
+                          marginTop: "1.5rem",
+                          borderTop:
+                            "1px solid rgba(242, 238, 230, 0.14)",
+                          paddingTop: "1.25rem",
+                        }}
+                      >
+                        <p
+                          style={{
+                            margin: 0,
+                            color: "#c7a369",
+                            fontSize: "0.5rem",
+                            fontWeight: 700,
+                            letterSpacing: "0.15em",
+                            textTransform: "uppercase",
+                          }}
+                        >
+                          {starRating(
+                            selectedHero.heroScore,
+                          )}{" "}
+                          {scoreLabel(
+                            selectedHero.heroScore,
+                          )} hero candidate
+                        </p>
+
+                        <ul
+                          style={{
+                            margin: "0.9rem 0 0",
+                            paddingLeft: "1.1rem",
+                            color:
+                              "rgba(242, 238, 230, 0.68)",
+                            lineHeight: 1.65,
+                          }}
+                        >
+                          {editorialAssessment(
+                            selectedHero,
+                          ).map((reason) => (
+                            <li key={reason}>
+                              {reason}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
                     </div>
                   </div>
                 ) : (
@@ -519,7 +906,7 @@ export default function ProductionUpload() {
                     marginTop: "2rem",
                   }}
                 >
-                  {result.contents.images.map(
+                  {displayedImages.map(
                     (image) => {
                       const isSelected =
                         image.filepath ===
@@ -623,7 +1010,45 @@ export default function ProductionUpload() {
                             >
                               {isSelected
                                 ? "Selected hero"
-                                : image.orientation}
+                                : imageStatus(image)}
+                            </p>
+
+                            <p
+                              style={{
+                                margin: "0.45rem 0 0",
+                                color:
+                                  "rgba(242, 238, 230, 0.55)",
+                                fontSize: "0.52rem",
+                                lineHeight: 1.45,
+                              }}
+                            >
+                              {image.suggestion.include
+                                ? `Position #${image.suggestion.order ?? "—"} · ${image.suggestion.layout}`
+                                : image.suggestion.duplicateOf
+                                  ? `Similar to ${filenameOnly(
+                                      image.suggestion.duplicateOf,
+                                    )}`
+                                  : "Available as an alternative"}
+                            </p>
+
+                            <p
+                              style={{
+                                margin: "0.45rem 0 0",
+                                color:
+                                  "rgba(242, 238, 230, 0.42)",
+                                fontSize: "0.5rem",
+                                lineHeight: 1.45,
+                              }}
+                            >
+                              {scoreLabel(
+                                image.metrics.galleryScore,
+                              )}{" "}
+                              gallery potential ·{" "}
+                              {
+                                image.metrics
+                                  .galleryScore
+                              }
+                              /100
                             </p>
                           </div>
                         </button>
@@ -885,7 +1310,7 @@ result?.contents ? (
   <ProductionWebsitePreview
     fields={productionFields}
     hero={selectedHero}
-    images={result.contents.images}
+    images={curatedImages}
     onClose={() =>
       setShowWebsitePreview(false)
     }
