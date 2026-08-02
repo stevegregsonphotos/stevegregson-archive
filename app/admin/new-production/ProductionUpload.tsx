@@ -283,6 +283,34 @@ export default function ProductionUpload() {
     );
   }, [result, visionReview]);
 
+  const aiKeepImages = useMemo(() => {
+    if (!visionReview) {
+      return [];
+    }
+
+    const keep = new Set(visionReview.keep);
+
+    return (
+      result?.contents?.images.filter((image) =>
+        keep.has(image.filename),
+      ) ?? []
+    );
+  }, [result, visionReview]);
+
+  const aiRemoveImages = useMemo(() => {
+    if (!visionReview) {
+      return [];
+    }
+
+    const remove = new Set(visionReview.remove);
+
+    return (
+      result?.contents?.images.filter((image) =>
+        remove.has(image.filename),
+      ) ?? []
+    );
+  }, [result, visionReview]);
+
   const curatedImages = useMemo(() => {
     const images = result?.contents?.images ?? [];
 
@@ -1711,15 +1739,140 @@ export default function ProductionUpload() {
       {visionReview.editorialSummary}
     </p>
 
-    <p>
-      <strong>Keep</strong><br />
-      {visionReview.keep.join(", ")}
-    </p>
+    <div style={{ marginTop: "2rem" }}>
+      <p
+        style={{
+          margin: "0 0 0.85rem",
+          color: "#c7a369",
+          fontSize: "0.55rem",
+          fontWeight: 700,
+          letterSpacing: "0.16em",
+          textTransform: "uppercase",
+        }}
+      >
+        Keep
+      </p>
 
-    <p>
-      <strong>Remove</strong><br />
-      {visionReview.remove.join(", ")}
-    </p>
+      {aiKeepImages.length > 0 ? (
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns:
+              "repeat(auto-fill, minmax(9rem, 1fr))",
+            gap: "0.8rem",
+          }}
+        >
+          {aiKeepImages.map((image) => (
+            <div
+              key={image.filepath}
+              style={{
+                overflow: "hidden",
+                border:
+                  "1px solid rgba(199, 163, 105, 0.45)",
+                background: "#080808",
+              }}
+            >
+              <div
+                style={{
+                  aspectRatio: "4 / 3",
+                  background: "#080808",
+                }}
+              >
+                <img
+                  src={image.previewUrl}
+                  alt={`Vision AI keep recommendation: ${image.filename}`}
+                  loading="lazy"
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "contain",
+                  }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p
+          style={{
+            margin: 0,
+            color:
+              "rgba(242, 238, 230, 0.55)",
+          }}
+        >
+          No matching keep images were found.
+        </p>
+      )}
+    </div>
+
+    <div style={{ marginTop: "2rem" }}>
+      <p
+        style={{
+          margin: "0 0 0.85rem",
+          color: "#ffb3a7",
+          fontSize: "0.55rem",
+          fontWeight: 700,
+          letterSpacing: "0.16em",
+          textTransform: "uppercase",
+        }}
+      >
+        Remove
+      </p>
+
+      {aiRemoveImages.length > 0 ? (
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns:
+              "repeat(auto-fill, minmax(9rem, 1fr))",
+            gap: "0.8rem",
+          }}
+        >
+          {aiRemoveImages.map((image) => (
+            <div
+              key={image.filepath}
+              style={{
+                overflow: "hidden",
+                border:
+                  "1px solid rgba(255, 179, 167, 0.38)",
+                background: "#080808",
+                opacity: 0.72,
+              }}
+            >
+              <div
+                style={{
+                  aspectRatio: "4 / 3",
+                  background: "#080808",
+                }}
+              >
+                <img
+                  src={image.previewUrl}
+                  alt={`Vision AI remove recommendation: ${image.filename}`}
+                  loading="lazy"
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "contain",
+                  }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p
+          style={{
+            margin: 0,
+            color:
+              "rgba(242, 238, 230, 0.55)",
+          }}
+        >
+          Vision AI did not recommend removing any images.
+        </p>
+      )}
+    </div>
   </div>
 ) : null}
 
