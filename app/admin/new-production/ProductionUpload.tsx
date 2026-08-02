@@ -114,6 +114,20 @@ type VisionReview = {
   editorialSummary: string;
 };
 
+type PublishResult = {
+  ok: boolean;
+  message: string;
+  production?: {
+    slug: string;
+    title: string;
+    url: string;
+    imageCount: number;
+    hero: string;
+    productionFile: string;
+    imageDirectory: string;
+  };
+};
+
 function formatBytes(bytes: number) {
   if (bytes < 1024) {
     return `${bytes} bytes`;
@@ -239,6 +253,9 @@ export default function ProductionUpload() {
   const [isPublishing, setIsPublishing] =
     useState(false);
 
+  const [publishResult, setPublishResult] =
+    useState<PublishResult | null>(null);
+
   const [productionFields, setProductionFields] =
     useState<EditableProductionFields>({
       ...EMPTY_PRODUCTION_FIELDS,
@@ -339,6 +356,7 @@ export default function ProductionUpload() {
     setSelectedHeroPath(null);
     setShowWebsitePreview(false);
     setVisionReview(null);
+    setPublishResult(null);
     setProductionArchive(null);
     setProductionFields({
       ...EMPTY_PRODUCTION_FIELDS,
@@ -472,6 +490,230 @@ export default function ProductionUpload() {
     setIsReviewing(false);
   }
 }
+
+  async function publishProduction() {
+    if (
+      !result?.archive ||
+      !result.contents ||
+      !productionArchive ||
+      !selectedHero
+    ) {
+      setPublishResult({
+        ok: false,
+        message:
+          "Upload a production ZIP and select a hero before publishing.",
+      });
+      return;
+    }
+
+    const year = Number.parseInt(
+      productionFields.year,
+      10,
+    );
+
+    if (
+      !productionFields.title.trim() ||
+      !productionFields.venue.trim() ||
+      !Number.isInteger(year)
+    ) {
+      setPublishResult({
+        ok: false,
+        message:
+          "Production title, venue and a valid year are required.",
+      });
+      return;
+    }
+
+    const imageByFilename = new Map(
+      curatedImages.map((image) => [
+        image.filename,
+        image,
+      ]),
+    );
+
+    const requestedOrder =
+      visionReview?.sequence.length
+        ? visionReview.sequence
+        : visionReview?.keep.length
+          ? visionReview.keep
+          : curatedImages.map(
+              (image) => image.filename,
+            );
+
+    const orderedImages: PreviewImage[] = [];
+    const usedFilenames = new Set<string>();
+
+    for (const filename of requestedOrder) {
+      const image = imageByFilename.get(filename);
+
+      if (
+        !image ||
+        image.filename === selectedHero.filename ||
+        usedFilenames.has(image.filename)
+      ) {
+        continue;
+      }
+
+      orderedImages.push(image);
+      usedFilenames.add(image.filename);
+    }
+
+    for (const image of curatedImages) {
+      if (
+        image.filename === selectedHero.filename ||
+        usedFilenames.has(image.filename)
+      ) {
+        continue;
+      }
+
+      orderedImages.push(image);
+      usedFilenames.add(image.filename);
+    }
+
+    if (orderedImages.length === 0) {
+      setPublishResult({
+        ok: false,
+        message:
+          "At least one gallery image is required in addition to the hero.",
+      });
+      return;
+    }
+
+    const credits = [
+      {
+        role: "Venue",
+        name: productionFields.venue.trim(),
+      },
+      {
+        role: "Director",
+        name: productionFields.director.trim(),
+      },
+      {
+        role: "Associate Director",
+        name:
+          productionFields.associateDirector.trim(),
+      },
+      {
+        role: "Musical Director",
+        name:
+          productionFields.musicalDirector.trim(),
+      },
+      {
+        role: "Choreographer",
+        name: productionFields.choreographer.trim(),
+      },
+      {
+        role: "Lighting Design",
+        name:
+          productionFields.lightingDesign.trim(),
+      },
+      {
+        role: "Set Design",
+        name: productionFields.setDesign.trim(),
+      },
+      {
+        role: "Costume Design",
+        name:
+          productionFields.costumeDesign.trim(),
+      },
+      {
+        role: "Set & Costume Design",
+        name:
+          productionFields.setCostumeDesign.trim(),
+      },
+      {
+        role: "Sound Design",
+        name: productionFields.soundDesign.trim(),
+      },
+      {
+        role: "Commissioned by",
+        name:
+          productionFields.commissionedBy.trim(),
+      },
+      {
+        role: "Photography",
+        name: "Steve Gregson",
+      },
+    ].filter((credit) => credit.name);
+
+    const genericAlt = `${productionFields.title.trim()} at ${productionFields.venue.trim()}, photographed by Steve Gregson`;
+
+    const productionData = {
+      slug: result.archive.suggestedSlug,
+      title: productionFields.title.trim(),
+      venue: productionFields.venue.trim(),
+      year,
+      description:
+        productionFields.description.trim(),
+      hero: {
+        filepath: selectedHero.filepath,
+        filename: selectedHero.filename,
+        alt: genericAlt,
+      },
+      credits,
+      images: orderedImages.map((image) => ({
+        filepath: image.filepath,
+        filename: image.filename,
+        alt: genericAlt,
+        layout: image.suggestion.layout,
+      })),
+    };
+
+    const confirmed = window.confirm(
+      `Publish "${productionData.title}" with ${productionData.images.length} gallery images?`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setIsPublishing(true);
+    setPublishResult(null);
+
+    try {
+      const formData = new FormData();
+      formData.set(
+        "productionArchive",
+        productionArchive,
+      );
+      formData.set(
+        "productionData",
+        JSON.stringify(productionData),
+      );
+
+      const response = await fetch(
+        "/api/admin/publish-production",
+        {
+          method: "POST",
+          body: formData,
+        },
+      );
+
+      const data =
+        (await response.json()) as PublishResult;
+
+      setPublishResult(data);
+
+      if (!response.ok || !data.ok) {
+        return;
+      }
+
+      setShowWebsitePreview(false);
+    } catch (error) {
+      console.error(error);
+
+      setPublishResult({
+        ok: false,
+        message:
+          error instanceof Error
+            ? error.message
+            : "The production could not be published.",
+      });
+    } finally {
+      setIsPublishing(false);
+    }
+  }
+
   return (
     <section
       style={{
@@ -1371,15 +1613,29 @@ export default function ProductionUpload() {
   </button>
 
   <button
-    type="button"
-    className="backstage-button backstage-button-primary"
-    disabled={!selectedHero}
-    onClick={() => setShowWebsitePreview(true)}
-  >
-    Preview website
-    <span aria-hidden="true">→</span>
-  </button>
+  type="button"
+  className="backstage-button backstage-button-primary"
+  disabled={!selectedHero}
+  onClick={() => setShowWebsitePreview(true)}
+>
+  Preview website
+  <span aria-hidden="true">→</span>
+</button>
+
+<button
+  type="button"
+  className="backstage-button backstage-button-primary"
+  disabled={isPublishing}
+  onClick={publishProduction}
+>
+  {isPublishing
+    ? "Publishing production…"
+    : "Publish production"}
+  <span aria-hidden="true">→</span>
+</button>
+
 </div>
+
 {visionReview ? (
   <div
     style={{
@@ -1388,6 +1644,7 @@ export default function ProductionUpload() {
       padding: "1.5rem",
     }}
   >
+
     <h3>Vision AI Editorial Review</h3>
 
     <p>
@@ -1416,6 +1673,73 @@ export default function ProductionUpload() {
     </p>
   </div>
 ) : null}
+
+{publishResult ? (
+  <div
+    role="status"
+    style={{
+      marginTop: "1.5rem",
+      border: `1px solid ${
+        publishResult.ok
+          ? "rgba(199, 163, 105, 0.55)"
+          : "rgba(255, 179, 167, 0.45)"
+      }`,
+      padding: "1.5rem",
+      background: publishResult.ok
+        ? "rgba(199, 163, 105, 0.06)"
+        : "rgba(255, 179, 167, 0.04)",
+    }}
+  >
+    <p
+      style={{
+        margin: 0,
+        color: publishResult.ok
+          ? "#c7a369"
+          : "#ffb3a7",
+        fontFamily:
+          '"Iowan Old Style", "Palatino Linotype", Georgia, serif',
+        fontSize: "1.35rem",
+        lineHeight: 1.4,
+      }}
+    >
+      {publishResult.message}
+    </p>
+
+    {publishResult.ok &&
+    publishResult.production ? (
+      <div style={{ marginTop: "1.25rem" }}>
+        <p
+          style={{
+            margin: 0,
+            color:
+              "rgba(242, 238, 230, 0.62)",
+            lineHeight: 1.7,
+          }}
+        >
+          {publishResult.production.imageCount} gallery
+          images copied · Hero:{" "}
+          {publishResult.production.hero}
+        </p>
+
+        <a
+          href={publishResult.production.url}
+          target="_blank"
+          rel="noreferrer"
+          className="backstage-button backstage-button-primary"
+          style={{
+            display: "inline-flex",
+            marginTop: "1.25rem",
+            textDecoration: "none",
+          }}
+        >
+          View production
+          <span aria-hidden="true">→</span>
+        </a>
+      </div>
+    ) : null}
+  </div>
+) : null}
+
   {!selectedHero ? (
     <p
       style={{
