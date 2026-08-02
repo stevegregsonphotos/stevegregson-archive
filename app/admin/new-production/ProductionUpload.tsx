@@ -270,6 +270,19 @@ export default function ProductionUpload() {
     );
   }, [result, selectedHeroPath]);
 
+  const aiHeroImage = useMemo(() => {
+    if (!visionReview) {
+      return null;
+    }
+
+    return (
+      result?.contents?.images.find(
+        (image) =>
+          image.filename === visionReview.hero,
+      ) ?? null
+    );
+  }, [result, visionReview]);
+
   const curatedImages = useMemo(() => {
     const images = result?.contents?.images ?? [];
 
@@ -1647,15 +1660,51 @@ export default function ProductionUpload() {
 
     <h3>Vision AI Editorial Review</h3>
 
-    <p>
-      <strong>Hero</strong><br />
-      {visionReview.hero}
-    </p>
+    <div style={{ marginTop: "1.25rem" }}>
+      <p
+        style={{
+          margin: "0 0 0.75rem",
+          color: "#c7a369",
+          fontSize: "0.55rem",
+          fontWeight: 700,
+          letterSpacing: "0.16em",
+          textTransform: "uppercase",
+        }}
+      >
+        ★ Vision AI hero
+      </p>
 
-    <p>
-      <strong>Why</strong><br />
-      {visionReview.heroReason}
-    </p>
+      {aiHeroImage ? (
+        <img
+          src={aiHeroImage.previewUrl}
+          alt={`Vision AI hero recommendation: ${aiHeroImage.filename}`}
+          style={{
+            display: "block",
+            width: "100%",
+            maxWidth: "760px",
+            maxHeight: "65vh",
+            objectFit: "contain",
+            objectPosition: "left center",
+            background: "#080808",
+          }}
+        />
+      ) : (
+        <p>{visionReview.hero}</p>
+      )}
+
+      <p
+        style={{
+          maxWidth: "48rem",
+          margin: "1.25rem 0 0",
+          fontFamily:
+            '"Iowan Old Style", "Palatino Linotype", Georgia, serif',
+          fontSize: "1.25rem",
+          lineHeight: 1.5,
+        }}
+      >
+        {visionReview.heroReason}
+      </p>
+    </div>
 
     <p>
       <strong>Editorial Summary</strong><br />
@@ -1749,6 +1798,7 @@ export default function ProductionUpload() {
     >
       Select a hero image before opening the website preview.
     </p>
+    
   ) : null}
 </section>
 
