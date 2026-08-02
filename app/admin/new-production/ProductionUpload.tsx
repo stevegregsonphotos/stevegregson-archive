@@ -214,6 +214,19 @@ export default function ProductionUpload() {
   ] = useState<string | null>(null);
   const [showWebsitePreview, setShowWebsitePreview] =
   useState(false);
+  type VisionReview = {
+  hero: string;
+  heroReason: string;
+  keep: string[];
+  remove: string[];
+  sequence: string[];
+  editorialSummary: string;
+};
+
+const [isReviewing, setIsReviewing] = useState(false);
+
+const [visionReview, setVisionReview] =
+  useState<VisionReview | null>(null);
 
   const [productionFields, setProductionFields] =
     useState<EditableProductionFields>({
@@ -314,6 +327,7 @@ export default function ProductionUpload() {
     setResult(null);
     setSelectedHeroPath(null);
     setShowWebsitePreview(false);
+    setVisionReview(null);
     setProductionFields({
       ...EMPTY_PRODUCTION_FIELDS,
     });
@@ -356,7 +370,80 @@ export default function ProductionUpload() {
       setIsUploading(false);
     }
   }
+async function runVisionReview() {
+  if (!result?.contents) {
+    return;
+  }
 
+  setIsReviewing(true);
+  setVisionReview(null);
+
+  try {
+    const response = await fetch(
+      "/api/admin/vision-review",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          production: {
+            title: productionFields.title,
+            venue: productionFields.venue,
+            year: productionFields.year,
+            description:
+              productionFields.description,
+          },
+
+          images: curatedImages.map((image) => ({
+            filename: image.filename,
+            previewUrl: image.previewUrl,
+            heroScore: image.heroScore,
+            technicalScore:
+              image.metrics.technicalScore,
+            width: image.width,
+            height: image.height,
+            orientation: image.orientation,
+          })),
+        }),
+      },
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.message ??
+          "Vision AI review failed.",
+      );
+    }
+
+    setVisionReview(data.review);
+
+    const suggestedHero =
+      curatedImages.find(
+        (image) =>
+          image.filename ===
+          data.review.hero,
+      );
+
+    if (suggestedHero) {
+      setSelectedHeroPath(
+        suggestedHero.filepath,
+      );
+    }
+  } catch (error) {
+    console.error(error);
+
+    alert(
+      error instanceof Error
+        ? error.message
+        : "Vision AI review failed.",
+    );
+  } finally {
+    setIsReviewing(false);
+  }
+}
   return (
     <section
       style={{
@@ -1237,6 +1324,24 @@ export default function ProductionUpload() {
     <p>Preview before publishing</p>
   </div>
 
+  <div
+  style={{
+    display: "flex",
+    gap: "1rem",
+    flexWrap: "wrap",
+  }}
+>
+  <button
+    type="button"
+    className="backstage-button"
+    disabled={!result?.contents || isReviewing}
+    onClick={runVisionReview}
+  >
+    {isReviewing
+      ? "Vision AI reviewing..."
+      : "Vision AI Review"}
+  </button>
+
   <button
     type="button"
     className="backstage-button backstage-button-primary"
@@ -1246,7 +1351,43 @@ export default function ProductionUpload() {
     Preview website
     <span aria-hidden="true">→</span>
   </button>
+</div>
+{visionReview ? (
+  <div
+    style={{
+      marginTop: "2rem",
+      border: "1px solid rgba(242,238,230,.15)",
+      padding: "1.5rem",
+    }}
+  >
+    <h3>Vision AI Editorial Review</h3>
 
+    <p>
+      <strong>Hero</strong><br />
+      {visionReview.hero}
+    </p>
+
+    <p>
+      <strong>Why</strong><br />
+      {visionReview.heroReason}
+    </p>
+
+    <p>
+      <strong>Editorial Summary</strong><br />
+      {visionReview.editorialSummary}
+    </p>
+
+    <p>
+      <strong>Keep</strong><br />
+      {visionReview.keep.join(", ")}
+    </p>
+
+    <p>
+      <strong>Remove</strong><br />
+      {visionReview.remove.join(", ")}
+    </p>
+  </div>
+) : null}
   {!selectedHero ? (
     <p
       style={{
