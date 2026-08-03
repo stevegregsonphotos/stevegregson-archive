@@ -2,11 +2,11 @@ import type { Production } from "./types";
 
 export const aRoleToDieFor: Production = {
   "slug": "a-role-to-die-for",
-  "title": "A Role To Die For",
+  "title": "A Role To Die For - Test",
   "venue": "Marylebone Theatre",
   "year": 2025,
   "description": "Dress rehearsal photography, to promote the production.",
-  "hero": "A_105013-Edit.jpg",
+  "hero": "A_105220-Edit.jpg",
   "heroAlt": "A Role To Die For at Marylebone Theatre, photographed by Steve Gregson",
   "credits": [
     {
@@ -30,13 +30,13 @@ export const aRoleToDieFor: Production = {
       "name": "Deus Ex Machina Productions"
     },
     {
-      "role": "Lead Photography",
+      "role": "Photographer",
       "name": "Steve Gregson"
     }
   ],
   "images": [
     {
-      "src": "A_105220-Edit.jpg",
+      "src": "A_105013-Edit.jpg",
       "alt": "A Role To Die For at Marylebone Theatre, photographed by Steve Gregson",
       "layout": "wide"
     },
@@ -51,11 +51,6 @@ export const aRoleToDieFor: Production = {
       "layout": "wide-left"
     },
     {
-      "src": "A_106457.jpg",
-      "alt": "A Role To Die For at Marylebone Theatre, photographed by Steve Gregson",
-      "layout": "full"
-    },
-    {
       "src": "A_106911.jpg",
       "alt": "A Role To Die For at Marylebone Theatre, photographed by Steve Gregson",
       "layout": "wide-right"
@@ -64,6 +59,11 @@ export const aRoleToDieFor: Production = {
       "src": "A_107009-Edit.jpg",
       "alt": "A Role To Die For at Marylebone Theatre, photographed by Steve Gregson",
       "layout": "wide"
+    },
+    {
+      "src": "A_106457.jpg",
+      "alt": "A Role To Die For at Marylebone Theatre, photographed by Steve Gregson",
+      "layout": "full"
     },
     {
       "src": "A_106134-Edit-Edit.jpg",
