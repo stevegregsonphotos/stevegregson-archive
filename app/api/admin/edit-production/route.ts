@@ -192,4 +192,67 @@ export async function POST(request: Request) {
       { status: 500 },
     );
   }
+}export async function GET(request: Request) {
+  try {
+    const url = new URL(request.url);
+    const slug = url.searchParams.get("slug");
+
+    if (!slug || !isSafeSlug(slug)) {
+      return Response.json(
+        {
+          ok: false,
+          message:
+            "A valid production slug is required.",
+        },
+        { status: 400 },
+      );
+    }
+
+    const productionFile = path.join(
+      process.cwd(),
+      "content",
+      "productions",
+      `${slug}.ts`,
+    );
+
+    const source = await readFile(
+      productionFile,
+      "utf8",
+    );
+
+    const objectMatch = source.match(
+      /=\s*({[\s\S]*})\s*;\s*$/,
+    );
+
+    if (!objectMatch) {
+      throw new Error(
+        "The production data could not be read.",
+      );
+    }
+
+    const production = JSON.parse(
+      objectMatch[1],
+    );
+
+    return Response.json({
+      ok: true,
+      production,
+    });
+  } catch (error) {
+    console.error(
+      "Production loading failed:",
+      error,
+    );
+
+    return Response.json(
+      {
+        ok: false,
+        message:
+          error instanceof Error
+            ? error.message
+            : "The production could not be loaded.",
+      },
+      { status: 500 },
+    );
+  }
 }
