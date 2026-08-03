@@ -1,23 +1,29 @@
-Gallery Editor rebuild
+BACKSTAGE PUBLISHER - COMMIT 1: PUBLISHING SETTINGS
 
-From the stevegregson-archive project root, after macOS unzips this folder into Downloads:
+Install from the project root:
 
-  ditto "$HOME/Downloads/gallery-editor-rebuild-pack" .
+  ditto "$HOME/Downloads/backstage-publisher-commit-1" .
   npx tsc --noEmit
 
+Then restart the development server and open:
+
+  http://localhost:3000/admin/settings
+
 Test:
-1. Open /admin/edit-production/a-role-to-die-for
-2. Move a gallery image earlier and later.
-3. Change an image layout.
-4. Remove a gallery image.
-5. Select a gallery image as the hero.
-6. Click Save changes.
-7. Refresh and confirm all changes persisted.
+1. Find the Publishing section.
+2. Change WebP quality or maximum image size.
+3. Save publishing settings.
+4. Refresh and confirm the values persist.
+5. Confirm content/settings/publishing.json contains the saved values.
 
-Commit after all tests pass:
+Commit:
 
-  git add "app/admin/edit-production/[slug]/page.tsx" \
-    app/api/admin/edit-production/route.ts \
-    components/admin/editor/GalleryEditor.tsx \
-    content/productions/a-role-to-die-for.ts
-  git commit -m "Add gallery editing to production editor"
+  git add app/admin/settings/page.tsx \
+    app/api/admin/publishing-settings/route.ts \
+    components/admin/PublishingSettingsForm.tsx \
+    content/settings/publishing.json \
+    lib/publishing-settings.ts
+
+  git commit -m "Add publishing settings"
+
+This commit stores configuration only. It does not yet convert or publish images.

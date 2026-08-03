@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import PublishingSettingsForm from "../../../components/admin/PublishingSettingsForm";
 import TestOpenAIConnection from "../../../components/admin/TestOpenAIConnection";
 
 export const dynamic = "force-dynamic";
@@ -186,6 +187,15 @@ export default function SettingsPage() {
               </article>
             ))}
           </div>
+        </section>
+
+        <section className="backstage-section">
+          <div className="backstage-section-heading">
+            <h2>Publishing</h2>
+            <p>Website image profile</p>
+          </div>
+
+          <PublishingSettingsForm />
         </section>
 
         <section className="backstage-section">

@@ -1,0 +1,10 @@
+{
+  "maxImageSize": 2048,
+  "outputFormat": "webp",
+  "quality": 85,
+  "preserveCopyright": true,
+  "preservePhotographer": true,
+  "optimiseImages": true,
+  "generateSitemap": true,
+  "generateStructuredData": true
+}

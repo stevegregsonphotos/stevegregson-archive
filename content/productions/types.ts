@@ -19,6 +19,7 @@ export type ProductionImage = {
   src: string;
   alt: string;
   layout: GalleryLayout;
+  suggestedFilename?: string;
 };
 
 export type Production = {

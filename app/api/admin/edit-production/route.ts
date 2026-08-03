@@ -19,6 +19,7 @@ type ProductionImage = {
   src: string;
   alt: string;
   layout: GalleryLayout;
+  suggestedFilename?: string;
 };
 
 type ProductionCredit = {
@@ -140,7 +141,10 @@ function isProductionImage(
     isSafeFilename(image.src) &&
     typeof image.alt === "string" &&
     typeof image.layout === "string" &&
-    ALLOWED_LAYOUTS.has(image.layout as GalleryLayout)
+    ALLOWED_LAYOUTS.has(image.layout as GalleryLayout) &&
+    (image.suggestedFilename === undefined ||
+      (typeof image.suggestedFilename === "string" &&
+        isSafeFilename(image.suggestedFilename)))
   );
 }
 
@@ -231,6 +235,9 @@ function parseImages(value: unknown) {
       src: image.src,
       alt: image.alt.trim(),
       layout: image.layout,
+      ...(image.suggestedFilename
+        ? { suggestedFilename: image.suggestedFilename.trim() }
+        : {}),
     };
   });
 }

@@ -7,6 +7,7 @@ import CreditsEditor from "../../../../components/admin/editor/CreditsEditor";
 import GalleryEditor from "../../../../components/admin/editor/GalleryEditor";
 import HeroEditor from "../../../../components/admin/editor/HeroEditor";
 import ProductionDetailsEditor from "../../../../components/admin/editor/ProductionDetailsEditor";
+import VisionMetadataPanel from "../../../../components/admin/editor/VisionMetadataPanel";
 
 type GalleryLayout =
   | "wide"
@@ -23,6 +24,7 @@ type ProductionImage = {
   src: string;
   alt: string;
   layout: GalleryLayout;
+  suggestedFilename?: string;
 };
 
 type ProductionCredit = {
@@ -364,6 +366,26 @@ export default function EditProductionPage() {
         hasUnsavedHeroChange={hasHeroChanges}
         onSelectHero={(src) => {
           setSelectedHero(src);
+          clearMessage();
+        }}
+      />
+
+      <VisionMetadataPanel
+        productionSlug={production.slug}
+        images={galleryImages}
+        onApplyMetadata={(imageSrc, metadata) => {
+          setGalleryImages((current) =>
+            current.map((image) =>
+              image.src === imageSrc
+                ? {
+                    ...image,
+                    alt: metadata.alt,
+                    layout: metadata.layout,
+                    suggestedFilename: metadata.filename,
+                  }
+                : image,
+            ),
+          );
           clearMessage();
         }}
       />
