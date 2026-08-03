@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
+import ProductionDetailsEditor from "../../../../components/admin/editor/ProductionDetailsEditor";
 
 type GalleryLayout =
   | "wide"
@@ -436,77 +437,16 @@ function removeCredit(index: number) {
     Production Details
   </h2>
 
-  <div
-    style={{
-      display: "grid",
-      gridTemplateColumns:
-        "repeat(auto-fit, minmax(18rem, 1fr))",
-      gap: "1.5rem",
-      marginTop: "2rem",
-    }}
-  >
-    <label className="backstage-field">
-      <span className="backstage-field-label">
-        Title
-      </span>
-
-      <input
-        className="backstage-input"
-        value={title}
-        onChange={(event) =>
-          setTitle(event.target.value)
-        }
-      />
-    </label>
-
-    <label className="backstage-field">
-      <span className="backstage-field-label">
-        Venue
-      </span>
-
-      <input
-        className="backstage-input"
-        value={venue}
-        onChange={(event) =>
-          setVenue(event.target.value)
-        }
-      />
-    </label>
-
-    <label className="backstage-field">
-      <span className="backstage-field-label">
-        Year
-      </span>
-
-      <input
-        className="backstage-input"
-        value={year}
-        onChange={(event) =>
-          setYear(event.target.value)
-        }
-      />
-    </label>
-  </div>
-
-  <label
-    className="backstage-field"
-    style={{
-      marginTop: "1.5rem",
-    }}
-  >
-    <span className="backstage-field-label">
-      Description
-    </span>
-
-    <textarea
-      className="backstage-textarea"
-      rows={5}
-      value={description}
-      onChange={(event) =>
-        setDescription(event.target.value)
-      }
-    />
-  </label>
+  <ProductionDetailsEditor
+  title={title}
+  venue={venue}
+  year={year}
+  description={description}
+  onTitleChange={setTitle}
+  onVenueChange={setVenue}
+  onYearChange={setYear}
+  onDescriptionChange={setDescription}
+/>
 </section>
 <section
   style={{
