@@ -6,6 +6,8 @@ import {
   useState,
 } from "react";
 
+import JSZip from "jszip";
+
 import ProductionWebsitePreview from "../../../components/admin/ProductionWebsitePreview";
 
 type GalleryLayout =
@@ -403,24 +405,39 @@ export default function ProductionUpload() {
       ...EMPTY_PRODUCTION_FIELDS,
     });
 
-    const formData = new FormData(
-      event.currentTarget,
-    );
+    const formData = new FormData();
 
-    const archive = formData.get(
-      "productionArchive",
-    );
+const fileInput =
+  event.currentTarget.elements.namedItem(
+    "productionFolder",
+  ) as HTMLInputElement | null;
 
-    if (!(archive instanceof File)) {
-      setResult({
-        ok: false,
-        message: "Please choose a ZIP archive.",
-      });
-      setIsUploading(false);
-      return;
-    }
+const files = fileInput?.files;
 
-    setProductionArchive(archive);
+if (!files || files.length === 0) {
+  setResult({
+    ok: false,
+    message:
+      "Please choose a production folder.",
+  });
+  setIsUploading(false);
+  return;
+}
+
+const productionFiles = Array.from(files);
+
+if (productionFiles.length === 0) {
+  setResult({
+    ok: false,
+    message:
+      "The selected folder contains no files.",
+  });
+  setIsUploading(false);
+  return;
+}
+const productionFolderName =
+  productionFiles[0].webkitRelativePath.split("/")[0];
+
 
     try {
       const response = await fetch(
@@ -531,7 +548,6 @@ export default function ProductionUpload() {
     setIsReviewing(false);
   }
 }
-
   async function publishProduction() {
     if (
       !result?.archive ||
@@ -776,14 +792,16 @@ export default function ProductionUpload() {
             textTransform: "uppercase",
           }}
         >
-          Production ZIP
+        Production Folder
         </label>
 
         <input
-          id="productionArchive"
-          name="productionArchive"
+          id="productionFolder"
+          name="productionFolder"
           type="file"
-          accept=".zip,application/zip"
+          // @ts-expect-error - supported by Chromium/WebKit browsers
+          webkitdirectory=""
+          multiple
           required
           style={{
             display: "block",
@@ -819,7 +837,7 @@ export default function ProductionUpload() {
         >
           {isUploading
             ? "Creating thumbnails…"
-            : "Create preview"}
+            : "Import Production"}
         </button>
       </form>
 
