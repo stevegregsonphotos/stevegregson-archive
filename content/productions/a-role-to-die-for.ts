@@ -5,7 +5,7 @@ export const aRoleToDieFor: Production = {
   "title": "A Role To Die For",
   "venue": "Marylebone Theatre",
   "year": 2025,
-  "description": "Dress rehearsal photos, taken by Steve Gregson",
+  "description": "Dress rehearsal photography, to promote the production.",
   "hero": "A_105013-Edit.jpg",
   "heroAlt": "A Role To Die For at Marylebone Theatre, photographed by Steve Gregson",
   "credits": [
@@ -30,7 +30,7 @@ export const aRoleToDieFor: Production = {
       "name": "Deus Ex Machina Productions"
     },
     {
-      "role": "Photography",
+      "role": "Lead Photography",
       "name": "Steve Gregson"
     }
   ],

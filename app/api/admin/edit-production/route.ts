@@ -49,6 +49,7 @@ type UpdateRequest = {
   venue?: unknown;
   year?: unknown;
   description?: unknown;
+  credits?: unknown;
 };
 
 function isSafeSlug(value: string) {
@@ -219,8 +220,9 @@ export async function POST(request: Request) {
       );
     }
 
-    let heroChanged = false;
-    let detailsChanged = false;
+  let heroChanged = false;
+let detailsChanged = false;
+let creditsChanged = false;
 
     if (body.hero !== undefined) {
       if (
@@ -358,6 +360,72 @@ export async function POST(request: Request) {
           { status: 400 },
         );
       }
+      if (body.credits !== undefined) {
+  if (!Array.isArray(body.credits)) {
+    return Response.json(
+      {
+        ok: false,
+        message: "The production credits are invalid.",
+      },
+      { status: 400 },
+    );
+  }
+
+  const credits: ProductionCredit[] = [];
+
+  for (const item of body.credits) {
+    if (
+      typeof item !== "object" ||
+      item === null ||
+      !("role" in item) ||
+      !("name" in item) ||
+      typeof item.role !== "string" ||
+      typeof item.name !== "string"
+    ) {
+      return Response.json(
+        {
+          ok: false,
+          message: "Each credit requires a role and name.",
+        },
+        { status: 400 },
+      );
+    }
+
+    const role = item.role.trim();
+    const name = item.name.trim();
+
+    if (!role || !name) {
+      return Response.json(
+        {
+          ok: false,
+          message: "Each credit requires a role and name.",
+        },
+        { status: 400 },
+      );
+    }
+
+    const website =
+      "website" in item &&
+      typeof item.website === "string" &&
+      item.website.trim()
+        ? item.website.trim()
+        : undefined;
+
+    credits.push({
+      role,
+      name,
+      ...(website ? { website } : {}),
+    });
+  }
+
+  if (
+    JSON.stringify(credits) !==
+    JSON.stringify(production.credits)
+  ) {
+    production.credits = credits;
+    creditsChanged = true;
+  }
+}
 
       const description =
         body.description.trim();
@@ -370,7 +438,11 @@ export async function POST(request: Request) {
       }
     }
 
-    if (!heroChanged && !detailsChanged) {
+    if (
+  !heroChanged &&
+  !detailsChanged &&
+  !creditsChanged
+) {
       return Response.json({
         ok: true,
         message: "No changes were needed.",
@@ -393,11 +465,19 @@ export async function POST(request: Request) {
     return Response.json({
       ok: true,
       message:
-        heroChanged && detailsChanged
-          ? "Production details and hero updated successfully."
+  heroChanged && detailsChanged && creditsChanged
+    ? "Production details, credits and hero updated successfully."
+    : heroChanged && detailsChanged
+      ? "Production details and hero updated successfully."
+      : heroChanged && creditsChanged
+        ? "Production credits and hero updated successfully."
+        : detailsChanged && creditsChanged
+          ? "Production details and credits updated successfully."
           : heroChanged
             ? "Hero image updated successfully."
-            : "Production details updated successfully.",
+            : detailsChanged
+              ? "Production details updated successfully."
+              : "Production credits updated successfully.",
       production,
     });
   } catch (error) {
