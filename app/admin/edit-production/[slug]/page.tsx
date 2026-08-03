@@ -1,7 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+
+import CreditsEditor from "../../../../components/admin/editor/CreditsEditor";
+import HeroEditor from "../../../../components/admin/editor/HeroEditor";
 import ProductionDetailsEditor from "../../../../components/admin/editor/ProductionDetailsEditor";
 
 type GalleryLayout =
@@ -21,6 +24,12 @@ type ProductionImage = {
   layout: GalleryLayout;
 };
 
+type ProductionCredit = {
+  role: string;
+  name: string;
+  website?: string;
+};
+
 type Production = {
   slug: string;
   title: string;
@@ -29,11 +38,7 @@ type Production = {
   description: string;
   hero: string;
   heroAlt: string;
-  credits: {
-    role: string;
-    name: string;
-    website?: string;
-  }[];
+  credits: ProductionCredit[];
   images: ProductionImage[];
 };
 
@@ -46,7 +51,7 @@ type LoadResult = {
 type SaveResult = {
   ok: boolean;
   message?: string;
-  hero?: string;
+  production?: Production;
 };
 
 export default function EditProductionPage() {
@@ -55,27 +60,16 @@ export default function EditProductionPage() {
 
   const [production, setProduction] =
     useState<Production | null>(null);
-
   const [selectedHero, setSelectedHero] =
     useState<string | null>(null);
-    const [title, setTitle] = useState("");
-
-const [venue, setVenue] = useState("");
-
-const [year, setYear] = useState("");
-
-const [description, setDescription] =
-  useState("");
-  const [credits, setCredits] = useState<
-  Production["credits"]
->([]);
-
+  const [title, setTitle] = useState("");
+  const [venue, setVenue] = useState("");
+  const [year, setYear] = useState("");
+  const [description, setDescription] = useState("");
+  const [credits, setCredits] = useState<ProductionCredit[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-
-  const [message, setMessage] =
-    useState<string | null>(null);
-
+  const [message, setMessage] = useState<string | null>(null);
   const [messageType, setMessageType] =
     useState<"success" | "error" | null>(null);
 
@@ -89,22 +83,13 @@ const [description, setDescription] =
 
       try {
         const response = await fetch(
-          `/api/admin/edit-production?slug=${encodeURIComponent(
-            slug,
-          )}`,
+          `/api/admin/edit-production?slug=${encodeURIComponent(slug)}`,
         );
+        const data = (await response.json()) as LoadResult;
 
-        const data =
-          (await response.json()) as LoadResult;
-
-        if (
-          !response.ok ||
-          !data.ok ||
-          !data.production
-        ) {
+        if (!response.ok || !data.ok || !data.production) {
           throw new Error(
-            data.message ??
-              "The production could not be loaded.",
+            data.message ?? "The production could not be loaded.",
           );
         }
 
@@ -115,10 +100,10 @@ const [description, setDescription] =
         setProduction(data.production);
         setSelectedHero(data.production.hero);
         setTitle(data.production.title);
-setVenue(data.production.venue);
-setYear(String(data.production.year));
-setDescription(data.production.description);
-setCredits(data.production.credits);
+        setVenue(data.production.venue);
+        setYear(String(data.production.year));
+        setDescription(data.production.description);
+        setCredits(data.production.credits);
       } catch (error) {
         if (cancelled) {
           return;
@@ -137,199 +122,115 @@ setCredits(data.production.credits);
       }
     }
 
-    loadProduction();
+    void loadProduction();
 
     return () => {
       cancelled = true;
     };
   }, [slug]);
 
-  const allImages = useMemo<ProductionImage[]>(() => {
-    if (!production) {
-      return [];
-    }
+  const parsedYear = Number.parseInt(year, 10);
 
-    return [
-      {
-        src: production.hero,
-        alt: production.heroAlt,
-        layout: "wide",
-      },
-      ...production.images,
-    ];
-  }, [production]);
-
-  const selectedImage = useMemo(() => {
-    if (!selectedHero) {
-      return null;
-    }
-
-    return (
-      allImages.find(
-        (image) => image.src === selectedHero,
-      ) ?? null
-    );
-  }, [allImages, selectedHero]);
-
-  const hasHeroChanges =
-  Boolean(
+  const hasHeroChanges = Boolean(
     production &&
       selectedHero &&
       selectedHero !== production.hero,
   );
 
-const parsedYear = Number.parseInt(year, 10);
-
-const hasDetailChanges =
-  Boolean(
+  const hasDetailChanges = Boolean(
     production &&
-      (
-        title.trim() !== production.title ||
+      (title.trim() !== production.title ||
         venue.trim() !== production.venue ||
         parsedYear !== production.year ||
-        description.trim() !==
-          production.description ||
+        description.trim() !== production.description ||
         JSON.stringify(credits) !==
-          JSON.stringify(production.credits)
-      ),
+          JSON.stringify(production.credits)),
   );
 
-const hasUnsavedChanges =
-  hasHeroChanges || hasDetailChanges;
-function updateCredit(
-  index: number,
-  field: "role" | "name" | "website",
-  value: string,
-) {
-  setCredits((current) =>
-    current.map((credit, creditIndex) =>
-      creditIndex === index
-        ? {
-            ...credit,
-            [field]: value,
-          }
-        : credit,
-    ),
-  );
+  const hasUnsavedChanges =
+    hasHeroChanges || hasDetailChanges;
 
-  setMessage(null);
-  setMessageType(null);
-}
-
-function addCredit() {
-  setCredits((current) => [
-    ...current,
-    {
-      role: "",
-      name: "",
-    },
-  ]);
-
-  setMessage(null);
-  setMessageType(null);
-}
-
-function removeCredit(index: number) {
-  setCredits((current) =>
-    current.filter(
-      (_, creditIndex) => creditIndex !== index,
-    ),
-  );
-
-  setMessage(null);
-  setMessageType(null);
-}
- async function saveChanges() {
-  if (
-    !production ||
-    !selectedHero ||
-    !hasUnsavedChanges
-  ) {
-    return;
+  function clearMessage() {
+    setMessage(null);
+    setMessageType(null);
   }
 
-  if (!title.trim()) {
-    setMessage("A production title is required.");
-    setMessageType("error");
-    return;
-  }
-
-  if (!venue.trim()) {
-    setMessage("A venue is required.");
-    setMessageType("error");
-    return;
-  }
-
-  if (!Number.isInteger(parsedYear)) {
-    setMessage("A valid production year is required.");
-    setMessageType("error");
-    return;
-  }
-
-  setIsSaving(true);
-  setMessage(null);
-  setMessageType(null);
-
-  try {
-    const response = await fetch(
-      "/api/admin/edit-production",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          slug: production.slug,
-          hero: selectedHero,
-          title: title.trim(),
-          venue: venue.trim(),
-          year: parsedYear,
-          description: description.trim(),
-          credits,
-        }),
-      },
-    );
-
-    const data =
-      (await response.json()) as SaveResult & {
-        production?: Production;
-      };
-
-    if (
-      !response.ok ||
-      !data.ok ||
-      !data.production
-    ) {
-      throw new Error(
-        data.message ??
-          "The production could not be updated.",
-      );
+  async function saveChanges() {
+    if (!production || !selectedHero || !hasUnsavedChanges) {
+      return;
     }
 
-    setProduction(data.production);
-    setSelectedHero(data.production.hero);
-    setTitle(data.production.title);
-    setVenue(data.production.venue);
-    setYear(String(data.production.year));
-    setDescription(data.production.description);
-    setCredits(data.production.credits);
+    if (!title.trim()) {
+      setMessage("A production title is required.");
+      setMessageType("error");
+      return;
+    }
 
-    setMessage(
-      data.message ??
-        "Production updated successfully.",
-    );
-    setMessageType("success");
-  } catch (error) {
-    setMessage(
-      error instanceof Error
-        ? error.message
-        : "The production could not be updated.",
-    );
-    setMessageType("error");
-  } finally {
-    setIsSaving(false);
+    if (!venue.trim()) {
+      setMessage("A venue is required.");
+      setMessageType("error");
+      return;
+    }
+
+    if (!Number.isInteger(parsedYear)) {
+      setMessage("A valid production year is required.");
+      setMessageType("error");
+      return;
+    }
+
+    setIsSaving(true);
+    clearMessage();
+
+    try {
+      const response = await fetch(
+        "/api/admin/edit-production",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            slug: production.slug,
+            hero: selectedHero,
+            title: title.trim(),
+            venue: venue.trim(),
+            year: parsedYear,
+            description: description.trim(),
+            credits,
+          }),
+        },
+      );
+
+      const data = (await response.json()) as SaveResult;
+
+      if (!response.ok || !data.ok || !data.production) {
+        throw new Error(
+          data.message ?? "The production could not be updated.",
+        );
+      }
+
+      setProduction(data.production);
+      setSelectedHero(data.production.hero);
+      setTitle(data.production.title);
+      setVenue(data.production.venue);
+      setYear(String(data.production.year));
+      setDescription(data.production.description);
+      setCredits(data.production.credits);
+      setMessage(
+        data.message ?? "Production updated successfully.",
+      );
+      setMessageType("success");
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "The production could not be updated.",
+      );
+      setMessageType("error");
+    } finally {
+      setIsSaving(false);
+    }
   }
-}
 
   if (isLoading) {
     return (
@@ -345,7 +246,7 @@ function removeCredit(index: number) {
     );
   }
 
-  if (!production || !selectedImage) {
+  if (!production || !selectedHero) {
     return (
       <main
         style={{
@@ -354,9 +255,7 @@ function removeCredit(index: number) {
           color: "#f2eee6",
         }}
       >
-        <p>
-          {message ?? "Production not found."}
-        </p>
+        <p>{message ?? "Production not found."}</p>
       </main>
     );
   }
@@ -365,8 +264,7 @@ function removeCredit(index: number) {
     <main
       style={{
         minHeight: "100vh",
-        padding:
-          "4rem clamp(1.5rem, 5vw, 5rem) 6rem",
+        padding: "4rem clamp(1.5rem, 5vw, 5rem) 6rem",
         color: "#f2eee6",
       }}
     >
@@ -394,8 +292,7 @@ function removeCredit(index: number) {
             margin: "0.75rem 0 0",
             fontFamily:
               '"Iowan Old Style", "Palatino Linotype", Georgia, serif',
-            fontSize:
-              "clamp(3rem, 7vw, 7rem)",
+            fontSize: "clamp(3rem, 7vw, 7rem)",
             fontWeight: 400,
             lineHeight: 0.95,
           }}
@@ -406,8 +303,7 @@ function removeCredit(index: number) {
         <p
           style={{
             margin: "1rem 0 0",
-            color:
-              "rgba(242, 238, 230, 0.58)",
+            color: "rgba(242, 238, 230, 0.58)",
             fontSize: "0.75rem",
             letterSpacing: "0.08em",
             textTransform: "uppercase",
@@ -416,426 +312,50 @@ function removeCredit(index: number) {
           {production.venue} · {production.year}
         </p>
       </header>
-<section
-  style={{
-    maxWidth: "90rem",
-    margin: "4rem auto 0",
-    borderTop:
-      "1px solid rgba(242, 238, 230, 0.18)",
-    paddingTop: "2rem",
-  }}
->
-  <h2
-    style={{
-      margin: 0,
-      fontFamily:
-        '"Iowan Old Style", "Palatino Linotype", Georgia, serif',
-      fontSize: "2rem",
-      fontWeight: 400,
-    }}
-  >
-    Production Details
-  </h2>
 
-  <ProductionDetailsEditor
-  title={title}
-  venue={venue}
-  year={year}
-  description={description}
-  onTitleChange={setTitle}
-  onVenueChange={setVenue}
-  onYearChange={setYear}
-  onDescriptionChange={setDescription}
-/>
-</section>
-<section
-  style={{
-    maxWidth: "90rem",
-    margin: "4rem auto 0",
-    borderTop:
-      "1px solid rgba(242, 238, 230, 0.18)",
-    paddingTop: "2rem",
-  }}
->
-  <div
-    style={{
-      display: "flex",
-      justifyContent: "space-between",
-      gap: "1rem",
-      alignItems: "center",
-      flexWrap: "wrap",
-    }}
-  >
-    <div>
-      <h2
-        style={{
-          margin: 0,
-          fontFamily:
-            '"Iowan Old Style", "Palatino Linotype", Georgia, serif',
-          fontSize: "2rem",
-          fontWeight: 400,
+      <ProductionDetailsEditor
+        title={title}
+        venue={venue}
+        year={year}
+        description={description}
+        onTitleChange={(value) => {
+          setTitle(value);
+          clearMessage();
         }}
-      >
-        Credits
-      </h2>
-
-      <p
-        style={{
-          margin: "0.65rem 0 0",
-          color:
-            "rgba(242, 238, 230, 0.55)",
+        onVenueChange={(value) => {
+          setVenue(value);
+          clearMessage();
         }}
-      >
-        Edit the production team shown on the website.
-      </p>
-    </div>
-
-    <button
-      type="button"
-      className="backstage-button"
-      onClick={addCredit}
-    >
-      Add credit
-    </button>
-  </div>
-
-  <div
-    style={{
-      display: "grid",
-      gap: "1rem",
-      marginTop: "2rem",
-    }}
-  >
-    {credits.map((credit, index) => (
-      <div
-        key={index}
-        style={{
-          display: "grid",
-          gridTemplateColumns:
-            "minmax(10rem, 0.8fr) minmax(14rem, 1fr) minmax(14rem, 1fr) auto",
-          gap: "1rem",
-          alignItems: "end",
-          border:
-            "1px solid rgba(242, 238, 230, 0.14)",
-          padding: "1rem",
-          background:
-            "rgba(255, 255, 255, 0.02)",
+        onYearChange={(value) => {
+          setYear(value);
+          clearMessage();
         }}
-      >
-        <label className="backstage-field">
-          <span className="backstage-field-label">
-            Role
-          </span>
-
-          <input
-            className="backstage-input"
-            value={credit.role}
-            onChange={(event) =>
-              updateCredit(
-                index,
-                "role",
-                event.target.value,
-              )
-            }
-          />
-        </label>
-
-        <label className="backstage-field">
-          <span className="backstage-field-label">
-            Name
-          </span>
-
-          <input
-            className="backstage-input"
-            value={credit.name}
-            onChange={(event) =>
-              updateCredit(
-                index,
-                "name",
-                event.target.value,
-              )
-            }
-          />
-        </label>
-
-        <label className="backstage-field">
-          <span className="backstage-field-label">
-            Website
-          </span>
-
-          <input
-            className="backstage-input"
-            value={credit.website ?? ""}
-            onChange={(event) =>
-              updateCredit(
-                index,
-                "website",
-                event.target.value,
-              )
-            }
-            placeholder="Optional"
-          />
-        </label>
-
-        <button
-          type="button"
-          className="backstage-button"
-          onClick={() => removeCredit(index)}
-        >
-          Remove
-        </button>
-      </div>
-    ))}
-  </div>
-</section>
-
-      <section
-        style={{
-          maxWidth: "90rem",
-          margin: "4rem auto 0",
-          borderTop:
-            "1px solid rgba(242, 238, 230, 0.18)",
-          paddingTop: "2rem",
+        onDescriptionChange={(value) => {
+          setDescription(value);
+          clearMessage();
         }}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            gap: "2rem",
-            alignItems: "baseline",
-            flexWrap: "wrap",
-          }}
-        >
-          <div>
-            <p
-              style={{
-                margin: 0,
-                color: "#c7a369",
-                fontSize: "0.55rem",
-                fontWeight: 700,
-                letterSpacing: "0.18em",
-                textTransform: "uppercase",
-              }}
-            >
-              Selected hero
-            </p>
+      />
 
-            <p
-              style={{
-                margin: "0.65rem 0 0",
-                color:
-                  "rgba(242, 238, 230, 0.58)",
-              }}
-            >
-              Click any photograph below to try it
-              as the hero.
-            </p>
-          </div>
-
-          {hasUnsavedChanges ? (
-            <p
-              style={{
-                margin: 0,
-                color: "#c7a369",
-                fontSize: "0.55rem",
-                fontWeight: 700,
-                letterSpacing: "0.14em",
-                textTransform: "uppercase",
-              }}
-            >
-              Unsaved hero change
-            </p>
-          ) : (
-            <p
-              style={{
-                margin: 0,
-                color:
-                  "rgba(242, 238, 230, 0.4)",
-                fontSize: "0.55rem",
-                letterSpacing: "0.14em",
-                textTransform: "uppercase",
-              }}
-            >
-              Current published hero
-            </p>
-          )}
-        </div>
-
-        <div
-          style={{
-            marginTop: "2rem",
-            background: "#080808",
-          }}
-        >
-          <img
-            src={`/images/productions/${production.slug}/${selectedImage.src}`}
-            alt={selectedImage.alt}
-            style={{
-              display: "block",
-              width: "100%",
-              maxHeight: "72vh",
-              objectFit: "contain",
-              objectPosition: "center",
-            }}
-          />
-        </div>
-
-        <p
-          style={{
-            margin: "1rem 0 0",
-            color:
-              "rgba(242, 238, 230, 0.42)",
-            fontSize: "0.65rem",
-          }}
-        >
-          {selectedImage.src}
-        </p>
-      </section>
-
-      <section
-        style={{
-          maxWidth: "90rem",
-          margin: "4rem auto 0",
-          borderTop:
-            "1px solid rgba(242, 238, 230, 0.18)",
-          paddingTop: "2rem",
+      <CreditsEditor
+        credits={credits}
+        onChange={(nextCredits) => {
+          setCredits(nextCredits);
+          clearMessage();
         }}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            gap: "2rem",
-            alignItems: "baseline",
-            flexWrap: "wrap",
-          }}
-        >
-          <h2
-            style={{
-              margin: 0,
-              fontFamily:
-                '"Iowan Old Style", "Palatino Linotype", Georgia, serif',
-              fontSize:
-                "clamp(2.2rem, 4vw, 4rem)",
-              fontWeight: 400,
-            }}
-          >
-            Photographs
-          </h2>
+      />
 
-          <p
-            style={{
-              margin: 0,
-              color:
-                "rgba(242, 238, 230, 0.45)",
-              fontSize: "0.55rem",
-              letterSpacing: "0.14em",
-              textTransform: "uppercase",
-            }}
-          >
-            {allImages.length} images
-          </p>
-        </div>
-
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns:
-              "repeat(auto-fill, minmax(13rem, 1fr))",
-            gap: "1rem",
-            marginTop: "2rem",
-          }}
-        >
-          {allImages.map((image) => {
-            const isSelected =
-              image.src === selectedHero;
-
-            const isPublishedHero =
-              image.src === production.hero;
-
-            return (
-              <button
-                key={image.src}
-                type="button"
-                onClick={() => {
-                  setSelectedHero(image.src);
-                  setMessage(null);
-                  setMessageType(null);
-                }}
-                aria-pressed={isSelected}
-                style={{
-                  padding: 0,
-                  overflow: "hidden",
-                  border: isSelected
-                    ? "2px solid #c7a369"
-                    : "1px solid rgba(242, 238, 230, 0.16)",
-                  background: "#080808",
-                  color: "inherit",
-                  cursor: "pointer",
-                  textAlign: "left",
-                }}
-              >
-                <div
-                  style={{
-                    aspectRatio: "4 / 3",
-                    background: "#080808",
-                  }}
-                >
-                  <img
-                    src={`/images/productions/${production.slug}/${image.src}`}
-                    alt={image.alt}
-                    loading="lazy"
-                    style={{
-                      display: "block",
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "contain",
-                    }}
-                  />
-                </div>
-
-                <div
-                  style={{
-                    padding: "0.85rem",
-                  }}
-                >
-                  <p
-                    style={{
-                      margin: 0,
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                      fontSize: "0.68rem",
-                    }}
-                  >
-                    {image.src}
-                  </p>
-
-                  <p
-                    style={{
-                      margin: "0.4rem 0 0",
-                      color: isSelected
-                        ? "#c7a369"
-                        : "rgba(242, 238, 230, 0.42)",
-                      fontSize: "0.48rem",
-                      fontWeight: 700,
-                      letterSpacing: "0.13em",
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    {isSelected
-                      ? "Selected hero"
-                      : isPublishedHero
-                        ? "Published hero"
-                        : "Gallery image"}
-                  </p>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </section>
+      <HeroEditor
+        slug={production.slug}
+        publishedHero={production.hero}
+        publishedHeroAlt={production.heroAlt}
+        images={production.images}
+        selectedHero={selectedHero}
+        hasUnsavedHeroChange={hasHeroChanges}
+        onSelectHero={(src) => {
+          setSelectedHero(src);
+          clearMessage();
+        }}
+      />
 
       <section
         style={{
@@ -844,11 +364,9 @@ function removeCredit(index: number) {
           zIndex: 10,
           maxWidth: "90rem",
           margin: "3rem auto 0",
-          border:
-            "1px solid rgba(242, 238, 230, 0.16)",
+          border: "1px solid rgba(242, 238, 230, 0.16)",
           padding: "1rem",
-          background:
-            "rgba(8, 8, 8, 0.94)",
+          background: "rgba(8, 8, 8, 0.94)",
           backdropFilter: "blur(14px)",
         }}
       >
@@ -879,13 +397,12 @@ function removeCredit(index: number) {
               <p
                 style={{
                   margin: 0,
-                  color:
-                    "rgba(242, 238, 230, 0.48)",
+                  color: "rgba(242, 238, 230, 0.48)",
                 }}
               >
                 {hasUnsavedChanges
-  ? "Your changes have not been saved yet."
-  : "No unsaved changes."}
+                  ? "Your changes have not been saved yet."
+                  : "No unsaved changes."}
               </p>
             )}
           </div>
@@ -925,13 +442,9 @@ function removeCredit(index: number) {
               type="button"
               className="backstage-button backstage-button-primary"
               onClick={saveChanges}
-              disabled={
-                isSaving || !hasUnsavedChanges
-              }
+              disabled={isSaving || !hasUnsavedChanges}
             >
-              {isSaving
-  ? "Saving changes…"
-  : "Save changes"}
+              {isSaving ? "Saving changes…" : "Save changes"}
               <span aria-hidden="true">→</span>
             </button>
           </div>
