@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 
+import DeleteProductionPanel from "../../../../components/admin/editor/DeleteProductionPanel";
 import CreditsEditor from "../../../../components/admin/editor/CreditsEditor";
 import GalleryEditor from "../../../../components/admin/editor/GalleryEditor";
 import HeroEditor from "../../../../components/admin/editor/HeroEditor";
@@ -412,6 +413,12 @@ export default function EditProductionPage() {
 
           clearMessage();
         }}
+      />
+
+      <DeleteProductionPanel
+        slug={production.slug}
+        title={production.title}
+        hasUnsavedChanges={hasUnsavedChanges}
       />
 
       <section
