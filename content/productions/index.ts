@@ -10,8 +10,10 @@ import { theCode } from "./the-code";
 import { footfallsAndRockaby } from "./footfalls-and-rockaby";
 import { aSherlockCarol } from "./a-sherlock-carol";
 import { aRoleToDieFor } from "./a-role-to-die-for";
+import { randoms } from "./randoms";
 
 export const productions: Production[] = [
+  randoms,
   aRoleToDieFor,
   aSherlockCarol,
   footfallsAndRockaby,

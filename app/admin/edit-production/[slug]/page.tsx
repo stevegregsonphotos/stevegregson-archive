@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 
 import CreditsEditor from "../../../../components/admin/editor/CreditsEditor";
+import GalleryEditor from "../../../../components/admin/editor/GalleryEditor";
 import HeroEditor from "../../../../components/admin/editor/HeroEditor";
 import ProductionDetailsEditor from "../../../../components/admin/editor/ProductionDetailsEditor";
 
@@ -67,6 +68,7 @@ export default function EditProductionPage() {
   const [year, setYear] = useState("");
   const [description, setDescription] = useState("");
   const [credits, setCredits] = useState<ProductionCredit[]>([]);
+  const [galleryImages, setGalleryImages] = useState<ProductionImage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -104,6 +106,7 @@ export default function EditProductionPage() {
         setYear(String(data.production.year));
         setDescription(data.production.description);
         setCredits(data.production.credits);
+        setGalleryImages(data.production.images);
       } catch (error) {
         if (cancelled) {
           return;
@@ -147,8 +150,14 @@ export default function EditProductionPage() {
           JSON.stringify(production.credits)),
   );
 
+  const hasGalleryChanges = Boolean(
+    production &&
+      JSON.stringify(galleryImages) !==
+        JSON.stringify(production.images),
+  );
+
   const hasUnsavedChanges =
-    hasHeroChanges || hasDetailChanges;
+    hasHeroChanges || hasDetailChanges || hasGalleryChanges;
 
   function clearMessage() {
     setMessage(null);
@@ -197,6 +206,7 @@ export default function EditProductionPage() {
             year: parsedYear,
             description: description.trim(),
             credits,
+            images: galleryImages,
           }),
         },
       );
@@ -216,6 +226,7 @@ export default function EditProductionPage() {
       setYear(String(data.production.year));
       setDescription(data.production.description);
       setCredits(data.production.credits);
+      setGalleryImages(data.production.images);
       setMessage(
         data.message ?? "Production updated successfully.",
       );
@@ -348,11 +359,35 @@ export default function EditProductionPage() {
         slug={production.slug}
         publishedHero={production.hero}
         publishedHeroAlt={production.heroAlt}
-        images={production.images}
+        images={galleryImages}
         selectedHero={selectedHero}
         hasUnsavedHeroChange={hasHeroChanges}
         onSelectHero={(src) => {
           setSelectedHero(src);
+          clearMessage();
+        }}
+      />
+
+      <GalleryEditor
+        productionSlug={production.slug}
+        images={galleryImages}
+        selectedHero={selectedHero}
+        onSelectHero={(src) => {
+          setSelectedHero(src);
+          clearMessage();
+        }}
+        onChange={(nextImages) => {
+          setGalleryImages(nextImages);
+
+          if (
+            selectedHero !== production.hero &&
+            !nextImages.some(
+              (image) => image.src === selectedHero,
+            )
+          ) {
+            setSelectedHero(production.hero);
+          }
+
           clearMessage();
         }}
       />
