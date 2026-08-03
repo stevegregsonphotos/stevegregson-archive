@@ -438,6 +438,38 @@ if (productionFiles.length === 0) {
 const productionFolderName =
   productionFiles[0].webkitRelativePath.split("/")[0];
 
+  const zip = new JSZip();
+
+for (const file of productionFiles) {
+  const relativePath =
+    file.webkitRelativePath ||
+    `${productionFolderName}/${file.name}`;
+
+  zip.file(relativePath, file);
+}
+
+const zipBlob = await zip.generateAsync({
+  type: "blob",
+  compression: "DEFLATE",
+  compressionOptions: {
+    level: 6,
+  },
+});
+
+const archive = new File(
+  [zipBlob],
+  `${productionFolderName}.zip`,
+  {
+    type: "application/zip",
+  },
+);
+
+setProductionArchive(archive);
+
+formData.set(
+  "productionArchive",
+  archive,
+);
 
     try {
       const response = await fetch(
