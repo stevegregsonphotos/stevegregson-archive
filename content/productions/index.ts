@@ -9,8 +9,10 @@ import { theCode } from "./the-code";
 
 import { footfallsAndRockaby } from "./footfalls-and-rockaby";
 import { aSherlockCarol } from "./a-sherlock-carol";
+import { aRoleToDieFor } from "./a-role-to-die-for";
 
 export const productions: Production[] = [
+  aRoleToDieFor,
   aSherlockCarol,
   footfallsAndRockaby,
   godspell,
