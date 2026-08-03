@@ -57,6 +57,14 @@ export default function EditProductionPage() {
 
   const [selectedHero, setSelectedHero] =
     useState<string | null>(null);
+    const [title, setTitle] = useState("");
+
+const [venue, setVenue] = useState("");
+
+const [year, setYear] = useState("");
+
+const [description, setDescription] =
+  useState("");
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -102,6 +110,10 @@ export default function EditProductionPage() {
 
         setProduction(data.production);
         setSelectedHero(data.production.hero);
+        setTitle(data.production.title);
+setVenue(data.production.venue);
+setYear(String(data.production.year));
+setDescription(data.production.description);
       } catch (error) {
         if (cancelled) {
           return;
@@ -154,95 +166,119 @@ export default function EditProductionPage() {
     );
   }, [allImages, selectedHero]);
 
-  const hasUnsavedChanges =
-    Boolean(
-      production &&
-        selectedHero &&
-        selectedHero !== production.hero,
+  const hasHeroChanges =
+  Boolean(
+    production &&
+      selectedHero &&
+      selectedHero !== production.hero,
+  );
+
+const parsedYear = Number.parseInt(year, 10);
+
+const hasDetailChanges =
+  Boolean(
+    production &&
+      (
+        title.trim() !== production.title ||
+        venue.trim() !== production.venue ||
+        parsedYear !== production.year ||
+        description.trim() !==
+          production.description
+      ),
+  );
+
+const hasUnsavedChanges =
+  hasHeroChanges || hasDetailChanges;
+
+ async function saveChanges() {
+  if (
+    !production ||
+    !selectedHero ||
+    !hasUnsavedChanges
+  ) {
+    return;
+  }
+
+  if (!title.trim()) {
+    setMessage("A production title is required.");
+    setMessageType("error");
+    return;
+  }
+
+  if (!venue.trim()) {
+    setMessage("A venue is required.");
+    setMessageType("error");
+    return;
+  }
+
+  if (!Number.isInteger(parsedYear)) {
+    setMessage("A valid production year is required.");
+    setMessageType("error");
+    return;
+  }
+
+  setIsSaving(true);
+  setMessage(null);
+  setMessageType(null);
+
+  try {
+    const response = await fetch(
+      "/api/admin/edit-production",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          slug: production.slug,
+          hero: selectedHero,
+          title: title.trim(),
+          venue: venue.trim(),
+          year: parsedYear,
+          description: description.trim(),
+        }),
+      },
     );
 
-  async function saveHero() {
+    const data =
+      (await response.json()) as SaveResult & {
+        production?: Production;
+      };
+
     if (
-      !production ||
-      !selectedHero ||
-      !hasUnsavedChanges
+      !response.ok ||
+      !data.ok ||
+      !data.production
     ) {
-      return;
+      throw new Error(
+        data.message ??
+          "The production could not be updated.",
+      );
     }
 
-    setIsSaving(true);
-    setMessage(null);
-    setMessageType(null);
+    setProduction(data.production);
+    setSelectedHero(data.production.hero);
+    setTitle(data.production.title);
+    setVenue(data.production.venue);
+    setYear(String(data.production.year));
+    setDescription(data.production.description);
 
-    try {
-      const response = await fetch(
-        "/api/admin/edit-production",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            slug: production.slug,
-            hero: selectedHero,
-          }),
-        },
-      );
-
-      const data =
-        (await response.json()) as SaveResult;
-
-      if (!response.ok || !data.ok) {
-        throw new Error(
-          data.message ??
-            "The hero image could not be updated.",
-        );
-      }
-
-      setProduction((current) => {
-        if (!current) {
-          return current;
-        }
-
-        const chosenImage = current.images.find(
-          (image) => image.src === selectedHero,
-        );
-
-        if (!chosenImage) {
-          return current;
-        }
-
-        return {
-          ...current,
-          hero: chosenImage.src,
-          heroAlt: chosenImage.alt,
-          images: [
-            {
-              src: current.hero,
-              alt: current.heroAlt,
-              layout: "wide",
-            },
-            ...current.images.filter(
-              (image) =>
-                image.src !== chosenImage.src,
-            ),
-          ],
-        };
-      });
-
-      setMessage("Hero image updated successfully.");
-      setMessageType("success");
-    } catch (error) {
-      setMessage(
-        error instanceof Error
-          ? error.message
-          : "The hero image could not be updated.",
-      );
-      setMessageType("error");
-    } finally {
-      setIsSaving(false);
-    }
+    setMessage(
+      data.message ??
+        "Production updated successfully.",
+    );
+    setMessageType("success");
+  } catch (error) {
+    setMessage(
+      error instanceof Error
+        ? error.message
+        : "The production could not be updated.",
+    );
+    setMessageType("error");
+  } finally {
+    setIsSaving(false);
   }
+}
 
   if (isLoading) {
     return (
@@ -329,7 +365,99 @@ export default function EditProductionPage() {
           {production.venue} · {production.year}
         </p>
       </header>
+<section
+  style={{
+    maxWidth: "90rem",
+    margin: "4rem auto 0",
+    borderTop:
+      "1px solid rgba(242, 238, 230, 0.18)",
+    paddingTop: "2rem",
+  }}
+>
+  <h2
+    style={{
+      margin: 0,
+      fontFamily:
+        '"Iowan Old Style", "Palatino Linotype", Georgia, serif',
+      fontSize: "2rem",
+      fontWeight: 400,
+    }}
+  >
+    Production Details
+  </h2>
 
+  <div
+    style={{
+      display: "grid",
+      gridTemplateColumns:
+        "repeat(auto-fit, minmax(18rem, 1fr))",
+      gap: "1.5rem",
+      marginTop: "2rem",
+    }}
+  >
+    <label className="backstage-field">
+      <span className="backstage-field-label">
+        Title
+      </span>
+
+      <input
+        className="backstage-input"
+        value={title}
+        onChange={(event) =>
+          setTitle(event.target.value)
+        }
+      />
+    </label>
+
+    <label className="backstage-field">
+      <span className="backstage-field-label">
+        Venue
+      </span>
+
+      <input
+        className="backstage-input"
+        value={venue}
+        onChange={(event) =>
+          setVenue(event.target.value)
+        }
+      />
+    </label>
+
+    <label className="backstage-field">
+      <span className="backstage-field-label">
+        Year
+      </span>
+
+      <input
+        className="backstage-input"
+        value={year}
+        onChange={(event) =>
+          setYear(event.target.value)
+        }
+      />
+    </label>
+  </div>
+
+  <label
+    className="backstage-field"
+    style={{
+      marginTop: "1.5rem",
+    }}
+  >
+    <span className="backstage-field-label">
+      Description
+    </span>
+
+    <textarea
+      className="backstage-textarea"
+      rows={5}
+      value={description}
+      onChange={(event) =>
+        setDescription(event.target.value)
+      }
+    />
+  </label>
+</section>
       <section
         style={{
           maxWidth: "90rem",
@@ -625,8 +753,8 @@ export default function EditProductionPage() {
                 }}
               >
                 {hasUnsavedChanges
-                  ? "Your new hero has not been saved yet."
-                  : "No unsaved changes."}
+  ? "Your changes have not been saved yet."
+  : "No unsaved changes."}
               </p>
             )}
           </div>
@@ -665,14 +793,14 @@ export default function EditProductionPage() {
             <button
               type="button"
               className="backstage-button backstage-button-primary"
-              onClick={saveHero}
+              onClick={saveChanges}
               disabled={
                 isSaving || !hasUnsavedChanges
               }
             >
               {isSaving
-                ? "Saving changes…"
-                : "Save new hero"}
+  ? "Saving changes…"
+  : "Save changes"}
               <span aria-hidden="true">→</span>
             </button>
           </div>

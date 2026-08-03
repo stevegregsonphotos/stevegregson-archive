@@ -7,192 +7,130 @@ import path from "node:path";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+type GalleryLayout =
+  | "wide"
+  | "left"
+  | "right"
+  | "medium"
+  | "full"
+  | "left-small"
+  | "right-small"
+  | "wide-left"
+  | "wide-right";
+
 type ProductionImage = {
   src: string;
   alt: string;
-  layout:
-    | "wide"
-    | "left"
-    | "right"
-    | "medium"
-    | "full"
-    | "left-small"
-    | "right-small"
-    | "wide-left"
-    | "wide-right";
+  layout: GalleryLayout;
 };
 
-type ProductionPayload = {
+type ProductionCredit = {
+  role: string;
+  name: string;
+  website?: string;
+};
+
+type ProductionData = {
   slug: string;
+  title: string;
+  venue: string;
+  year: number;
+  description: string;
   hero: string;
   heroAlt: string;
+  credits: ProductionCredit[];
   images: ProductionImage[];
+};
+
+type UpdateRequest = {
+  slug?: unknown;
+  hero?: unknown;
+  title?: unknown;
+  venue?: unknown;
+  year?: unknown;
+  description?: unknown;
 };
 
 function isSafeSlug(value: string) {
   return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value);
 }
 
-function serialiseProductionFile(
-  exportName: string,
-  source: string,
-  payload: ProductionPayload,
-) {
-  const start = source.indexOf("= {");
-  const end = source.lastIndexOf("};");
+function getProductionFile(slug: string) {
+  return path.join(
+    process.cwd(),
+    "content",
+    "productions",
+    `${slug}.ts`,
+  );
+}
 
-  if (start === -1 || end === -1) {
+function readProductionFromSource(
+  source: string,
+): ProductionData {
+  const objectMatch = source.match(
+    /=\s*({[\s\S]*})\s*;\s*$/,
+  );
+
+  if (!objectMatch) {
+    throw new Error(
+      "The production data could not be read.",
+    );
+  }
+
+  return JSON.parse(objectMatch[1]) as ProductionData;
+}
+
+function serialiseProductionFile(
+  source: string,
+  production: ProductionData,
+) {
+  const assignmentIndex = source.indexOf("= {");
+  const objectEndIndex = source.lastIndexOf("};");
+
+  if (
+    assignmentIndex === -1 ||
+    objectEndIndex === -1
+  ) {
     throw new Error(
       "The production file format could not be recognised.",
     );
   }
 
   const objectSource = JSON.stringify(
-    payload,
+    production,
     null,
     2,
   );
 
   return `${source.slice(
     0,
-    start + 2,
-  )}${objectSource}${source.slice(end + 1)}`;
+    assignmentIndex + 2,
+  )}${objectSource}${source.slice(
+    objectEndIndex + 1,
+  )}`;
 }
 
-export async function POST(request: Request) {
-  try {
-    const body = (await request.json()) as {
-      slug?: unknown;
-      hero?: unknown;
-    };
+function validateProduction(
+  production: ProductionData,
+) {
+  return (
+    typeof production.slug === "string" &&
+    isSafeSlug(production.slug) &&
+    typeof production.title === "string" &&
+    Boolean(production.title.trim()) &&
+    typeof production.venue === "string" &&
+    Boolean(production.venue.trim()) &&
+    Number.isInteger(production.year) &&
+    typeof production.description === "string" &&
+    typeof production.hero === "string" &&
+    Boolean(production.hero) &&
+    typeof production.heroAlt === "string" &&
+    Array.isArray(production.credits) &&
+    Array.isArray(production.images)
+  );
+}
 
-    if (
-      typeof body.slug !== "string" ||
-      !isSafeSlug(body.slug) ||
-      typeof body.hero !== "string" ||
-      !body.hero
-    ) {
-      return Response.json(
-        {
-          ok: false,
-          message:
-            "A valid production slug and hero image are required.",
-        },
-        { status: 400 },
-      );
-    }
-
-    const projectRoot = process.cwd();
-    const productionFile = path.join(
-      projectRoot,
-      "content",
-      "productions",
-      `${body.slug}.ts`,
-    );
-
-    const source = await readFile(
-      productionFile,
-      "utf8",
-    );
-
-    const exportMatch = source.match(
-      /export const\s+([A-Za-z0-9_]+)\s*:/,
-    );
-
-    if (!exportMatch) {
-      throw new Error(
-        "The production export name could not be found.",
-      );
-    }
-
-    const objectMatch = source.match(
-      /=\s*({[\s\S]*})\s*;\s*$/,
-    );
-
-    if (!objectMatch) {
-      throw new Error(
-        "The production data could not be read.",
-      );
-    }
-
-    const production = JSON.parse(
-      objectMatch[1],
-    ) as ProductionPayload & {
-      title: string;
-      venue: string;
-      year: number;
-      description: string;
-      credits: unknown[];
-    };
-
-    const chosenImage =
-      production.images.find(
-        (image) => image.src === body.hero,
-      );
-
-    if (!chosenImage) {
-      return Response.json(
-        {
-          ok: false,
-          message:
-            "The selected hero is not part of this production gallery.",
-        },
-        { status: 400 },
-      );
-    }
-
-    const previousHero = production.hero;
-
-    production.hero = chosenImage.src;
-    production.heroAlt = chosenImage.alt;
-
-    production.images = [
-      {
-        src: previousHero,
-        alt: production.heroAlt,
-        layout: "wide",
-      },
-      ...production.images.filter(
-        (image) => image.src !== chosenImage.src,
-      ),
-    ];
-
-    const updatedSource =
-      serialiseProductionFile(
-        exportMatch[1],
-        source,
-        production,
-      );
-
-    await writeFile(
-      productionFile,
-      updatedSource,
-      "utf8",
-    );
-
-    return Response.json({
-      ok: true,
-      message: "Hero image updated.",
-      hero: production.hero,
-    });
-  } catch (error) {
-    console.error(
-      "Production update failed:",
-      error,
-    );
-
-    return Response.json(
-      {
-        ok: false,
-        message:
-          error instanceof Error
-            ? error.message
-            : "The production could not be updated.",
-      },
-      { status: 500 },
-    );
-  }
-}export async function GET(request: Request) {
+export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
     const slug = url.searchParams.get("slug");
@@ -208,31 +146,19 @@ export async function POST(request: Request) {
       );
     }
 
-    const productionFile = path.join(
-      process.cwd(),
-      "content",
-      "productions",
-      `${slug}.ts`,
-    );
-
     const source = await readFile(
-      productionFile,
+      getProductionFile(slug),
       "utf8",
     );
 
-    const objectMatch = source.match(
-      /=\s*({[\s\S]*})\s*;\s*$/,
-    );
+    const production =
+      readProductionFromSource(source);
 
-    if (!objectMatch) {
+    if (!validateProduction(production)) {
       throw new Error(
-        "The production data could not be read.",
+        "The production data is incomplete or invalid.",
       );
     }
-
-    const production = JSON.parse(
-      objectMatch[1],
-    );
 
     return Response.json({
       ok: true,
@@ -251,6 +177,242 @@ export async function POST(request: Request) {
           error instanceof Error
             ? error.message
             : "The production could not be loaded.",
+      },
+      { status: 500 },
+    );
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const body =
+      (await request.json()) as UpdateRequest;
+
+    if (
+      typeof body.slug !== "string" ||
+      !isSafeSlug(body.slug)
+    ) {
+      return Response.json(
+        {
+          ok: false,
+          message:
+            "A valid production slug is required.",
+        },
+        { status: 400 },
+      );
+    }
+
+    const productionFile =
+      getProductionFile(body.slug);
+
+    const source = await readFile(
+      productionFile,
+      "utf8",
+    );
+
+    const production =
+      readProductionFromSource(source);
+
+    if (!validateProduction(production)) {
+      throw new Error(
+        "The existing production data is incomplete or invalid.",
+      );
+    }
+
+    let heroChanged = false;
+    let detailsChanged = false;
+
+    if (body.hero !== undefined) {
+      if (
+        typeof body.hero !== "string" ||
+        !body.hero
+      ) {
+        return Response.json(
+          {
+            ok: false,
+            message:
+              "The selected hero image is invalid.",
+          },
+          { status: 400 },
+        );
+      }
+
+      if (body.hero !== production.hero) {
+        const chosenImage =
+          production.images.find(
+            (image) => image.src === body.hero,
+          );
+
+        if (!chosenImage) {
+          return Response.json(
+            {
+              ok: false,
+              message:
+                "The selected hero is not part of this production gallery.",
+            },
+            { status: 400 },
+          );
+        }
+
+        const previousHero = production.hero;
+        const previousHeroAlt =
+          production.heroAlt;
+
+        production.hero = chosenImage.src;
+        production.heroAlt = chosenImage.alt;
+
+        production.images = [
+          {
+            src: previousHero,
+            alt: previousHeroAlt,
+            layout: "wide",
+          },
+          ...production.images.filter(
+            (image) =>
+              image.src !== chosenImage.src,
+          ),
+        ];
+
+        heroChanged = true;
+      }
+    }
+
+    if (body.title !== undefined) {
+      if (
+        typeof body.title !== "string" ||
+        !body.title.trim()
+      ) {
+        return Response.json(
+          {
+            ok: false,
+            message:
+              "A production title is required.",
+          },
+          { status: 400 },
+        );
+      }
+
+      const title = body.title.trim();
+
+      if (title !== production.title) {
+        production.title = title;
+        detailsChanged = true;
+      }
+    }
+
+    if (body.venue !== undefined) {
+      if (
+        typeof body.venue !== "string" ||
+        !body.venue.trim()
+      ) {
+        return Response.json(
+          {
+            ok: false,
+            message: "A venue is required.",
+          },
+          { status: 400 },
+        );
+      }
+
+      const venue = body.venue.trim();
+
+      if (venue !== production.venue) {
+        production.venue = venue;
+        detailsChanged = true;
+      }
+    }
+
+    if (body.year !== undefined) {
+      const year =
+        typeof body.year === "number"
+          ? body.year
+          : typeof body.year === "string"
+            ? Number.parseInt(body.year, 10)
+            : Number.NaN;
+
+      if (!Number.isInteger(year)) {
+        return Response.json(
+          {
+            ok: false,
+            message:
+              "A valid production year is required.",
+          },
+          { status: 400 },
+        );
+      }
+
+      if (year !== production.year) {
+        production.year = year;
+        detailsChanged = true;
+      }
+    }
+
+    if (body.description !== undefined) {
+      if (typeof body.description !== "string") {
+        return Response.json(
+          {
+            ok: false,
+            message:
+              "The production description is invalid.",
+          },
+          { status: 400 },
+        );
+      }
+
+      const description =
+        body.description.trim();
+
+      if (
+        description !== production.description
+      ) {
+        production.description = description;
+        detailsChanged = true;
+      }
+    }
+
+    if (!heroChanged && !detailsChanged) {
+      return Response.json({
+        ok: true,
+        message: "No changes were needed.",
+        production,
+      });
+    }
+
+    const updatedSource =
+      serialiseProductionFile(
+        source,
+        production,
+      );
+
+    await writeFile(
+      productionFile,
+      updatedSource,
+      "utf8",
+    );
+
+    return Response.json({
+      ok: true,
+      message:
+        heroChanged && detailsChanged
+          ? "Production details and hero updated successfully."
+          : heroChanged
+            ? "Hero image updated successfully."
+            : "Production details updated successfully.",
+      production,
+    });
+  } catch (error) {
+    console.error(
+      "Production update failed:",
+      error,
+    );
+
+    return Response.json(
+      {
+        ok: false,
+        message:
+          error instanceof Error
+            ? error.message
+            : "The production could not be updated.",
       },
       { status: 500 },
     );
