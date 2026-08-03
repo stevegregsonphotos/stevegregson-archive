@@ -6,7 +6,7 @@ export const aRoleToDieFor: Production = {
   "venue": "Marylebone Theatre",
   "year": 2025,
   "description": "Dress rehearsal photography for publicity campaign",
-  "hero": "A_104359-Edit-Edit.jpg",
+  "hero": "A_105013-Edit.jpg",
   "heroAlt": "A Role To Die For at Marylebone Theatre, photographed by Steve Gregson",
   "credits": [
     {
@@ -36,7 +36,7 @@ export const aRoleToDieFor: Production = {
   ],
   "images": [
     {
-      "src": "A_105013-Edit.jpg",
+      "src": "A_104359-Edit-Edit.jpg",
       "alt": "A Role To Die For at Marylebone Theatre, photographed by Steve Gregson",
       "layout": "wide"
     },
