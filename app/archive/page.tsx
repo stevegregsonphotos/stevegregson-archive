@@ -29,41 +29,68 @@ export default function ArchivePage() {
           </p>
         </section>
 
-        <section className="archive-grid" aria-label="Production archive">
+        <section
+          className="archive-grid"
+          aria-label="Production archive"
+        >
           {sortedProductions.map((production, index) => (
-            <Link
-              href={`/productions/${production.slug}`}
+            <article
               className="archive-card"
               key={production.slug}
             >
-              <div className="archive-card-image">
-                <Image
-                  src={`/images/productions/${production.slug}/${production.hero}`}
-                  alt={production.heroAlt}
-                  fill
-                  sizes="(max-width: 800px) 100vw, 50vw"
-                />
+              <Link
+                href={`/productions/${production.slug}`}
+                className="archive-card-main"
+              >
+                <div className="archive-card-image">
+                  <Image
+                    src={`/images/productions/${production.slug}/${production.hero}`}
+                    alt={production.heroAlt}
+                    fill
+                    sizes="(max-width: 800px) 100vw, 50vw"
+                  />
 
-                <span className="archive-card-number">
-                  {String(index + 1).padStart(2, "0")}
-                </span>
-              </div>
-
-              <div className="archive-card-copy">
-                <div>
-                  <h2>{production.title}</h2>
-                  <p>
-                    {production.venue}
-                    <span aria-hidden="true"> · </span>
-                    {production.year}
-                  </p>
+                  <span className="archive-card-number">
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
                 </div>
 
-                <span className="archive-card-arrow" aria-hidden="true">
-                  →
-                </span>
+                <div className="archive-card-copy">
+                  <div>
+                    <h2>{production.title}</h2>
+
+                    <p>
+                      {production.venue}
+                      <span aria-hidden="true"> · </span>
+                      {production.year}
+                    </p>
+                  </div>
+
+                  <span
+                    className="archive-card-arrow"
+                    aria-hidden="true"
+                  >
+                    →
+                  </span>
+                </div>
+              </Link>
+
+              <div className="archive-card-actions">
+                <Link
+                  href={`/productions/${production.slug}`}
+                  className="archive-card-action"
+                >
+                  View production
+                </Link>
+
+                <Link
+                  href={`/admin/edit-production/${production.slug}`}
+                  className="archive-card-action archive-card-action-edit"
+                >
+                  Edit production
+                </Link>
               </div>
-            </Link>
+            </article>
           ))}
         </section>
       </main>
@@ -116,6 +143,50 @@ export default function ArchivePage() {
 
         .archive-card {
           display: block;
+        }
+
+        .archive-card-main {
+          display: block;
+        }
+
+        .archive-card-actions {
+          display: flex;
+          gap: 0.75rem;
+          flex-wrap: wrap;
+          margin-top: 1.25rem;
+        }
+
+        .archive-card-action {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          border: 1px solid rgba(242, 238, 230, 0.24);
+          padding: 0.8rem 1rem;
+          color: rgba(242, 238, 230, 0.72);
+          font-size: 0.52rem;
+          font-weight: 700;
+          letter-spacing: 0.14em;
+          text-transform: uppercase;
+          transition:
+            border-color 180ms ease,
+            color 180ms ease,
+            background 180ms ease;
+        }
+
+        .archive-card-action:hover {
+          border-color: rgba(242, 238, 230, 0.55);
+          color: #f2eee6;
+        }
+
+        .archive-card-action-edit {
+          border-color: rgba(199, 163, 105, 0.55);
+          color: #c7a369;
+        }
+
+        .archive-card-action-edit:hover {
+          border-color: #c7a369;
+          background: rgba(199, 163, 105, 0.08);
+          color: #d8b980;
         }
 
         .archive-card-image {
