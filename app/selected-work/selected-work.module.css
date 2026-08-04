@@ -1,0 +1,375 @@
+.page {
+  width: 100%;
+  max-width: 100%;
+  min-height: 100vh;
+  overflow-x: hidden;
+  box-sizing: border-box;
+  background: #11100f;
+  color: #f2eee6;
+}
+
+.page,
+.page *,
+.page *::before,
+.page *::after {
+  box-sizing: border-box;
+}
+
+.intro,
+.collection,
+.archiveCta {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.intro {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 11rem 6vw 7rem;
+}
+
+.eyebrow {
+  margin: 0;
+  color: #c7a369;
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.21em;
+  text-transform: uppercase;
+}
+
+.introTitle {
+  max-width: 72rem;
+  margin: 2rem 0 0;
+  font-family:
+    "Iowan Old Style",
+    "Palatino Linotype",
+    Georgia,
+    serif;
+  font-size: clamp(4.4rem, 8.4vw, 9rem);
+  font-weight: 400;
+  letter-spacing: -0.06em;
+  line-height: 0.89;
+}
+
+.introCopy {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2rem;
+  width: min(100%, 54rem);
+  margin: 4rem 0 0;
+  color: rgba(242, 238, 230, 0.62);
+  font-size: 1rem;
+  line-height: 1.75;
+}
+
+.introCopy p {
+  min-width: 0;
+  margin: 0;
+}
+
+.scrollCue {
+  position: absolute;
+  right: 6vw;
+  bottom: 3rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  color: rgba(242, 238, 230, 0.45);
+  font-size: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  transform: rotate(90deg);
+  transform-origin: right center;
+}
+
+.scrollLine {
+  width: 4rem;
+  height: 1px;
+  background: rgba(242, 238, 230, 0.35);
+}
+
+.collection {
+  padding: 9rem 6vw 11rem;
+  border-top: 1px solid rgba(242, 238, 230, 0.13);
+  scroll-margin-top: 6rem;
+}
+
+.collectionHeader {
+  display: grid;
+  grid-template-columns: minmax(3rem, 0.16fr) minmax(0, 1fr);
+  gap: 2rem;
+  align-items: start;
+  margin-bottom: 6rem;
+}
+
+.collectionNumber {
+  margin: 0.7rem 0 0;
+  color: #c7a369;
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+}
+
+.collectionHeadingCopy {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(16rem, 0.55fr);
+  gap: clamp(2rem, 4vw, 5rem);
+  align-items: end;
+}
+
+.collectionHeadingCopy h2 {
+  min-width: 0;
+  max-width: 12ch;
+  overflow-wrap: anywhere;
+  margin: 0;
+  font-family:
+    "Iowan Old Style",
+    "Palatino Linotype",
+    Georgia,
+    serif;
+  font-size: clamp(3.6rem, 6.2vw, 7.2rem);
+  font-weight: 400;
+  letter-spacing: -0.055em;
+  line-height: 0.92;
+}
+
+.collectionHeadingCopy p {
+  min-width: 0;
+  margin: 0;
+  color: rgba(242, 238, 230, 0.58);
+  line-height: 1.75;
+}
+
+.productionList {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(7rem, 11vw, 12rem);
+}
+
+.productionFeature {
+  width: 100%;
+  min-width: 0;
+}
+
+.productionImageLink {
+  display: block;
+  width: 100%;
+  color: inherit;
+  text-decoration: none;
+}
+
+.productionImageFrame {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  background: #191817;
+  aspect-ratio: 3 / 2;
+}
+
+.productionImage {
+  object-fit: contain;
+  transition: transform 900ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.productionImageLink:hover .productionImage {
+  transform: scale(1.02);
+}
+
+.imageIndex {
+  position: absolute;
+  top: 1.25rem;
+  left: 1.25rem;
+  z-index: 2;
+  font-size: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+}
+
+.productionMeta {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 2rem;
+  width: 100%;
+  margin-top: 1rem;
+  border-top: 1px solid rgba(242, 238, 230, 0.2);
+  padding-top: 1.25rem;
+}
+
+.productionMeta > div {
+  min-width: 0;
+}
+
+.productionMeta h3 {
+  margin: 0;
+  font-family:
+    "Iowan Old Style",
+    "Palatino Linotype",
+    Georgia,
+    serif;
+  font-size: clamp(2.2rem, 4.2vw, 5rem);
+  font-weight: 400;
+  letter-spacing: -0.045em;
+  line-height: 0.98;
+}
+
+.productionMeta p {
+  margin: 0.8rem 0 0;
+  color: rgba(242, 238, 230, 0.5);
+  font-size: 0.52rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.productionLink,
+.archiveLink {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.9rem;
+  border-bottom: 1px solid rgba(199, 163, 105, 0.7);
+  padding-bottom: 0.45rem;
+  color: #c7a369;
+  font-size: 0.54rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.productionLink span,
+.archiveLink span {
+  transition: transform 180ms ease;
+}
+
+.productionLink:hover span,
+.archiveLink:hover span {
+  transform: translateX(0.3rem);
+}
+
+.archiveCta {
+  min-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  border-top: 1px solid rgba(242, 238, 230, 0.13);
+  padding: 9rem 6vw;
+}
+
+.archiveCta h2 {
+  max-width: 72rem;
+  margin: 2rem 0 0;
+  font-family:
+    "Iowan Old Style",
+    "Palatino Linotype",
+    Georgia,
+    serif;
+  font-size: clamp(4rem, 8vw, 8rem);
+  font-weight: 400;
+  letter-spacing: -0.058em;
+  line-height: 0.91;
+}
+
+.archiveCtaFooter {
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-end;
+  gap: 3rem;
+  margin-top: 3rem;
+}
+
+.archiveCtaFooter p {
+  max-width: 34rem;
+  margin: 0;
+  color: rgba(242, 238, 230, 0.58);
+  line-height: 1.75;
+}
+
+@media (max-width: 900px) {
+  .intro {
+    min-height: auto;
+    padding: 10rem 1.4rem 7rem;
+  }
+
+  .introTitle {
+    font-size: clamp(3.6rem, 13vw, 6rem);
+  }
+
+  .introCopy {
+    grid-template-columns: 1fr;
+    margin-top: 3rem;
+  }
+
+  .scrollCue {
+    display: none;
+  }
+
+  .collection {
+    padding: 6rem 1.4rem 7rem;
+  }
+
+  .collectionHeader {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    margin-bottom: 3rem;
+  }
+
+  .collectionHeadingCopy {
+    grid-template-columns: 1fr;
+    gap: 1.8rem;
+  }
+
+  .collectionHeadingCopy h2 {
+    max-width: none;
+    font-size: clamp(3.2rem, 12vw, 5rem);
+  }
+
+  .productionList {
+    gap: 5rem;
+  }
+
+  .productionImageFrame {
+    aspect-ratio: 4 / 5;
+  }
+
+  .productionMeta {
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .productionLink {
+    width: fit-content;
+  }
+
+  .archiveCta {
+    min-height: auto;
+    padding: 7rem 1.4rem 8rem;
+  }
+
+  .archiveCtaFooter {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2rem;
+  }
+}
+
+@media (max-width: 520px) {
+  .introTitle {
+    font-size: clamp(3rem, 16vw, 4.5rem);
+  }
+
+  .collectionHeadingCopy h2,
+  .archiveCta h2 {
+    font-size: clamp(3rem, 14vw, 4.4rem);
+  }
+
+  .productionMeta h3 {
+    font-size: clamp(2rem, 10vw, 3.4rem);
+  }
+}

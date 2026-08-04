@@ -40,17 +40,31 @@ export default function Home() {
         </div>
 
         <div className="hero-footer">
-          <div className="hero-categories">
-            <Link href="/archive">Production photography</Link>
-            <Link href="/archive">Campaign imagery</Link>
-            <Link href="/archive">Rehearsal &amp; backstage</Link>
-          </div>
+  <div className="hero-categories">
+    <Link href="/selected-work#production">
+      Production Photography
+    </Link>
 
-          <Link href="/archive" className="explore-link">
-            <span>Explore</span>
-            <span className="explore-line" aria-hidden="true" />
-          </Link>
-        </div>
+    <Link href="/selected-work#campaign">
+      Campaign &amp; PR
+    </Link>
+
+    <Link href="/selected-work#rehearsal">
+      Rehearsal &amp; Backstage
+    </Link>
+  </div>
+
+  <Link
+    href="/selected-work"
+    className="explore-link"
+  >
+    <span>Explore</span>
+    <span
+      className="explore-line"
+      aria-hidden="true"
+    />
+  </Link>
+</div>
       </section>
     </main>
   );
