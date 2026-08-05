@@ -69,8 +69,13 @@ export default async function ProductionPage({
         <div className="curated-production-hero-overlay" />
 
         <div className="curated-production-hero-title">
-          <p>{production.venue}</p>
-          <h1>{production.title}</h1>
+          <p>
+  {production.venue}
+  <span aria-hidden="true"> · </span>
+  {production.year}
+</p>
+
+<h1>{production.title}</h1>
         </div>
       </section>
 

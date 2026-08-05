@@ -58,6 +58,7 @@ type PreviewImage = {
 type ExtractedProductionFields = {
   title: string;
   venue: string;
+  month: string;
   year: string;
   director: string;
   associateDirector: string;
@@ -214,6 +215,7 @@ function editorialAssessment(image: PreviewImage) {
 const EMPTY_PRODUCTION_FIELDS: EditableProductionFields = {
   title: "",
   venue: "",
+  month: "",
   year: "",
   director: "",
   associateDirector: "",
@@ -227,6 +229,28 @@ const EMPTY_PRODUCTION_FIELDS: EditableProductionFields = {
   commissionedBy: "",
   description: "",
 };
+
+const MONTH_OPTIONS = [
+  { value: "1", label: "January" },
+  { value: "2", label: "February" },
+  { value: "3", label: "March" },
+  { value: "4", label: "April" },
+  { value: "5", label: "May" },
+  { value: "6", label: "June" },
+  { value: "7", label: "July" },
+  { value: "8", label: "August" },
+  { value: "9", label: "September" },
+  { value: "10", label: "October" },
+  { value: "11", label: "November" },
+  { value: "12", label: "December" },
+];
+
+const currentYear = new Date().getFullYear();
+
+const YEAR_OPTIONS = Array.from(
+  { length: currentYear + 2 - 1900 },
+  (_, index) => currentYear + 1 - index,
+);
 
 export default function ProductionUpload() {
   const [isUploading, setIsUploading] =
@@ -487,6 +511,7 @@ formData.set(
 
       if (data.contents?.extractedDetails.fields) {
         setProductionFields({
+          ...EMPTY_PRODUCTION_FIELDS,
           ...data.contents.extractedDetails.fields,
         });
       }
@@ -595,6 +620,11 @@ formData.set(
       return;
     }
 
+    const month = Number.parseInt(
+      productionFields.month,
+      10,
+    );
+
     const year = Number.parseInt(
       productionFields.year,
       10,
@@ -603,12 +633,15 @@ formData.set(
     if (
       !productionFields.title.trim() ||
       !productionFields.venue.trim() ||
+      !Number.isInteger(month) ||
+      month < 1 ||
+      month > 12 ||
       !Number.isInteger(year)
     ) {
       setPublishResult({
         ok: false,
         message:
-          "Production title, venue and a valid year are required.",
+          "Production title, venue, month and a valid year are required.",
       });
       return;
     }
@@ -731,6 +764,7 @@ formData.set(
       slug: result.archive.suggestedSlug,
       title: productionFields.title.trim(),
       venue: productionFields.venue.trim(),
+      month,
       year,
       description:
         productionFields.description.trim(),
@@ -778,8 +812,28 @@ formData.set(
         },
       );
 
-      const data =
-        (await response.json()) as PublishResult;
+      const responseText = await response.text();
+
+let data: PublishResult;
+
+if (!responseText.trim()) {
+  data = {
+    ok: false,
+    message: `The publishing route returned an empty response (${response.status} ${response.statusText}). Check the terminal running npm run dev for the server error.`,
+  };
+} else {
+  try {
+    data = JSON.parse(responseText) as PublishResult;
+  } catch {
+    data = {
+      ok: false,
+      message: `The publishing route returned invalid JSON (${response.status} ${response.statusText}): ${responseText.slice(
+        0,
+        500,
+      )}`,
+    };
+  }
+}
 
       setPublishResult(data);
 
@@ -1527,6 +1581,106 @@ formData.set(
                     gap: "1.5rem",
                   }}
                 >
+                  <label
+                    style={{
+                      display: "grid",
+                      gap: "0.55rem",
+                    }}
+                  >
+                    <span
+                      style={{
+                        color: "#c7a369",
+                        fontSize: "0.52rem",
+                        fontWeight: 700,
+                        letterSpacing: "0.15em",
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      Production month
+                    </span>
+
+                    <select
+                      value={productionFields.month}
+                      onChange={(event) =>
+                        updateProductionField(
+                          "month",
+                          event.target.value,
+                        )
+                      }
+                      required
+                      style={{
+                        width: "100%",
+                        border:
+                          "1px solid rgba(242, 238, 230, 0.2)",
+                        padding: "0.95rem 1rem",
+                        background: "#171614",
+                        color: "#f2eee6",
+                        font: "inherit",
+                      }}
+                    >
+                      <option value="">Select month</option>
+
+                      {MONTH_OPTIONS.map((month) => (
+                        <option
+                          key={month.value}
+                          value={month.value}
+                        >
+                          {month.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label
+                    style={{
+                      display: "grid",
+                      gap: "0.55rem",
+                    }}
+                  >
+                    <span
+                      style={{
+                        color: "#c7a369",
+                        fontSize: "0.52rem",
+                        fontWeight: 700,
+                        letterSpacing: "0.15em",
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      Production year
+                    </span>
+
+                    <select
+                      value={productionFields.year}
+                      onChange={(event) =>
+                        updateProductionField(
+                          "year",
+                          event.target.value,
+                        )
+                      }
+                      required
+                      style={{
+                        width: "100%",
+                        border:
+                          "1px solid rgba(242, 238, 230, 0.2)",
+                        padding: "0.95rem 1rem",
+                        background: "#171614",
+                        color: "#f2eee6",
+                        font: "inherit",
+                      }}
+                    >
+                      <option value="">Select year</option>
+
+                      {YEAR_OPTIONS.map((year) => (
+                        <option
+                          key={year}
+                          value={String(year)}
+                        >
+                          {year}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
                   {[
                     {
                       label: "Production title",
@@ -1535,10 +1689,6 @@ formData.set(
                     {
                       label: "Venue",
                       field: "venue",
-                    },
-                    {
-                      label: "Year",
-                      field: "year",
                     },
                     {
                       label: "Director",

@@ -1,26 +1,17 @@
 import type { Production } from "./types";
 
-import { aliceInWonderland } from "./alice-in-wonderland";
-import { extraordinaryWomen } from "./extraordinary-women";
-import { girlInTheMachine } from "./girl-in-the-machine";
-import { godspell } from "./godspell";
-import { lonelyLondoners } from "./lonely-londoners";
-import { theCode } from "./the-code";
+import { productionEntries } from "./generated";
 
-import { footfallsAndRockaby } from "./footfalls-and-rockaby";
-import { aSherlockCarol } from "./a-sherlock-carol";
-import { aRoleToDieFor } from "./a-role-to-die-for";
-export const productions: Production[] = [
-  aRoleToDieFor,
-  aSherlockCarol,
-  footfallsAndRockaby,
-  godspell,
-  theCode,
-  extraordinaryWomen,
-  lonelyLondoners,
-  aliceInWonderland,
-  girlInTheMachine,
-];
+function productionMonth(production: Production) {
+  return production.month ?? 0;
+}
+
+export const productions = [...productionEntries].sort(
+  (first, second) =>
+    second.year - first.year ||
+    productionMonth(second) - productionMonth(first) ||
+    first.title.localeCompare(second.title),
+);
 
 export function getProduction(slug: string) {
   const normalisedSlug = decodeURIComponent(slug)
@@ -29,7 +20,8 @@ export function getProduction(slug: string) {
 
   return productions.find(
     (production) =>
-      production.slug.trim().toLowerCase() === normalisedSlug,
+      production.slug.trim().toLowerCase() ===
+      normalisedSlug,
   );
 }
 
@@ -40,14 +32,19 @@ export function getNextProduction(slug: string) {
 
   const currentIndex = productions.findIndex(
     (production) =>
-      production.slug.trim().toLowerCase() === normalisedSlug,
+      production.slug.trim().toLowerCase() ===
+      normalisedSlug,
   );
 
-  if (currentIndex === -1 || productions.length < 2) {
+  if (
+    currentIndex === -1 ||
+    productions.length < 2
+  ) {
     return undefined;
   }
 
-  const nextIndex = (currentIndex + 1) % productions.length;
+  const nextIndex =
+    (currentIndex + 1) % productions.length;
 
   return productions[nextIndex];
 }

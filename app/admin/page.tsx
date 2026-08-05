@@ -20,6 +20,14 @@ const adminSections = [
   },
   {
     number: "02",
+    title: "Selected Work",
+    description:
+      "Upload, arrange and remove the photographs used in the curated public portfolio.",
+    href: "/admin/selected-work",
+    status: "Available",
+  },
+  {
+    number: "03",
     title: "Productions",
     description:
       "Review, edit and manage the productions already included in the archive.",
@@ -27,7 +35,7 @@ const adminSections = [
     status: "Coming next",
   },
   {
-    number: "03",
+    number: "04",
     title: "People",
     description:
       "Manage directors, designers, choreographers and their professional links.",
@@ -35,7 +43,7 @@ const adminSections = [
     status: "Planned",
   },
   {
-    number: "04",
+    number: "05",
     title: "Venues",
     description:
       "Manage theatre information and explore every production photographed at each venue.",
@@ -48,9 +56,7 @@ export default function AdminPage() {
   return (
     <main className="admin-dashboard">
       <section className="admin-dashboard-intro">
-        <p className="admin-dashboard-eyebrow">
-          Steve Gregson Archive
-        </p>
+        <p className="admin-dashboard-eyebrow">Steve Gregson Archive</p>
 
         <h1>Admin</h1>
 
@@ -73,9 +79,7 @@ export default function AdminPage() {
               className="admin-dashboard-card"
               key={section.title}
             >
-              <span className="admin-dashboard-number">
-                {section.number}
-              </span>
+              <span className="admin-dashboard-number">{section.number}</span>
 
               <div className="admin-dashboard-card-copy">
                 <h2>{section.title}</h2>
@@ -92,9 +96,7 @@ export default function AdminPage() {
               className="admin-dashboard-card admin-dashboard-card-disabled"
               key={section.title}
             >
-              <span className="admin-dashboard-number">
-                {section.number}
-              </span>
+              <span className="admin-dashboard-number">{section.number}</span>
 
               <div className="admin-dashboard-card-copy">
                 <h2>{section.title}</h2>
@@ -219,8 +221,7 @@ export default function AdminPage() {
           transition: transform 180ms ease;
         }
 
-        a.admin-dashboard-card:hover
-          .admin-dashboard-card-meta b {
+        a.admin-dashboard-card:hover .admin-dashboard-card-meta b {
           transform: translateX(0.3rem);
         }
 

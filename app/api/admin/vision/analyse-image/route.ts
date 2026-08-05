@@ -21,7 +21,16 @@ const ALLOWED_LAYOUTS = [
   "wide-right",
 ] as const;
 
+const SELECTED_WORK_CATEGORIES = [
+  "production",
+  "rehearsal",
+  "campaign",
+] as const;
+
 type GalleryLayout = (typeof ALLOWED_LAYOUTS)[number];
+
+type SelectedWorkCategory =
+  (typeof SELECTED_WORK_CATEGORIES)[number];
 
 type ProductionCredit = {
   role: string;
@@ -49,6 +58,7 @@ type ProductionData = {
 
 type AnalyseImageRequest = {
   slug?: unknown;
+  selectedWorkCategory?: unknown;
   image?: unknown;
 };
 
@@ -56,6 +66,12 @@ type VisionMetadata = {
   alt: string;
   filename: string;
   layout: GalleryLayout;
+};
+
+type AnalysisContext = {
+  sourceImage: Buffer;
+  prompt: string;
+  originalFilename: string;
 };
 
 const MAX_SOURCE_SIZE = 50 * 1024 * 1024;
@@ -71,6 +87,17 @@ function isSafeFilename(value: string) {
     !value.includes("\0") &&
     value !== "." &&
     value !== ".."
+  );
+}
+
+function isSelectedWorkCategory(
+  value: unknown,
+): value is SelectedWorkCategory {
+  return (
+    typeof value === "string" &&
+    SELECTED_WORK_CATEGORIES.includes(
+      value as SelectedWorkCategory,
+    )
   );
 }
 
@@ -93,10 +120,14 @@ function normaliseFilename(
   originalFilename: string,
 ) {
   const originalExtension =
-    path.extname(originalFilename).toLowerCase() || ".jpg";
+    path.extname(originalFilename).toLowerCase() ||
+    ".jpg";
 
   const suggestedBase = path
-    .basename(suggestedFilename, path.extname(suggestedFilename))
+    .basename(
+      suggestedFilename,
+      path.extname(suggestedFilename),
+    )
     .toLowerCase()
     .normalize("NFKD")
     .replace(/[\u0300-\u036f]/g, "")
@@ -104,7 +135,9 @@ function normaliseFilename(
     .replace(/^-+|-+$/g, "")
     .slice(0, 90);
 
-  return `${suggestedBase || "theatre-production-image"}${originalExtension}`;
+  return `${
+    suggestedBase || "theatre-production-image"
+  }${originalExtension}`;
 }
 
 function validateMetadata(
@@ -144,9 +177,9 @@ function validateMetadata(
   };
 }
 
-function buildPrompt(
+function buildProductionPrompt(
   production: ProductionData,
-  image: ProductionImage | null,
+  image: ProductionImage,
   filename: string,
 ) {
   return [
@@ -159,13 +192,15 @@ function buildPrompt(
         venue: production.venue,
         year: production.year,
         description: production.description,
-        credits: production.credits.map((credit) => ({
-          role: credit.role,
-          name: credit.name,
-        })),
+        credits: production.credits.map(
+          (credit) => ({
+            role: credit.role,
+            name: credit.name,
+          }),
+        ),
         currentFilename: filename,
-        currentAltText: image?.alt ?? "",
-        currentLayout: image?.layout ?? "wide",
+        currentAltText: image.alt,
+        currentLayout: image.layout,
       },
       null,
       2,
@@ -179,9 +214,140 @@ function buildPrompt(
     "- Suggest a lowercase, hyphen-separated, SEO-friendly filename without a path.",
     "- Do not include the photographer's name in every filename or alt text.",
     "- Choose the strongest layout for the composition from the allowed values.",
-    `- Allowed layouts: ${ALLOWED_LAYOUTS.join(", ")}.`,
+    `- Allowed layouts: ${ALLOWED_LAYOUTS.join(
+      ", ",
+    )}.`,
     "- Return only the structured metadata requested by the response schema.",
   ].join("\n");
+}
+
+function buildSelectedWorkPrompt(
+  category: SelectedWorkCategory,
+  filename: string,
+) {
+  const categoryContext: Record<
+    SelectedWorkCategory,
+    string
+  > = {
+    production:
+      "Production photography showing live performance, staging, lighting, design, movement, atmosphere, and dramatic action.",
+    rehearsal:
+      "Rehearsal or backstage photography showing theatrical process, preparation, collaboration, creative work, and candid moments off stage.",
+    campaign:
+      "Campaign, press, marketing, publicity, or PR photography created to promote a theatre production, company, performer, or creative project.",
+  };
+
+  return [
+    "Create metadata for one image in the Selected Work portfolio of a professional theatre photographer.",
+    "",
+    "Selected Work category:",
+    categoryContext[category],
+    "",
+    "Current filename:",
+    filename,
+    "",
+    "Requirements:",
+    "- Write concise, factual alt text, ideally under 140 characters.",
+    "- Do not begin with 'image of', 'photo of', or 'photograph of'.",
+    "- Describe only what is visibly supported by the photograph.",
+    "- Mention performance, staging, action, composition, lighting, costume, setting, or mood only when useful.",
+    "- Do not guess a person's identity, character name, production title, venue, or company.",
+    "- Suggest a lowercase, hyphen-separated, SEO-friendly filename without a path.",
+    "- Do not include the photographer's name in every filename or alt text.",
+    "- Choose the strongest layout for the composition from the allowed values.",
+    `- Allowed layouts: ${ALLOWED_LAYOUTS.join(
+      ", ",
+    )}.`,
+    "- Return only the structured metadata requested by the response schema.",
+  ].join("\n");
+}
+
+async function loadProductionContext(
+  slug: string,
+  filename: string,
+): Promise<AnalysisContext> {
+  const productionFile = path.join(
+    process.cwd(),
+    "content",
+    "productions",
+    `${slug}.ts`,
+  );
+
+  const imageFile = path.join(
+    process.cwd(),
+    "public",
+    "images",
+    "productions",
+    slug,
+    filename,
+  );
+
+  const [productionSource, sourceImage] =
+    await Promise.all([
+      readFile(productionFile, "utf8"),
+      readFile(imageFile),
+    ]);
+
+  const production =
+    readProductionFromSource(productionSource);
+
+  if (production.slug !== slug) {
+    throw new Error(
+      "The production slug does not match its file.",
+    );
+  }
+
+  const galleryImage =
+    filename === production.hero
+      ? {
+          src: production.hero,
+          alt: production.heroAlt,
+          layout: "wide" as const,
+        }
+      : production.images.find(
+          (image) => image.src === filename,
+        );
+
+  if (!galleryImage) {
+    throw new Error(
+      "The image is not part of this production.",
+    );
+  }
+
+  return {
+    sourceImage,
+    prompt: buildProductionPrompt(
+      production,
+      galleryImage,
+      filename,
+    ),
+    originalFilename: filename,
+  };
+}
+
+async function loadSelectedWorkContext(
+  category: SelectedWorkCategory,
+  filename: string,
+): Promise<AnalysisContext> {
+  const imageFile = path.join(
+    process.cwd(),
+    "public",
+    "images",
+    "selected-work",
+    category,
+    filename,
+  );
+
+  const sourceImage = await readFile(imageFile);
+
+  return {
+    sourceImage,
+    prompt: buildSelectedWorkPrompt(
+      category,
+      filename,
+    ),
+    originalFilename: filename,
+  };
 }
 
 export async function POST(request: Request) {
@@ -190,8 +356,6 @@ export async function POST(request: Request) {
       (await request.json()) as AnalyseImageRequest;
 
     if (
-      typeof body.slug !== "string" ||
-      !isSafeSlug(body.slug) ||
       typeof body.image !== "string" ||
       !isSafeFilename(body.image)
     ) {
@@ -199,7 +363,30 @@ export async function POST(request: Request) {
         {
           ok: false,
           message:
-            "A valid production slug and image filename are required.",
+            "A valid image filename is required.",
+        },
+        { status: 400 },
+      );
+    }
+
+    const hasProductionSlug =
+      typeof body.slug === "string" &&
+      isSafeSlug(body.slug);
+
+    const hasSelectedWorkCategory =
+      isSelectedWorkCategory(
+        body.selectedWorkCategory,
+      );
+
+    if (
+      hasProductionSlug ===
+      hasSelectedWorkCategory
+    ) {
+      return Response.json(
+        {
+          ok: false,
+          message:
+            "Provide either a valid production slug or a valid Selected Work category.",
         },
         { status: 400 },
       );
@@ -217,7 +404,8 @@ export async function POST(request: Request) {
     }
 
     if (
-      process.env.BACKSTAGE_VISION_ENABLED !== "true"
+      process.env.BACKSTAGE_VISION_ENABLED !==
+      "true"
     ) {
       return Response.json(
         {
@@ -228,28 +416,20 @@ export async function POST(request: Request) {
       );
     }
 
-    const productionFile = path.join(
-      process.cwd(),
-      "content",
-      "productions",
-      `${body.slug}.ts`,
-    );
-    const imageFile = path.join(
-      process.cwd(),
-      "public",
-      "images",
-      "productions",
-      body.slug,
-      body.image,
-    );
+    const context = hasProductionSlug
+      ? await loadProductionContext(
+          body.slug as string,
+          body.image,
+        )
+      : await loadSelectedWorkContext(
+          body.selectedWorkCategory as SelectedWorkCategory,
+          body.image,
+        );
 
-    const [productionSource, sourceImage] =
-      await Promise.all([
-        readFile(productionFile, "utf8"),
-        readFile(imageFile),
-      ]);
-
-    if (sourceImage.byteLength > MAX_SOURCE_SIZE) {
+    if (
+      context.sourceImage.byteLength >
+      MAX_SOURCE_SIZE
+    ) {
       return Response.json(
         {
           ok: false,
@@ -260,38 +440,9 @@ export async function POST(request: Request) {
       );
     }
 
-    const production =
-      readProductionFromSource(productionSource);
-
-    if (production.slug !== body.slug) {
-      throw new Error(
-        "The production slug does not match its file.",
-      );
-    }
-
-    const galleryImage =
-      body.image === production.hero
-        ? {
-            src: production.hero,
-            alt: production.heroAlt,
-            layout: "wide" as const,
-          }
-        : production.images.find(
-            (image) => image.src === body.image,
-          ) ?? null;
-
-    if (!galleryImage) {
-      return Response.json(
-        {
-          ok: false,
-          message:
-            "The image is not part of this production.",
-        },
-        { status: 404 },
-      );
-    }
-
-    const analysisImage = await sharp(sourceImage)
+    const analysisImage = await sharp(
+      context.sourceImage,
+    )
       .rotate()
       .resize({
         width: 1600,
@@ -299,67 +450,73 @@ export async function POST(request: Request) {
         fit: "inside",
         withoutEnlargement: true,
       })
-      .jpeg({ quality: 82, mozjpeg: true })
+      .jpeg({
+        quality: 82,
+        mozjpeg: true,
+      })
       .toBuffer();
 
-    const imageDataUrl = `data:image/jpeg;base64,${analysisImage.toString(
-      "base64",
-    )}`;
+    const imageDataUrl =
+      `data:image/jpeg;base64,${analysisImage.toString(
+        "base64",
+      )}`;
 
-    const response = await openai.responses.create({
-      model:
-        process.env.OPENAI_VISION_MODEL?.trim() ||
-        "gpt-5",
-      reasoning: {
-        effort: "low",
-      },
-      text: {
-        format: {
-          type: "json_schema",
-          name: "theatre_image_metadata",
-          strict: true,
-          schema: {
-            type: "object",
-            additionalProperties: false,
-            properties: {
-              alt: {
-                type: "string",
+    const response =
+      await openai.responses.create({
+        model:
+          process.env.OPENAI_VISION_MODEL?.trim() ||
+          "gpt-5",
+        reasoning: {
+          effort: "low",
+        },
+        text: {
+          format: {
+            type: "json_schema",
+            name: "theatre_image_metadata",
+            strict: true,
+            schema: {
+              type: "object",
+              additionalProperties: false,
+              properties: {
+                alt: {
+                  type: "string",
+                },
+                filename: {
+                  type: "string",
+                },
+                layout: {
+                  type: "string",
+                  enum: [...ALLOWED_LAYOUTS],
+                },
               },
-              filename: {
-                type: "string",
-              },
-              layout: {
-                type: "string",
-                enum: [...ALLOWED_LAYOUTS],
-              },
+              required: [
+                "alt",
+                "filename",
+                "layout",
+              ],
             },
-            required: ["alt", "filename", "layout"],
           },
         },
-      },
-      input: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "input_text",
-              text: buildPrompt(
-                production,
-                galleryImage,
-                body.image,
-              ),
-            },
-            {
-              type: "input_image",
-              image_url: imageDataUrl,
-              detail: "high",
-            },
-          ],
-        },
-      ],
-    });
+        input: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "input_text",
+                text: context.prompt,
+              },
+              {
+                type: "input_image",
+                image_url: imageDataUrl,
+                detail: "high",
+              },
+            ],
+          },
+        ],
+      });
 
-    const output = response.output_text?.trim();
+    const output =
+      response.output_text?.trim();
 
     if (!output) {
       throw new Error(
@@ -369,12 +526,12 @@ export async function POST(request: Request) {
 
     const metadata = validateMetadata(
       JSON.parse(output) as unknown,
-      body.image,
+      context.originalFilename,
     );
 
     return Response.json({
       ok: true,
-      image: body.image,
+      image: context.originalFilename,
       metadata,
       model:
         process.env.OPENAI_VISION_MODEL?.trim() ||
@@ -392,7 +549,9 @@ export async function POST(request: Request) {
           ok: false,
           message: error.message,
         },
-        { status: error.status ?? 500 },
+        {
+          status: error.status ?? 500,
+        },
       );
     }
 
@@ -417,7 +576,9 @@ export async function POST(request: Request) {
 
     const status =
       message.includes("ENOENT") ||
-      message.includes("not part of this production")
+      message.includes(
+        "not part of this production",
+      )
         ? 404
         : 500;
 

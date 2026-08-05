@@ -2,8 +2,10 @@
 
 import Image from "next/image";
 import { useState } from "react";
-import ImageViewer from "./ImageViewer";
+
 import type { ProductionImage } from "../lib/productions";
+
+import ImageViewer from "./ImageViewer";
 
 type ProductionGalleryProps = {
   title: string;
@@ -21,7 +23,9 @@ export function ProductionGallery({
   hero,
   images,
 }: ProductionGalleryProps) {
-  const [viewerIndex, setViewerIndex] = useState<number | null>(null);
+  const [viewerIndex, setViewerIndex] = useState<
+    number | null
+  >(null);
 
   const viewerImages = [
     {
@@ -48,22 +52,19 @@ export function ProductionGallery({
             <button
               className="curated-production-image-button"
               type="button"
-              onClick={() => setViewerIndex(index + 1)}
-              aria-label={`Open photograph ${index + 2} fullscreen`}
+              onClick={() =>
+                setViewerIndex(index + 1)
+              }
+              aria-label={`Open photograph ${index + 2} from ${title} fullscreen`}
             >
               <Image
                 src={`${imageDirectory}/${image.src}`}
                 alt={image.alt}
                 width={2000}
                 height={1333}
-                sizes="(max-width: 768px) 100vw, 90vw"
+                sizes="(max-width: 768px) calc(100vw - 2.8rem), 90vw"
               />
             </button>
-
-            <figcaption>
-              {String(index + 2).padStart(2, "0")} /{" "}
-              {String(images.length + 1).padStart(2, "0")}
-            </figcaption>
           </figure>
         ))}
       </section>

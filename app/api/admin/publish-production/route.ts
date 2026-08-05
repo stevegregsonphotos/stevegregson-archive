@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import {
   access,
   mkdir,
-  readFile,
+  readdir,
   rename,
   rm,
   writeFile,
@@ -10,11 +10,21 @@ import {
 import path from "node:path";
 
 import JSZip from "jszip";
+import sharp from "sharp";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const MAX_UPLOAD_SIZE = 500 * 1024 * 1024;
+const MAX_PUBLISHED_IMAGE_WIDTH = 2560;
+const PUBLISHED_WEBP_QUALITY = 82;
+const BLUR_PLACEHOLDER_WIDTH = 24;
+
+const RESERVED_PRODUCTION_FILES = new Set([
+  "generated.ts",
+  "index.ts",
+  "types.ts",
+]);
 
 const ALLOWED_LAYOUTS = new Set([
   "wide",
@@ -50,10 +60,17 @@ type PublishImage = {
     | "wide-right";
 };
 
+type PublishedImageAsset = {
+  sourceFilepath: string;
+  filename: string;
+  blurDataURL: string;
+};
+
 type PublishPayload = {
   slug: string;
   title: string;
   venue: string;
+  month: number;
   year: number;
   description: string;
   hero: {
@@ -76,7 +93,11 @@ function isSafeSlug(value: string) {
 }
 
 function isSafeArchivePath(value: string) {
-  if (!value || value.startsWith("/") || value.includes("\0")) {
+  if (
+    !value ||
+    value.startsWith("/") ||
+    value.includes("\0")
+  ) {
     return false;
   }
 
@@ -99,6 +120,23 @@ function isSafeFilename(value: string) {
   );
 }
 
+function createWebFilename(
+  filename: string,
+  prefix: string,
+) {
+  const parsed = path.parse(filename);
+
+  const stem = parsed.name
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/[’']/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+  return `${prefix}-${stem || "photograph"}.webp`;
+}
+
 function createExportName(slug: string) {
   const parts = slug.split("-");
 
@@ -111,8 +149,61 @@ function createExportName(slug: string) {
     .join("");
 }
 
-function escapeRegExp(value: string) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+function createRegistrySource(slugs: string[]) {
+  const registrations = [...new Set(slugs)]
+    .filter(isSafeSlug)
+    .sort((first, second) =>
+      first.localeCompare(second),
+    )
+    .map((slug) => ({
+      slug,
+      exportName: createExportName(slug),
+    }));
+
+  const imports = registrations.map(
+    ({ slug, exportName }) =>
+      `import { ${exportName} } from "./${slug}";`,
+  );
+
+  const entries = registrations.map(
+    ({ exportName }) => `  ${exportName},`,
+  );
+
+  return [
+    'import type { Production } from "./types";',
+    "",
+    ...imports,
+    "",
+    "export const productionEntries: Production[] = [",
+    ...entries,
+    "];",
+    "",
+  ].join("\n");
+}
+
+async function getExistingProductionSlugs(
+  productionDirectory: string,
+) {
+  const entries = await readdir(
+    productionDirectory,
+    {
+      withFileTypes: true,
+    },
+  );
+
+  return entries
+    .filter(
+      (entry) =>
+        entry.isFile() &&
+        entry.name.endsWith(".ts") &&
+        !RESERVED_PRODUCTION_FILES.has(
+          entry.name,
+        ),
+    )
+    .map((entry) =>
+      entry.name.slice(0, -3),
+    )
+    .filter(isSafeSlug);
 }
 
 function validatePayload(
@@ -122,7 +213,8 @@ function validatePayload(
     return false;
   }
 
-  const payload = value as Partial<PublishPayload>;
+  const payload =
+    value as Partial<PublishPayload>;
 
   if (
     typeof payload.slug !== "string" ||
@@ -131,6 +223,10 @@ function validatePayload(
     !payload.title.trim() ||
     typeof payload.venue !== "string" ||
     !payload.venue.trim() ||
+    typeof payload.month !== "number" ||
+    !Number.isInteger(payload.month) ||
+    payload.month < 1 ||
+    payload.month > 12 ||
     typeof payload.year !== "number" ||
     !Number.isInteger(payload.year) ||
     payload.year < 1800 ||
@@ -143,9 +239,13 @@ function validatePayload(
   if (
     !payload.hero ||
     typeof payload.hero.filepath !== "string" ||
-    !isSafeArchivePath(payload.hero.filepath) ||
+    !isSafeArchivePath(
+      payload.hero.filepath,
+    ) ||
     typeof payload.hero.filename !== "string" ||
-    !isSafeFilename(payload.hero.filename) ||
+    !isSafeFilename(
+      payload.hero.filename,
+    ) ||
     typeof payload.hero.alt !== "string" ||
     !payload.hero.alt.trim()
   ) {
@@ -175,50 +275,108 @@ function validatePayload(
       (image) =>
         !image ||
         typeof image.filepath !== "string" ||
-        !isSafeArchivePath(image.filepath) ||
+        !isSafeArchivePath(
+          image.filepath,
+        ) ||
         typeof image.filename !== "string" ||
-        !isSafeFilename(image.filename) ||
+        !isSafeFilename(
+          image.filename,
+        ) ||
         typeof image.alt !== "string" ||
         !image.alt.trim() ||
         typeof image.layout !== "string" ||
-        !ALLOWED_LAYOUTS.has(image.layout),
+        !ALLOWED_LAYOUTS.has(
+          image.layout,
+        ),
     )
+  ) {
+    return false;
+  }
+
+  const sourcePaths = [
+    payload.hero.filepath,
+    ...payload.images.map(
+      (image) => image.filepath,
+    ),
+  ];
+
+  if (
+    new Set(sourcePaths).size !==
+    sourcePaths.length
   ) {
     return false;
   }
 
   const filenames = [
     payload.hero.filename,
-    ...payload.images.map((image) => image.filename),
+    ...payload.images.map(
+      (image) => image.filename,
+    ),
   ];
 
-  return new Set(filenames).size === filenames.length;
-}
-
-function createProductionSource(
+  return (
+    new Set(filenames).size ===
+    filenames.length
+  );
+}function createProductionSource(
   payload: PublishPayload,
   exportName: string,
+  heroAsset: PublishedImageAsset,
+  galleryAssets: PublishedImageAsset[],
 ) {
+  const galleryAssetByPath = new Map(
+    galleryAssets.map((asset) => [
+      asset.sourceFilepath,
+      asset,
+    ]),
+  );
+
   const production = {
     slug: payload.slug,
     title: payload.title.trim(),
     venue: payload.venue.trim(),
+    month: payload.month,
     year: payload.year,
-    description: payload.description.trim(),
-    hero: payload.hero.filename,
+    description:
+      payload.description.trim(),
+    hero: heroAsset.filename,
     heroAlt: payload.hero.alt.trim(),
-    credits: payload.credits.map((credit) => ({
-      role: credit.role.trim(),
-      name: credit.name.trim(),
-      ...(credit.website?.trim()
-        ? { website: credit.website.trim() }
-        : {}),
-    })),
-    images: payload.images.map((image) => ({
-      src: image.filename,
-      alt: image.alt.trim(),
-      layout: image.layout,
-    })),
+    heroBlurDataURL:
+      heroAsset.blurDataURL,
+    credits: payload.credits.map(
+      (credit) => ({
+        role: credit.role.trim(),
+        name: credit.name.trim(),
+        ...(credit.website?.trim()
+          ? {
+              website:
+                credit.website.trim(),
+            }
+          : {}),
+      }),
+    ),
+    images: payload.images.map(
+      (image) => {
+        const asset =
+          galleryAssetByPath.get(
+            image.filepath,
+          );
+
+        if (!asset) {
+          throw new Error(
+            `No published asset was created for "${image.filepath}".`,
+          );
+        }
+
+        return {
+          src: asset.filename,
+          alt: image.alt.trim(),
+          layout: image.layout,
+          blurDataURL:
+            asset.blurDataURL,
+        };
+      },
+    ),
   };
 
   return [
@@ -233,99 +391,102 @@ function createProductionSource(
   ].join("\n");
 }
 
-function updateProductionIndex(
-  source: string,
-  slug: string,
-  exportName: string,
-) {
-  const importLine = `import { ${exportName} } from "./${slug}";`;
-
-  if (
-    source.includes(importLine) ||
-    new RegExp(
-      `from\\s+["']\\./${escapeRegExp(slug)}["']`,
-    ).test(source)
-  ) {
-    throw new Error(
-      `The productions index already imports "${slug}".`,
-    );
-  }
-
-  const imports = [
-    ...source.matchAll(
-      /^import\s+\{[^}]+\}\s+from\s+["']\.\/[^"']+["'];$/gm,
-    ),
-  ];
-
-  if (imports.length === 0) {
-    throw new Error(
-      "Could not locate the production imports in content/productions/index.ts.",
-    );
-  }
-
-  const finalImport = imports.at(-1);
-
-  if (!finalImport || finalImport.index === undefined) {
-    throw new Error(
-      "Could not locate the final production import.",
-    );
-  }
-
-  const importInsertAt =
-    finalImport.index + finalImport[0].length;
-
-  let updated =
-    source.slice(0, importInsertAt) +
-    `\n${importLine}` +
-    source.slice(importInsertAt);
-
-  const arrayMatch = updated.match(
-    /export const productions:\s*Production\[\]\s*=\s*\[\s*\n/,
-  );
-
-  if (!arrayMatch || arrayMatch.index === undefined) {
-    throw new Error(
-      "Could not locate the productions array in content/productions/index.ts.",
-    );
-  }
-
-  const arrayInsertAt =
-    arrayMatch.index + arrayMatch[0].length;
-
-  updated =
-    updated.slice(0, arrayInsertAt) +
-    `  ${exportName},\n` +
-    updated.slice(arrayInsertAt);
-
-  return updated;
-}
-
-async function extractArchiveFile(
+async function publishArchiveImage(
   zip: JSZip,
-  archivePath: string,
-  destinationPath: string,
-) {
-  const entry = zip.file(archivePath);
+  sourceFilepath: string,
+  outputFilename: string,
+  destinationDirectory: string,
+): Promise<PublishedImageAsset> {
+  const entry = zip.file(sourceFilepath);
 
   if (!entry) {
     throw new Error(
-      `The ZIP no longer contains "${archivePath}".`,
+      `The ZIP no longer contains "${sourceFilepath}".`,
     );
   }
 
-  const buffer = await entry.async("nodebuffer");
-  await writeFile(destinationPath, buffer);
+  const sourceBuffer =
+    await entry.async("nodebuffer");
+
+  const orientedImage = sharp(
+    sourceBuffer,
+    {
+      failOn: "none",
+    },
+  ).rotate();
+
+  const publishedBuffer =
+    await orientedImage
+      .clone()
+      .resize({
+        width: MAX_PUBLISHED_IMAGE_WIDTH,
+        fit: "inside",
+        withoutEnlargement: true,
+      })
+      .webp({
+        quality: PUBLISHED_WEBP_QUALITY,
+        effort: 5,
+        smartSubsample: true,
+      })
+      .toBuffer();
+
+  const blurBuffer =
+    await orientedImage
+      .clone()
+      .resize({
+        width: BLUR_PLACEHOLDER_WIDTH,
+        fit: "inside",
+        withoutEnlargement: true,
+      })
+      .blur(0.5)
+      .webp({
+        quality: 38,
+        effort: 3,
+      })
+      .toBuffer();
+
+  await writeFile(
+    path.join(
+      destinationDirectory,
+      outputFilename,
+    ),
+    publishedBuffer,
+  );
+
+  return {
+    sourceFilepath,
+    filename: outputFilename,
+    blurDataURL: `data:image/webp;base64,${blurBuffer.toString(
+      "base64",
+    )}`,
+  };
 }
 
-export async function POST(request: Request) {
-  let stagingRoot: string | null = null;
-  let createdImageDirectory: string | null = null;
-  let createdProductionFile: string | null = null;
+export async function POST(
+  request: Request,
+) {
+  let stagingRoot: string | null =
+    null;
+
+  let createdImageDirectory:
+    | string
+    | null = null;
+
+  let createdProductionFile:
+    | string
+    | null = null;
 
   try {
-    const formData = await request.formData();
-    const upload = formData.get("productionArchive");
-    const rawPayload = formData.get("productionData");
+    const formData =
+      await request.formData();
+
+    const upload = formData.get(
+      "productionArchive",
+    );
+
+    const rawPayload = formData.get(
+      "productionData",
+    );
 
     if (!(upload instanceof File)) {
       return Response.json(
@@ -334,18 +495,26 @@ export async function POST(request: Request) {
           message:
             "The original production ZIP is required.",
         },
-        { status: 400 },
+        {
+          status: 400,
+        },
       );
     }
 
-    if (!upload.name.toLowerCase().endsWith(".zip")) {
+    if (
+      !upload.name
+        .toLowerCase()
+        .endsWith(".zip")
+    ) {
       return Response.json(
         {
           ok: false,
           message:
             "The production archive must be a ZIP file.",
         },
-        { status: 400 },
+        {
+          status: 400,
+        },
       );
     }
 
@@ -362,26 +531,34 @@ export async function POST(request: Request) {
               : "The production ZIP is larger than 500 MB.",
         },
         {
-          status: upload.size === 0 ? 400 : 413,
+          status:
+            upload.size === 0
+              ? 400
+              : 413,
         },
       );
     }
 
-    if (typeof rawPayload !== "string") {
+    if (
+      typeof rawPayload !== "string"
+    ) {
       return Response.json(
         {
           ok: false,
           message:
             "Production publishing data is missing.",
         },
-        { status: 400 },
+        {
+          status: 400,
+        },
       );
     }
 
     let parsedPayload: unknown;
 
     try {
-      parsedPayload = JSON.parse(rawPayload);
+      parsedPayload =
+        JSON.parse(rawPayload);
     } catch {
       return Response.json(
         {
@@ -389,36 +566,50 @@ export async function POST(request: Request) {
           message:
             "Production publishing data is not valid JSON.",
         },
-        { status: 400 },
+        {
+          status: 400,
+        },
       );
     }
 
-    if (!validatePayload(parsedPayload)) {
+    if (
+      !validatePayload(
+        parsedPayload,
+      )
+    ) {
       return Response.json(
         {
           ok: false,
           message:
             "Production publishing data is incomplete or invalid.",
         },
-        { status: 400 },
+        {
+          status: 400,
+        },
       );
     }
 
     const payload = parsedPayload;
     const projectRoot = process.cwd();
-    const productionDirectory = path.join(
-      projectRoot,
-      "content",
-      "productions",
-    );
+
+    const productionDirectory =
+      path.join(
+        projectRoot,
+        "content",
+        "productions",
+      );
+
     const productionFile = path.join(
       productionDirectory,
       `${payload.slug}.ts`,
     );
-    const productionIndexFile = path.join(
-      productionDirectory,
-      "index.ts",
-    );
+
+    const generatedRegistryFile =
+      path.join(
+        productionDirectory,
+        "generated.ts",
+      );
+
     const imagesDirectory = path.join(
       projectRoot,
       "public",
@@ -427,31 +618,49 @@ export async function POST(request: Request) {
       payload.slug,
     );
 
-    if (await exists(productionFile)) {
+    if (
+      await exists(productionFile)
+    ) {
       return Response.json(
         {
           ok: false,
           message: `A production file already exists for "${payload.slug}".`,
         },
-        { status: 409 },
+        {
+          status: 409,
+        },
       );
     }
 
-    if (await exists(imagesDirectory)) {
+    if (
+      await exists(imagesDirectory)
+    ) {
       return Response.json(
         {
           ok: false,
           message: `An image folder already exists for "${payload.slug}".`,
         },
-        { status: 409 },
+        {
+          status: 409,
+        },
       );
     }
 
-    const exportName = createExportName(payload.slug);
-    const archiveBuffer = await upload.arrayBuffer();
-    const zip = await JSZip.loadAsync(archiveBuffer);
+    const exportName =
+      createExportName(
+        payload.slug,
+      );
+
+    const archiveBuffer =
+      await upload.arrayBuffer();
+
+    const zip =
+      await JSZip.loadAsync(
+        archiveBuffer,
+      );
 
     const stagingId = randomUUID();
+
     stagingRoot = path.join(
       projectRoot,
       ".tmp",
@@ -459,45 +668,69 @@ export async function POST(request: Request) {
       stagingId,
     );
 
-    const stagedImagesDirectory = path.join(
-      stagingRoot,
-      "images",
-    );
-    const stagedProductionFile = path.join(
-      stagingRoot,
-      `${payload.slug}.ts`,
-    );
+    const stagedImagesDirectory =
+      path.join(
+        stagingRoot,
+        "images",
+      );
 
-    await mkdir(stagedImagesDirectory, {
-      recursive: true,
-    });
+    const stagedProductionFile =
+      path.join(
+        stagingRoot,
+        `${payload.slug}.ts`,
+      );
 
-    const filesToCopy = [
+    const stagedRegistryFile =
+      path.join(
+        stagingRoot,
+        "generated.ts",
+      );
+
+    await mkdir(
+      stagedImagesDirectory,
       {
-        filepath: payload.hero.filepath,
-        filename: payload.hero.filename,
+        recursive: true,
       },
-      ...payload.images.map((image) => ({
-        filepath: image.filepath,
-        filename: image.filename,
-      })),
-    ];
-
-    for (const file of filesToCopy) {
-      await extractArchiveFile(
+    );    const heroAsset =
+      await publishArchiveImage(
         zip,
-        file.filepath,
-        path.join(
+        payload.hero.filepath,
+        createWebFilename(
+          payload.hero.filename,
+          "hero",
+        ),
+        stagedImagesDirectory,
+      );
+
+    const galleryAssets: PublishedImageAsset[] =
+      [];
+
+    for (const [index, image] of
+      payload.images.entries()) {
+      const prefix = String(
+        index + 1,
+      ).padStart(2, "0");
+
+      galleryAssets.push(
+        await publishArchiveImage(
+          zip,
+          image.filepath,
+          createWebFilename(
+            image.filename,
+            prefix,
+          ),
           stagedImagesDirectory,
-          file.filename,
         ),
       );
     }
 
-    const productionSource = createProductionSource(
-      payload,
-      exportName,
-    );
+    const productionSource =
+      createProductionSource(
+        payload,
+        exportName,
+        heroAsset,
+        galleryAssets,
+      );
 
     await writeFile(
       stagedProductionFile,
@@ -505,56 +738,88 @@ export async function POST(request: Request) {
       "utf8",
     );
 
-    const currentIndex = await readFile(
-      productionIndexFile,
+    await mkdir(
+      productionDirectory,
+      {
+        recursive: true,
+      },
+    );
+
+    const existingSlugs =
+      await getExistingProductionSlugs(
+        productionDirectory,
+      );
+
+    const registrySource =
+      createRegistrySource([
+        ...existingSlugs,
+        payload.slug,
+      ]);
+
+    await writeFile(
+      stagedRegistryFile,
+      registrySource,
       "utf8",
     );
 
-    const updatedIndex = updateProductionIndex(
-      currentIndex,
-      payload.slug,
-      exportName,
+    await mkdir(
+      path.dirname(
+        imagesDirectory,
+      ),
+      {
+        recursive: true,
+      },
     );
-
-    await mkdir(path.dirname(imagesDirectory), {
-      recursive: true,
-    });
 
     await rename(
       stagedImagesDirectory,
       imagesDirectory,
     );
-    createdImageDirectory = imagesDirectory;
+
+    createdImageDirectory =
+      imagesDirectory;
 
     await rename(
       stagedProductionFile,
       productionFile,
     );
-    createdProductionFile = productionFile;
 
-    await writeFile(
-      productionIndexFile,
-      updatedIndex,
-      "utf8",
+    createdProductionFile =
+      productionFile;
+
+    await rename(
+      stagedRegistryFile,
+      generatedRegistryFile,
     );
 
     await rm(stagingRoot, {
       recursive: true,
       force: true,
-    });
+    }).catch(() => undefined);
+
     stagingRoot = null;
 
     return Response.json({
       ok: true,
-      message: `${payload.title} was published to the local archive.`,
+      message: `${payload.title} was published and registered automatically.`,
       production: {
         slug: payload.slug,
-        title: payload.title,
+        title: payload.title.trim(),
+        month: payload.month,
+        year: payload.year,
         url: `/productions/${payload.slug}`,
-        imageCount: payload.images.length,
-        hero: payload.hero.filename,
-        productionFile: `content/productions/${payload.slug}.ts`,
-        imageDirectory: `public/images/productions/${payload.slug}`,
+        imageCount:
+          payload.images.length,
+        hero:
+          heroAsset.filename,
+        productionFile:
+          `content/productions/${payload.slug}.ts`,
+        imageDirectory:
+          `public/images/productions/${payload.slug}`,
+        registryFile:
+          "content/productions/generated.ts",
+        registration:
+          "automatic",
       },
     });
   } catch (error) {
@@ -564,16 +829,22 @@ export async function POST(request: Request) {
     );
 
     if (createdProductionFile) {
-      await rm(createdProductionFile, {
-        force: true,
-      }).catch(() => undefined);
+      await rm(
+        createdProductionFile,
+        {
+          force: true,
+        },
+      ).catch(() => undefined);
     }
 
     if (createdImageDirectory) {
-      await rm(createdImageDirectory, {
-        recursive: true,
-        force: true,
-      }).catch(() => undefined);
+      await rm(
+        createdImageDirectory,
+        {
+          recursive: true,
+          force: true,
+        },
+      ).catch(() => undefined);
     }
 
     if (stagingRoot) {
@@ -591,7 +862,9 @@ export async function POST(request: Request) {
             ? error.message
             : "The production could not be published.",
       },
-      { status: 500 },
+      {
+        status: 500,
+      },
     );
   }
 }

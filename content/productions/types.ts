@@ -19,6 +19,7 @@ export type ProductionImage = {
   src: string;
   alt: string;
   layout: GalleryLayout;
+  blurDataURL?: string;
   suggestedFilename?: string;
 };
 
@@ -26,10 +27,12 @@ export type Production = {
   slug: string;
   title: string;
   venue: string;
+  month?: number;
   year: number;
   description: string;
   hero: string;
   heroAlt: string;
+  heroBlurDataURL?: string;
   credits: ProductionCredit[];
   images: ProductionImage[];
 };
