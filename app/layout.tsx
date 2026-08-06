@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+
+import PublicChrome from "../components/PublicChrome";
+
 import "./globals.css";
-import Header from "../components/Header";
-import Footer from "../components/footer";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -19,17 +20,21 @@ export const metadata: Metadata = {
   description: "The Steve Gregson Archive",
 };
 
+type RootLayoutProps = Readonly<{
+  children: React.ReactNode;
+}>;
+
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: RootLayoutProps) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <Header />
-        {children}
-<Footer />
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      >
+        <PublicChrome>
+          {children}
+        </PublicChrome>
       </body>
     </html>
   );

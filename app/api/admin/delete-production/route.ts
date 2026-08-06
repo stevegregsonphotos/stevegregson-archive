@@ -2,15 +2,26 @@ import { randomUUID } from "node:crypto";
 import {
   access,
   mkdir,
-  readFile,
+  readdir,
   rename,
   rm,
   writeFile,
 } from "node:fs/promises";
 import path from "node:path";
 
+import {
+  createUnauthorizedResponse,
+  isBackstageRequestAuthenticated,
+} from "../../../../lib/backstage-auth";
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+const RESERVED_PRODUCTION_FILES = new Set([
+  "generated.ts",
+  "index.ts",
+  "types.ts",
+]);
 
 type DeleteRequest = {
   slug?: unknown;
@@ -27,51 +38,102 @@ function exists(targetPath: string) {
     .catch(() => false);
 }
 
-function escapeRegExp(value: string) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+function createExportName(slug: string) {
+  return slug
+    .split("-")
+    .map((part, index) =>
+      index === 0
+        ? part
+        : `${part.charAt(0).toUpperCase()}${part.slice(1)}`,
+    )
+    .join("");
 }
 
-function removeProductionFromIndex(
-  source: string,
-  slug: string,
-  exportName: string,
+function createRegistrySource(slugs: string[]) {
+  const registrations = [...new Set(slugs)]
+    .filter(isSafeSlug)
+    .sort((first, second) =>
+      first.localeCompare(second),
+    )
+    .map((slug) => ({
+      slug,
+      exportName: createExportName(slug),
+    }));
+
+  const imports = registrations.map(
+    ({ slug, exportName }) =>
+      `import { ${exportName} } from "./${slug}";`,
+  );
+
+  const entries = registrations.map(
+    ({ exportName }) => `  ${exportName},`,
+  );
+
+  return [
+    'import type { Production } from "./types";',
+    "",
+    ...imports,
+    "",
+    "export const productionEntries: Production[] = [",
+    ...entries,
+    "];",
+    "",
+  ].join("\n");
+}
+
+async function getProductionSlugs(
+  productionDirectory: string,
 ) {
-  const escapedSlug = escapeRegExp(slug);
-  const escapedExportName = escapeRegExp(exportName);
-
-  const importPattern = new RegExp(
-    `^import\\s+\\{\\s*${escapedExportName}\\s*\\}\\s+from\\s+["']\\./${escapedSlug}["'];?\\s*\\n?`,
-    "m",
-  );
-  const arrayEntryPattern = new RegExp(
-    `^\\s*${escapedExportName},\\s*\\n`,
-    "m",
+  const entries = await readdir(
+    productionDirectory,
+    {
+      withFileTypes: true,
+    },
   );
 
-  const withoutImport = source.replace(importPattern, "");
-  const updated = withoutImport.replace(arrayEntryPattern, "");
+  return entries
+    .filter(
+      (entry) =>
+        entry.isFile() &&
+        entry.name.endsWith(".ts") &&
+        !RESERVED_PRODUCTION_FILES.has(
+          entry.name,
+        ),
+    )
+    .map((entry) =>
+      entry.name.slice(0, -3),
+    )
+    .filter(isSafeSlug);
+}
 
-  if (withoutImport === source || updated === withoutImport) {
-    throw new Error(
-      "The production could not be removed from the production index.",
-    );
+export async function POST(
+  request: Request,
+) {
+  if (
+    !isBackstageRequestAuthenticated(
+      request,
+    )
+  ) {
+    return createUnauthorizedResponse();
   }
 
-  return updated;
-}
+  let stagingRoot: string | null =
+    null;
 
-export async function POST(request: Request) {
-  let stagingRoot: string | null = null;
-  let stagedProductionFile: string | null = null;
-  let stagedImageDirectory: string | null = null;
-  let indexUpdated = false;
-  let currentIndex = "";
+  let stagedProductionFile:
+    | string
+    | null = null;
+
+  let stagedImageDirectory:
+    | string
+    | null = null;
+
   let productionFile = "";
   let imageDirectory = "";
-  let productionIndexFile = "";
 
   try {
-    const body = (await request.json()) as DeleteRequest;
+    const body =
+      (await request.json()) as DeleteRequest;
 
     if (
       typeof body.slug !== "string" ||
@@ -80,78 +142,98 @@ export async function POST(request: Request) {
       return Response.json(
         {
           ok: false,
-          message: "A valid production slug is required.",
+          message:
+            "A valid production slug is required.",
         },
-        { status: 400 },
+        {
+          status: 400,
+        },
       );
     }
 
-    if (body.confirmation !== "DELETE") {
+    if (
+      body.confirmation !== "DELETE"
+    ) {
       return Response.json(
         {
           ok: false,
-          message: "Type DELETE to confirm permanent deletion.",
+          message:
+            "Type DELETE to confirm permanent deletion.",
         },
-        { status: 400 },
+        {
+          status: 400,
+        },
       );
     }
 
+    const slug = body.slug;
     const projectRoot = process.cwd();
-    const productionDirectory = path.join(
-      projectRoot,
-      "content",
-      "productions",
-    );
+
+    const productionDirectory =
+      path.join(
+        projectRoot,
+        "content",
+        "productions",
+      );
 
     productionFile = path.join(
       productionDirectory,
-      `${body.slug}.ts`,
+      `${slug}.ts`,
     );
-    productionIndexFile = path.join(
-      productionDirectory,
-      "index.ts",
-    );
+
+    const generatedRegistryFile =
+      path.join(
+        productionDirectory,
+        "generated.ts",
+      );
+
     imageDirectory = path.join(
       projectRoot,
       "public",
       "images",
       "productions",
-      body.slug,
+      slug,
     );
 
-    if (!(await exists(productionFile))) {
+    if (
+      !(await exists(productionFile))
+    ) {
       return Response.json(
         {
           ok: false,
-          message: "That production no longer exists.",
+          message:
+            "That production no longer exists.",
         },
-        { status: 404 },
+        {
+          status: 404,
+        },
       );
     }
 
-    const productionSource = await readFile(
-      productionFile,
-      "utf8",
-    );
-    const exportMatch = productionSource.match(
-      /export const\s+([A-Za-z0-9_]+)\s*:/,
-    );
+    const existingSlugs =
+      await getProductionSlugs(
+        productionDirectory,
+      );
 
-    if (!exportMatch) {
+    const remainingSlugs =
+      existingSlugs.filter(
+        (existingSlug) =>
+          existingSlug !== slug,
+      );
+
+    if (
+      remainingSlugs.length ===
+      existingSlugs.length
+    ) {
       throw new Error(
-        "The production export name could not be found.",
+        "The production could not be found in the generated registry.",
       );
     }
 
-    currentIndex = await readFile(
-      productionIndexFile,
-      "utf8",
-    );
-    const updatedIndex = removeProductionFromIndex(
-      currentIndex,
-      body.slug,
-      exportMatch[1],
-    );
+    const updatedRegistry =
+      createRegistrySource(
+        remainingSlugs,
+      );
 
     stagingRoot = path.join(
       projectRoot,
@@ -159,57 +241,71 @@ export async function POST(request: Request) {
       "backstage-delete",
       randomUUID(),
     );
-    await mkdir(stagingRoot, { recursive: true });
 
-    stagedProductionFile = path.join(
-      stagingRoot,
-      `${body.slug}.ts`,
-    );
-    await rename(productionFile, stagedProductionFile);
+    await mkdir(stagingRoot, {
+      recursive: true,
+    });
 
-    if (await exists(imageDirectory)) {
-      stagedImageDirectory = path.join(
+    stagedProductionFile =
+      path.join(
         stagingRoot,
-        "images",
+        `${slug}.ts`,
       );
-      await rename(imageDirectory, stagedImageDirectory);
+
+    await rename(
+      productionFile,
+      stagedProductionFile,
+    );
+
+    if (
+      await exists(imageDirectory)
+    ) {
+      stagedImageDirectory =
+        path.join(
+          stagingRoot,
+          "images",
+        );
+
+      await rename(
+        imageDirectory,
+        stagedImageDirectory,
+      );
     }
 
     await writeFile(
-      productionIndexFile,
-      updatedIndex,
+      generatedRegistryFile,
+      updatedRegistry,
       "utf8",
     );
-    indexUpdated = true;
 
     await rm(stagingRoot, {
       recursive: true,
       force: true,
     });
+
     stagingRoot = null;
     stagedProductionFile = null;
     stagedImageDirectory = null;
 
     return Response.json({
       ok: true,
-      message: "Production deleted permanently.",
-      redirectTo: "/archive",
+      message:
+        "Production deleted permanently.",
+      redirectTo:
+        "/admin/productions",
     });
   } catch (error) {
-    console.error("Production deletion failed:", error);
-
-    if (indexUpdated && currentIndex && productionIndexFile) {
-      await writeFile(
-        productionIndexFile,
-        currentIndex,
-        "utf8",
-      ).catch(() => undefined);
-    }
+    console.error(
+      "Production deletion failed:",
+      error,
+    );
 
     if (
       stagedProductionFile &&
       productionFile &&
-      (await exists(stagedProductionFile))
+      (await exists(
+        stagedProductionFile,
+      ))
     ) {
       await rename(
         stagedProductionFile,
@@ -220,7 +316,9 @@ export async function POST(request: Request) {
     if (
       stagedImageDirectory &&
       imageDirectory &&
-      (await exists(stagedImageDirectory))
+      (await exists(
+        stagedImageDirectory,
+      ))
     ) {
       await rename(
         stagedImageDirectory,
@@ -235,6 +333,46 @@ export async function POST(request: Request) {
       }).catch(() => undefined);
     }
 
+    /*
+     * Rebuild the registry from whatever production
+     * files currently exist after rollback.
+     */
+    try {
+      const projectRoot =
+        process.cwd();
+
+      const productionDirectory =
+        path.join(
+          projectRoot,
+          "content",
+          "productions",
+        );
+
+      const generatedRegistryFile =
+        path.join(
+          productionDirectory,
+          "generated.ts",
+        );
+
+      const currentSlugs =
+        await getProductionSlugs(
+          productionDirectory,
+        );
+
+      await writeFile(
+        generatedRegistryFile,
+        createRegistrySource(
+          currentSlugs,
+        ),
+        "utf8",
+      );
+    } catch (registryError) {
+      console.error(
+        "Production registry recovery failed:",
+        registryError,
+      );
+    }
+
     return Response.json(
       {
         ok: false,
@@ -243,7 +381,9 @@ export async function POST(request: Request) {
             ? error.message
             : "The production could not be deleted.",
       },
-      { status: 500 },
+      {
+        status: 500,
+      },
     );
   }
 }
