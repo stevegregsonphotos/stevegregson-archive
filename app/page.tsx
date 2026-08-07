@@ -1,6 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
 
+import selectedWorkData from "../content/selected-work.json";
+
 const trustedBy = [
   "National Theatre",
   "Chichester Festival Theatre",
@@ -11,20 +13,43 @@ const trustedBy = [
   "Jermyn Street Theatre",
 ];
 
-const selectedWork = [
+type CategoryId = "production" | "rehearsal" | "campaign";
+
+type SelectedWorkImage = {
+  filename: string;
+  alt: string;
+  uploadedAt: string;
+};
+
+type SelectedWorkData = Record<
+  CategoryId,
+  SelectedWorkImage[]
+>;
+
+const portfolio = selectedWorkData as SelectedWorkData;
+
+const workCards: Array<{
+  id: CategoryId;
+  title: string;
+  description: string;
+  href: string;
+}> = [
   {
+    id: "production",
     title: "Production Photography",
     description:
       "The energy, atmosphere and visual language of live performance.",
     href: "/selected-work#production",
   },
   {
+    id: "rehearsal",
     title: "Rehearsal & Backstage",
     description:
       "The process, collaboration and quieter moments behind the performance.",
     href: "/selected-work#rehearsal",
   },
   {
+    id: "campaign",
     title: "Campaign & PR",
     description:
       "Distinctive imagery created for press, publicity and production marketing.",
@@ -85,20 +110,31 @@ export default function Home() {
             </Link>
           </div>
 
-          <a href="#homepage-proof" className="explore-link">
+          <a
+            href="#homepage-proof"
+            className="explore-link"
+          >
             <span>Explore</span>
-            <span className="explore-line" aria-hidden="true" />
+
+            <span
+              className="explore-line"
+              aria-hidden="true"
+            />
           </a>
         </div>
       </section>
 
-      <section className="homepage-proof" id="homepage-proof">
+      <section
+        className="homepage-proof"
+        id="homepage-proof"
+      >
         <div className="homepage-proof-heading">
           <p>Trusted by</p>
 
           <h2>
-            Working across professional theatre, production marketing
-            and some of the UK&apos;s leading drama schools.
+            Working across professional theatre,
+            production marketing and some of the UK&apos;s
+            leading drama schools.
           </h2>
         </div>
 
@@ -109,6 +145,7 @@ export default function Home() {
           {trustedBy.map((client, index) => (
             <span key={client}>
               {client}
+
               {index < trustedBy.length - 1 ? (
                 <i aria-hidden="true">·</i>
               ) : null}
@@ -119,7 +156,7 @@ export default function Home() {
 
       <section className="homepage-work">
         <header className="homepage-work-heading">
-          <p>Selected work</p>
+          <p>Work</p>
 
           <h2>
             Explore photography built around the life of a
@@ -127,30 +164,87 @@ export default function Home() {
           </h2>
         </header>
 
-        <div className="homepage-work-list">
-          {selectedWork.map((item, index) => (
-            <Link
-              href={item.href}
-              className="homepage-work-row"
-              key={item.title}
-            >
-              <span className="homepage-work-number">
-                {String(index + 1).padStart(2, "0")}
-              </span>
+        <div className="homepage-work-grid">
+          {workCards.map((item, index) => {
+            const image = portfolio[item.id]?.[0];
 
-              <div className="homepage-work-copy">
-                <h3>{item.title}</h3>
-                <p>{item.description}</p>
-              </div>
+            const imageSrc =
+              item.id === "production"
+                ? "/images/productions/godspell/godspell-05.jpg"
+                : item.id === "rehearsal"
+                  ? "/images/rehearsals/voice-of-the-turtle.jpg"
+                  : item.id === "campaign"
+                    ? "/images/Marketing-PR/alice-in-wonderland.webp"
+                    : image
+                      ? `/images/selected-work/${item.id}/${image.filename}`
+                      : "/images/homepage-hero.jpg";
 
-              <span
-                className="homepage-work-arrow"
-                aria-hidden="true"
+            const imageAlt =
+              item.id === "production"
+                ? "A dramatic live theatre performance photographed by Steve Gregson"
+                : item.id === "rehearsal"
+                  ? "Actors photographed during rehearsal by Steve Gregson"
+                  : item.id === "campaign"
+                    ? "Alice in Wonderland campaign artwork"
+                    : image?.alt ?? "";
+
+            const imageStyle =
+              item.id === "production"
+                ? {
+                    objectFit: "cover" as const,
+                    objectPosition: "center 95%",
+                  }
+                : item.id === "rehearsal"
+                  ? {
+                      objectFit: "cover" as const,
+                      objectPosition: "44% center",
+                    }
+                  : undefined;
+
+            return (
+              <Link
+                href={item.href}
+                className="homepage-work-card"
+                key={item.id}
               >
-                →
-              </span>
-            </Link>
-          ))}
+                <div className="homepage-work-card-image">
+                  <Image
+                    src={imageSrc}
+                    alt={imageAlt}
+                    fill
+                    sizes="(max-width: 900px) 100vw, 33vw"
+                    className="homepage-work-card-photo"
+                    style={imageStyle}
+                  />
+
+                  <div
+                    className={
+                      item.id === "rehearsal"
+                        ? "homepage-work-card-overlay homepage-work-card-overlay--rehearsal"
+                        : "homepage-work-card-overlay"
+                    }
+                    aria-hidden="true"
+                  />
+                </div>
+
+                <div className="homepage-work-card-copy">
+                  <span className="homepage-work-card-number">
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+
+                  <div className="homepage-work-card-title">
+                    <h3>{item.title}</h3>
+                    <p>{item.description}</p>
+                  </div>
+
+                  <span className="homepage-work-card-link">
+                    <span>Explore</span>
+                    <span aria-hidden="true">→</span>
+                  </span>
+                </div>
+              </Link>
+            );
+          })}
         </div>
       </section>
 

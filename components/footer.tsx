@@ -11,20 +11,32 @@ export default function Footer() {
           London · UK · International
         </p>
 
-        <Link
-          href="/"
-          className="site-footer-logo"
-          aria-label="Steve Gregson Photography homepage"
-        >
-          <Image
-            src="/images/branding/steve-gregson-logo.svg"
-            alt="Steve Gregson Photography"
-            width={1400}
-            height={800}
-            sizes="(max-width: 560px) 10rem, 12.5rem"
-            priority={false}
-          />
-        </Link>
+        <div className="site-footer-brand">
+          <Link
+            href="/"
+            className="site-footer-logo"
+            aria-label="Steve Gregson Photography homepage"
+          >
+            <Image
+              src="/images/branding/steve-gregson-logo.svg"
+              alt="Steve Gregson Photography"
+              width={1400}
+              height={800}
+              sizes="(max-width: 560px) 10rem, 12.5rem"
+              priority={false}
+            />
+          </Link>
+
+          <div className="site-footer-contact">
+            <a href="mailto:info@stevegregson.com">
+              info@stevegregson.com
+            </a>
+
+            <a href="tel:+447729435728">
+              +44 (0) 7729 435 728
+            </a>
+          </div>
+        </div>
 
         <nav aria-label="Footer navigation">
           <Link href="/selected-work">Work</Link>
@@ -58,7 +70,7 @@ export default function Footer() {
             minmax(26rem, 1.4fr);
           gap: 3rem;
           align-items: end;
-          min-height: 10.5rem;
+          min-height: 12.5rem;
         }
 
         .site-footer-description {
@@ -71,19 +83,53 @@ export default function Footer() {
           text-transform: uppercase;
         }
 
-        .site-footer-logo {
+        .site-footer-brand {
           position: absolute;
           top: 0.35rem;
           left: 50%;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          width: min(100%, 16rem);
+          transform: translateX(-50%);
+        }
+
+        .site-footer-logo {
           display: block;
           width: min(100%, 12.5rem);
-          transform: translateX(-50%);
         }
 
         .site-footer-logo img {
           display: block;
           width: 100%;
           height: auto;
+        }
+
+        .site-footer-contact {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 0.4rem;
+          margin-top: 1.1rem;
+          text-align: center;
+        }
+
+        .site-footer-contact a {
+          color: rgba(17, 16, 15, 0.72);
+          font-size: 0.52rem;
+          font-weight: 700;
+          letter-spacing: 0.13em;
+          line-height: 1.5;
+          text-transform: uppercase;
+          transition: opacity 180ms ease;
+        }
+
+        .site-footer-contact a:first-child {
+          color: rgba(17, 16, 15, 0.88);
+        }
+
+        .site-footer-contact a:hover {
+          opacity: 0.5;
         }
 
         .site-footer nav {
@@ -124,11 +170,15 @@ export default function Footer() {
         @media (max-width: 900px) {
           .site-footer-main {
             grid-template-columns: 1fr 1fr;
-            min-height: 12rem;
+            min-height: 14rem;
+          }
+
+          .site-footer-brand {
+            top: 0;
+            width: 14rem;
           }
 
           .site-footer-logo {
-            top: 0;
             width: 11.5rem;
           }
 
@@ -154,11 +204,21 @@ export default function Footer() {
             gap: 2rem;
           }
 
-          .site-footer-logo {
+          .site-footer-brand {
             position: static;
             order: 1;
-            width: 10.5rem;
+            align-items: flex-start;
+            width: auto;
             transform: none;
+          }
+
+          .site-footer-logo {
+            width: 10.5rem;
+          }
+
+          .site-footer-contact {
+            align-items: flex-start;
+            text-align: left;
           }
 
           .site-footer-description {
