@@ -5,13 +5,20 @@
   color: #f2eee6;
 }
 
+.page,
+.page *,
+.page *::before,
+.page *::after {
+  box-sizing: border-box;
+}
+
 /* Introduction */
 
 .introduction {
   padding:
-    clamp(10rem, 15vw, 14rem)
+    clamp(10rem, 14vw, 13rem)
     6vw
-    clamp(4.5rem, 7vw, 7rem);
+    clamp(4.5rem, 6vw, 6rem);
 }
 
 .eyebrow {
@@ -27,9 +34,9 @@
 .introductionLayout {
   display: grid;
   grid-template-columns:
-    minmax(0, 1.2fr)
-    minmax(17rem, 0.55fr);
-  gap: clamp(4rem, 10vw, 11rem);
+    minmax(0, 1.25fr)
+    minmax(17rem, 0.5fr);
+  gap: clamp(3rem, 9vw, 10rem);
   align-items: end;
   margin-top: 1.8rem;
 }
@@ -42,17 +49,17 @@
     "Palatino Linotype",
     Georgia,
     serif;
-  font-size: clamp(3.8rem, 7.2vw, 8rem);
+  font-size: clamp(3.8rem, 7vw, 7.8rem);
   font-weight: 400;
   letter-spacing: -0.065em;
   line-height: 0.88;
 }
 
 .introductionCopy {
-  max-width: 24rem;
-  margin: 0 0 0.6rem;
+  max-width: 25rem;
+  margin: 0 0 0.5rem;
   color: rgba(242, 238, 230, 0.58);
-  font-size: 0.76rem;
+  font-size: 0.78rem;
   line-height: 1.75;
 }
 
@@ -66,20 +73,21 @@
     1px solid rgba(242, 238, 230, 0.14);
   border-bottom:
     1px solid rgba(242, 238, 230, 0.14);
-  background: rgba(17, 16, 15, 0.95);
+  background: rgba(17, 16, 15, 0.96);
   backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
 }
 
 .navigationInner {
   display: flex;
   justify-content: center;
-  gap: clamp(2rem, 7vw, 7rem);
+  gap: clamp(2.5rem, 7vw, 7rem);
   padding: 1.35rem 6vw;
 }
 
 .navigationInner a {
   position: relative;
-  color: rgba(242, 238, 230, 0.5);
+  color: rgba(242, 238, 230, 0.48);
   font-size: 0.52rem;
   font-weight: 700;
   letter-spacing: 0.18em;
@@ -87,7 +95,8 @@
   transition: color 180ms ease;
 }
 
-.navigationInner a:hover {
+.navigationInner a:hover,
+.navigationInner a:focus-visible {
   color: #f2eee6;
 }
 
@@ -106,83 +115,54 @@
   content: "";
 }
 
-/* Gallery */
+/* Production gallery */
 
 .gallery {
   display: grid;
   grid-template-columns:
-    repeat(12, minmax(0, 1fr));
-  gap:
-    clamp(5rem, 11vw, 11rem)
-    clamp(0.9rem, 2vw, 2.2rem);
+    repeat(2, minmax(0, 1fr));
+  gap: 24px;
   align-items: start;
   padding:
-    clamp(5rem, 8vw, 8rem)
+    clamp(3.5rem, 5vw, 5rem)
     3vw
-    clamp(8rem, 13vw, 13rem);
+    clamp(6rem, 8vw, 8rem);
 }
 
 .galleryItem {
   min-width: 0;
   margin: 0;
+  overflow: hidden;
+}
+
+.featured {
+  grid-column: 1 / -1;
+  margin-top: clamp(2.5rem, 4vw, 4rem);
+  margin-bottom: clamp(2.5rem, 4vw, 4rem);
+}
+
+/*
+ * The first photograph should hit immediately.
+ * It does not need the extra space above it.
+ */
+.galleryItem:first-child {
+  margin-top: 0;
 }
 
 .galleryImage {
   display: block;
   width: 100%;
   height: auto;
-}
 
-/*
- * IMPORTANT:
- *
- * These classes change only how much horizontal
- * room a photograph occupies.
- *
- * The Image itself always remains height:auto,
- * so the original photograph is NEVER stretched,
- * squashed or cropped.
- */
-
-.hero {
-  grid-column: 1 / 13;
-}
-
-.feature {
-  grid-column: 2 / 12;
-}
-
-.wide-left {
-  grid-column: 1 / 8;
-}
-
-.wide-right {
-  grid-column: 6 / 13;
-}
-
-.half-left {
-  grid-column: 1 / 7;
-}
-
-.half-right {
-  grid-column: 7 / 13;
-}
-
-.small-left {
-  grid-column: 2 / 7;
-}
-
-.small-right {
-  grid-column: 8 / 13;
-}
-
-/* Very subtle photographic interaction */
-
-.galleryItem {
-  overflow: hidden;
-}
-
-.galleryImage {
+  /*
+   * Critical:
+   *
+   * No fixed height.
+   * No object-fit: cover.
+   * No forced aspect ratio.
+   *
+   * The original photograph remains intact.
+   */
   transition:
     opacity 350ms ease,
     transform 650ms
@@ -190,41 +170,11 @@
 }
 
 .galleryItem:hover .galleryImage {
-  opacity: 0.94;
-  transform: scale(1.006);
+  opacity: 0.95;
+  transform: scale(1.004);
 }
 
-/* Statement */
-
-.productionStatement {
-  display: grid;
-  grid-template-columns:
-    minmax(12rem, 0.35fr)
-    minmax(0, 1fr);
-  gap: clamp(3rem, 8vw, 8rem);
-  align-items: start;
-  padding:
-    clamp(6rem, 10vw, 10rem)
-    6vw;
-  border-top:
-    1px solid rgba(242, 238, 230, 0.14);
-}
-
-.productionStatement > p:last-child {
-  max-width: 57rem;
-  margin: 0;
-  font-family:
-    "Iowan Old Style",
-    "Palatino Linotype",
-    Georgia,
-    serif;
-  font-size: clamp(3rem, 6vw, 6.8rem);
-  font-weight: 400;
-  letter-spacing: -0.06em;
-  line-height: 0.92;
-}
-
-/* End section */
+/* End / archive navigation */
 
 .nextStep {
   display: grid;
@@ -232,30 +182,30 @@
     minmax(0, 1fr)
     minmax(18rem, 0.55fr);
   gap: clamp(4rem, 9vw, 9rem);
+  align-items: end;
   padding:
-    clamp(5rem, 8vw, 8rem)
+    clamp(6rem, 9vw, 9rem)
     6vw;
   border-top:
     1px solid rgba(242, 238, 230, 0.14);
 }
 
-.nextStep h2 {
-  max-width: 50rem;
+.nextStepHeading h2 {
+  max-width: 48rem;
   margin: 1.5rem 0 0;
   font-family:
     "Iowan Old Style",
     "Palatino Linotype",
     Georgia,
     serif;
-  font-size: clamp(2.5rem, 5vw, 5.5rem);
+  font-size: clamp(2.8rem, 5vw, 5.4rem);
   font-weight: 400;
   letter-spacing: -0.055em;
-  line-height: 0.95;
+  line-height: 0.94;
 }
 
 .nextStepLinks {
   display: grid;
-  align-content: end;
 }
 
 .nextStepLinks a {
@@ -266,7 +216,7 @@
   padding: 1.4rem 0;
   border-bottom:
     1px solid rgba(242, 238, 230, 0.18);
-  color: rgba(242, 238, 230, 0.68);
+  color: rgba(242, 238, 230, 0.66);
   font-size: 0.54rem;
   font-weight: 700;
   letter-spacing: 0.16em;
@@ -302,17 +252,16 @@
   }
 
   .introductionCopy {
-    max-width: 31rem;
+    max-width: 32rem;
   }
 
   .gallery {
-    gap:
-      5rem
-      1rem;
+    gap: 16px;
   }
 
-  .productionStatement {
-    grid-template-columns: 1fr;
+  .featured {
+    margin-top: 2rem;
+    margin-bottom: 2rem;
   }
 
   .nextStep {
@@ -327,7 +276,7 @@
     padding:
       8.5rem
       1.4rem
-      4rem;
+      3.5rem;
   }
 
   .introduction h1 {
@@ -348,32 +297,33 @@
   }
 
   .gallery {
-    display: block;
+    grid-template-columns: 1fr;
+    gap: 12px;
     padding:
-      3.5rem
+      1.4rem
       1rem
-      6rem;
+      5rem;
   }
 
-  .galleryItem {
-    margin-bottom: 4rem;
+  .featured {
+    grid-column: auto;
+    margin-top: 2.5rem;
+    margin-bottom: 2.5rem;
   }
 
-  .galleryItem:last-child {
-    margin-bottom: 0;
+  .galleryItem:first-child {
+    margin-top: 0;
   }
 
-  .productionStatement,
   .nextStep {
     padding:
       4.5rem
       1.4rem;
   }
 
-  .productionStatement
-    > p:last-child {
+  .nextStepHeading h2 {
     font-size:
-      clamp(2.8rem, 13vw, 4.5rem);
+      clamp(2.7rem, 12vw, 4.2rem);
   }
 }
 

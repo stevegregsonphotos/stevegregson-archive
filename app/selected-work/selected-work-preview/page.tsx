@@ -28,125 +28,34 @@ type SelectedWorkData = {
   campaign: SelectedWorkImage[];
 };
 
-type GalleryLayout =
-  | "hero"
-  | "wide-left"
-  | "wide-right"
-  | "half-left"
-  | "half-right"
-  | "feature"
-  | "small-left"
-  | "small-right";
-
-type GallerySlot = {
-  imageIndex: number;
-  layout: GalleryLayout;
-};
-
 const portfolio =
   selectedWorkData as SelectedWorkData;
 
 /*
- * This controls the rhythm of the gallery.
+ * These positions become the large,
+ * full-width photographs.
  *
- * imageIndex refers to the position of the photograph
- * in selected-work.json.
+ * The numbers refer to the displayed
+ * position in the gallery:
  *
- * To change the order later, simply change these numbers.
+ * 0 = first image
+ * 6 = seventh image
+ * 12 = thirteenth image
  *
- * The layout affects WIDTH and POSITION only.
- * It never changes the photograph's aspect ratio.
+ * Change these numbers later to art-direct
+ * which photographs get the biggest impact.
  */
-const gallerySlots: GallerySlot[] = [
-  {
-    imageIndex: 0,
-    layout: "hero",
-  },
-  {
-    imageIndex: 1,
-    layout: "wide-left",
-  },
-  {
-    imageIndex: 2,
-    layout: "wide-right",
-  },
-  {
-    imageIndex: 3,
-    layout: "feature",
-  },
-  {
-    imageIndex: 4,
-    layout: "half-left",
-  },
-  {
-    imageIndex: 5,
-    layout: "half-right",
-  },
-  {
-    imageIndex: 6,
-    layout: "hero",
-  },
-  {
-    imageIndex: 7,
-    layout: "wide-left",
-  },
-  {
-    imageIndex: 8,
-    layout: "small-right",
-  },
-  {
-    imageIndex: 9,
-    layout: "feature",
-  },
-  {
-    imageIndex: 10,
-    layout: "small-left",
-  },
-  {
-    imageIndex: 11,
-    layout: "wide-right",
-  },
-  {
-    imageIndex: 12,
-    layout: "hero",
-  },
-  {
-    imageIndex: 13,
-    layout: "half-left",
-  },
-  {
-    imageIndex: 14,
-    layout: "half-right",
-  },
-];
-
-function getGalleryImages() {
-  const productionImages = portfolio.production ?? [];
-
-  return gallerySlots
-    .map((slot) => {
-      const image = productionImages[slot.imageIndex];
-
-      if (!image) {
-        return null;
-      }
-
-      return {
-        ...slot,
-        image,
-      };
-    })
-    .filter(
-      (
-        item,
-      ): item is GallerySlot & {
-        image: SelectedWorkImage;
-      } => item !== null,
-    );
-}
+const featuredImages = new Set([0, 6, 12]);
 
 export default function SelectedWorkPreviewPage() {
-  const galleryImages = getGalleryImages();
+  /*
+   * Start with 15 production photographs.
+   *
+   * We can increase or decrease this once
+   * we've curated the actual gallery.
+   */
+  const productionImages =
+    portfolio.production.slice(0, 15);
 
   return (
     <main className={styles.page}>
@@ -199,11 +108,18 @@ export default function SelectedWorkPreviewPage() {
         id="production-gallery"
         aria-label="Selected production photography"
       >
-        {galleryImages.map(
-          ({ image, imageIndex, layout }) => (
+        {productionImages.map((image, index) => {
+          const isFeatured =
+            featuredImages.has(index);
+
+          return (
             <figure
-              className={`${styles.galleryItem} ${styles[layout]}`}
-              key={`${image.filename}-${imageIndex}`}
+              className={
+                isFeatured
+                  ? `${styles.galleryItem} ${styles.featured}`
+                  : styles.galleryItem
+              }
+              key={image.filename}
             >
               <Image
                 src={`/images/selected-work/production/${image.filename}`}
@@ -211,33 +127,20 @@ export default function SelectedWorkPreviewPage() {
                 width={image.width}
                 height={image.height}
                 sizes={
-                  layout === "hero" ||
-                  layout === "feature"
-                    ? "94vw"
-                    : "(max-width: 760px) 94vw, 62vw"
+                  isFeatured
+                    ? "(max-width: 760px) 100vw, 94vw"
+                    : "(max-width: 760px) 100vw, 46vw"
                 }
                 className={styles.galleryImage}
-                priority={imageIndex === 0}
+                priority={index === 0}
               />
             </figure>
-          ),
-        )}
-      </section>
-
-      <section className={styles.productionStatement}>
-        <p className={styles.eyebrow}>
-          Production Photography
-        </p>
-
-        <p>
-          Performance happens once.
-          <br />
-          Photography gives it another life.
-        </p>
+          );
+        })}
       </section>
 
       <section className={styles.nextStep}>
-        <div>
+        <div className={styles.nextStepHeading}>
           <p className={styles.eyebrow}>
             Explore Further
           </p>
@@ -252,6 +155,7 @@ export default function SelectedWorkPreviewPage() {
             <span>
               More production photography
             </span>
+
             <span aria-hidden="true">
               →
             </span>
@@ -261,6 +165,7 @@ export default function SelectedWorkPreviewPage() {
             <span>
               Search the archive
             </span>
+
             <span aria-hidden="true">
               →
             </span>

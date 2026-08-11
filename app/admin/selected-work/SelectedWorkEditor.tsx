@@ -49,6 +49,38 @@ const EMPTY_DATA: SelectedWorkData = {
   campaign: [],
 };
 
+const MAX_UPLOAD_BATCH_FILES = 3;
+const MAX_UPLOAD_BATCH_BYTES = 24 * 1024 * 1024;
+
+function createUploadBatches(files: File[]) {
+  const batches: File[][] = [];
+  let batch: File[] = [];
+  let batchBytes = 0;
+
+  for (const file of files) {
+    const wouldExceedFileLimit =
+      batch.length >= MAX_UPLOAD_BATCH_FILES;
+    const wouldExceedByteLimit =
+      batch.length > 0 &&
+      batchBytes + file.size > MAX_UPLOAD_BATCH_BYTES;
+
+    if (wouldExceedFileLimit || wouldExceedByteLimit) {
+      batches.push(batch);
+      batch = [];
+      batchBytes = 0;
+    }
+
+    batch.push(file);
+    batchBytes += file.size;
+  }
+
+  if (batch.length > 0) {
+    batches.push(batch);
+  }
+
+  return batches;
+}
+
 const CATEGORIES: Array<{
   id: CategoryId;
   number: string;
@@ -83,7 +115,7 @@ export default function SelectedWorkEditor() {
     useState<SelectedWorkData>(EMPTY_DATA);
 
   const [pendingFiles, setPendingFiles] = useState<
-    Partial<Record<CategoryId, FileList>>
+    Partial<Record<CategoryId, File[]>>
   >({});
 
   const [loading, setLoading] = useState(true);
@@ -100,17 +132,112 @@ export default function SelectedWorkEditor() {
       total: number;
     } | null>(null);
 
+  const [uploadProgress, setUploadProgress] =
+    useState<{
+      category: CategoryId;
+      current: number;
+      total: number;
+    } | null>(null);
+
   const [message, setMessage] =
     useState<string | null>(null);
 
   const [error, setError] =
     useState<string | null>(null);
 
+    const [selectedImages, setSelectedImages] = useState<
+  Record<CategoryId, Set<string>>
+>({
+  production: new Set<string>(),
+  rehearsal: new Set<string>(),
+  campaign: new Set<string>(),
+});
+
+const [draggedImage, setDraggedImage] = useState<{
+  category: CategoryId;
+  filename: string;
+} | null>(null);
+const [activeCategory, setActiveCategory] =
+  useState<CategoryId>("production");
+
+function toggleImageSelection(
+  category: CategoryId,
+  filename: string,
+) {
+  setSelectedImages((current) => {
+    const next = {
+      production: new Set(current.production),
+      rehearsal: new Set(current.rehearsal),
+      campaign: new Set(current.campaign),
+    };
+
+    const selection = next[category];
+
+    if (selection.has(filename)) {
+      selection.delete(filename);
+    } else {
+      selection.add(filename);
+    }
+
+    return next;
+  });
+}
+
   useEffect(() => {
     void loadData();
   }, []);
+  useEffect(() => {
+  function handleKeyDown(event: KeyboardEvent) {
+    const target = event.target as HTMLElement | null;
 
-  async function loadData() {
+    const isTyping =
+      target instanceof HTMLInputElement ||
+      target instanceof HTMLTextAreaElement ||
+      target?.isContentEditable;
+
+    if (event.key === "Escape") {
+      setSelectedImages((current) => ({
+        ...current,
+        [activeCategory]: new Set<string>(),
+      }));
+
+      return;
+    }
+
+    if (
+      !isTyping &&
+      event.key.toLowerCase() === "a" &&
+      (event.metaKey || event.ctrlKey)
+    ) {
+      event.preventDefault();
+
+      setSelectedImages((current) => ({
+        ...current,
+        [activeCategory]: new Set(
+          data[activeCategory].map(
+            (image) => image.filename,
+          ),
+        ),
+      }));
+    }
+  }
+
+  window.addEventListener(
+    "keydown",
+    handleKeyDown,
+  );
+
+  return () => {
+    window.removeEventListener(
+      "keydown",
+      handleKeyDown,
+    );
+  };
+}, [activeCategory, data]);
+
+
+  
+async function loadData() {
     setLoading(true);
     setError(null);
 
@@ -167,31 +294,76 @@ export default function SelectedWorkEditor() {
   }
 
   function moveImage(
-    category: CategoryId,
-    index: number,
-    direction: -1 | 1,
-  ) {
-    const nextIndex = index + direction;
-    const images = data[category];
+  category: CategoryId,
+  index: number,
+  direction: -1 | 1,
+) {
+  const nextIndex = index + direction;
+  const images = data[category];
 
-    if (
-      nextIndex < 0 ||
-      nextIndex >= images.length
-    ) {
-      return;
+  if (
+    nextIndex < 0 ||
+    nextIndex >= images.length
+  ) {
+    return;
+  }
+
+  const nextImages = [...images];
+  const [image] = nextImages.splice(index, 1);
+  nextImages.splice(nextIndex, 0, image);
+
+  setData((current) => ({
+    ...current,
+    [category]: nextImages,
+  }));
+
+  setMessage(null);
+}
+
+function reorderImagesByDrag(
+  category: CategoryId,
+  targetFilename: string,
+) {
+  if (
+    !draggedImage ||
+    draggedImage.category !== category ||
+    draggedImage.filename === targetFilename
+  ) {
+    return;
+  }
+
+  setData((current) => {
+    const images = [...current[category]];
+
+    const fromIndex = images.findIndex(
+      (image) =>
+        image.filename === draggedImage.filename,
+    );
+
+    const toIndex = images.findIndex(
+      (image) =>
+        image.filename === targetFilename,
+    );
+
+    if (fromIndex === -1 || toIndex === -1) {
+      return current;
     }
 
-    const nextImages = [...images];
-    const [image] = nextImages.splice(index, 1);
-    nextImages.splice(nextIndex, 0, image);
+    const [movedImage] = images.splice(fromIndex, 1);
+    images.splice(toIndex, 0, movedImage);
 
-    setData((current) => ({
+    return {
       ...current,
-      [category]: nextImages,
-    }));
+      [category]: images,
+    };
+  });
 
-    setMessage(null);
-  }
+  setDraggedImage(null);
+
+  setMessage(
+    `${categoryLabel(category)} order changed. Save the collection to keep this order.`,
+  );
+}
 
   async function uploadImages(
     category: CategoryId,
@@ -207,49 +379,87 @@ export default function SelectedWorkEditor() {
       return;
     }
 
+    const batches = createUploadBatches(files);
+    const total = files.length;
+    let uploadedCount = 0;
+
     setBusyCategory(category);
+    setUploadProgress({
+      category,
+      current: 0,
+      total,
+    });
     setError(null);
     setMessage(null);
 
     try {
-      const formData = new FormData();
-      formData.set("category", category);
+      for (const batch of batches) {
+        const formData = new FormData();
+        formData.set("category", category);
 
-      Array.from(files).forEach((file) => {
-        formData.append("images", file);
-      });
+        batch.forEach((file) => {
+          formData.append("images", file);
+        });
 
-      const response = await fetch(
-        "/api/admin/selected-work",
-        {
-          method: "POST",
-          body: formData,
-        },
-      );
-
-      const result =
-        (await response.json()) as ApiResponse;
-
-      if (
-        !response.ok ||
-        !result.ok ||
-        !result.data
-      ) {
-        throw new Error(
-          result.message ??
-            "The photographs could not be uploaded.",
+        const response = await fetch(
+          "/api/admin/selected-work",
+          {
+            method: "POST",
+            body: formData,
+          },
         );
+
+        let result: ApiResponse | null = null;
+
+        try {
+          result =
+            (await response.json()) as ApiResponse;
+        } catch {
+          result = null;
+        }
+
+        if (
+          !response.ok ||
+          !result?.ok ||
+          !result.data
+        ) {
+          if (response.status === 413) {
+            throw new Error(
+              "An upload batch was too large. The remaining photographs are still selected so you can retry them.",
+            );
+          }
+
+          throw new Error(
+            result?.message ??
+              `The upload stopped after ${uploadedCount} of ${total} photographs. The remaining photographs are still selected so you can retry them.`,
+          );
+        }
+
+        uploadedCount += batch.length;
+        setData(result.data);
+
+        const remainingFiles =
+          files.slice(uploadedCount);
+
+        setPendingFiles((current) => ({
+          ...current,
+          [category]:
+            remainingFiles.length > 0
+              ? remainingFiles
+              : undefined,
+        }));
+
+        setUploadProgress({
+          category,
+          current: uploadedCount,
+          total,
+        });
       }
 
-      setData(result.data);
-
-      setPendingFiles((current) => ({
-        ...current,
-        [category]: undefined,
-      }));
-
       setMessage(
-        "Photographs uploaded successfully.",
+        `${total} ${
+          total === 1 ? "photograph" : "photographs"
+        } uploaded successfully.`,
       );
 
       const input = document.getElementById(
@@ -263,10 +473,11 @@ export default function SelectedWorkEditor() {
       setError(
         caughtError instanceof Error
           ? caughtError.message
-          : "The photographs could not be uploaded.",
+          : `The upload stopped after ${uploadedCount} of ${total} photographs. The remaining photographs are still selected so you can retry them.`,
       );
     } finally {
       setBusyCategory(null);
+      setUploadProgress(null);
     }
   }
 
@@ -430,26 +641,107 @@ export default function SelectedWorkEditor() {
   }
 
   async function deleteImage(
-    category: CategoryId,
-    filename: string,
+  category: CategoryId,
+  filename: string,
+) {
+  const confirmed = window.confirm(
+    `Permanently remove ${filename} from Selected Work?`,
+  );
+
+  if (
+    !confirmed ||
+    busyCategory ||
+    analysingCategory
   ) {
-    const confirmed = window.confirm(
-      `Permanently remove ${filename} from Selected Work?`,
+    return;
+  }
+
+  setBusyCategory(category);
+  setError(null);
+  setMessage(null);
+
+  try {
+    const response = await fetch(
+      "/api/admin/selected-work",
+      {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          category,
+          filename,
+        }),
+      },
     );
 
+    const result =
+      (await response.json()) as ApiResponse;
+
     if (
-      !confirmed ||
-      busyCategory ||
-      analysingCategory
+      !response.ok ||
+      !result.ok ||
+      !result.data
     ) {
-      return;
+      throw new Error(
+        result.message ??
+          "The photograph could not be removed.",
+      );
     }
 
-    setBusyCategory(category);
-    setError(null);
-    setMessage(null);
+    setData(result.data);
 
-    try {
+    setMessage(
+      "Photograph removed successfully.",
+    );
+  } catch (caughtError) {
+    setError(
+      caughtError instanceof Error
+        ? caughtError.message
+        : "The photograph could not be removed.",
+    );
+  } finally {
+    setBusyCategory(null);
+  }
+}
+
+async function deleteSelectedImages(
+  category: CategoryId,
+) {
+  const filenames = Array.from(
+    selectedImages[category],
+  );
+
+  if (
+    filenames.length === 0 ||
+    busyCategory ||
+    analysingCategory
+  ) {
+    return;
+  }
+
+  const confirmed = window.confirm(
+    `Permanently remove ${
+      filenames.length
+    } ${
+      filenames.length === 1
+        ? "photograph"
+        : "photographs"
+    } from Selected Work?`,
+  );
+
+  if (!confirmed) {
+    return;
+  }
+
+  setBusyCategory(category);
+  setError(null);
+  setMessage(null);
+
+  let deletedCount = 0;
+
+  try {
+    for (const filename of filenames) {
       const response = await fetch(
         "/api/admin/selected-work",
         {
@@ -474,24 +766,36 @@ export default function SelectedWorkEditor() {
       ) {
         throw new Error(
           result.message ??
-            "The photograph could not be removed.",
+            `Bulk removal stopped after ${deletedCount} of ${filenames.length} photographs.`,
         );
       }
 
+      deletedCount += 1;
       setData(result.data);
-      setMessage(
-        "Photograph removed successfully.",
-      );
-    } catch (caughtError) {
-      setError(
-        caughtError instanceof Error
-          ? caughtError.message
-          : "The photograph could not be removed.",
-      );
-    } finally {
-      setBusyCategory(null);
     }
+
+    setSelectedImages((current) => ({
+      ...current,
+      [category]: new Set<string>(),
+    }));
+
+    setMessage(
+      `${deletedCount} ${
+        deletedCount === 1
+          ? "photograph"
+          : "photographs"
+      } removed successfully.`,
+    );
+  } catch (caughtError) {
+    setError(
+      caughtError instanceof Error
+        ? caughtError.message
+        : `Bulk removal stopped after ${deletedCount} of ${filenames.length} photographs.`,
+    );
+  } finally {
+    setBusyCategory(null);
   }
+}
 
   const totalImages = useMemo(
     () =>
@@ -581,6 +885,9 @@ export default function SelectedWorkEditor() {
         const selectedFiles =
           pendingFiles[category.id];
 
+          const selectedCount =
+  selectedImages[category.id].size;
+
         const blankAltCount = images.filter(
           (image) => !image.alt.trim(),
         ).length;
@@ -591,12 +898,13 @@ export default function SelectedWorkEditor() {
 
         return (
           <section
-            key={category.id}
-            style={{
-              borderBottom:
-                "1px solid rgba(242, 238, 230, 0.18)",
-              padding: "4rem 0 5rem",
-            }}
+  key={category.id}
+  onMouseEnter={() =>
+    setActiveCategory(category.id)
+  }
+  onFocusCapture={() =>
+    setActiveCategory(category.id)
+  }
           >
             <header
               style={{
@@ -667,8 +975,11 @@ export default function SelectedWorkEditor() {
                       setPendingFiles((current) => ({
                         ...current,
                         [category.id]:
-                          event.target.files ??
-                          undefined,
+                          event.target.files
+                            ? Array.from(
+                                event.target.files,
+                              )
+                            : undefined,
                       }));
                     }
                   }}
@@ -704,8 +1015,10 @@ export default function SelectedWorkEditor() {
                     void uploadImages(category.id)
                   }
                 >
-                  {isBusy
-                    ? "Working…"
+                  {isBusy &&
+                  uploadProgress?.category ===
+                    category.id
+                    ? `Uploading ${uploadProgress.current} of ${uploadProgress.total}…`
                     : "Upload photographs"}
                 </button>
 
@@ -729,6 +1042,27 @@ export default function SelectedWorkEditor() {
                 </button>
               </div>
 
+              {selectedFiles?.length ? (
+                <p
+                  role="status"
+                  style={{
+                    margin: "0.9rem 0 0",
+                    color: "#c7a369",
+                    fontSize: "0.72rem",
+                    lineHeight: 1.6,
+                  }}
+                >
+                  {uploadProgress?.category ===
+                  category.id
+                    ? `Uploading ${uploadProgress.current} of ${uploadProgress.total} photographs…`
+                    : `${selectedFiles.length} ${
+                        selectedFiles.length === 1
+                          ? "photograph"
+                          : "photographs"
+                      } selected. Large selections are uploaded automatically in safe batches.`}
+                </p>
+              ) : null}
+
               <p
                 style={{
                   margin: "0.9rem 0 0",
@@ -742,7 +1076,77 @@ export default function SelectedWorkEditor() {
                 alt-text field is blank.
               </p>
             </div>
+{images.length > 0 ? (
+  <div
+    style={{
+      display: "flex",
+      flexWrap: "wrap",
+      alignItems: "center",
+      gap: "0.75rem",
+      marginTop: "2rem",
+    }}
+  >
+    <button
+      type="button"
+      className="backstage-button"
+      disabled={controlsDisabled}
+      onClick={() =>
+        setSelectedImages((current) => ({
+          ...current,
+          [category.id]: new Set(
+            images.map((image) => image.filename),
+          ),
+        }))
+      }
+    >
+      Select all
+    </button>
 
+    <button
+      type="button"
+      className="backstage-button"
+      disabled={
+        selectedCount === 0 ||
+        controlsDisabled
+      }
+      onClick={() =>
+        setSelectedImages((current) => ({
+          ...current,
+          [category.id]: new Set<string>(),
+        }))
+      }
+    >
+      Clear selection
+    </button>
+
+    <span
+      style={{
+        color:
+          selectedCount > 0
+            ? "#c7a369"
+            : "rgba(242, 238, 230, 0.45)",
+        fontSize: "0.65rem",
+        letterSpacing: "0.08em",
+        textTransform: "uppercase",
+      }}
+    >
+      {selectedCount} selected
+    </span>
+    <button
+  type="button"
+  className="backstage-button"
+  disabled={
+    selectedCount === 0 ||
+    controlsDisabled
+  }
+  onClick={() =>
+    void deleteSelectedImages(category.id)
+  }
+>
+  Remove selected
+</button>
+  </div>
+) : null}
             {images.length === 0 ? (
               <p
                 style={{
@@ -766,15 +1170,73 @@ export default function SelectedWorkEditor() {
               >
                 {images.map((image, index) => (
                   <article
-                    key={image.filename}
-                    style={{
-                      overflow: "hidden",
-                      border:
-                        "1px solid rgba(242, 238, 230, 0.14)",
-                      background:
-                        "rgba(255, 255, 255, 0.02)",
-                    }}
-                  >
+  key={image.filename}
+  draggable={!controlsDisabled}
+  onDragStart={() =>
+    setDraggedImage({
+      category: category.id,
+      filename: image.filename,
+    })
+  }
+  onDragOver={(event) => {
+    event.preventDefault();
+  }}
+  onDrop={(event) => {
+    event.preventDefault();
+    reorderImagesByDrag(
+      category.id,
+      image.filename,
+    );
+  }}
+  onDragEnd={() => {
+    setDraggedImage(null);
+  }}
+  style={{
+    overflow: "hidden",
+    border:
+      draggedImage?.category === category.id &&
+      draggedImage.filename === image.filename
+        ? "1px solid #c7a369"
+        : "1px solid rgba(242, 238, 230,0.14)",
+    background:
+      "rgba(255, 255, 255, 0.02)",
+    cursor: controlsDisabled ? "default" : "grab",
+    opacity:
+      draggedImage?.category === category.id &&
+      draggedImage.filename === image.filename
+        ? 0.55
+        : 1,
+  }}
+>
+                    <label
+  style={{
+    display: "flex",
+    alignItems: "center",
+    gap: "0.65rem",
+    padding: "0.8rem 1rem",
+    borderBottom:
+      "1px solid rgba(242, 238, 230, 0.12)",
+    cursor: "pointer",
+    fontSize: "0.65rem",
+    letterSpacing: "0.08em",
+    textTransform: "uppercase",
+  }}
+>
+  <input
+    type="checkbox"
+    checked={selectedImages[category.id].has(
+      image.filename,
+    )}
+    onChange={() =>
+      toggleImageSelection(
+        category.id,
+        image.filename,
+      )
+    }
+  />
+
+  <span>Select photograph</span>
+</label>
                     <div
                       style={{
                         aspectRatio: "4 / 3",

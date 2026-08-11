@@ -1,76 +1,20 @@
 {
   "production": [
     {
-      "filename": "chicago-22.jpg",
+      "filename": "web-aliceinwonderland-creditstevegregson-a1-03510.jpg",
       "suggestedFilename": "",
-      "alt": "chicago 22",
-      "uploadedAt": "2026-08-04T11:50:35.450Z",
+      "alt": "",
+      "uploadedAt": "2026-08-11T14:35:23.613Z",
       "width": 2048,
       "height": 1365
     },
     {
-      "filename": "chicago-23.jpg",
+      "filename": "lettherightonein-250.jpg",
       "suggestedFilename": "",
-      "alt": "chicago 23",
-      "uploadedAt": "2026-08-04T11:50:35.453Z",
-      "width": 2048,
-      "height": 1365
-    },
-    {
-      "filename": "chicago-24-jpg.jpg",
-      "suggestedFilename": "",
-      "alt": "chicago 24 jpg",
-      "uploadedAt": "2026-08-04T11:50:35.457Z",
-      "width": 2048,
-      "height": 1365
-    },
-    {
-      "filename": "chicago-25-jpg.jpg",
-      "suggestedFilename": "",
-      "alt": "chicago 25 jpg",
-      "uploadedAt": "2026-08-04T11:50:35.460Z",
-      "width": 2048,
-      "height": 1365
-    },
-    {
-      "filename": "chicago-27.jpg",
-      "suggestedFilename": "",
-      "alt": "chicago 27",
-      "uploadedAt": "2026-08-04T11:50:35.461Z",
-      "width": 2048,
-      "height": 1365
-    },
-    {
-      "filename": "chicago-41.jpg",
-      "suggestedFilename": "",
-      "alt": "chicago 41",
-      "uploadedAt": "2026-08-04T11:50:35.462Z",
-      "width": 2048,
-      "height": 1365
-    },
-    {
-      "filename": "chicago-88-jpg.jpg",
-      "suggestedFilename": "",
-      "alt": "chicago 88 jpg",
-      "uploadedAt": "2026-08-04T11:50:35.463Z",
-      "width": 2048,
-      "height": 1365
-    },
-    {
-      "filename": "chicago-160.jpg",
-      "suggestedFilename": "",
-      "alt": "Ensemble strikes a synchronized pose beneath a lit proscenium, outstretched hands, sequined costumes, blue haze and red curtains.",
-      "uploadedAt": "2026-08-04T11:50:35.464Z",
-      "width": 2048,
-      "height": 1365
-    },
-    {
-      "filename": "pam-photographer-waving-among-red-theatre-seats.jpg",
-      "suggestedFilename": "",
-      "alt": "smiling photographer with camera waves from between red theatre seats under blue stage light",
-      "uploadedAt": "2026-08-04T12:34:00.558Z",
-      "width": 6000,
-      "height": 4000
+      "alt": "",
+      "uploadedAt": "2026-08-11T14:37:03.411Z",
+      "width": 1800,
+      "height": 1200
     },
     {
       "filename": "intimate-stage-moment-bookshelf-nautical-props.jpg",
@@ -79,6 +23,86 @@
       "uploadedAt": "2026-08-05T13:17:22.081Z",
       "width": 6000,
       "height": 4000
+    },
+    {
+      "filename": "chicago-22.jpg",
+      "suggestedFilename": "",
+      "alt": "chicago 22",
+      "uploadedAt": "2026-08-04T11:50:35.450Z",
+      "width": 2048,
+      "height": 1365
+    },
+    {
+      "filename": "a1-09554-edit-edit.jpg",
+      "suggestedFilename": "",
+      "alt": "",
+      "uploadedAt": "2026-08-11T15:07:32.344Z",
+      "width": 2048,
+      "height": 1365
+    },
+    {
+      "filename": "a1-00344.jpg",
+      "suggestedFilename": "",
+      "alt": "",
+      "uploadedAt": "2026-08-11T14:44:19.512Z",
+      "width": 4000,
+      "height": 2667
+    },
+    {
+      "filename": "a-106683-edited.jpg",
+      "suggestedFilename": "",
+      "alt": "",
+      "uploadedAt": "2026-08-11T14:43:55.728Z",
+      "width": 1800,
+      "height": 1200
+    },
+    {
+      "filename": "thechrysalids-81-edit.jpg",
+      "suggestedFilename": "",
+      "alt": "",
+      "uploadedAt": "2026-08-11T14:44:31.202Z",
+      "width": 1800,
+      "height": 1200
+    },
+    {
+      "filename": "thesingingrevolution-3.jpg",
+      "suggestedFilename": "",
+      "alt": "",
+      "uploadedAt": "2026-08-11T14:44:31.203Z",
+      "width": 1800,
+      "height": 1200
+    },
+    {
+      "filename": "thewildparty-full-38.jpg",
+      "suggestedFilename": "",
+      "alt": "",
+      "uploadedAt": "2026-08-11T14:44:31.208Z",
+      "width": 4000,
+      "height": 2667
+    },
+    {
+      "filename": "a1-03347-edited.jpg",
+      "suggestedFilename": "",
+      "alt": "",
+      "uploadedAt": "2026-08-11T15:07:32.312Z",
+      "width": 2929,
+      "height": 1953
+    },
+    {
+      "filename": "a1-03829-edit-edit-edit-edit.jpg",
+      "suggestedFilename": "",
+      "alt": "",
+      "uploadedAt": "2026-08-11T15:07:32.341Z",
+      "width": 1800,
+      "height": 1200
+    },
+    {
+      "filename": "a9-02401-edit.jpg",
+      "suggestedFilename": "",
+      "alt": "",
+      "uploadedAt": "2026-08-11T15:07:32.346Z",
+      "width": 1800,
+      "height": 1200
     }
   ],
   "rehearsal": [
