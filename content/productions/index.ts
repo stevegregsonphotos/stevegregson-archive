@@ -43,10 +43,26 @@ export function getNextProduction(slug: string) {
     return undefined;
   }
 
-  const nextIndex =
-    (currentIndex + 1) % productions.length;
+  for (
+    let offset = 1;
+    offset < productions.length;
+    offset += 1
+  ) {
+    const nextIndex =
+      (currentIndex + offset) %
+      productions.length;
 
-  return productions[nextIndex];
+    const candidate =
+      productions[nextIndex];
+
+    if (
+      candidate.access !== "password"
+    ) {
+      return candidate;
+    }
+  }
+
+  return undefined;
 }
 
 export type {

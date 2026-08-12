@@ -40,26 +40,25 @@ export const pipeline2TestAugust2026Copy: Production = {
     {
       "src": "01-emilia-101-copy.webp",
       "alt": "test at MOUNTVIEW, photographed by Steve Gregson",
-      "layout": "wide-left",
-      "blurDataURL": "data:image/webp;base64,UklGRpgAAABXRUJQVlA4IIwAAABQBACdASoYABAAPvVmqk4qpaOiMAgBUB6JbACw7CIbEgorY9yFfqAvLQcwAP70K12H6d+OJvwlbPdatzl8fVE7TvoR+lqCYtE1TBzTPu6xMEdtwnl7yWjdxZRKD0nuQfo52Tz98eM12DvXAW3/SvCoIe8BdY1GNm+M/74Z2ZCaqYdBJ9e1DSX42AAAAA=="
+      "layout": "wide-left"
     },
     {
       "src": "02-emilia-32-copy.webp",
       "alt": "test at MOUNTVIEW, photographed by Steve Gregson",
-      "layout": "wide-right",
-      "blurDataURL": "data:image/webp;base64,UklGRngAAABXRUJQVlA4IGwAAADwAwCdASoYABAAPvVqrE6qpiQiMAgBUB6JaADCgCG/5yuH2a3AowYAAP7w01L4Y/hq+d8keOizXCFGFMlS6BfOSJefX136BeouJQXsX6HGdema8YBUsAHKJoknKuik/jCi8WZHQ+W1fvYAAAA="
+      "layout": "wide-right"
     },
     {
       "src": "03-emilia-98-copy.webp",
       "alt": "test at MOUNTVIEW, photographed by Steve Gregson",
-      "layout": "right",
-      "blurDataURL": "data:image/webp;base64,UklGRjQBAABXRUJQVlA4ICgBAADwBgCdASoYACQAPvVwr1KqpiQipWsxUB6JaACxHBgapVoYenw97Rp8I+lPvNfx3JSd9/dHMnlxVMIKT0OzhVcAAP722TW+BvSgY0zfj02GGpp7QVs6f8yPuk1Bc+GOK9YrL1HpFFwOLY2d0xvv6lzoc/xPzVPLNihrIsu5dzy5Ohs+LzZ3SGErU6DH3PZVuu8cr62mM3/L/fXDaXVwPrJ5SpX8cerXDxCQ7/04+UATsqO0vGFfL7p1auMvpEOnlxyjlzAANXWvgLZFRwLdqPOIorC8Sn62n6ZTa81qGOjePDTwcfgJl+PvnAjepBYBxkNtXsgqfteboiLcbZ+5Xw3qpjyAk3rE4UKVibqL0kY8XGa09E4EZloG1ppVUcXmTTNVhcLwYZAAAA=="
+      "layout": "right"
     },
     {
       "src": "04-emilia-97-copy.webp",
       "alt": "test at MOUNTVIEW, photographed by Steve Gregson",
-      "layout": "left",
-      "blurDataURL": "data:image/webp;base64,UklGRhoBAABXRUJQVlA4IA4BAACwBgCdASoYACQAPvVsq04qpqQiKrgN+VAeiWYAsSVBPQALf0cRNF5aGoPN9BgEnc6sH2aRlvkiEZmj3ouxwAD+iSqD14iiPK2lEB00Iwb2ex0Wg+uLMhN9zW4aEXH+gxTuhyja6Mp+fQmMv0lHFhlXILm+jX8HMi4SXfMSkbyukR7UN2MjQi9LGrgkBsd0OPLpu632A26UoncnqdsXtyCnvOrwCt3WoyFBdEnDBbeBbBFrB6SaNgQHxjyi9YzZy4FSR8bqNWbrbuCkE0c12/Ou6xme+SKD9tSeSSH1Jz6h54gxWtMkUa/NOwzkHzmsRfSBplyj4UIoD1CgRGhZYbK1MAQ9PIsEsFE7uSY8OAA="
+      "layout": "left"
     }
-  ]
+  ],
+  "access": "password",
+  "accessPasswordHash": "ecd71870d1963316a97e3ac3408c9835ad8cf0f3c1bc703527c30265534f75ae",
+  "accessPasswordEncrypted": "b54afcd594d4d1d1dec74f36:4c6dd9e5aa5cbf1010a1bec63caf82ae:ad60576883f712"
 };

@@ -65,5 +65,6 @@ export const aSherlockCarol: Production = {
       "alt": "A Sherlock Carol at Marylebone Theatre, photographed by Steve Gregson",
       "layout": "wide-right"
     }
-  ]
+  ],
+  "access": "public"
 };

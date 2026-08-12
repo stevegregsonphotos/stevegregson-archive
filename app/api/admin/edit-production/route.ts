@@ -1,4 +1,9 @@
 import { readFile, writeFile } from "node:fs/promises";
+import {
+  createCipheriv,
+  createDecipheriv,
+  randomBytes,
+} from "node:crypto";
 import path from "node:path";
 
 export const runtime = "nodejs";
@@ -36,6 +41,8 @@ type ProductionData = {
   description: string;
   hero: string;
   heroAlt: string;
+  access?: "public" | "password";
+accessPasswordEncrypted?: string;
   credits: ProductionCredit[];
   images: ProductionImage[];
 };
@@ -47,6 +54,8 @@ type UpdateRequest = {
   venue?: unknown;
   year?: unknown;
   description?: unknown;
+  access?: unknown;
+accessPassword?: unknown;
   credits?: unknown;
   images?: unknown;
 };
@@ -76,6 +85,69 @@ function isSafeFilename(value: string) {
     value !== ".."
   );
 }
+function getPasswordKey() {
+  const value = process.env.PRODUCTION_PASSWORD_KEY;
+
+  if (!value || !/^[a-f0-9]{64}$/i.test(value)) {
+    throw new Error(
+      "PRODUCTION_PASSWORD_KEY is missing or invalid.",
+    );
+  }
+
+  return Buffer.from(value, "hex");
+}
+
+function encryptAccessPassword(password: string) {
+  const iv = randomBytes(12);
+  const cipher = createCipheriv(
+    "aes-256-gcm",
+    getPasswordKey(),
+    iv,
+  );
+
+  const encrypted = Buffer.concat([
+    cipher.update(password, "utf8"),
+    cipher.final(),
+  ]);
+
+  const authTag = cipher.getAuthTag();
+
+  return [
+    iv.toString("hex"),
+    authTag.toString("hex"),
+    encrypted.toString("hex"),
+  ].join(":");
+}
+
+function decryptAccessPassword(value: string) {
+  const [ivHex, authTagHex, encryptedHex] =
+    value.split(":");
+
+  if (!ivHex || !authTagHex || !encryptedHex) {
+    throw new Error(
+      "The stored production password is invalid.",
+    );
+  }
+
+  const decipher = createDecipheriv(
+    "aes-256-gcm",
+    getPasswordKey(),
+    Buffer.from(ivHex, "hex"),
+  );
+
+  decipher.setAuthTag(
+    Buffer.from(authTagHex, "hex"),
+  );
+
+  const decrypted = Buffer.concat([
+    decipher.update(
+      Buffer.from(encryptedHex, "hex"),
+    ),
+    decipher.final(),
+  ]);
+
+  return decrypted.toString("utf8");
+}
 
 function getProductionFile(slug: string) {
   return path.join(
@@ -98,6 +170,7 @@ function readProductionFromSource(
       "The production data could not be read.",
     );
   }
+  
 
   return JSON.parse(objectMatch[1]) as ProductionData;
 }
@@ -269,7 +342,21 @@ export async function GET(request: Request) {
       );
     }
 
-    return Response.json({ ok: true, production });
+const responseProduction = {
+  ...production,
+  accessPassword:
+    production.access === "password" &&
+    production.accessPasswordEncrypted
+      ? decryptAccessPassword(
+          production.accessPasswordEncrypted,
+        )
+      : "",
+};
+
+return Response.json({
+  ok: true,
+  production: responseProduction,
+});
   } catch (error) {
     console.error("Production loading failed:", error);
 
@@ -418,18 +505,64 @@ export async function POST(request: Request) {
     }
 
     if (body.description !== undefined) {
-      if (typeof body.description !== "string") {
-        return Response.json(
-          {
-            ok: false,
-            message: "The production description is invalid.",
-          },
-          { status: 400 },
-        );
-      }
+  if (typeof body.description !== "string") {
+    return Response.json(
+      {
+        ok: false,
+        message: "The production description is invalid.",
+      },
+      { status: 400 },
+    );
+  }
 
-      production.description = body.description.trim();
-    }
+  production.description = body.description.trim();
+}
+
+if (body.access !== undefined) {
+  if (
+    body.access !== "public" &&
+    body.access !== "password"
+  ) {
+    return Response.json(
+      {
+        ok: false,
+        message:
+          "The production access setting is invalid.",
+      },
+      { status: 400 },
+    );
+  }
+
+  if (body.access === "public") {
+  production.access = "public";
+  delete production.accessPasswordEncrypted;
+} else {
+  const password =
+    typeof body.accessPassword === "string"
+      ? (body.accessPassword as string).trim()
+      : "";
+
+  if (password) {
+    production.access = "password";
+    production.accessPasswordEncrypted =
+      encryptAccessPassword(password);
+  } else if (
+    production.access === "password" &&
+    production.accessPasswordEncrypted
+  ) {
+    production.access = "password";
+  } else {
+    return Response.json(
+      {
+        ok: false,
+        message:
+          "Enter a password before protecting this production.",
+      },
+      { status: 400 },
+    );
+  }
+}
+}
 
     if (body.credits !== undefined) {
       production.credits = parseCredits(body.credits);
@@ -444,11 +577,22 @@ export async function POST(request: Request) {
       await writeFile(productionFile, updatedSource, "utf8");
     }
 
-    return Response.json({
-      ok: true,
-      message: "Production updated successfully.",
-      production,
-    });
+    const responseProduction = {
+  ...production,
+  accessPassword:
+    production.access === "password" &&
+    production.accessPasswordEncrypted
+      ? decryptAccessPassword(
+          production.accessPasswordEncrypted,
+        )
+      : "",
+};
+
+return Response.json({
+  ok: true,
+  message: "Production updated successfully.",
+  production: responseProduction,
+});
   } catch (error) {
     console.error("Production update failed:", error);
 

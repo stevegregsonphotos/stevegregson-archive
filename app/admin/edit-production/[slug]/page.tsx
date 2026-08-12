@@ -42,6 +42,9 @@ type Production = {
   description: string;
   hero: string;
   heroAlt: string;
+  access?: "public" | "password";
+accessPasswordHash?: string;
+accessPassword?: string;
   credits: ProductionCredit[];
   images: ProductionImage[];
 };
@@ -70,6 +73,13 @@ export default function EditProductionPage() {
   const [venue, setVenue] = useState("");
   const [year, setYear] = useState("");
   const [description, setDescription] = useState("");
+  const [access, setAccess] =
+  useState<"public" | "password">("public");
+
+const [accessPassword, setAccessPassword] =
+  useState("");
+  const [showAccessPassword, setShowAccessPassword] =
+  useState(false);
   const [credits, setCredits] = useState<ProductionCredit[]>([]);
   const [galleryImages, setGalleryImages] = useState<ProductionImage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -108,6 +118,10 @@ export default function EditProductionPage() {
         setVenue(data.production.venue);
         setYear(String(data.production.year));
         setDescription(data.production.description);
+        setAccess(data.production.access ?? "public");
+       setAccessPassword(
+  data.production.accessPassword ?? accessPassword,
+);
         setCredits(data.production.credits);
         setGalleryImages(data.production.images);
       } catch (error) {
@@ -144,14 +158,17 @@ export default function EditProductionPage() {
   );
 
   const hasDetailChanges = Boolean(
-    production &&
-      (title.trim() !== production.title ||
-        venue.trim() !== production.venue ||
-        parsedYear !== production.year ||
-        description.trim() !== production.description ||
-        JSON.stringify(credits) !==
-          JSON.stringify(production.credits)),
-  );
+  production &&
+  (title.trim() !== production.title ||
+  venue.trim() !== production.venue ||
+  parsedYear !== production.year ||
+  description.trim() !== production.description ||
+  access !== (production.access ?? "public") ||
+  (access === "password" &&
+    accessPassword.trim().length > 0) ||
+  JSON.stringify(credits) !==
+    JSON.stringify(production.credits)),
+);
 
   const hasGalleryChanges = Boolean(
     production &&
@@ -208,6 +225,11 @@ export default function EditProductionPage() {
             venue: venue.trim(),
             year: parsedYear,
             description: description.trim(),
+            access,
+accessPassword:
+  access === "password"
+    ? accessPassword.trim()
+    : "",
             credits,
             images: galleryImages,
           }),
@@ -228,6 +250,8 @@ export default function EditProductionPage() {
       setVenue(data.production.venue);
       setYear(String(data.production.year));
       setDescription(data.production.description);
+      setAccess(data.production.access ?? "public");
+setAccessPassword("");
       setCredits(data.production.credits);
       setGalleryImages(data.production.images);
       setMessage(
@@ -349,7 +373,165 @@ export default function EditProductionPage() {
           clearMessage();
         }}
       />
+<section
+  style={{
+    maxWidth: "90rem",
+    margin: "3rem auto 0",
+    padding: "2rem",
+    border:
+      "1px solid rgba(242, 238, 230, 0.14)",
+    background:
+      "rgba(255, 255, 255, 0.02)",
+  }}
+>
+  <p
+    style={{
+      margin: 0,
+      color: "#c7a369",
+      fontSize: "0.55rem",
+      fontWeight: 700,
+      letterSpacing: "0.16em",
+      textTransform: "uppercase",
+    }}
+  >
+    Access
+  </p>
 
+  <div
+    style={{
+      display: "flex",
+      flexWrap: "wrap",
+      gap: "1.25rem",
+      marginTop: "1.25rem",
+    }}
+  >
+    <label
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "0.6rem",
+        cursor: "pointer",
+      }}
+    >
+      <input
+        type="radio"
+        name="production-access"
+        value="public"
+        checked={access === "public"}
+        onChange={() => {
+          setAccess("public");
+          setAccessPassword("");
+          clearMessage();
+        }}
+      />
+
+      <span>Public</span>
+    </label>
+
+    <label
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "0.6rem",
+        cursor: "pointer",
+      }}
+    >
+      <input
+        type="radio"
+        name="production-access"
+        value="password"
+        checked={access === "password"}
+        onChange={() => {
+          setAccess("password");
+          clearMessage();
+        }}
+      />
+
+      <span>Password protected</span>
+    </label>
+  </div>
+
+  {access === "password" ? (
+    <div
+      style={{
+        marginTop: "1.5rem",
+        maxWidth: "28rem",
+      }}
+    >
+      <label
+        htmlFor="production-access-password"
+        style={{
+          display: "block",
+          marginBottom: "0.6rem",
+          color: "rgba(242, 238, 230, 0.58)",
+          fontSize: "0.55rem",
+          fontWeight: 700,
+          letterSpacing: "0.12em",
+          textTransform: "uppercase",
+        }}
+      >
+        Password
+      </label>
+
+      <input
+        id="production-access-password"
+        type={showAccessPassword ? "text" : "password"}
+        value={accessPassword}
+        onChange={(event) => {
+          setAccessPassword(event.target.value);
+          clearMessage();
+        }}
+        placeholder={
+          production.access === "password"
+            ? "Leave blank to keep existing password"
+            : "Enter password"
+        }
+        autoComplete="new-password"
+        style={{
+          width: "100%",
+          padding: "0.9rem 1rem",
+          border:
+            "1px solid rgba(242, 238, 230, 0.18)",
+          background: "#11100f",
+          color: "#f2eee6",
+          font: "inherit",
+        }}
+      />
+      <button
+  type="button"
+  onClick={() =>
+    setShowAccessPassword((current) => !current)
+  }
+  style={{
+    marginTop: "0.75rem",
+    padding: 0,
+    border: 0,
+    background: "transparent",
+    color: "#c7a369",
+    cursor: "pointer",
+    fontSize: "0.55rem",
+    fontWeight: 700,
+    letterSpacing: "0.12em",
+    textTransform: "uppercase",
+  }}
+>
+  {showAccessPassword ? "Hide password" : "Show password"}
+</button>
+
+      <p
+        style={{
+          margin: "0.75rem 0 0",
+          color: "rgba(242, 238, 230, 0.45)",
+          fontSize: "0.7rem",
+          lineHeight: 1.6,
+        }}
+      >
+        The production page remains visible.
+        The photographic gallery requires this password.
+      </p>
+    </div>
+  ) : null}
+</section>
       <CreditsEditor
         credits={credits}
         onChange={(nextCredits) => {

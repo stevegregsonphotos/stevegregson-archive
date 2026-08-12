@@ -23,6 +23,7 @@ type ArchiveProduction = {
   description: string;
   hero: string;
   heroAlt: string;
+  access?: "public" | "password";
   credits: ProductionCredit[];
 };
 
@@ -299,6 +300,29 @@ export default function ArchiveExplorer({
                       sizes="(max-width: 700px) calc(100vw - 2.8rem), (max-width: 1100px) 46vw, 29vw"
                       priority={index < 3}
                     />
+
+                    {production.access === "password" ? (
+                      <span
+                        className="archive-card-lock"
+                        aria-label="Private gallery"
+                        title="Private gallery"
+                      >
+                        <svg
+                          viewBox="0 0 24 24"
+                          aria-hidden="true"
+                          focusable="false"
+                        >
+                          <path
+                            d="M7.5 10V7.75a4.5 4.5 0 0 1 9 0V10m-10 0h11a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1Z"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </span>
+                    ) : null}
                   </div>
 
                   <div className="archive-card-copy">
@@ -403,6 +427,28 @@ export default function ArchiveExplorer({
             transform 900ms
             cubic-bezier(0.22, 1, 0.36, 1),
             opacity 400ms ease;
+        }
+
+        .archive-card-lock {
+          position: absolute;
+          top: 0.9rem;
+          right: 0.9rem;
+          z-index: 2;
+          display: grid;
+          place-items: center;
+          width: 1.8rem;
+          height: 1.8rem;
+          border: 1px solid rgba(242, 238, 230, 0.28);
+          border-radius: 999px;
+          background: rgba(17, 16, 15, 0.74);
+          color: #c7a369;
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+        }
+
+        .archive-card-lock svg {
+          width: 0.9rem;
+          height: 0.9rem;
         }
 
         .archive-card-copy {

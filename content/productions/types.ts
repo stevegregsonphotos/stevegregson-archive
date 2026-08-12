@@ -33,6 +33,10 @@ export type Production = {
   hero: string;
   heroAlt: string;
   heroBlurDataURL?: string;
+
+  access?: "public" | "password";
+  accessPasswordHash?: string;
+  accessPasswordEncrypted?: string;
   credits: ProductionCredit[];
   images: ProductionImage[];
 };
