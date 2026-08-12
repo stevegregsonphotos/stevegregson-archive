@@ -48,10 +48,27 @@ export default function Footer() {
       </div>
 
       <div className="site-footer-lower">
-        <p>
-          © {new Date().getFullYear()} Steve Gregson Photography
-        </p>
-      </div>
+  <p>
+    © {new Date().getFullYear()} Steve Gregson Photography
+  </p>
+
+  <nav
+    className="site-footer-legal"
+    aria-label="Legal and policy information"
+  >
+    <Link href="/policies">
+      Professional Standards
+    </Link>
+
+    <Link href="/policies/terms">
+      Terms &amp; Conditions
+    </Link>
+
+    <Link href="/policies/privacy">
+      Privacy
+    </Link>
+  </nav>
+</div>
 
       <style>{`
         .site-footer {
@@ -154,10 +171,14 @@ export default function Footer() {
         }
 
         .site-footer-lower {
-          margin-top: 2.4rem;
-          padding-top: 1.25rem;
-          border-top: 1px solid rgba(17, 16, 15, 0.12);
-        }
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+  margin-top: 2.4rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid rgba(17, 16, 15, 0.12);
+}
 
         .site-footer-lower p {
           margin: 0;
@@ -166,7 +187,25 @@ export default function Footer() {
           letter-spacing: 0.14em;
           text-transform: uppercase;
         }
+.site-footer-legal {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.8rem 1.4rem;
+}
 
+.site-footer-legal a {
+  color: rgba(17, 16, 15, 0.4);
+  font-size: 0.47rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  transition: opacity 180ms ease;
+}
+
+.site-footer-legal a:hover {
+  opacity: 0.5;
+}
         @media (max-width: 900px) {
           .site-footer-main {
             grid-template-columns: 1fr 1fr;
@@ -233,6 +272,15 @@ export default function Footer() {
           .site-footer-lower {
             margin-top: 2rem;
           }
+            .site-footer-lower {
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.site-footer-legal {
+  justify-content: flex-start;
+}
         }
 
         @media (max-width: 480px) {
