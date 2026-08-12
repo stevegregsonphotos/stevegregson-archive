@@ -1,22 +1,17 @@
-import type { CSSProperties } from "react";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 
 import selectedWorkData from "../../content/selected-work.json";
 
-import styles from "./selected-work.module.css";
+import styles from "./selected-work-preview.module.css";
 
 export const metadata: Metadata = {
-  title: "Selected Work | Steve Gregson Theatre Photographer",
+  title:
+    "Selected Work Preview | Steve Gregson Theatre Photographer",
   description:
-    "Explore selected production, rehearsal, marketing and PR photography by London theatre photographer Steve Gregson.",
+    "A preview of selected production photography by London theatre photographer Steve Gregson.",
 };
-
-type CategoryId =
-  | "production"
-  | "rehearsal"
-  | "campaign";
 
 type SelectedWorkImage = {
   filename: string;
@@ -27,253 +22,153 @@ type SelectedWorkImage = {
   height: number;
 };
 
-type SelectedWorkData = Record<
-  CategoryId,
-  SelectedWorkImage[]
->;
-
-type WorkNavigationItem = {
-  href: string;
-  label: string;
+type SelectedWorkData = {
+  production: SelectedWorkImage[];
+  rehearsal: SelectedWorkImage[];
+  campaign: SelectedWorkImage[];
 };
-
-type FeaturedCollection = {
-  id: CategoryId;
-  eyebrow: string;
-  title: string;
-  description: string;
-  href: string;
-  linkLabel: string;
-  imagePath: string;
-};
-
-const workNavigation: WorkNavigationItem[] = [
-  {
-    href: "/production",
-    label: "Production",
-  },
-  {
-    href: "/rehearsals",
-    label: "Rehearsals",
-  },
-  {
-    href: "/marketing-pr",
-    label: "Marketing & PR",
-  },
-];
-
-const featuredCollections: FeaturedCollection[] = [
-  {
-    id: "production",
-    eyebrow: "Production",
-    title: "The Life of a Production.",
-    description:
-      "A curated selection of production photography celebrating the energy, atmosphere and artistry of live performance.",
-    href: "/production",
-    linkLabel: "Explore production",
-    imagePath: "/images/selected-work/production",
-  },
-  {
-    id: "rehearsal",
-    eyebrow: "Rehearsals",
-    title: "The Making of Theatre.",
-    description:
-      "Photographs from the rehearsal room, documenting the collaboration, experimentation and discovery through which productions take shape.",
-    href: "/rehearsals",
-    linkLabel: "Explore rehearsals",
-    imagePath: "/images/selected-work/rehearsal",
-  },
-  {
-    id: "campaign",
-    eyebrow: "Marketing & PR",
-    title: "The Image That Sells the Story.",
-    description:
-      "Campaign and publicity photography created to introduce productions, build anticipation and connect theatres with their audiences.",
-    href: "/marketing-pr",
-    linkLabel: "Explore marketing and PR",
-    imagePath: "/images/selected-work/campaign",
-  },
-];
 
 const portfolio =
   selectedWorkData as SelectedWorkData;
 
-function imageFrameStyle(
-  image: SelectedWorkImage,
-): CSSProperties {
-  return {
-    aspectRatio: `${image.width} / ${image.height}`,
-  };
-}
+/*
+ * These positions become the large,
+ * full-width photographs.
+ *
+ * The numbers refer to the displayed
+ * position in the gallery:
+ *
+ * 0 = first image
+ * 6 = seventh image
+ * 12 = thirteenth image
+ *
+ * Change these numbers later to art-direct
+ * which photographs get the biggest impact.
+ */
+const featuredImages = new Set([0, 6, 12]);
 
-export default function SelectedWorkPage() {
+export default function SelectedWorkPreviewPage() {
+  /*
+   * Start with 15 production photographs.
+   *
+   * We can increase or decrease this once
+   * we've curated the actual gallery.
+   */
+  const productionImages =
+    portfolio.production.slice(0, 15);
+
   return (
     <main className={styles.page}>
-      <section className={styles.intro}>
+      <section className={styles.introduction}>
         <p className={styles.eyebrow}>
           Selected Work
         </p>
 
-        <h1>
-          Photography that stays with a production.
-        </h1>
+        <div className={styles.introductionLayout}>
+          <h1>
+            Production photography
+            <br />
+            built around the life
+            <br />
+            of a performance.
+          </h1>
 
-        <p className={styles.introText}>
-          Created for the stage.
-          <br />
-          Living long after the applause.
-        </p>
+          <p className={styles.introductionCopy}>
+            A curated selection of live performance
+            photography capturing the energy,
+            atmosphere and visual language of theatre.
+          </p>
+        </div>
       </section>
 
       <nav
         className={styles.sectionNavigation}
         aria-label="Photography collections"
       >
-        <div
-          className={
-            styles.sectionNavigationInner
-          }
-        >
-          {workNavigation.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-            >
-              {item.label}
-            </Link>
-          ))}
+        <div className={styles.navigationInner}>
+          <a
+            href="#production-gallery"
+            className={styles.activeNavigationItem}
+          >
+            Production
+          </a>
+
+          <Link href="/rehearsals">
+            Rehearsals
+          </Link>
+
+          <Link href="/marketing-pr">
+            Marketing &amp; PR
+          </Link>
         </div>
       </nav>
 
-      <section className={styles.selectedWorkIntroduction}>
-        <p>
-          A curated body of work spanning live
-          performance, rehearsal rooms and the imagery
-          that introduces theatre to its audience.
-        </p>
+      <section
+        className={styles.gallery}
+        id="production-gallery"
+        aria-label="Selected production photography"
+      >
+        {productionImages.map((image, index) => {
+          const isFeatured =
+            featuredImages.has(index);
+
+          return (
+            <figure
+              className={
+                isFeatured
+                  ? `${styles.galleryItem} ${styles.featured}`
+                  : styles.galleryItem
+              }
+              key={image.filename}
+            >
+              <Image
+                src={`/images/selected-work/production/${image.filename}`}
+                alt={image.alt}
+                width={image.width}
+                height={image.height}
+                sizes={
+                  isFeatured
+                    ? "(max-width: 760px) 100vw, 94vw"
+                    : "(max-width: 760px) 100vw, 46vw"
+                }
+                className={styles.galleryImage}
+                priority={index === 0}
+              />
+            </figure>
+          );
+        })}
       </section>
 
-      <div className={styles.landingCollections}>
-        {featuredCollections.map(
-          (collection, index) => {
-            const image =
-              portfolio[collection.id]?.[0];
-
-            return (
-              <section
-                className={`${styles.collection} ${styles.landingCollection}`}
-                key={collection.id}
-              >
-                <header
-                  className={
-                    styles.landingCollectionHeader
-                  }
-                >
-                  <div
-                    className={
-                      styles.collectionHeadingCopy
-                    }
-                  >
-                    <div>
-                      <p
-                        className={`${styles.eyebrow} ${styles.landingCollectionEyebrow}`}
-                      >
-                        {collection.eyebrow}
-                      </p>
-
-                      <h2>
-                        {collection.title}
-                      </h2>
-                    </div>
-
-                    <div
-                      className={
-                        styles.landingCollectionSummary
-                      }
-                    >
-                      <p>
-                        {collection.description}
-                      </p>
-
-                      <Link
-                        href={collection.href}
-                        className={
-                          styles.archiveLink
-                        }
-                      >
-                        {collection.linkLabel}
-                        <span aria-hidden="true">
-                          →
-                        </span>
-                      </Link>
-                    </div>
-                  </div>
-                </header>
-
-                {image ? (
-                  <Link
-                    href={collection.href}
-                    className={
-                      styles.productionImageLink
-                    }
-                    aria-label={
-                      collection.linkLabel
-                    }
-                  >
-                    <div
-                      className={`${styles.productionImageFrame} ${styles.landingImageFrame}`}
-                      style={imageFrameStyle(
-                        image,
-                      )}
-                    >
-                      <Image
-                        src={`${collection.imagePath}/${image.filename}`}
-                        alt={image.alt}
-                        fill
-                        sizes="(max-width: 900px) calc(100vw - 2.8rem), 88vw"
-                        className={
-                          styles.productionImage
-                        }
-                        priority={index === 0}
-                      />
-                    </div>
-                  </Link>
-                ) : (
-                  <p>
-                    No photographs have been added to
-                    this collection yet.
-                  </p>
-                )}
-              </section>
-            );
-          },
-        )}
-      </div>
-
-      <section className={styles.archiveCta}>
-        <p className={styles.eyebrow}>
-          Explore further
-        </p>
-
-        <h2>
-          Every production. One living archive.
-        </h2>
-
-        <div
-          className={styles.archiveCtaFooter}
-        >
-          <p>
-            Search the complete body of work by
-            production, year, venue and creative
-            collaborator.
+      <section className={styles.nextStep}>
+        <div className={styles.nextStepHeading}>
+          <p className={styles.eyebrow}>
+            Explore Further
           </p>
 
-          <Link
-            href="/archive"
-            className={styles.archiveLink}
-          >
-            Explore the archive
-            <span aria-hidden="true">→</span>
+          <h2>
+            Looking for a particular production?
+          </h2>
+        </div>
+
+        <div className={styles.nextStepLinks}>
+          <Link href="/production">
+            <span>
+              More production photography
+            </span>
+
+            <span aria-hidden="true">
+              →
+            </span>
+          </Link>
+
+          <Link href="/archive">
+            <span>
+              Search the archive
+            </span>
+
+            <span aria-hidden="true">
+              →
+            </span>
           </Link>
         </div>
       </section>
