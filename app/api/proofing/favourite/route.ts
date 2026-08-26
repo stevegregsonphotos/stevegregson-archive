@@ -175,14 +175,21 @@ export async function POST(
                 lastSeenAt: now,
 
                 selection: {
+                  /*
+                   * Preserve the previous submitted
+                   * snapshot and submittedAt.
+                   *
+                   * Only the working favourites and
+                   * current status change here.
+                   */
                   ...currentVisitor.selection,
+
+                  favourites,
 
                   status:
                     favourites.length > 0
                       ? "in-progress"
                       : "not-started",
-
-                  favourites,
                 },
               };
             },
@@ -232,5 +239,17 @@ export async function POST(
         (favourite) =>
           favourite.imageId,
       ),
+
+    selectionStatus:
+      updatedVisitor.selection.status,
+
+    submittedAt:
+      updatedVisitor.selection.submittedAt,
+
+    submittedFavourites:
+      updatedVisitor.selection.submittedFavourites?.map(
+        (favourite) =>
+          favourite.imageId,
+      ) ?? [],
   });
 }

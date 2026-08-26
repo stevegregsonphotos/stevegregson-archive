@@ -48,8 +48,27 @@ export type ProofingFavourite = {
 export type ProofingSelection = {
   status: ProofingSelectionStatus;
 
+  /*
+   * The client's current working selection.
+   *
+   * These may change after a submission.
+   */
   favourites: ProofingFavourite[];
 
+  /*
+   * Snapshot of the last selection formally
+   * submitted by the client.
+   *
+   * This lets Backstage distinguish between
+   * the last confirmed selection and any
+   * changes currently being made.
+   */
+  submittedFavourites?: ProofingFavourite[];
+
+  /*
+   * Date/time of the most recent formal
+   * submission.
+   */
   submittedAt?: string;
 };
 
@@ -78,6 +97,20 @@ export type ProofingGallery = {
   venue?: string;
   description?: string;
 
+  /*
+   * Client-facing gallery presentation.
+   *
+   * coverImageId references one of the images
+   * already uploaded to this gallery.
+   */
+  coverImageId?: string;
+
+  /*
+   * Editable welcome/introduction shown to the
+   * client before they enter the gallery.
+   */
+  introMessage?: string;
+
   createdAt: string;
   updatedAt: string;
 
@@ -102,8 +135,7 @@ export type ProofingGallery = {
   images: ProofingImage[];
 
   /*
-   * New model:
-   * every identified visitor gets their
+   * Every identified visitor gets their
    * own independent selection.
    */
   visitors: ProofingVisitor[];
@@ -113,8 +145,8 @@ export type ProofingGallery = {
    * for galleries created before visitors
    * were introduced.
    *
-   * We will remove this once the test data
-   * has been migrated.
+   * We can remove this once legacy test data
+   * is no longer needed.
    */
   selection?: ProofingSelection;
 };

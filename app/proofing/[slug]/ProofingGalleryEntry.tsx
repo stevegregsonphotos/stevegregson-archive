@@ -5,8 +5,15 @@ import {
   useState,
 } from "react";
 
+import ProofingGalleryWelcome from "./ProofingGalleryWelcome";
+
 type ProofingGalleryEntryProps = {
   gallerySlug: string;
+  title: string;
+  clientName?: string;
+  venue?: string;
+  introMessage?: string;
+  coverImageUrl?: string;
 };
 
 type EntryResponse = {
@@ -16,6 +23,11 @@ type EntryResponse = {
 
 export default function ProofingGalleryEntry({
   gallerySlug,
+  title,
+  clientName,
+  venue,
+  introMessage,
+  coverImageUrl,
 }: ProofingGalleryEntryProps) {
   const [email, setEmail] =
     useState("");
@@ -25,6 +37,9 @@ export default function ProofingGalleryEntry({
 
   const [error, setError] =
     useState<string | null>(null);
+
+  const [showWelcome, setShowWelcome] =
+    useState(false);
 
   async function handleSubmit(
     event: FormEvent<HTMLFormElement>,
@@ -62,12 +77,7 @@ export default function ProofingGalleryEntry({
         );
       }
 
-      /*
-       * Reload the server page.
-       * The new visitor cookie will now be
-       * available to the Server Component.
-       */
-      window.location.reload();
+      setShowWelcome(true);
     } catch (error) {
       setError(
         error instanceof Error
@@ -79,27 +89,68 @@ export default function ProofingGalleryEntry({
     }
   }
 
+  if (showWelcome) {
+    return (
+      <ProofingGalleryWelcome
+        title={title}
+        introMessage={introMessage}
+        onContinue={() => {
+          window.location.reload();
+        }}
+      />
+    );
+  }
+
   return (
-    <div className="proofing-entry">
-      <div className="proofing-entry-inner">
-        <p className="proofing-client-eyebrow">
-          Private Client Gallery
-        </p>
+    <section className="proofing-entry">
+      {coverImageUrl ? (
+        <img
+          src={coverImageUrl}
+          alt=""
+          className="proofing-entry-cover"
+        />
+      ) : null}
 
-        <h1>Enter gallery</h1>
+      <div className="proofing-entry-overlay" />
 
-        <p className="proofing-entry-copy">
-          Please enter your email address to
-          view and select photographs.
-        </p>
+      <div className="proofing-entry-content">
+        <div className="proofing-entry-copy-block">
+          <p className="proofing-client-eyebrow">
+            Private Client Gallery
+          </p>
+
+          <h1>{title}</h1>
+
+          <p className="proofing-entry-meta">
+            {clientName ?? "Client gallery"}
+
+            {venue ? (
+              <>
+                <span aria-hidden="true">
+                  {" "}
+                  ·{" "}
+                </span>
+
+                {venue}
+              </>
+            ) : null}
+          </p>
+        </div>
 
         <form
           className="proofing-entry-form"
           onSubmit={handleSubmit}
         >
-          <label htmlFor="proofing-email">
-            Email address
-          </label>
+          <div>
+            <label htmlFor="proofing-email">
+              Email address
+            </label>
+
+            <p className="proofing-entry-form-help">
+              Enter your email address to view the
+              gallery and save your selections.
+            </p>
+          </div>
 
           <input
             id="proofing-email"
@@ -129,10 +180,10 @@ export default function ProofingGalleryEntry({
           >
             {isSubmitting
               ? "Entering…"
-              : "Enter gallery"}
+              : "Continue"}
           </button>
         </form>
       </div>
-    </div>
+    </section>
   );
 }

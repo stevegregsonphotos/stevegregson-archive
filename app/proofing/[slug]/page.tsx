@@ -28,13 +28,6 @@ export default async function ProofingClientPage({
     notFound();
   }
 
-  /*
-   * The browser never stores the visitor's
-   * email address in the cookie.
-   *
-   * It only stores the opaque visitor UUID
-   * created by /api/proofing/enter.
-   */
   const cookieStore = await cookies();
 
   const visitorId =
@@ -51,18 +44,59 @@ export default async function ProofingClientPage({
 
   /*
    * No valid visitor session:
-   * show the email entry screen instead
-   * of exposing the photographs.
+   * show the cover + email entry screen.
    */
   if (!visitor) {
+    const coverImage = gallery.coverImageId
+      ? gallery.images.find(
+          (image) =>
+            image.id === gallery.coverImageId,
+        )
+      : undefined;
+
+    const coverImageUrl = coverImage
+      ? `/api/proofing/image?gallery=${encodeURIComponent(
+          gallery.slug,
+        )}&image=${encodeURIComponent(
+          coverImage.id,
+        )}`
+      : undefined;
+
     return (
       <main className="proofing-client-page">
         <ProofingGalleryEntry
           gallerySlug={gallery.slug}
+          title={gallery.title}
+          clientName={gallery.clientName}
+          venue={gallery.venue}
+          introMessage={gallery.introMessage}
+          coverImageUrl={coverImageUrl}
         />
       </main>
     );
   }
+
+  /*
+   * Older submitted selections were created
+   * before submittedFavourites existed.
+   *
+   * If that is the case, treat their current
+   * favourites as the last submitted snapshot
+   * until they next submit.
+   */
+  const submittedFavouriteIds =
+    visitor.selection.submittedFavourites?.map(
+      (favourite) =>
+        favourite.imageId,
+    ) ??
+    (
+      visitor.selection.status === "submitted"
+        ? visitor.selection.favourites.map(
+            (favourite) =>
+              favourite.imageId,
+          )
+        : []
+    );
 
   return (
     <main className="proofing-client-page">
@@ -76,7 +110,8 @@ export default async function ProofingClientPage({
             <h1>{gallery.title}</h1>
 
             <p className="proofing-client-meta">
-              {gallery.clientName ?? "Client gallery"}
+              {gallery.clientName ??
+                "Client gallery"}
 
               {gallery.venue ? (
                 <>
@@ -94,8 +129,8 @@ export default async function ProofingClientPage({
 
         {gallery.images.length === 0 ? (
           <p className="proofing-client-empty">
-            No photographs are currently available
-            in this gallery.
+            No photographs are currently
+            available in this gallery.
           </p>
         ) : (
           <ProofingGalleryClient
@@ -113,6 +148,15 @@ export default async function ProofingClientPage({
                 (favourite) =>
                   favourite.imageId,
               )
+            }
+            initialSelectionStatus={
+              visitor.selection.status
+            }
+            initialSubmittedAt={
+              visitor.selection.submittedAt
+            }
+            initialSubmittedFavourites={
+              submittedFavouriteIds
             }
           />
         )}

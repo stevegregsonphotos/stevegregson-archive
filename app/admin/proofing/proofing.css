@@ -258,3 +258,318 @@
     grid-template-columns: 1fr;
   }
 }
+/* Client selections */
+
+.proofing-selection-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 2rem;
+  margin-bottom: 1.75rem;
+}
+
+.proofing-section-label {
+  margin: 0 0 0.45rem;
+  color: #c7a369;
+  font-size: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0.17em;
+  text-transform: uppercase;
+}
+
+.proofing-selection-heading h2 {
+  margin-bottom: 0;
+}
+
+.proofing-selection-total {
+  margin: 0 0 0.15rem;
+  color: rgba(242, 238, 230, 0.42);
+  font-size: 0.54rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.proofing-selection-list {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.proofing-selection-card {
+  padding: clamp(1.25rem, 2.5vw, 2rem);
+  border: 1px solid rgba(242, 238, 230, 0.12);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.proofing-selection-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 2rem;
+}
+
+.proofing-selection-email {
+  margin: 0;
+  color: #f2eee6;
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.proofing-selection-meta {
+  margin: 0.4rem 0 0;
+  color: rgba(242, 238, 230, 0.45);
+  font-size: 0.62rem;
+  line-height: 1.6;
+}
+
+.proofing-selection-count {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.proofing-selection-count strong {
+  color: #c7a369;
+  font-family:
+    "Iowan Old Style",
+    "Palatino Linotype",
+    Georgia,
+    serif;
+  font-size: 2.2rem;
+  font-weight: 400;
+  line-height: 0.9;
+}
+
+.proofing-selection-count span {
+  margin-top: 0.4rem;
+  color: rgba(242, 238, 230, 0.38);
+  font-size: 0.45rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.proofing-selection-thumbnails {
+  display: grid;
+  grid-template-columns:
+    repeat(4, minmax(0, 1fr));
+  gap: 0.8rem;
+  margin-top: 1.5rem;
+}
+
+.proofing-selection-thumbnail {
+  min-width: 0;
+  margin: 0;
+}
+
+.proofing-selection-thumbnail-image {
+  aspect-ratio: 3 / 2;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.proofing-selection-thumbnail-image img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.proofing-selection-thumbnail figcaption {
+  margin-top: 0.5rem;
+  color: rgba(242, 238, 230, 0.48);
+  font-size: 0.54rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.proofing-selection-actions {
+  margin-top: 1.4rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid rgba(242, 238, 230, 0.1);
+}
+
+.proofing-selection-actions
+  .proofing-selection-copy {
+  margin: 0;
+}
+
+.proofing-legacy-selection {
+  margin: 1rem 0 0;
+  padding-left: 1.25rem;
+  color: rgba(242, 238, 230, 0.6);
+  font-size: 0.65rem;
+  line-height: 1.8;
+}
+
+@media (max-width: 900px) {
+  .proofing-selection-thumbnails {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .proofing-selection-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .proofing-selection-card-header {
+    gap: 1rem;
+  }
+
+  .proofing-selection-thumbnails {
+    grid-template-columns: 1fr;
+  }
+}
+/* Gallery presentation — interface refinement */
+
+.proofing-presentation-editor {
+  gap: 2rem;
+}
+
+.proofing-presentation-field {
+  padding: 1.5rem;
+  border: 1px solid rgba(242, 238, 230, 0.12);
+  background: rgba(255, 255, 255, 0.018);
+}
+
+.proofing-presentation-field label,
+.proofing-presentation-label {
+  display: block;
+  margin-bottom: 0.4rem;
+  color: #f2eee6;
+}
+
+.proofing-presentation-help {
+  margin-bottom: 1rem;
+}
+
+/* Introduction text box */
+
+.proofing-presentation-field textarea {
+  display: block;
+  width: 100%;
+  min-height: 9rem;
+  margin: 0;
+  padding: 1rem 1.1rem;
+
+  border: 1px solid rgba(242, 238, 230, 0.22);
+  background: #11100f;
+  color: #f2eee6;
+
+  font: inherit;
+  font-size: 0.78rem;
+  line-height: 1.7;
+
+  resize: vertical;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease;
+}
+
+.proofing-presentation-field textarea:hover {
+  border-color: rgba(242, 238, 230, 0.35);
+}
+
+.proofing-presentation-field textarea:focus {
+  border-color: #c7a369;
+  background: rgba(199, 163, 105, 0.025);
+  outline: none;
+}
+
+/* Cover selection */
+
+.proofing-presentation-field-heading {
+  margin-bottom: 1rem;
+}
+
+.proofing-cover-grid {
+  gap: 1rem;
+}
+
+.proofing-cover-option {
+  position: relative;
+  overflow: hidden;
+
+  border: 1px solid rgba(242, 238, 230, 0.12);
+  background: #11100f;
+
+  padding: 0.5rem;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease;
+}
+
+.proofing-cover-option:hover {
+  border-color: rgba(242, 238, 230, 0.32);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.proofing-cover-option-selected {
+  border-color: #c7a369;
+  background: rgba(199, 163, 105, 0.055);
+}
+
+.proofing-cover-image {
+  aspect-ratio: 3 / 2;
+}
+
+.proofing-cover-filename {
+  padding: 0.65rem 0.15rem 0.2rem;
+}
+
+.proofing-cover-option-selected
+  .proofing-cover-filename {
+  color: #c7a369;
+}
+
+/* Small gold marker rather than gold surrounding the image */
+
+.proofing-cover-selected-badge {
+  top: 0.65rem;
+  right: 0.65rem;
+
+  border: 0;
+  background: #c7a369;
+
+  padding: 0.45rem 0.6rem;
+
+  color: #11100f;
+}
+
+/* Remove-cover control */
+
+.proofing-cover-clear {
+  border: 1px solid rgba(242, 238, 230, 0.16);
+  background: transparent;
+
+  padding: 0.65rem 0.8rem;
+
+  color: rgba(242, 238, 230, 0.58);
+}
+
+.proofing-cover-clear:hover {
+  border-color: rgba(242, 238, 230, 0.35);
+  color: #f2eee6;
+}
+
+/* Save area */
+
+.proofing-presentation-save {
+  padding-top: 1.25rem;
+  border-top: 1px solid rgba(242, 238, 230, 0.1);
+}
+
+.proofing-presentation-save-button {
+  min-width: 13rem;
+  padding: 0.9rem 1.2rem;
+}
+
+.proofing-presentation-success {
+  padding-left: 0.25rem;
+}
