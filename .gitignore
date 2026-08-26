@@ -42,3 +42,7 @@ next-env.d.ts
 
 # Temporary project archives
 *.zip
+
+# Client proofing runtime data
+/data/proofing/
+/data/proofing-images/

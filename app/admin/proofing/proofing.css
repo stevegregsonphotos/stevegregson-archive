@@ -1,0 +1,260 @@
+.proofing-admin {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 3rem 3rem 6rem;
+}
+
+.proofing-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 3rem;
+  margin-bottom: 3rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.proofing-eyebrow {
+  margin: 0 0 0.8rem;
+  color: #c7a369;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.proofing-header h1,
+.proofing-admin > h1 {
+  margin: 0;
+  font-family:
+    "Iowan Old Style",
+    "Palatino Linotype",
+    Georgia,
+    serif;
+  font-size: clamp(2.4rem, 4vw, 4.2rem);
+  font-weight: 400;
+  letter-spacing: -0.045em;
+  line-height: 0.95;
+}
+
+.proofing-subtitle {
+  max-width: 38rem;
+  margin: 1rem 0 0;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.78rem;
+  line-height: 1.7;
+}
+
+.proofing-button,
+.proofing-admin button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.9rem;
+  padding: 0.85rem 1.2rem;
+  border: 1px solid #c7a369;
+  background: #c7a369;
+  color: #11100f;
+  font: inherit;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    background 180ms ease,
+    color 180ms ease;
+}
+
+.proofing-button:hover,
+.proofing-admin button:hover {
+  background: transparent;
+  color: #c7a369;
+}
+
+.proofing-button-secondary {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.72);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.proofing-section {
+  margin-top: 2rem;
+  padding: 2rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.proofing-section h2 {
+  margin: 0 0 1.5rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.proofing-details {
+  display: grid;
+  grid-template-columns:
+    repeat(4, minmax(0, 1fr));
+  margin: 0;
+}
+
+.proofing-details > div {
+  padding: 1.2rem 1.5rem;
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.proofing-details dt {
+  margin-bottom: 0.45rem;
+  color: rgba(255, 255, 255, 0.42);
+  font-size: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.proofing-details dd {
+  margin: 0;
+  color: #fff;
+  font-size: 0.8rem;
+}
+
+.proofing-empty {
+  margin: 1.5rem 0 0;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.76rem;
+  line-height: 1.6;
+}
+
+.proofing-upload {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.proofing-upload input[type="file"] {
+  max-width: 100%;
+  padding: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.proofing-back-link {
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.proofing-back-link:hover {
+  color: #c7a369;
+}
+
+.proofing-admin label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.proofing-admin input[type="text"] {
+  width: 100%;
+  padding: 0.9rem 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.035);
+  color: #fff;
+  font: inherit;
+}
+
+.proofing-admin form > div {
+  margin-bottom: 1.4rem;
+}
+
+@media (max-width: 900px) {
+  .proofing-admin {
+    padding: 2rem 1.5rem 5rem;
+  }
+
+  .proofing-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .proofing-details {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .proofing-details {
+    grid-template-columns: 1fr;
+  }
+}
+.proofing-image-grid {
+  display: grid;
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr));
+  gap: 1.25rem;
+  margin-top: 1.5rem;
+}
+
+.proofing-image-card {
+  min-width: 0;
+}
+
+.proofing-image-frame {
+  position: relative;
+  aspect-ratio: 3 / 2;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.proofing-image-frame img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.proofing-image-meta {
+  padding-top: 0.75rem;
+}
+
+.proofing-image-meta p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 0.7rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.proofing-image-meta span {
+  display: block;
+  margin-top: 0.25rem;
+  color: rgba(255, 255, 255, 0.38);
+  font-size: 0.52rem;
+  letter-spacing: 0.08em;
+}
+
+@media (max-width: 900px) {
+  .proofing-image-grid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .proofing-image-grid {
+    grid-template-columns: 1fr;
+  }
+}
