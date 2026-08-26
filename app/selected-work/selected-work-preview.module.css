@@ -16,9 +16,9 @@
 
 .introduction {
   padding:
-    clamp(10rem, 14vw, 13rem)
+    5.7rem
     6vw
-    clamp(4.5rem, 6vw, 6rem);
+    0.75rem;
 }
 
 .eyebrow {
@@ -34,33 +34,33 @@
 .introductionLayout {
   display: grid;
   grid-template-columns:
-    minmax(0, 1.25fr)
-    minmax(17rem, 0.5fr);
-  gap: clamp(3rem, 9vw, 10rem);
-  align-items: end;
-  margin-top: 1.8rem;
+    minmax(0, 1.3fr)
+    minmax(17rem, 0.55fr);
+  gap: clamp(3rem, 7vw, 8rem);
+  align-items: center;
+  margin-top: 0.8rem;
 }
 
 .introduction h1 {
-  max-width: 58rem;
+  max-width: 42rem;
   margin: 0;
   font-family:
     "Iowan Old Style",
     "Palatino Linotype",
     Georgia,
     serif;
-  font-size: clamp(3.8rem, 7vw, 7.8rem);
+  font-size: clamp(2.7rem, 3.4vw, 4rem);
   font-weight: 400;
-  letter-spacing: -0.065em;
-  line-height: 0.88;
+  letter-spacing: -0.055em;
+  line-height: 0.93;
 }
 
 .introductionCopy {
-  max-width: 25rem;
-  margin: 0 0 0.5rem;
+  max-width: 23rem;
+  margin: 0;
   color: rgba(242, 238, 230, 0.58);
-  font-size: 0.78rem;
-  line-height: 1.75;
+  font-size: 0.76rem;
+  line-height: 1.7;
 }
 
 /* Sticky navigation */
@@ -124,7 +124,7 @@
   gap: 24px;
   align-items: start;
   padding:
-    clamp(3.5rem, 5vw, 5rem)
+    0.5rem
     3vw
     clamp(6rem, 8vw, 8rem);
 }
@@ -141,10 +141,6 @@
   margin-bottom: clamp(2.5rem, 4vw, 4rem);
 }
 
-/*
- * The first photograph should hit immediately.
- * It does not need the extra space above it.
- */
 .galleryItem:first-child {
   margin-top: 0;
 }
@@ -153,16 +149,6 @@
   display: block;
   width: 100%;
   height: auto;
-
-  /*
-   * Critical:
-   *
-   * No fixed height.
-   * No object-fit: cover.
-   * No forced aspect ratio.
-   *
-   * The original photograph remains intact.
-   */
   transition:
     opacity 350ms ease,
     transform 650ms
@@ -246,9 +232,21 @@
 /* Tablet */
 
 @media (max-width: 900px) {
+  .introduction {
+    padding:
+      5.4rem
+      1.4rem
+      1.75rem;
+  }
+
   .introductionLayout {
     grid-template-columns: 1fr;
-    gap: 2.5rem;
+    gap: 2rem;
+    align-items: start;
+  }
+
+  .introduction h1 {
+    max-width: 42rem;
   }
 
   .introductionCopy {
@@ -274,41 +272,64 @@
 @media (max-width: 680px) {
   .introduction {
     padding:
-      8.5rem
+      5rem
       1.4rem
-      3.5rem;
+      1.25rem;
+  }
+
+  .introductionLayout {
+    display: block;
+    margin-top: 0.7rem;
   }
 
   .introduction h1 {
+    max-width: 21rem;
     font-size:
-      clamp(3rem, 14vw, 4.8rem);
+      clamp(2.35rem, 10.5vw, 3.15rem);
+    line-height: 0.92;
+    letter-spacing: -0.055em;
+  }
+
+  .introductionCopy {
+    max-width: 20rem;
+    margin-top: 1.25rem;
+    font-size: 0.68rem;
+    line-height: 1.6;
   }
 
   .navigationInner {
-    justify-content: flex-start;
-    gap: 2rem;
-    overflow-x: auto;
-    padding-right: 1.4rem;
-    padding-left: 1.4rem;
+    justify-content: space-between;
+    gap: 1rem;
+    overflow-x: visible;
+    padding:
+      1rem
+      1.4rem;
   }
 
   .navigationInner a {
     flex: 0 0 auto;
+    font-size: 0.45rem;
+    letter-spacing: 0.14em;
+  }
+
+  .navigationInner
+    .activeNavigationItem::after {
+    bottom: -1.03rem;
   }
 
   .gallery {
     grid-template-columns: 1fr;
     gap: 12px;
     padding:
-      1.4rem
+      0.5rem
       1rem
       5rem;
   }
 
   .featured {
     grid-column: auto;
-    margin-top: 2.5rem;
-    margin-bottom: 2.5rem;
+    margin-top: 0;
+    margin-bottom: 0;
   }
 
   .galleryItem:first-child {
