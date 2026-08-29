@@ -4,13 +4,16 @@ import Link from "next/link";
 import selectedWorkData from "../content/selected-work.json";
 
 const trustedBy = [
-  "National Theatre",
-  "Chichester Festival Theatre",
-  "Mountview",
+  "Young Vic",
+  "Kiln",
+  "MOUNTVIEW",
   "ArtsEd",
   "Guildhall School of Music & Drama",
-  "Royal Conservatoire of Scotland",
+  "Orange Tree Theatre",
+  "Deus Ex Machina Productions",
+  "Glyndebourne",
   "Jermyn Street Theatre",
+  "Park Theatre",
 ];
 
 type CategoryId = "production" | "rehearsal" | "campaign";
