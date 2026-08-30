@@ -497,11 +497,42 @@ export default function SelectedWorkEditor() {
         );
       }
 
-      replaceData(result.data);
+      const normalised =
+  normaliseIncomingData(
+    result.data,
+  );
 
-      setSaveState({
-        ...EMPTY_SAVE_STATE,
-      });
+replaceData(normalised);
+
+setSaveState({
+  production:
+    normalised.production.some(
+      (image) =>
+        Boolean(
+          image.suggestedFilename?.trim(),
+        ),
+    )
+      ? "dirty"
+      : "clean",
+  rehearsal:
+    normalised.rehearsal.some(
+      (image) =>
+        Boolean(
+          image.suggestedFilename?.trim(),
+        ),
+    )
+      ? "dirty"
+      : "clean",
+  campaign:
+    normalised.campaign.some(
+      (image) =>
+        Boolean(
+          image.suggestedFilename?.trim(),
+        ),
+    )
+      ? "dirty"
+      : "clean",
+});
     } catch (caughtError) {
       setError(
         caughtError instanceof
@@ -676,7 +707,12 @@ export default function SelectedWorkEditor() {
           snapshot,
         );
 
-      replaceData(savedData);
+      replaceCategory(
+  category,
+  normaliseIncomingImages(
+    savedData[category],
+  ),
+);
 
       setCategorySaveState(
         category,
@@ -747,17 +783,33 @@ export default function SelectedWorkEditor() {
 
     try {
       const savedData =
-        await persistCategory(
-          category,
-          nextImages,
-        );
+  await persistCategory(
+    category,
+    nextImages,
+    false,
+  );
 
-      replaceData(savedData);
+      replaceCategory(
+  category,
+  normaliseIncomingImages(
+    savedData[category],
+  ),
+);
 
-      setCategorySaveState(
-        category,
-        "saved",
-      );
+      const stillHasPendingMetadata =
+  savedData[category].some(
+    (image) =>
+      Boolean(
+        image.suggestedFilename?.trim(),
+      ),
+  );
+
+setCategorySaveState(
+  category,
+  stillHasPendingMetadata
+    ? "dirty"
+    : "saved",
+);
 
       setMessage(
         `${categoryLabel(
@@ -999,9 +1051,49 @@ export default function SelectedWorkEditor() {
         uploadedCount +=
           batch.length;
 
-        replaceData(
-          result.data,
+        const serverImages =
+  normaliseIncomingImages(
+    result.data[category],
+  );
+
+const currentImages =
+  dataRef.current[category];
+
+const currentByFilename =
+  new Map(
+    currentImages.map((image) => [
+      image.filename,
+      image,
+    ]),
+  );
+
+const mergedImages =
+  serverImages.map(
+    (serverImage) => {
+      const currentImage =
+        currentByFilename.get(
+          serverImage.filename,
         );
+
+      return currentImage
+        ? {
+            ...serverImage,
+            alt: currentImage.alt,
+            suggestedFilename:
+              currentImage.suggestedFilename,
+            analysisStatus:
+              currentImage.analysisStatus,
+            analysedAt:
+              currentImage.analysedAt,
+          }
+        : serverImage;
+    },
+  );
+
+replaceCategory(
+  category,
+  mergedImages,
+);
 
         const remainingFiles =
           files.slice(
@@ -1027,10 +1119,20 @@ export default function SelectedWorkEditor() {
         });
       }
 
-      setCategorySaveState(
-        category,
-        "saved",
-      );
+      const stillHasPendingMetadata =
+  dataRef.current[category].some(
+    (image) =>
+      Boolean(
+        image.suggestedFilename?.trim(),
+      ),
+  );
+
+setCategorySaveState(
+  category,
+  stillHasPendingMetadata
+    ? "dirty"
+    : "saved",
+);
 
       setMessage(
         `${total} ${
@@ -1266,7 +1368,12 @@ export default function SelectedWorkEditor() {
     false,
   );
 
-        replaceData(savedData);
+        replaceCategory(
+  category,
+  normaliseIncomingImages(
+    savedData[category],
+  ),
+);
 
                 setCategorySaveState(
           category,
@@ -1432,7 +1539,12 @@ export default function SelectedWorkEditor() {
     false,
   );
 
-      replaceData(savedData);
+      replaceCategory(
+  category,
+  normaliseIncomingImages(
+    savedData[category],
+  ),
+);
 
             setCategorySaveState(
         category,
@@ -1518,9 +1630,12 @@ export default function SelectedWorkEditor() {
         );
       }
 
-      replaceData(
-        result.data,
-      );
+      replaceCategory(
+  category,
+  normaliseIncomingImages(
+    result.data[category],
+  ),
+);
 
       setSelectedImages(
         (current) => {
@@ -1640,9 +1755,12 @@ export default function SelectedWorkEditor() {
 
         deletedCount += 1;
 
-        replaceData(
-          result.data,
-        );
+        replaceCategory(
+  category,
+  normaliseIncomingImages(
+    result.data[category],
+  ),
+);
       }
 
       setSelectedImages(
