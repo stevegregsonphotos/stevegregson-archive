@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import {
   mkdir,
   readFile,
@@ -16,13 +18,29 @@ type CategoryId =
   | "rehearsal"
   | "campaign";
 
+type AnalysisStatus =
+  | "pending"
+  | "complete";
+
 type SelectedWorkImage = {
   filename: string;
   suggestedFilename?: string;
   alt: string;
   uploadedAt: string;
+
   width?: number;
   height?: number;
+
+  /*
+   * Explicit AI-analysis state.
+   *
+   * Older data did not contain this field.
+   * readData() migrates those records in
+   * memory using the old alt-text rule.
+   */
+  analysisStatus: AnalysisStatus;
+
+  analysedAt?: string;
 };
 
 type SelectedWorkData = Record<
@@ -33,6 +51,13 @@ type SelectedWorkData = Record<
 type ImageDimensions = {
   width: number;
   height: number;
+};
+
+type UploadPlan = {
+  filename: string;
+  bytes: Buffer;
+  dimensions: ImageDimensions;
+  uploadedAt: string;
 };
 
 const EMPTY_DATA: SelectedWorkData = {
@@ -48,6 +73,15 @@ function isCategory(
     value === "production" ||
     value === "rehearsal" ||
     value === "campaign"
+  );
+}
+
+function isAnalysisStatus(
+  value: unknown,
+): value is AnalysisStatus {
+  return (
+    value === "pending" ||
+    value === "complete"
   );
 }
 
@@ -69,7 +103,8 @@ function isPositiveInteger(
 
 function cleanBaseName(filename: string) {
   const extension =
-    path.extname(filename).toLowerCase() || ".jpg";
+    path.extname(filename).toLowerCase() ||
+    ".jpg";
 
   const base =
     path
@@ -83,8 +118,11 @@ function cleanBaseName(filename: string) {
 
   return {
     base,
+
     extension:
-      extension === ".jpeg" ? ".jpg" : extension,
+      extension === ".jpeg"
+        ? ".jpg"
+        : extension,
   };
 }
 
@@ -93,12 +131,12 @@ function normaliseSuggestedFilename(
   originalFilename: string,
 ) {
   const originalExtension =
-    path.extname(originalFilename).toLowerCase() ||
-    ".jpg";
+    path.extname(
+      originalFilename,
+    ).toLowerCase() || ".jpg";
 
-  const { base } = cleanBaseName(
-    suggestedFilename,
-  );
+  const { base } =
+    cleanBaseName(suggestedFilename);
 
   const extension =
     originalExtension === ".jpeg"
@@ -116,7 +154,9 @@ function readJpegDimensions(
     bytes[0] !== 0xff ||
     bytes[1] !== 0xd8
   ) {
-    throw new Error("The file is not a valid JPEG.");
+    throw new Error(
+      "The file is not a valid JPEG.",
+    );
   }
 
   const startOfFrameMarkers = new Set([
@@ -157,13 +197,15 @@ function readJpegDimensions(
     }
 
     const marker = bytes[offset];
+
     offset += 1;
 
     if (
       marker === 0xd8 ||
       marker === 0xd9 ||
       marker === 0x01 ||
-      (marker >= 0xd0 && marker <= 0xd7)
+      (marker >= 0xd0 &&
+        marker <= 0xd7)
     ) {
       continue;
     }
@@ -177,20 +219,28 @@ function readJpegDimensions(
 
     if (
       segmentLength < 2 ||
-      offset + segmentLength > bytes.length
+      offset + segmentLength >
+        bytes.length
     ) {
       break;
     }
 
-    if (startOfFrameMarkers.has(marker)) {
+    if (
+      startOfFrameMarkers.has(marker)
+    ) {
       if (segmentLength < 7) {
         break;
       }
 
       const height =
-        bytes.readUInt16BE(offset + 3);
+        bytes.readUInt16BE(
+          offset + 3,
+        );
+
       const width =
-        bytes.readUInt16BE(offset + 5);
+        bytes.readUInt16BE(
+          offset + 5,
+        );
 
       if (width > 0 && height > 0) {
         return {
@@ -219,6 +269,7 @@ function projectPaths() {
       "content",
       "selected-work.json",
     ),
+
     imageRoot: path.join(
       root,
       "public",
@@ -229,75 +280,211 @@ function projectPaths() {
 }
 
 async function ensureStorage() {
-  const { dataFile, imageRoot } = projectPaths();
+  const {
+    dataFile,
+    imageRoot,
+  } = projectPaths();
 
-  await mkdir(path.dirname(dataFile), {
-    recursive: true,
-  });
+  await mkdir(
+    path.dirname(dataFile),
+    {
+      recursive: true,
+    },
+  );
 
   await mkdir(imageRoot, {
     recursive: true,
   });
 
   try {
-    await readFile(dataFile, "utf8");
-  } catch {
-    await writeFile(
+    await readFile(
       dataFile,
-      `${JSON.stringify(
-        EMPTY_DATA,
-        null,
-        2,
-      )}\n`,
       "utf8",
     );
+  } catch {
+    await writeData(EMPTY_DATA);
   }
+}
+
+function normaliseStoredImage(
+  value: unknown,
+): SelectedWorkImage | null {
+  if (
+    !value ||
+    typeof value !== "object"
+  ) {
+    return null;
+  }
+
+  const record =
+    value as Record<string, unknown>;
+
+  if (
+    typeof record.filename !==
+      "string" ||
+    typeof record.alt !== "string" ||
+    typeof record.uploadedAt !==
+      "string"
+  ) {
+    return null;
+  }
+
+  const alt = record.alt;
+
+  /*
+   * Backwards compatibility:
+   *
+   * Before analysisStatus existed, the
+   * editor considered non-empty alt text
+   * to mean that analysis was complete.
+   */
+  const analysisStatus =
+    isAnalysisStatus(
+      record.analysisStatus,
+    )
+      ? record.analysisStatus
+      : alt.trim()
+        ? "complete"
+        : "pending";
+
+  return {
+    filename: record.filename,
+
+    suggestedFilename:
+      typeof record.suggestedFilename ===
+      "string"
+        ? record.suggestedFilename
+        : "",
+
+    alt,
+
+    uploadedAt:
+      record.uploadedAt,
+
+    width:
+      isPositiveInteger(record.width)
+        ? record.width
+        : undefined,
+
+    height:
+      isPositiveInteger(record.height)
+        ? record.height
+        : undefined,
+
+    analysisStatus,
+
+    analysedAt:
+      typeof record.analysedAt ===
+      "string"
+        ? record.analysedAt
+        : undefined,
+  };
+}
+
+function normaliseStoredImages(
+  value: unknown,
+) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map(normaliseStoredImage)
+    .filter(
+      (
+        image,
+      ): image is SelectedWorkImage =>
+        Boolean(image),
+    );
 }
 
 async function readData(): Promise<SelectedWorkData> {
   await ensureStorage();
 
-  const { dataFile } = projectPaths();
+  const { dataFile } =
+    projectPaths();
+
   const source = await readFile(
     dataFile,
     "utf8",
   );
 
   const parsed =
-    JSON.parse(source) as Partial<SelectedWorkData>;
+    JSON.parse(source) as Record<
+      string,
+      unknown
+    >;
 
   return {
-    production: Array.isArray(
-      parsed.production,
-    )
-      ? parsed.production
-      : [],
-    rehearsal: Array.isArray(
-      parsed.rehearsal,
-    )
-      ? parsed.rehearsal
-      : [],
-    campaign: Array.isArray(parsed.campaign)
-      ? parsed.campaign
-      : [],
+    production:
+      normaliseStoredImages(
+        parsed.production,
+      ),
+
+    rehearsal:
+      normaliseStoredImages(
+        parsed.rehearsal,
+      ),
+
+    campaign:
+      normaliseStoredImages(
+        parsed.campaign,
+      ),
   };
 }
 
+/*
+ * Atomic JSON persistence.
+ *
+ * Write a complete temporary file first,
+ * then replace the live file in a single
+ * filesystem rename operation.
+ */
 async function writeData(
   data: SelectedWorkData,
 ) {
-  const { dataFile } = projectPaths();
+  const { dataFile } =
+    projectPaths();
 
-  await writeFile(
-    dataFile,
-    `${JSON.stringify(data, null, 2)}\n`,
-    "utf8",
-  );
+  const temporaryFile =
+    `${dataFile}.${randomUUID()}.tmp`;
+
+  const contents =
+    `${JSON.stringify(
+      data,
+      null,
+      2,
+    )}\n`;
+
+  try {
+    await writeFile(
+      temporaryFile,
+      contents,
+      "utf8",
+    );
+
+    await rename(
+      temporaryFile,
+      dataFile,
+    );
+  } catch (error) {
+    await rm(
+      temporaryFile,
+      {
+        force: true,
+      },
+    ).catch(() => undefined);
+
+    throw error;
+  }
 }
 
-async function fileExists(filePath: string) {
+async function fileExists(
+  filePath: string,
+) {
   try {
     await readFile(filePath);
+
     return true;
   } catch {
     return false;
@@ -308,28 +495,51 @@ async function uniqueFilename(
   categoryDirectory: string,
   originalName: string,
   currentFilename?: string,
+  reservedFilenames:
+    Set<string> = new Set(),
 ) {
-  const { base, extension } =
-    cleanBaseName(originalName);
+  const {
+    base,
+    extension,
+  } = cleanBaseName(
+    originalName,
+  );
 
-  let candidate = `${base}${extension}`;
+  let candidate =
+    `${base}${extension}`;
+
   let counter = 2;
 
   while (true) {
-    if (candidate === currentFilename) {
+    if (
+      candidate ===
+        currentFilename &&
+      !reservedFilenames.has(candidate)
+    ) {
       return candidate;
     }
 
-    const candidatePath = path.join(
-      categoryDirectory,
-      candidate,
-    );
+    const candidatePath =
+      path.join(
+        categoryDirectory,
+        candidate,
+      );
 
-    if (!(await fileExists(candidatePath))) {
+    const unavailable =
+      reservedFilenames.has(
+        candidate,
+      ) ||
+      (await fileExists(
+        candidatePath,
+      ));
+
+    if (!unavailable) {
       return candidate;
     }
 
-    candidate = `${base}-${counter}${extension}`;
+    candidate =
+      `${base}-${counter}${extension}`;
+
     counter += 1;
   }
 }
@@ -337,13 +547,55 @@ async function uniqueFilename(
 async function dimensionsFromFile(
   filePath: string,
 ): Promise<ImageDimensions> {
-  const bytes = await readFile(filePath);
-  return readJpegDimensions(bytes);
+  const bytes =
+    await readFile(filePath);
+
+  return readJpegDimensions(
+    bytes,
+  );
 }
+
+async function rollbackRenames(
+  renames: Array<{
+    from: string;
+    to: string;
+  }>,
+) {
+  for (
+    let index =
+      renames.length - 1;
+    index >= 0;
+    index -= 1
+  ) {
+    const item =
+      renames[index];
+
+    try {
+      if (
+        await fileExists(item.to)
+      ) {
+        await rename(
+          item.to,
+          item.from,
+        );
+      }
+    } catch (error) {
+      console.error(
+        "Selected Work rename rollback failed:",
+        error,
+      );
+    }
+  }
+}
+
+/*
+ * Load
+ */
 
 export async function GET() {
   try {
-    const data = await readData();
+    const data =
+      await readData();
 
     return Response.json({
       ok: true,
@@ -361,10 +613,16 @@ export async function GET() {
         message:
           "Selected Work could not be loaded.",
       },
-      { status: 500 },
+      {
+        status: 500,
+      },
     );
   }
 }
+
+/*
+ * Upload
+ */
 
 export async function POST(
   request: Request,
@@ -374,7 +632,9 @@ export async function POST(
       await request.formData();
 
     const category =
-      formData.get("category");
+      formData.get(
+        "category",
+      );
 
     if (!isCategory(category)) {
       return Response.json(
@@ -383,7 +643,9 @@ export async function POST(
           message:
             "A valid Selected Work category is required.",
         },
-        { status: 400 },
+        {
+          status: 400,
+        },
       );
     }
 
@@ -402,96 +664,210 @@ export async function POST(
           message:
             "Choose at least one JPEG photograph.",
         },
-        { status: 400 },
+        {
+          status: 400,
+        },
       );
     }
 
-    const invalidFile = files.find(
-      (file) =>
-        file.type !== "image/jpeg" ||
-        !/\.(?:jpe?g)$/i.test(file.name),
-    );
+    /*
+     * Validate every file in the request
+     * before writing anything to disk.
+     */
+    const invalidFile =
+      files.find(
+        (file) =>
+          file.type !==
+            "image/jpeg" ||
+          !/\.(?:jpe?g)$/i.test(
+            file.name,
+          ),
+      );
 
     if (invalidFile) {
       return Response.json(
         {
           ok: false,
-          message: `${invalidFile.name} is not a JPEG photograph.`,
+          message:
+            `${invalidFile.name} is not a JPEG photograph.`,
         },
-        { status: 400 },
+        {
+          status: 400,
+        },
       );
     }
 
-    const data = await readData();
-    const { imageRoot } = projectPaths();
+    const data =
+      await readData();
 
-    const categoryDirectory = path.join(
-      imageRoot,
-      category,
+    const { imageRoot } =
+      projectPaths();
+
+    const categoryDirectory =
+      path.join(
+        imageRoot,
+        category,
+      );
+
+    await mkdir(
+      categoryDirectory,
+      {
+        recursive: true,
+      },
     );
 
-    await mkdir(categoryDirectory, {
-      recursive: true,
-    });
+    const reservedFilenames =
+      new Set<string>();
 
-    const uploaded: SelectedWorkImage[] =
-      [];
+    const uploadPlan:
+      UploadPlan[] = [];
 
+    /*
+     * Stage the complete batch in memory.
+     *
+     * No photograph is written until every
+     * photograph has passed validation.
+     */
     for (const file of files) {
-      const filename = await uniqueFilename(
-        categoryDirectory,
-        file.name,
-      );
+      const bytes =
+        Buffer.from(
+          await file.arrayBuffer(),
+        );
 
-      const bytes = Buffer.from(
-        await file.arrayBuffer(),
-      );
-
-      let dimensions: ImageDimensions;
+      let dimensions:
+        ImageDimensions;
 
       try {
         dimensions =
-          readJpegDimensions(bytes);
+          readJpegDimensions(
+            bytes,
+          );
       } catch {
         return Response.json(
           {
             ok: false,
-            message: `${file.name} does not contain readable JPEG dimensions.`,
+            message:
+              `${file.name} does not contain readable JPEG dimensions.`,
           },
-          { status: 400 },
+          {
+            status: 400,
+          },
         );
       }
 
-      await writeFile(
-        path.join(
+      const filename =
+        await uniqueFilename(
           categoryDirectory,
-          filename,
-        ),
-        bytes,
+          file.name,
+          undefined,
+          reservedFilenames,
+        );
+
+      reservedFilenames.add(
+        filename,
       );
 
-      uploaded.push({
+      uploadPlan.push({
         filename,
-        suggestedFilename: "",
-        alt: "",
+        bytes,
+        dimensions,
         uploadedAt:
           new Date().toISOString(),
-        width: dimensions.width,
-        height: dimensions.height,
       });
     }
 
-    data[category] = [
-      ...data[category],
-      ...uploaded,
-    ];
+    const writtenPaths:
+      string[] = [];
 
-    await writeData(data);
+    try {
+      for (
+        const item of uploadPlan
+      ) {
+        const destination =
+          path.join(
+            categoryDirectory,
+            item.filename,
+          );
 
-    return Response.json({
-      ok: true,
-      data,
-    });
+        await writeFile(
+          destination,
+          item.bytes,
+        );
+
+        writtenPaths.push(
+          destination,
+        );
+      }
+
+      const uploaded:
+        SelectedWorkImage[] =
+        uploadPlan.map(
+          (item) => ({
+            filename:
+              item.filename,
+
+            suggestedFilename:
+              "",
+
+            alt: "",
+
+            uploadedAt:
+              item.uploadedAt,
+
+            width:
+              item.dimensions.width,
+
+            height:
+              item.dimensions.height,
+
+            analysisStatus:
+              "pending",
+          }),
+        );
+
+      const updatedData = {
+        ...data,
+
+        [category]: [
+          ...data[category],
+          ...uploaded,
+        ],
+      };
+
+      /*
+       * Only commit the metadata after all
+       * physical image writes succeeded.
+       */
+      await writeData(
+        updatedData,
+      );
+
+      return Response.json({
+        ok: true,
+        data: updatedData,
+      });
+    } catch (error) {
+      /*
+       * The request is transactional:
+       * remove every file written by this
+       * failed batch.
+       */
+      for (
+        const filePath of
+        writtenPaths
+      ) {
+        await rm(
+          filePath,
+          {
+            force: true,
+          },
+        ).catch(
+          () => undefined,
+        );
+      }
+
+      throw error;
+    }
   } catch (error) {
     console.error(
       "Selected Work upload failed:",
@@ -504,24 +880,38 @@ export async function POST(
         message:
           "The photographs could not be uploaded.",
       },
-      { status: 500 },
+      {
+        status: 500,
+      },
     );
   }
 }
+
+/*
+ * Save / reorder / metadata
+ */
 
 export async function PUT(
   request: Request,
 ) {
   try {
     const body =
-      (await request.json()) as {
-        category?: unknown;
-        images?: unknown;
-      };
+  (await request.json()) as {
+    category?: unknown;
+    images?: unknown;
+    applyFilenameChanges?: unknown;
+  };
+
+const applyFilenameChanges =
+  body.applyFilenameChanges !== false;
 
     if (
-      !isCategory(body.category) ||
-      !Array.isArray(body.images)
+      !isCategory(
+        body.category,
+      ) ||
+      !Array.isArray(
+        body.images,
+      )
     ) {
       return Response.json(
         {
@@ -529,25 +919,40 @@ export async function PUT(
           message:
             "A valid collection is required.",
         },
-        { status: 400 },
+        {
+          status: 400,
+        },
       );
     }
 
-    const submittedImages: SelectedWorkImage[] =
+    const submittedImages:
+      SelectedWorkImage[] =
       [];
 
-    for (const value of body.images) {
+    for (
+      const value of
+      body.images
+    ) {
       if (
         !value ||
-        typeof value !== "object" ||
-        !("filename" in value) ||
+        typeof value !==
+          "object" ||
+        !(
+          "filename" in value
+        ) ||
         !("alt" in value) ||
-        !("uploadedAt" in value) ||
-        typeof value.filename !== "string" ||
-        typeof value.alt !== "string" ||
+        !(
+          "uploadedAt" in value
+        ) ||
+        typeof value.filename !==
+          "string" ||
+        typeof value.alt !==
+          "string" ||
         typeof value.uploadedAt !==
           "string" ||
-        !isSafeFilename(value.filename)
+        !isSafeFilename(
+          value.filename,
+        )
       ) {
         return Response.json(
           {
@@ -555,12 +960,15 @@ export async function PUT(
             message:
               "The collection contains invalid image data.",
           },
-          { status: 400 },
+          {
+            status: 400,
+          },
         );
       }
 
       const suggestedFilename =
-        "suggestedFilename" in value &&
+        "suggestedFilename" in
+          value &&
         typeof value.suggestedFilename ===
           "string"
           ? value.suggestedFilename.trim()
@@ -568,64 +976,143 @@ export async function PUT(
 
       const width =
         "width" in value &&
-        isPositiveInteger(value.width)
+        isPositiveInteger(
+          value.width,
+        )
           ? value.width
           : undefined;
 
       const height =
         "height" in value &&
-        isPositiveInteger(value.height)
+        isPositiveInteger(
+          value.height,
+        )
           ? value.height
           : undefined;
 
+      const alt =
+        value.alt.trim();
+
+      const analysisStatus =
+        "analysisStatus" in
+          value &&
+        isAnalysisStatus(
+          value.analysisStatus,
+        )
+          ? value.analysisStatus
+          : alt
+            ? "complete"
+            : "pending";
+
+      const analysedAt =
+        "analysedAt" in value &&
+        typeof value.analysedAt ===
+          "string"
+          ? value.analysedAt
+          : undefined;
+
       submittedImages.push({
-        filename: value.filename,
+        filename:
+          value.filename,
+
         suggestedFilename,
-        alt: value.alt.trim(),
-        uploadedAt: value.uploadedAt,
+
+        alt,
+
+        uploadedAt:
+          value.uploadedAt,
+
         width,
+
         height,
+
+        analysisStatus,
+
+        analysedAt,
       });
     }
 
-    const data = await readData();
-    const { imageRoot } = projectPaths();
+    const data =
+      await readData();
 
-    const categoryDirectory = path.join(
-      imageRoot,
-      body.category,
+    const { imageRoot } =
+      projectPaths();
+
+    const categoryDirectory =
+      path.join(
+        imageRoot,
+        body.category,
+      );
+
+    await mkdir(
+      categoryDirectory,
+      {
+        recursive: true,
+      },
     );
-
-    await mkdir(categoryDirectory, {
-      recursive: true,
-    });
 
     const existingImages =
       data[body.category];
 
-    const savedImages: SelectedWorkImage[] =
-      [];
+    /*
+     * First ensure every referenced source
+     * photograph actually exists.
+     */
+    for (
+      const image of
+      submittedImages
+    ) {
+      const sourcePath =
+        path.join(
+          categoryDirectory,
+          image.filename,
+        );
 
-    for (const image of submittedImages) {
-      const currentPath = path.join(
-        categoryDirectory,
-        image.filename,
-      );
-
-      if (!(await fileExists(currentPath))) {
+      if (
+        !(
+          await fileExists(
+            sourcePath,
+          )
+        )
+      ) {
         return Response.json(
           {
             ok: false,
-            message: `${image.filename} could not be found.`,
+            message:
+              `${image.filename} could not be found.`,
           },
-          { status: 404 },
+          {
+            status: 404,
+          },
         );
       }
+    }
 
-      let finalFilename = image.filename;
+    const reservedFilenames =
+      new Set<string>();
 
-      if (image.suggestedFilename) {
-        const normalisedSuggestion =
+    const savePlan:
+      Array<{
+        image: SelectedWorkImage;
+        finalFilename: string;
+      }> = [];
+
+    /*
+     * Plan every rename before modifying
+     * the filesystem.
+     */
+    for (
+      const image of
+      submittedImages
+    ) {
+      let finalFilename =
+        image.filename;
+
+            if (
+        applyFilenameChanges &&
+        image.suggestedFilename
+      ) {
+        const suggestion =
           normaliseSuggestedFilename(
             image.suggestedFilename,
             image.filename,
@@ -634,72 +1121,187 @@ export async function PUT(
         finalFilename =
           await uniqueFilename(
             categoryDirectory,
-            normalisedSuggestion,
+            suggestion,
             image.filename,
+            reservedFilenames,
           );
-
-        if (
-          finalFilename !== image.filename
-        ) {
-          await rename(
-            currentPath,
-            path.join(
-              categoryDirectory,
-              finalFilename,
-            ),
-          );
-        }
       }
 
-      const existingImage =
-        existingImages.find(
-          (existing) =>
-            existing.filename ===
-            image.filename,
-        );
+      reservedFilenames.add(
+        finalFilename,
+      );
 
-      let width =
-        image.width ??
-        existingImage?.width;
-
-      let height =
-        image.height ??
-        existingImage?.height;
-
-      if (
-        !isPositiveInteger(width) ||
-        !isPositiveInteger(height)
-      ) {
-        const dimensions =
-          await dimensionsFromFile(
-            path.join(
-              categoryDirectory,
-              finalFilename,
-            ),
-          );
-
-        width = dimensions.width;
-        height = dimensions.height;
-      }
-
-      savedImages.push({
-        filename: finalFilename,
-        suggestedFilename: "",
-        alt: image.alt,
-        uploadedAt: image.uploadedAt,
-        width,
-        height,
+      savePlan.push({
+        image,
+        finalFilename,
       });
     }
 
-    data[body.category] = savedImages;
+    const completedRenames:
+      Array<{
+        from: string;
+        to: string;
+      }> = [];
 
-    await writeData(data);
+    try {
+      /*
+       * Apply planned renames.
+       */
+      for (
+        const item of
+        savePlan
+      ) {
+        if (
+          item.finalFilename ===
+          item.image.filename
+        ) {
+          continue;
+        }
 
-    return Response.json({
-      ok: true,
-      data,
-    });
+        const from =
+          path.join(
+            categoryDirectory,
+            item.image.filename,
+          );
+
+        const to =
+          path.join(
+            categoryDirectory,
+            item.finalFilename,
+          );
+
+        await rename(
+          from,
+          to,
+        );
+
+        completedRenames.push({
+          from,
+          to,
+        });
+      }
+
+      const savedImages:
+        SelectedWorkImage[] =
+        [];
+
+      for (
+        const item of
+        savePlan
+      ) {
+        const {
+          image,
+          finalFilename,
+        } = item;
+
+        const existingImage =
+          existingImages.find(
+            (existing) =>
+              existing.filename ===
+              image.filename,
+          );
+
+        let width =
+          image.width ??
+          existingImage?.width;
+
+        let height =
+          image.height ??
+          existingImage?.height;
+
+        if (
+          !isPositiveInteger(
+            width,
+          ) ||
+          !isPositiveInteger(
+            height,
+          )
+        ) {
+          const dimensions =
+            await dimensionsFromFile(
+              path.join(
+                categoryDirectory,
+                finalFilename,
+              ),
+            );
+
+          width =
+            dimensions.width;
+
+          height =
+            dimensions.height;
+        }
+
+        const analysisStatus =
+          image.analysisStatus ??
+          existingImage?.analysisStatus ??
+          (image.alt.trim()
+            ? "complete"
+            : "pending");
+
+        const analysedAt =
+          image.analysedAt ??
+          existingImage?.analysedAt;
+
+        savedImages.push({
+          filename:
+            finalFilename,
+
+                    suggestedFilename:
+            applyFilenameChanges
+              ? ""
+              : image.suggestedFilename,
+
+          alt:
+            image.alt.trim(),
+
+          uploadedAt:
+            image.uploadedAt,
+
+          width,
+
+          height,
+
+          analysisStatus,
+
+          analysedAt:
+            analysisStatus ===
+            "complete"
+              ? analysedAt
+              : undefined,
+        });
+      }
+
+      const updatedData = {
+        ...data,
+
+        [body.category]:
+          savedImages,
+      };
+
+      /*
+       * Commit metadata only after all file
+       * operations have succeeded.
+       */
+      await writeData(
+        updatedData,
+      );
+
+      return Response.json({
+        ok: true,
+        data: updatedData,
+      });
+    } catch (error) {
+      /*
+       * Restore filenames if the operation
+       * could not be committed.
+       */
+      await rollbackRenames(
+        completedRenames,
+      );
+
+      throw error;
+    }
   } catch (error) {
     console.error(
       "Selected Work save failed:",
@@ -712,10 +1314,16 @@ export async function PUT(
         message:
           "The collection could not be saved.",
       },
-      { status: 500 },
+      {
+        status: 500,
+      },
     );
   }
 }
+
+/*
+ * Delete
+ */
 
 export async function DELETE(
   request: Request,
@@ -728,9 +1336,14 @@ export async function DELETE(
       };
 
     if (
-      !isCategory(body.category) ||
-      typeof body.filename !== "string" ||
-      !isSafeFilename(body.filename)
+      !isCategory(
+        body.category,
+      ) ||
+      typeof body.filename !==
+        "string" ||
+      !isSafeFilename(
+        body.filename,
+      )
     ) {
       return Response.json(
         {
@@ -738,18 +1351,23 @@ export async function DELETE(
           message:
             "A valid image is required.",
         },
-        { status: 400 },
+        {
+          status: 400,
+        },
       );
     }
 
-    const data = await readData();
+    const data =
+      await readData();
 
-    const exists = data[
-      body.category
-    ].some(
-      (image) =>
-        image.filename === body.filename,
-    );
+    const exists =
+      data[
+        body.category
+      ].some(
+        (image) =>
+          image.filename ===
+          body.filename,
+      );
 
     if (!exists) {
       return Response.json(
@@ -758,35 +1376,105 @@ export async function DELETE(
           message:
             "The photograph could not be found.",
         },
-        { status: 404 },
+        {
+          status: 404,
+        },
       );
     }
 
-    const { imageRoot } = projectPaths();
+    const { imageRoot } =
+      projectPaths();
 
-    const imagePath = path.join(
-      imageRoot,
-      body.category,
-      body.filename,
+    const imagePath =
+      path.join(
+        imageRoot,
+        body.category,
+        body.filename,
+      );
+
+    if (
+      !(
+        await fileExists(
+          imagePath,
+        )
+      )
+    ) {
+      return Response.json(
+        {
+          ok: false,
+          message:
+            `${body.filename} exists in the collection but the image file is missing.`,
+        },
+        {
+          status: 404,
+        },
+      );
+    }
+
+    /*
+     * Move the file aside instead of
+     * destroying it immediately.
+     */
+    const temporaryPath =
+      `${imagePath}.${randomUUID()}.delete`;
+
+    await rename(
+      imagePath,
+      temporaryPath,
     );
 
-    await rm(imagePath, {
-      force: true,
-    });
+    try {
+      const updatedData = {
+        ...data,
 
-    data[body.category] = data[
-      body.category
-    ].filter(
-      (image) =>
-        image.filename !== body.filename,
-    );
+        [body.category]:
+          data[
+            body.category
+          ].filter(
+            (image) =>
+              image.filename !==
+              body.filename,
+          ),
+      };
 
-    await writeData(data);
+      await writeData(
+        updatedData,
+      );
 
-    return Response.json({
-      ok: true,
-      data,
-    });
+      /*
+       * Metadata is safely committed.
+       * The temporary image can now be
+       * permanently removed.
+       */
+      await rm(
+        temporaryPath,
+        {
+          force: true,
+        },
+      );
+
+      return Response.json({
+        ok: true,
+        data: updatedData,
+      });
+    } catch (error) {
+      /*
+       * Persistence failed: put the image
+       * back exactly where it was.
+       */
+      if (
+        await fileExists(
+          temporaryPath,
+        )
+      ) {
+        await rename(
+          temporaryPath,
+          imagePath,
+        );
+      }
+
+      throw error;
+    }
   } catch (error) {
     console.error(
       "Selected Work delete failed:",
@@ -799,7 +1487,9 @@ export async function DELETE(
         message:
           "The photograph could not be removed.",
       },
-      { status: 500 },
+      {
+        status: 500,
+      },
     );
   }
 }
