@@ -1630,11 +1630,48 @@ setCategorySaveState(
         );
       }
 
-      replaceCategory(
-  category,
+      const serverImages =
   normaliseIncomingImages(
     result.data[category],
-  ),
+  );
+
+const currentImages =
+  dataRef.current[category];
+
+const currentByFilename =
+  new Map(
+    currentImages.map((image) => [
+      image.filename,
+      image,
+    ]),
+  );
+
+const mergedImages =
+  serverImages.map(
+    (serverImage) => {
+      const currentImage =
+        currentByFilename.get(
+          serverImage.filename,
+        );
+
+      return currentImage
+        ? {
+            ...serverImage,
+            alt: currentImage.alt,
+            suggestedFilename:
+              currentImage.suggestedFilename,
+            analysisStatus:
+              currentImage.analysisStatus,
+            analysedAt:
+              currentImage.analysedAt,
+          }
+        : serverImage;
+    },
+  );
+
+replaceCategory(
+  category,
+  mergedImages,
 );
 
       setSelectedImages(
@@ -1657,10 +1694,20 @@ setCategorySaveState(
         },
       );
 
-      setCategorySaveState(
-        category,
-        "saved",
-      );
+      const stillHasPendingMetadata =
+  dataRef.current[category].some(
+    (image) =>
+      Boolean(
+        image.suggestedFilename?.trim(),
+      ),
+  );
+
+setCategorySaveState(
+  category,
+  stillHasPendingMetadata
+    ? "dirty"
+    : "saved",
+);
 
       setMessage(
         "Photograph removed successfully.",
@@ -1755,11 +1802,48 @@ setCategorySaveState(
 
         deletedCount += 1;
 
-        replaceCategory(
-  category,
+        const serverImages =
   normaliseIncomingImages(
     result.data[category],
-  ),
+  );
+
+const currentImages =
+  dataRef.current[category];
+
+const currentByFilename =
+  new Map(
+    currentImages.map((image) => [
+      image.filename,
+      image,
+    ]),
+  );
+
+const mergedImages =
+  serverImages.map(
+    (serverImage) => {
+      const currentImage =
+        currentByFilename.get(
+          serverImage.filename,
+        );
+
+      return currentImage
+        ? {
+            ...serverImage,
+            alt: currentImage.alt,
+            suggestedFilename:
+              currentImage.suggestedFilename,
+            analysisStatus:
+              currentImage.analysisStatus,
+            analysedAt:
+              currentImage.analysedAt,
+          }
+        : serverImage;
+    },
+  );
+
+replaceCategory(
+  category,
+  mergedImages,
 );
       }
 
@@ -1771,10 +1855,20 @@ setCategorySaveState(
         }),
       );
 
-      setCategorySaveState(
-        category,
-        "saved",
-      );
+      const stillHasPendingMetadata =
+  dataRef.current[category].some(
+    (image) =>
+      Boolean(
+        image.suggestedFilename?.trim(),
+      ),
+  );
+
+setCategorySaveState(
+  category,
+  stillHasPendingMetadata
+    ? "dirty"
+    : "saved",
+);
 
       setMessage(
         `${deletedCount} ${
