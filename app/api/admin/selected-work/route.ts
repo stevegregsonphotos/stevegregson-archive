@@ -1423,58 +1423,67 @@ export async function DELETE(
       temporaryPath,
     );
 
-    try {
-      const updatedData = {
-        ...data,
+    const updatedData = {
+  ...data,
 
-        [body.category]:
-          data[
-            body.category
-          ].filter(
-            (image) =>
-              image.filename !==
-              body.filename,
-          ),
-      };
+  [body.category]:
+    data[
+      body.category
+    ].filter(
+      (image) =>
+        image.filename !==
+        body.filename,
+    ),
+};
 
-      await writeData(
-        updatedData,
-      );
+try {
+  await writeData(
+    updatedData,
+  );
+} catch (error) {
+  /*
+   * Metadata was not committed, so put
+   * the image back exactly where it was.
+   */
+  if (
+    await fileExists(
+      temporaryPath,
+    )
+  ) {
+    await rename(
+      temporaryPath,
+      imagePath,
+    );
+  }
 
-      /*
-       * Metadata is safely committed.
-       * The temporary image can now be
-       * permanently removed.
-       */
-      await rm(
-        temporaryPath,
-        {
-          force: true,
-        },
-      );
+  throw error;
+}
 
-      return Response.json({
-        ok: true,
-        data: updatedData,
-      });
-    } catch (error) {
-      /*
-       * Persistence failed: put the image
-       * back exactly where it was.
-       */
-      if (
-        await fileExists(
-          temporaryPath,
-        )
-      ) {
-        await rename(
-          temporaryPath,
-          imagePath,
-        );
-      }
+/*
+ * Metadata is now safely committed.
+ * Failure to clean up the temporary
+ * image must not restore it to the
+ * live collection.
+ */
+try {
+  await rm(
+    temporaryPath,
+    {
+      force: true,
+    },
+  );
+} catch (cleanupError) {
+  console.error(
+    "Selected Work delete cleanup failed:",
+    cleanupError,
+  );
+}
 
-      throw error;
-    }
+return Response.json({
+  ok: true,
+  data: updatedData,
+});
+
   } catch (error) {
     console.error(
       "Selected Work delete failed:",
