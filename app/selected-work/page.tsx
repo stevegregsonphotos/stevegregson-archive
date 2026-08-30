@@ -45,7 +45,7 @@ const portfolio =
  * Change these numbers later to art-direct
  * which photographs get the biggest impact.
  */
-const featuredImages = new Set([0, 6, 12]);
+const featuredImages = new Set([0, 7, 14]);
 
 export default function SelectedWorkPreviewPage() {
   /*
