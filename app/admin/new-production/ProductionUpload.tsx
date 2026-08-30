@@ -46,6 +46,9 @@ type PreviewImage = {
   heroScore: number;
   fingerprint: string;
   metrics: ImageMetrics;
+      aiAlt?: string;
+    aiFilename?: string;
+    aiLayout?: GalleryLayout;
   suggestion: {
     include: boolean;
     order: number | null;
@@ -272,7 +275,16 @@ export default function ProductionUpload() {
 
   const [visionReview, setVisionReview] =
     useState<VisionReview | null>(null);
+  const [isGeneratingMetadata, setIsGeneratingMetadata] =
+    useState(false);
 
+  const [metadataProgress, setMetadataProgress] =
+    useState({
+      current: 0,
+      total: 0,
+    });
+    const [metadataComplete, setMetadataComplete] =
+  useState(false);
   const [productionArchive, setProductionArchive] =
     useState<File | null>(null);
 
@@ -431,69 +443,76 @@ export default function ProductionUpload() {
 
     const formData = new FormData();
 
-const fileInput =
-  event.currentTarget.elements.namedItem(
-    "productionFolder",
-  ) as HTMLInputElement | null;
+    const folderInput =
+      event.currentTarget.elements.namedItem(
+        "productionFolder",
+      ) as HTMLInputElement | null;
 
-const files = fileInput?.files;
+    const archiveInput =
+      event.currentTarget.elements.namedItem(
+        "productionArchive",
+      ) as HTMLInputElement | null;
 
-if (!files || files.length === 0) {
-  setResult({
-    ok: false,
-    message:
-      "Please choose a production folder.",
-  });
-  setIsUploading(false);
-  return;
-}
+    const folderFiles = folderInput?.files;
+    const archiveFile = archiveInput?.files?.[0];
 
-const productionFiles = Array.from(files);
+    let archive: File;
 
-if (productionFiles.length === 0) {
-  setResult({
-    ok: false,
-    message:
-      "The selected folder contains no files.",
-  });
-  setIsUploading(false);
-  return;
-}
-const productionFolderName =
-  productionFiles[0].webkitRelativePath.split("/")[0];
+    if (folderFiles && folderFiles.length > 0) {
+      const productionFiles =
+        Array.from(folderFiles);
 
-  const zip = new JSZip();
+      const firstRelativePath =
+        productionFiles[0].webkitRelativePath;
 
-for (const file of productionFiles) {
-  const relativePath =
-    file.webkitRelativePath ||
-    `${productionFolderName}/${file.name}`;
+      const productionFolderName =
+        firstRelativePath
+          ? firstRelativePath.split("/")[0]
+          : "production";
 
-  zip.file(relativePath, file);
-}
+      const zip = new JSZip();
 
-const zipBlob = await zip.generateAsync({
-  type: "blob",
-  compression: "DEFLATE",
-  compressionOptions: {
-    level: 6,
-  },
-});
+      for (const file of productionFiles) {
+        const relativePath =
+          file.webkitRelativePath ||
+          `${productionFolderName}/${file.name}`;
 
-const archive = new File(
-  [zipBlob],
-  `${productionFolderName}.zip`,
-  {
-    type: "application/zip",
-  },
-);
+        zip.file(relativePath, file);
+      }
 
-setProductionArchive(archive);
+      const zipBlob = await zip.generateAsync({
+        type: "blob",
+        compression: "DEFLATE",
+        compressionOptions: {
+          level: 6,
+        },
+      });
 
-formData.set(
-  "productionArchive",
-  archive,
-);
+      archive = new File(
+        [zipBlob],
+        `${productionFolderName}.zip`,
+        {
+          type: "application/zip",
+        },
+      );
+    } else if (archiveFile) {
+      archive = archiveFile;
+    } else {
+      setResult({
+        ok: false,
+        message:
+          "Please choose a production folder or ZIP file.",
+      });
+      setIsUploading(false);
+      return;
+    }
+
+    setProductionArchive(archive);
+
+    formData.set(
+      "productionArchive",
+      archive,
+    );
 
     try {
       const response = await fetch(
@@ -605,6 +624,120 @@ formData.set(
     setIsReviewing(false);
   }
 }
+  async function generateImageMetadata() {
+    if (!result?.contents || isGeneratingMetadata) {
+      return;
+    }
+
+    const images = result.contents.images;
+
+    if (images.length === 0) {
+      return;
+    }
+
+    setIsGeneratingMetadata(true);
+    setMetadataProgress({
+      current: 0,
+      total: images.length,
+    });
+setMetadataComplete(false);
+    try {
+      for (
+        let index = 0;
+        index < images.length;
+        index += 1
+      ) {
+        const image = images[index];
+
+        setMetadataProgress({
+          current: index + 1,
+          total: images.length,
+        });
+
+        const response = await fetch(
+          "/api/admin/vision/analyse-image",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+  image: image.filename,
+  previewUrl: image.previewUrl,
+  production: {
+    title: productionFields.title,
+    venue: productionFields.venue,
+    year: productionFields.year,
+    description:
+      productionFields.description,
+  },
+}),
+          },
+        );
+
+        const data = (await response.json()) as {
+          ok: boolean;
+          metadata?: {
+            alt: string;
+            filename: string;
+            layout: GalleryLayout;
+          };
+          message?: string;
+        };
+
+        if (
+          !response.ok ||
+          !data.ok ||
+          !data.metadata
+        ) {
+          throw new Error(
+            data.message ??
+              `Vision AI could not analyse ${image.filename}.`,
+          );
+        }
+
+        const metadata = data.metadata;
+
+        setResult((current) => {
+          if (!current?.contents) {
+            return current;
+          }
+
+          return {
+            ...current,
+            contents: {
+              ...current.contents,
+              images: current.contents.images.map(
+                (currentImage) =>
+                  currentImage.filepath ===
+                  image.filepath
+                    ? {
+                        ...currentImage,
+                        aiAlt: metadata.alt,
+                        aiFilename:
+                          metadata.filename,
+                        aiLayout:
+                          metadata.layout,
+                      }
+                    : currentImage,
+              ),
+            },
+          };
+        });
+      }
+    setMetadataComplete(true);
+    } catch (error) {
+      console.error(error);
+
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Vision AI metadata generation failed.",
+      );
+    } finally {
+      setIsGeneratingMetadata(false);
+    }
+  }
   async function publishProduction() {
     if (
       !result?.archive ||
@@ -768,17 +901,27 @@ formData.set(
       year,
       description:
         productionFields.description.trim(),
-      hero: {
+            hero: {
         filepath: selectedHero.filepath,
-        filename: selectedHero.filename,
-        alt: genericAlt,
+        filename:
+          selectedHero.aiFilename ||
+          selectedHero.filename,
+        alt:
+          selectedHero.aiAlt ||
+          genericAlt,
       },
       credits,
       images: orderedImages.map((image) => ({
         filepath: image.filepath,
-        filename: image.filename,
-        alt: genericAlt,
-        layout: image.suggestion.layout,
+        filename:
+          image.aiFilename ||
+          image.filename,
+        alt:
+          image.aiAlt ||
+          genericAlt,
+        layout:
+          image.aiLayout ||
+          image.suggestion.layout,
       })),
     };
 
@@ -867,7 +1010,7 @@ if (!responseText.trim()) {
     >
       <form onSubmit={handleSubmit}>
         <label
-          htmlFor="productionArchive"
+          htmlFor="productionFolder"
           style={{
             display: "block",
             marginBottom: "1rem",
@@ -888,7 +1031,6 @@ if (!responseText.trim()) {
           // @ts-expect-error - supported by Chromium/WebKit browsers
           webkitdirectory=""
           multiple
-          required
           style={{
             display: "block",
             width: "100%",
@@ -900,7 +1042,50 @@ if (!responseText.trim()) {
             color: "inherit",
           }}
         />
+        <div
+          style={{
+            margin: "1.25rem 0",
+            color: "rgba(242, 238, 230, 0.5)",
+            fontSize: "0.55rem",
+            fontWeight: 700,
+            letterSpacing: "0.18em",
+            textTransform: "uppercase",
+          }}
+        >
+          Or
+        </div>
 
+        <label
+          htmlFor="productionArchive"
+          style={{
+            display: "block",
+            marginBottom: "1rem",
+            color: "#c7a369",
+            fontSize: "0.55rem",
+            fontWeight: 700,
+            letterSpacing: "0.18em",
+            textTransform: "uppercase",
+          }}
+        >
+          Production ZIP
+        </label>
+
+        <input
+          id="productionArchive"
+          name="productionArchive"
+          type="file"
+          accept=".zip,application/zip"
+          style={{
+            display: "block",
+            width: "100%",
+            border:
+              "1px solid rgba(242, 238, 230, 0.25)",
+            padding: "1.25rem",
+            background:
+              "rgba(255, 255, 255, 0.03)",
+            color: "inherit",
+          }}
+        />
         <button
           type="submit"
           disabled={isUploading}
@@ -1852,7 +2037,21 @@ if (!responseText.trim()) {
       ? "Vision AI reviewing..."
       : "Vision AI Review"}
   </button>
-
+    <button
+      type="button"
+      className="backstage-button"
+      disabled={
+        !result?.contents ||
+        isGeneratingMetadata
+      }
+      onClick={generateImageMetadata}
+    >
+      {isGeneratingMetadata
+  ? `Generating metadata ${metadataProgress.current} of ${metadataProgress.total}...`
+  : metadataComplete
+    ? "AI Metadata Complete ✓"
+    : "Generate AI Metadata"}
+    </button>
   <button
   type="button"
   className="backstage-button backstage-button-primary"

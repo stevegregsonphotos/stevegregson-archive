@@ -55,11 +55,19 @@ type ProductionData = {
   credits: ProductionCredit[];
   images: ProductionImage[];
 };
+type PrePublishProduction = {
+  title?: string;
+  venue?: string;
+  year?: number | string;
+  description?: string;
+};
 
 type AnalyseImageRequest = {
   slug?: unknown;
   selectedWorkCategory?: unknown;
   image?: unknown;
+  previewUrl?: unknown;
+  production?: unknown;
 };
 
 type VisionMetadata = {
@@ -168,7 +176,10 @@ function validateMetadata(
   }
 
   return {
-    alt: metadata.alt.trim().slice(0, 240),
+    alt: metadata.alt
+  .trim()
+  .replace(/\s+/g, " ")
+  .slice(0, 240),
     filename: normaliseFilename(
       metadata.filename,
       originalFilename,
@@ -220,7 +231,40 @@ function buildProductionPrompt(
     "- Return only the structured metadata requested by the response schema.",
   ].join("\n");
 }
-
+function buildPrePublishProductionPrompt(
+  production: PrePublishProduction,
+  filename: string,
+) {
+  return [
+    "Create metadata for one image on a professional theatre photographer's website.",
+    "",
+    "Production context:",
+    JSON.stringify(
+      {
+        title: production.title ?? "",
+        venue: production.venue ?? "",
+        year: production.year ?? "",
+        description: production.description ?? "",
+        currentFilename: filename,
+      },
+      null,
+      2,
+    ),
+    "",
+    "Requirements:",
+    "- Write concise, factual alt text, ideally under 140 characters.",
+    "- Do not begin with 'image of', 'photo of', or 'photograph of'.",
+    "- Describe the visible performance, staging, action, composition, lighting, and mood only when useful.",
+    "- Do not identify a performer, character, or person unless that identity is unambiguously supported by the supplied production context.",
+    "- Suggest a lowercase, hyphen-separated, SEO-friendly filename without a path.",
+    "- Do not include the photographer's name in every filename or alt text.",
+    "- Choose the strongest layout for the composition from the allowed values.",
+    `- Allowed layouts: ${ALLOWED_LAYOUTS.join(
+      ", ",
+    )}.`,
+    "- Return only the structured metadata requested by the response schema.",
+  ].join("\n");
+}
 function buildSelectedWorkPrompt(
   category: SelectedWorkCategory,
   filename: string,
@@ -324,7 +368,35 @@ async function loadProductionContext(
     originalFilename: filename,
   };
 }
+function loadPrePublishProductionContext(
+  previewUrl: string,
+  production: PrePublishProduction,
+  filename: string,
+): AnalysisContext {
+  const match = previewUrl.match(
+    /^data:image\/(?:jpeg|jpg);base64,(.+)$/,
+  );
 
+  if (!match) {
+    throw new Error(
+      "The production preview image is invalid.",
+    );
+  }
+
+  const sourceImage = Buffer.from(
+    match[1],
+    "base64",
+  );
+
+  return {
+    sourceImage,
+    prompt: buildPrePublishProductionPrompt(
+      production,
+      filename,
+    ),
+    originalFilename: filename,
+  };
+}
 async function loadSelectedWorkContext(
   category: SelectedWorkCategory,
   filename: string,
@@ -369,28 +441,36 @@ export async function POST(request: Request) {
       );
     }
 
-    const hasProductionSlug =
-      typeof body.slug === "string" &&
-      isSafeSlug(body.slug);
+        const hasProductionSlug =
+        typeof body.slug === "string" &&
+        isSafeSlug(body.slug);
 
-    const hasSelectedWorkCategory =
-      isSelectedWorkCategory(
-        body.selectedWorkCategory,
-      );
+      const hasSelectedWorkCategory =
+        isSelectedWorkCategory(
+          body.selectedWorkCategory,
+        );
 
-    if (
-      hasProductionSlug ===
-      hasSelectedWorkCategory
-    ) {
-      return Response.json(
-        {
-          ok: false,
-          message:
-            "Provide either a valid production slug or a valid Selected Work category.",
-        },
-        { status: 400 },
-      );
-    }
+      const hasPrePublishProduction =
+        typeof body.previewUrl === "string" &&
+        typeof body.production === "object" &&
+        body.production !== null;
+
+      const contextModes = [
+        hasProductionSlug,
+        hasSelectedWorkCategory,
+        hasPrePublishProduction,
+      ].filter(Boolean).length;
+
+      if (contextModes !== 1) {
+        return Response.json(
+          {
+            ok: false,
+            message:
+              "Provide exactly one valid image analysis context.",
+          },
+          { status: 400 },
+        );
+      }
 
     if (!process.env.OPENAI_API_KEY?.trim()) {
       return Response.json(
@@ -416,15 +496,21 @@ export async function POST(request: Request) {
       );
     }
 
-    const context = hasProductionSlug
-      ? await loadProductionContext(
-          body.slug as string,
-          body.image,
-        )
-      : await loadSelectedWorkContext(
-          body.selectedWorkCategory as SelectedWorkCategory,
-          body.image,
-        );
+          const context = hasProductionSlug
+        ? await loadProductionContext(
+            body.slug as string,
+            body.image,
+          )
+        : hasSelectedWorkCategory
+          ? await loadSelectedWorkContext(
+              body.selectedWorkCategory as SelectedWorkCategory,
+              body.image,
+            )
+          : loadPrePublishProductionContext(
+              body.previewUrl as string,
+              body.production as PrePublishProduction,
+              body.image,
+            );
 
     if (
       context.sourceImage.byteLength >
