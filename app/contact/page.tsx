@@ -38,15 +38,7 @@ export default function ContactPage() {
             </a>
           </div>
 
-          <div>
-            <span>Based</span>
-            <p>London · United Kingdom</p>
-          </div>
-
-          <div>
-            <span>Working</span>
-            <p>UK · International</p>
-          </div>
+          
         </aside>
       </section>
 
@@ -391,39 +383,127 @@ export default function ContactPage() {
         }
 
         @media (max-width: 620px) {
-          .contact-hero {
-            padding:
-              9rem 1.5rem
-              5rem;
-          }
+          
+        .contact-hero {
+  gap: 2rem;
+  padding:
+    0.75rem 1.5rem
+    2.25rem;
+}
 
-          .contact-intro h1 {
-            font-size: clamp(3.5rem, 17vw, 5.5rem);
-          }
+          ..contact-intro h1 {
+  font-size: clamp(3rem, 14vw, 4.6rem);
+  line-height: 0.9;
+}
 
           .contact-details {
-            grid-template-columns: 1fr;
-            gap: 1.75rem;
-          }
+  grid-template-columns: 1fr;
+  gap: 0.9rem;
+}
+.contact-details {
+  width: 100%;
+  text-align: center;
+}
 
+.contact-details div {
+  padding-top: 0.65rem;
+  padding-bottom: 0;
+  text-align: center;
+}
+  .contact-details {
+  margin-bottom: -1rem;
+}
+
+.contact-details a,
+.contact-details p {
+  text-align: center;
+}
+  .contact-details div {
+  padding-top: 0.65rem;
+}
+
+.contact-details a,
+.contact-details p {
+  margin-top: 0.35rem;
+  margin-bottom: 0;
+}
+
+.contact-details {
+  gap: 0;
+  padding-bottom: 0;
+}
           .contact-enquiry {
-            margin: 0 1.5rem;
-            padding: 5rem 0 7rem;
-          }
+  gap: 1.5rem;
+  margin: 0 1.5rem;
+  padding: 0.25rem 0 4rem;
+}
+.contact-enquiry-heading h2 {
+  margin-top: 0.9rem;
+  font-size: clamp(2.6rem, 12vw, 3.6rem);
+}
 
+.contact-enquiry-heading > p:last-child {
+  margin-top: 1rem;
+  line-height: 1.55;
+}
+.contact-enquiry-heading {
+  max-width: 22rem;
+  margin: 0 auto;
+  padding-top: 0.75rem;
+  text-align: center;
+}
+
+.contact-form {
+  margin: 0 auto;
+  text-align: center;
+}
+
+.contact-field > label,
+.contact-field-split label {
+  text-align: center;
+}
+
+.contact-field input,
+.contact-field select,
+.contact-field textarea {
+  text-align: center;
+}
+.contact-field {
+  margin-bottom: 1rem;
+}
+
+.contact-field > label,
+.contact-field-split label {
+  margin-bottom: 0.25rem;
+  text-align: center;
+}
+
+.contact-field input,
+.contact-field select,
+.contact-field textarea {
+  padding-top: 0.4rem;
+  padding-bottom: 0.65rem;
+  text-align: center;
+}
           .contact-field-split {
             grid-template-columns: 1fr;
             gap: 2.4rem;
           }
 
           .contact-footer-statement {
-            min-height: 60svh;
-            padding: 6rem 1.5rem;
-          }
+  align-items: center;
+  min-height: 0;
+  padding: 3rem 1.5rem 3.5rem;
+  justify-content: center;
+  text-align: center;
+}
 
-          .contact-footer-statement h2 {
-            font-size: clamp(3.4rem, 16vw, 5.5rem);
-          }
+.contact-footer-statement h2 {
+  max-width: 22rem;
+  margin-top: 1.25rem;
+  font-size: clamp(3rem, 14vw, 4.5rem);
+  line-height: 0.9;
+}
         }
       `}</style>
     </main>

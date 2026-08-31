@@ -601,6 +601,10 @@
 }
 
 @media (max-width: 720px) {
+    .sectionNavigation {
+    position: static;
+    top: auto;
+  }
   .secondarySectionNavigation {
     margin-top: 5.25rem;
   }

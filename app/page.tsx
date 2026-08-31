@@ -136,7 +136,7 @@ export default function Home() {
 
           <h2>
             Working across professional theatre,
-            production marketing and some of the UK&apos;s
+            production marketing and the UK&apos;s
             leading drama schools.
           </h2>
         </div>

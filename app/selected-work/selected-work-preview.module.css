@@ -270,12 +270,17 @@
 /* Mobile */
 
 @media (max-width: 680px) {
+  .sectionNavigation {
+  position: static;
+  top: auto;
+}
   .introduction {
-    padding:
-      5rem
-      1.4rem
-      1.25rem;
-  }
+  margin-top: -0.75rem;
+  padding:
+    0
+    1.4rem
+    1.25rem;
+}
 
   .introductionLayout {
     display: block;
