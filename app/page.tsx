@@ -127,35 +127,42 @@ export default function Home() {
         </div>
       </section>
 
-      <section
-        className="homepage-proof"
-        id="homepage-proof"
-      >
-        <div className="homepage-proof-heading">
-          <p>Trusted by</p>
+                  <section
+              className="homepage-proof"
+              id="homepage-proof"
+            >
+              <p className="homepage-proof-label">
+                Trusted by
+              </p>
 
-          <h2>
-            Working across professional theatre,
-            production marketing and the UK&apos;s
-            leading drama schools.
-          </h2>
-        </div>
+              <div
+                className="homepage-client-marquee"
+                aria-label="Selected clients"
+              >
+                <div className="homepage-client-track">
+                  <div className="homepage-client-group">
+                    {trustedBy.map((client) => (
+                      <span key={client}>
+                        {client}
+                        <i aria-hidden="true">·</i>
+                      </span>
+                    ))}
+                  </div>
 
-        <div
-          className="homepage-client-list"
-          aria-label="Selected clients"
-        >
-          {trustedBy.map((client, index) => (
-            <span key={client}>
-              {client}
-
-              {index < trustedBy.length - 1 ? (
-                <i aria-hidden="true">·</i>
-              ) : null}
-            </span>
-          ))}
-        </div>
-      </section>
+                  <div
+                    className="homepage-client-group"
+                    aria-hidden="true"
+                  >
+                    {trustedBy.map((client) => (
+                      <span key={`repeat-${client}`}>
+                        {client}
+                        <i aria-hidden="true">·</i>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </section>
 
       <section className="homepage-work">
         <header className="homepage-work-heading">
