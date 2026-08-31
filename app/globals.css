@@ -330,8 +330,8 @@ text-shadow: 0 1px 8px rgba(0, 0, 0, 0.7);
   }
 
   .homepage-hero {
-    min-height: 100svh;
-  }
+  min-height: calc(100svh - 7.5rem);
+}
 
   .homepage-hero-image {
     object-position: 57% center;
@@ -353,7 +353,7 @@ text-shadow: 0 1px 8px rgba(0, 0, 0, 0.7);
   }
 
  .hero-content {
-  bottom: 8.5rem;
+  bottom: 11rem;
   left: 1.5rem;
   width: calc(100% - 3rem);
 }
