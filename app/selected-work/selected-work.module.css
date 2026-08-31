@@ -601,18 +601,55 @@
 }
 
 @media (max-width: 720px) {
-    .sectionNavigation {
+  .sectionNavigation {
     position: static;
     top: auto;
   }
+
   .secondarySectionNavigation {
-    margin-top: 5.25rem;
+    margin-top: 0;
+  }
+
+  .sectionNavigationInner {
+    justify-content: space-between;
+    gap: 1rem;
+    overflow-x: visible;
+    padding:
+      1rem
+      1.4rem;
+  }
+
+  .sectionNavigationInner a {
+    flex: 0 0 auto;
+    font-size: 0.45rem;
+    letter-spacing: 0.14em;
+  }
+
+  .rehearsalsIntro {
+  min-height: auto;
+  margin-top: 0;
+  padding:
+    1.25rem
+    1.4rem
+    1.25rem;
+}
+
+  .rehearsalsIntro h1 {
+    max-width: 21rem;
+    font-size: clamp(2.35rem, 10.5vw, 3.15rem);
+    line-height: 0.92;
+    letter-spacing: -0.055em;
+  }
+
+  .rehearsalsIntro .introText {
+    max-width: 20rem;
+    margin-top: 1.25rem;
+    font-size: 0.68rem;
+    line-height: 1.6;
   }
 }
 
 @media (max-width: 520px) {
-  .intro h1,
-  .rehearsalsIntro h1,
   .archiveCta h2 {
     font-size: clamp(3rem, 15vw, 4.6rem);
   }
