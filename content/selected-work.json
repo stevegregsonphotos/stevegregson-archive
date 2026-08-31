@@ -31,13 +31,14 @@
       "analysedAt": "2026-08-30T16:12:44.953Z"
     },
     {
-      "filename": "web-thelonelylondoners-226-edit-copy.jpg",
+      "filename": "backlit-ensemble-stage-haze-lights-trunks-dance.jpg",
       "suggestedFilename": "",
-      "alt": "",
+      "alt": "Backlit ensemble kneels over trunks as a central performer rises mid-dance amid haze and a grid of bright stage lights.",
       "uploadedAt": "2026-08-30T14:22:53.915Z",
       "width": 2048,
       "height": 1365,
-      "analysisStatus": "pending"
+      "analysisStatus": "complete",
+      "analysedAt": "2026-08-31T21:40:45.415Z"
     },
     {
       "filename": "intimate-embrace-stage-mid-century-living-room-blue-gown.jpg",
@@ -59,6 +60,86 @@
       "analysisStatus": "complete"
     },
     {
+      "filename": "stage-performer-profile-vertical-light-minimalist-darkness.jpg",
+      "suggestedFilename": "",
+      "alt": "performer in profile beside a vertical light strip, isolated in blue light against black stage; minimalist staging and somber mood",
+      "uploadedAt": "2026-08-30T19:56:16.732Z",
+      "width": 2048,
+      "height": 1152,
+      "analysisStatus": "complete",
+      "analysedAt": "2026-08-31T21:41:41.553Z"
+    },
+    {
+      "filename": "vintage-style-theatre-performer-pearls-lace-fan-stage-lights.jpg",
+      "suggestedFilename": "",
+      "alt": "performer in vintage-style beaded dress and pearls holds a lace fan under warm stage lights; framed painting and seated figure behind",
+      "uploadedAt": "2026-08-11T14:44:19.512Z",
+      "width": 4000,
+      "height": 2667,
+      "analysisStatus": "complete",
+      "analysedAt": "2026-08-31T21:40:52.332Z"
+    },
+    {
+      "filename": "blindfolded-performer-gas-mask-backlight-platform.jpg",
+      "suggestedFilename": "",
+      "alt": "Blindfolded performer in torn whites steadied by figure in gas mask on a lit circular platform, amber backlight radiating from a post.",
+      "uploadedAt": "2026-08-11T14:44:31.202Z",
+      "width": 1800,
+      "height": 1200,
+      "analysisStatus": "complete",
+      "analysedAt": "2026-08-31T21:41:04.438Z"
+    },
+    {
+      "filename": "theatre-croquet-flamingos-heart-topiary-stage.jpg",
+      "suggestedFilename": "",
+      "alt": "Two actors play croquet with pink flamingo props amid heart-shaped topiaries, vivid costumes, and saturated stage lighting.",
+      "uploadedAt": "2026-08-11T15:07:32.341Z",
+      "width": 1800,
+      "height": 1200,
+      "analysisStatus": "complete",
+      "analysedAt": "2026-08-31T21:41:11.570Z"
+    },
+    {
+      "filename": "reclining-performer-spotlight-haze-orchestra-backlit-stage.jpg",
+      "suggestedFilename": "",
+      "alt": "Performer in powdered wig reclines on chaise under spotlight and haze; second figure in red robe in shadow; band backlit behind railing.",
+      "uploadedAt": "2026-08-11T14:44:31.208Z",
+      "width": 4000,
+      "height": 2667,
+      "analysisStatus": "complete",
+      "analysedAt": "2026-08-31T21:41:20.617Z"
+    },
+    {
+      "filename": "top-hatted-performer-raises-arms-red-stage-lights-art-deco-set.jpg",
+      "suggestedFilename": "",
+      "alt": "Top-hatted performer raises arms in foreground; two dancers hold at left under red stage lights against an art deco set.",
+      "uploadedAt": "2026-08-11T15:07:32.346Z",
+      "width": 1800,
+      "height": 1200,
+      "analysisStatus": "complete",
+      "analysedAt": "2026-08-31T21:41:30.344Z"
+    },
+    {
+      "filename": "production-photography-crouching-performer-gold-hands-green-drape-warm-light.jpg",
+      "suggestedFilename": "",
+      "alt": "Two performers in a tense tableau: one crouches shirtless with gold-stained hands on a block as another leans in, draped in green, under warm light.",
+      "uploadedAt": "2026-08-30T19:56:16.691Z",
+      "width": 5672,
+      "height": 3782,
+      "analysisStatus": "complete",
+      "analysedAt": "2026-08-31T21:41:53.812Z"
+    },
+    {
+      "filename": "ensemble-queue-under-strip-lights-stage-scene.jpg",
+      "suggestedFilename": "",
+      "alt": "Ensemble queues outside corrugated doors under strip lights; a kneeling man speaks to a child at the front during a staged scene.",
+      "uploadedAt": "2026-08-30T19:56:16.688Z",
+      "width": 2048,
+      "height": 1365,
+      "analysisStatus": "complete",
+      "analysedAt": "2026-08-31T21:41:34.679Z"
+    },
+    {
       "filename": "chicago-22.jpg",
       "suggestedFilename": "",
       "alt": "chicago 22",
@@ -68,139 +149,54 @@
       "analysisStatus": "complete"
     },
     {
-      "filename": "a1-00344.jpg",
+      "filename": "ensemble-under-austenland-sign-stage-lights.jpg",
       "suggestedFilename": "",
-      "alt": "",
-      "uploadedAt": "2026-08-11T14:44:19.512Z",
-      "width": 4000,
-      "height": 2667,
-      "analysisStatus": "pending"
-    },
-    {
-      "filename": "thechrysalids-81-edit.jpg",
-      "suggestedFilename": "",
-      "alt": "",
-      "uploadedAt": "2026-08-11T14:44:31.202Z",
-      "width": 1800,
-      "height": 1200,
-      "analysisStatus": "pending"
-    },
-    {
-      "filename": "a1-03829-edit-edit-edit-edit.jpg",
-      "suggestedFilename": "",
-      "alt": "",
-      "uploadedAt": "2026-08-11T15:07:32.341Z",
-      "width": 1800,
-      "height": 1200,
-      "analysisStatus": "pending"
-    },
-    {
-      "filename": "thewildparty-full-38.jpg",
-      "suggestedFilename": "",
-      "alt": "",
-      "uploadedAt": "2026-08-11T14:44:31.208Z",
-      "width": 4000,
-      "height": 2667,
-      "analysisStatus": "pending"
-    },
-    {
-      "filename": "a9-02401-edit.jpg",
-      "suggestedFilename": "",
-      "alt": "",
-      "uploadedAt": "2026-08-11T15:07:32.346Z",
-      "width": 1800,
-      "height": 1200,
-      "analysisStatus": "pending"
-    },
-    {
-      "filename": "a1-01313-edit-copy.jpg",
-      "suggestedFilename": "",
-      "alt": "",
-      "uploadedAt": "2026-08-30T19:56:16.688Z",
-      "width": 2048,
-      "height": 1365,
-      "analysisStatus": "pending"
-    },
-    {
-      "filename": "footfalls-rockaby-6-edit-edited-edited.jpg",
-      "suggestedFilename": "",
-      "alt": "",
-      "uploadedAt": "2026-08-30T19:56:16.732Z",
-      "width": 2048,
-      "height": 1152,
-      "analysisStatus": "pending"
-    },
-    {
-      "filename": "austenland-tech-1027-copy.jpg",
-      "suggestedFilename": "",
-      "alt": "",
+      "alt": "Ensemble in period costumes dancing center stage under “Welcome to Austenland” sign, with blue and gold beams and haze.",
       "uploadedAt": "2026-08-30T19:56:16.689Z",
       "width": 4000,
       "height": 2667,
-      "analysisStatus": "pending"
+      "analysisStatus": "complete",
+      "analysedAt": "2026-08-31T21:41:46.570Z"
     },
     {
-      "filename": "dasrheingold-bystevegregson-fullres-194-copy.jpg",
+      "filename": "nautical-stage-production-two-performers-blue-lighting-fabric-wave.jpg",
       "suggestedFilename": "",
-      "alt": "",
-      "uploadedAt": "2026-08-30T19:56:16.691Z",
-      "width": 5672,
-      "height": 3782,
-      "analysisStatus": "pending"
-    },
-    {
-      "filename": "dc-proofs-jst-1444-copy.jpg",
-      "suggestedFilename": "",
-      "alt": "",
+      "alt": "Two performers in period costumes reach forward on a nautical set, blue-green backlight, fabric wave sweeping across the stage.",
       "uploadedAt": "2026-08-30T19:56:16.731Z",
       "width": 1800,
       "height": 1200,
-      "analysisStatus": "pending"
+      "analysisStatus": "complete",
+      "analysedAt": "2026-08-31T21:42:05.472Z"
     },
     {
-      "filename": "dc-proofs-jst-1489-edit-edit-copy.jpg",
+      "filename": "theatre-performer-reaches-behind-rain-screen-blue-light.jpg",
       "suggestedFilename": "",
-      "alt": "",
-      "uploadedAt": "2026-08-30T19:56:16.731Z",
-      "width": 1800,
-      "height": 1200,
-      "analysisStatus": "pending"
-    },
-    {
-      "filename": "jst-jules-jimother-14-edit-edit-copy.jpg",
-      "suggestedFilename": "",
-      "alt": "",
+      "alt": "performer in white shirt and suspenders reaching toward a rain-splattered screen under blue stage lighting",
       "uploadedAt": "2026-08-30T19:56:16.756Z",
       "width": 2048,
       "height": 1365,
-      "analysisStatus": "pending"
+      "analysisStatus": "complete",
+      "analysedAt": "2026-08-31T21:42:10.789Z"
     },
     {
-      "filename": "underthekundetree-37-enhanced-nr.jpg",
+      "filename": "two-performers-warm-spotlight-arms-crossed-hanging-bulb.jpg",
       "suggestedFilename": "",
-      "alt": "",
+      "alt": "Two performers on stage; foreground figure with arms crossed and head bowed, background figure watching; warm spotlight and hanging bulb.",
       "uploadedAt": "2026-08-30T19:56:16.757Z",
       "width": 2048,
       "height": 1365,
-      "analysisStatus": "pending"
+      "analysisStatus": "complete",
+      "analysedAt": "2026-08-31T21:42:18.959Z"
     },
     {
-      "filename": "underthekundetree-165-enhanced-nr-copy.jpg",
+      "filename": "theatre-performer-red-drape-spotlight-ruined-set.jpg",
       "suggestedFilename": "",
-      "alt": "",
-      "uploadedAt": "2026-08-30T19:56:16.757Z",
+      "alt": "Performer center stage in red drape and thorn crown, spotlighted against a dark, ruined set with fallen columns and a ladder.",
+      "uploadedAt": "2026-08-31T21:45:56.656Z",
       "width": 2048,
       "height": 1365,
-      "analysisStatus": "pending"
-    },
-    {
-      "filename": "web-regentsopera-diewalkure-creditstevegregson-232-jpg.jpg",
-      "suggestedFilename": "",
-      "alt": "",
-      "uploadedAt": "2026-08-30T19:56:16.785Z",
-      "width": 2048,
-      "height": 1152,
-      "analysisStatus": "pending"
+      "analysisStatus": "complete",
+      "analysedAt": "2026-08-31T21:46:03.667Z"
     }
   ],
   "rehearsal": [
@@ -209,6 +205,15 @@
       "suggestedFilename": "",
       "alt": "lonelylondoners rehearsals 18",
       "uploadedAt": "2026-08-04T11:10:20.478Z",
+      "width": 1800,
+      "height": 1200,
+      "analysisStatus": "complete"
+    },
+    {
+      "filename": "a9-09134.jpg",
+      "suggestedFilename": "",
+      "alt": "a9 09134",
+      "uploadedAt": "2026-08-04T11:10:20.486Z",
       "width": 1800,
       "height": 1200,
       "analysisStatus": "complete"
@@ -227,24 +232,6 @@
       "suggestedFilename": "",
       "alt": "a 105775",
       "uploadedAt": "2026-08-04T11:10:20.481Z",
-      "width": 1800,
-      "height": 1200,
-      "analysisStatus": "complete"
-    },
-    {
-      "filename": "a1-02177-edit-edit.jpg",
-      "suggestedFilename": "",
-      "alt": "a1 02177 edit edit",
-      "uploadedAt": "2026-08-04T11:10:20.482Z",
-      "width": 1800,
-      "height": 1200,
-      "analysisStatus": "complete"
-    },
-    {
-      "filename": "a9-09134.jpg",
-      "suggestedFilename": "",
-      "alt": "a9 09134",
-      "uploadedAt": "2026-08-04T11:10:20.486Z",
       "width": 1800,
       "height": 1200,
       "analysisStatus": "complete"
@@ -295,10 +282,10 @@
       "analysisStatus": "complete"
     },
     {
-      "filename": "lonelylondoners-rehearsals-7-edit.jpg",
+      "filename": "a1-02177-edit-edit.jpg",
       "suggestedFilename": "",
-      "alt": "lonelylondoners rehearsals 7 edit",
-      "uploadedAt": "2026-08-04T11:10:20.495Z",
+      "alt": "a1 02177 edit edit",
+      "uploadedAt": "2026-08-04T11:10:20.482Z",
       "width": 1800,
       "height": 1200,
       "analysisStatus": "complete"
@@ -326,15 +313,6 @@
       "suggestedFilename": "",
       "alt": "suiteinthreekeys 8",
       "uploadedAt": "2026-08-04T11:10:20.501Z",
-      "width": 1800,
-      "height": 1200,
-      "analysisStatus": "complete"
-    },
-    {
-      "filename": "theatreofdebate-2.jpg",
-      "suggestedFilename": "",
-      "alt": "theatreofdebate 2",
-      "uploadedAt": "2026-08-04T11:10:20.503Z",
       "width": 1800,
       "height": 1200,
       "analysisStatus": "complete"
@@ -369,6 +347,16 @@
   ],
   "campaign": [
     {
+      "filename": "theatre-campaign-key-art-glowing-tunnel-teapot-playing-cards.jpg",
+      "suggestedFilename": "",
+      "alt": "Blonde performer in blue-and-white dress peers into a glowing tunnel as cards, key and teapot swirl; gold show title and stars at right.",
+      "uploadedAt": "2026-08-30T14:30:49.373Z",
+      "width": 3282,
+      "height": 1576,
+      "analysisStatus": "complete",
+      "analysedAt": "2026-08-31T21:38:23.975Z"
+    },
+    {
       "filename": "bookthief2025-large.jpg",
       "suggestedFilename": "",
       "alt": "bookthief2025 large",
@@ -396,6 +384,15 @@
       "analysisStatus": "complete"
     },
     {
+      "filename": "role-to-die-for.jpg",
+      "suggestedFilename": "",
+      "alt": "role to die for",
+      "uploadedAt": "2026-08-04T11:09:46.531Z",
+      "width": 1080,
+      "height": 1350,
+      "analysisStatus": "complete"
+    },
+    {
       "filename": "fglc6irxmayxcxi.jpg",
       "suggestedFilename": "",
       "alt": "fglc6irxmayxcxi",
@@ -414,15 +411,6 @@
       "analysisStatus": "complete"
     },
     {
-      "filename": "role-to-die-for.jpg",
-      "suggestedFilename": "",
-      "alt": "role to die for",
-      "uploadedAt": "2026-08-04T11:09:46.531Z",
-      "width": 1080,
-      "height": 1350,
-      "analysisStatus": "complete"
-    },
-    {
       "filename": "screenshot-2020-05-01-at-12-16-05.jpg",
       "suggestedFilename": "",
       "alt": "screenshot 2020 05 01 at 12 16 05",
@@ -432,58 +420,44 @@
       "analysisStatus": "complete"
     },
     {
-      "filename": "role-to-die-for-1.jpg",
+      "filename": "four-in-tuxedos-spotlight-studio-portrait.jpg",
       "suggestedFilename": "",
-      "alt": "",
+      "alt": "Four people in black tuxedos pose against a circular spotlight backdrop, studio portrait with confident expressions and crisp lighting.",
       "uploadedAt": "2026-08-30T14:30:49.345Z",
       "width": 960,
       "height": 720,
-      "analysisStatus": "pending"
+      "analysisStatus": "complete",
+      "analysedAt": "2026-08-31T21:38:31.409Z"
     },
     {
-      "filename": "role-to-die-for-2.jpg",
+      "filename": "theatre-promo-suit-finger-gun-smoke-bullet-hole-title.jpg",
       "suggestedFilename": "",
-      "alt": "",
+      "alt": "Suited performer makes a finger-gun with smoke beside bold title; bullet-holed lettering and flying papers on a clean backdrop.",
       "uploadedAt": "2026-08-30T14:30:49.346Z",
       "width": 1280,
       "height": 720,
-      "analysisStatus": "pending"
+      "analysisStatus": "complete",
+      "analysedAt": "2026-08-31T21:38:41.069Z"
     },
     {
-      "filename": "screenshot-2020-05-01-at-12-16-05-2.jpg",
+      "filename": "campaign-finger-gun-suited-performer-theatre-poster-book-now.jpg",
       "suggestedFilename": "",
-      "alt": "",
-      "uploadedAt": "2026-08-30T14:30:49.372Z",
-      "width": 1682,
-      "height": 1682,
-      "analysisStatus": "pending"
-    },
-    {
-      "filename": "screenshot-2025-09-17-at-12-00-30.jpg",
-      "suggestedFilename": "",
-      "alt": "",
-      "uploadedAt": "2026-08-30T14:30:49.373Z",
-      "width": 3282,
-      "height": 1576,
-      "analysisStatus": "pending"
-    },
-    {
-      "filename": "screenshot-2025-09-17-at-12-01-08.jpg",
-      "suggestedFilename": "",
-      "alt": "",
+      "alt": "Suited performer strikes finger-gun pose amid flying photos; bold title and star ratings on a grey poster with a “book now” button.",
       "uploadedAt": "2026-08-30T14:30:49.389Z",
       "width": 2512,
       "height": 1098,
-      "analysisStatus": "pending"
+      "analysisStatus": "complete",
+      "analysedAt": "2026-08-31T21:38:46.980Z"
     },
     {
-      "filename": "screenshot-2025-09-17-at-12-01-20.jpg",
+      "filename": "publicity-portraits-spotlight-grid-black-tie.jpg",
       "suggestedFilename": "",
-      "alt": "",
+      "alt": "Grid of four theatre publicity portraits in black tie, each performer lit against a circular spotlight with bold red-and-white credits",
       "uploadedAt": "2026-08-30T14:30:49.391Z",
       "width": 1500,
       "height": 1694,
-      "analysisStatus": "pending"
+      "analysisStatus": "complete",
+      "analysedAt": "2026-08-31T21:38:52.994Z"
     }
   ]
 }
