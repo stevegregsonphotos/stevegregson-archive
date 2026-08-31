@@ -9,7 +9,6 @@ import { footfallsAndRockaby } from "./footfalls-and-rockaby";
 import { girlInTheMachine } from "./girl-in-the-machine";
 import { godspell } from "./godspell";
 import { lonelyLondoners } from "./lonely-londoners";
-import { pipeline2TestAugust2026Copy } from "./pipeline-2-test-august-2026-copy";
 import { theCode } from "./the-code";
 import { theTempest } from "./the-tempest";
 
@@ -23,7 +22,6 @@ export const productionEntries: Production[] = [
   girlInTheMachine,
   godspell,
   lonelyLondoners,
-  pipeline2TestAugust2026Copy,
   theCode,
   theTempest,
 ];
