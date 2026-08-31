@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Image from "next/image";
+import SelectedWorkGallery from "../../components/SelectedWorkGallery";
 import Link from "next/link";
 
 import selectedWorkData from "../../content/selected-work.json";
@@ -45,7 +45,7 @@ const portfolio =
  * Change these numbers later to art-direct
  * which photographs get the biggest impact.
  */
-const featuredImages = new Set([0, 7, 14]);
+
 
 export default function SelectedWorkPreviewPage() {
   /*
@@ -103,41 +103,14 @@ export default function SelectedWorkPreviewPage() {
         </div>
       </nav>
 
-      <section
-        className={styles.gallery}
-        id="production-gallery"
-        aria-label="Selected production photography"
-      >
-        {productionImages.map((image, index) => {
-          const isFeatured =
-            featuredImages.has(index);
-
-          return (
-            <figure
-              className={
-                isFeatured
-                  ? `${styles.galleryItem} ${styles.featured}`
-                  : styles.galleryItem
-              }
-              key={image.filename}
-            >
-              <Image
-                src={`/images/selected-work/production/${image.filename}`}
-                alt={image.alt}
-                width={image.width}
-                height={image.height}
-                sizes={
-                  isFeatured
-                    ? "(max-width: 760px) 100vw, 94vw"
-                    : "(max-width: 760px) 100vw, 46vw"
-                }
-                className={styles.galleryImage}
-                priority={index === 0}
-              />
-            </figure>
-          );
-        })}
-      </section>
+              <SelectedWorkGallery
+          images={productionImages}
+          featuredIndices={[0, 7, 14]}
+          galleryClassName={styles.gallery}
+          galleryItemClassName={styles.galleryItem}
+          featuredClassName={styles.featured}
+          imageClassName={styles.galleryImage}
+        />
 
       <section className={styles.nextStep}>
         <div className={styles.nextStepHeading}>

@@ -1,8 +1,7 @@
-import type { CSSProperties } from "react";
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 
+import MarketingPrGallery from "../../components/MarketingPrGallery";
 import selectedWorkData from "../../content/selected-work.json";
 
 import styles from "../selected-work/selected-work.module.css";
@@ -61,20 +60,6 @@ const portfolio =
 const campaignImages =
   portfolio.campaign ?? [];
 
-const openingImage =
-  campaignImages[0];
-
-const galleryImages =
-  campaignImages.slice(1);
-
-function imageFrameStyle(
-  image: SelectedWorkImage,
-): CSSProperties {
-  return {
-    aspectRatio: `${image.width} / ${image.height}`,
-  };
-}
-
 export default function MarketingPrPage() {
   return (
     <main className={styles.page}>
@@ -92,7 +77,9 @@ export default function MarketingPrPage() {
               key={item.href}
               href={item.href}
               aria-current={
-                item.current ? "page" : undefined
+                item.current
+                  ? "page"
+                  : undefined
               }
             >
               {item.label}
@@ -105,7 +92,7 @@ export default function MarketingPrPage() {
         className={`${styles.intro} ${styles.rehearsalsIntro}`}
       >
         <p className={styles.eyebrow}>
-          Marketing & PR
+          Marketing &amp; PR
         </p>
 
         <h1>
@@ -113,9 +100,9 @@ export default function MarketingPrPage() {
         </h1>
 
         <p className={styles.introText}>
-          Campaign and publicity photography created to
-          introduce productions, build anticipation and
-          connect theatres with their audiences.
+          Campaign and publicity photography created
+          to introduce productions, build anticipation
+          and connect theatres with their audiences.
         </p>
       </section>
 
@@ -123,33 +110,24 @@ export default function MarketingPrPage() {
         className={`${styles.collection} ${styles.primaryCollection} ${styles.rehearsalsCollection}`}
         id="marketing-pr"
       >
-        {openingImage ? (
-          <article
-            className={
-              styles.rehearsalOpeningFeature
-            }
-          >
-            <div
-              className={
-                styles.productionImageFrame
-              }
-              style={imageFrameStyle(
-                openingImage,
-              )}
-            >
-              <Image
-                src={`/images/selected-work/campaign/${openingImage.filename}`}
-                alt={openingImage.alt}
-                fill
-                sizes="(max-width: 900px) calc(100vw - 2.8rem), 88vw"
-                className={
-                  styles.productionImage
-                }
-                priority
-              />
-            </div>
-          </article>
-        ) : null}
+        <MarketingPrGallery
+          images={campaignImages}
+          openingFeatureClassName={
+            styles.rehearsalOpeningFeature
+          }
+          productionListClassName={
+            styles.productionList
+          }
+          productionFeatureClassName={
+            styles.productionFeature
+          }
+          imageFrameClassName={
+            styles.productionImageFrame
+          }
+          imageClassName={
+            styles.productionImage
+          }
+        />
 
         <header
           className={`${styles.collectionHeader} ${styles.rehearsalEditorialHeader}`}
@@ -172,54 +150,13 @@ export default function MarketingPrPage() {
             </h2>
 
             <p>
-              Distinctive campaign, press and publicity
-              imagery created to give productions a clear
-              visual identity across print, press and
-              digital media.
+              Distinctive campaign, press and
+              publicity imagery created to give
+              productions a clear visual identity
+              across print, press and digital media.
             </p>
           </div>
         </header>
-
-        {campaignImages.length === 0 ? (
-          <p>
-            No photographs have been added to this
-            collection yet.
-          </p>
-        ) : galleryImages.length === 0 ? null : (
-          <div
-            className={styles.productionList}
-          >
-            {galleryImages.map(
-              (image) => (
-                <article
-                  className={
-                    styles.productionFeature
-                  }
-                  key={`campaign-${image.filename}`}
-                >
-                  <div
-                    className={
-                      styles.productionImageFrame
-                    }
-                    style={imageFrameStyle(
-                      image,
-                    )}
-                  >
-                    <Image
-                      src={`/images/selected-work/campaign/${image.filename}`}
-                      alt={image.alt}
-                      fill
-                      sizes="(max-width: 900px) calc(100vw - 2.8rem), 88vw"
-                      className={
-                        styles.productionImage
-                      }
-                    />
-                  </div>
-                </article>
-              ),
-            )}
-          </div>
-        )}
       </section>
 
       <section className={styles.archiveCta}>
@@ -236,8 +173,8 @@ export default function MarketingPrPage() {
         >
           <p>
             Explore selected production photography
-            capturing the atmosphere, scale and emotion
-            of live performance.
+            capturing the atmosphere, scale and
+            emotion of live performance.
           </p>
 
           <Link
@@ -245,7 +182,9 @@ export default function MarketingPrPage() {
             className={styles.archiveLink}
           >
             View production photography
-            <span aria-hidden="true">→</span>
+            <span aria-hidden="true">
+              →
+            </span>
           </Link>
         </div>
       </section>

@@ -1,8 +1,7 @@
-import type { CSSProperties } from "react";
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 
+import RehearsalGallery from "../../components/RehearsalGallery";
 import selectedWorkData from "../../content/selected-work.json";
 
 import styles from "../selected-work/selected-work.module.css";
@@ -61,20 +60,6 @@ const portfolio =
 const rehearsalImages =
   portfolio.rehearsal ?? [];
 
-const openingImage =
-  rehearsalImages[0];
-
-const galleryImages =
-  rehearsalImages.slice(1);
-
-function imageFrameStyle(
-  image: SelectedWorkImage,
-): CSSProperties {
-  return {
-    aspectRatio: `${image.width} / ${image.height}`,
-  };
-}
-
 export default function RehearsalsPage() {
   return (
     <main className={styles.page}>
@@ -92,7 +77,9 @@ export default function RehearsalsPage() {
               key={item.href}
               href={item.href}
               aria-current={
-                item.current ? "page" : undefined
+                item.current
+                  ? "page"
+                  : undefined
               }
             >
               {item.label}
@@ -114,9 +101,9 @@ export default function RehearsalsPage() {
 
         <p className={styles.introText}>
           Photographs from the rehearsal room,
-          documenting the collaboration, experimentation
-          and discovery through which productions take
-          shape.
+          documenting the collaboration,
+          experimentation and discovery through which
+          productions take shape.
         </p>
       </section>
 
@@ -124,33 +111,24 @@ export default function RehearsalsPage() {
         className={`${styles.collection} ${styles.primaryCollection} ${styles.rehearsalsCollection}`}
         id="rehearsals"
       >
-        {openingImage ? (
-          <article
-            className={
-              styles.rehearsalOpeningFeature
-            }
-          >
-            <div
-              className={
-                styles.productionImageFrame
-              }
-              style={imageFrameStyle(
-                openingImage,
-              )}
-            >
-              <Image
-                src={`/images/selected-work/rehearsal/${openingImage.filename}`}
-                alt={openingImage.alt}
-                fill
-                sizes="(max-width: 900px) calc(100vw - 2.8rem), 88vw"
-                className={
-                  styles.productionImage
-                }
-                priority
-              />
-            </div>
-          </article>
-        ) : null}
+        <RehearsalGallery
+          images={rehearsalImages}
+          openingFeatureClassName={
+            styles.rehearsalOpeningFeature
+          }
+          productionListClassName={
+            styles.productionList
+          }
+          productionFeatureClassName={
+            styles.productionFeature
+          }
+          imageFrameClassName={
+            styles.productionImageFrame
+          }
+          imageClassName={
+            styles.productionImage
+          }
+        />
 
         <header
           className={`${styles.collectionHeader} ${styles.rehearsalEditorialHeader}`}
@@ -173,54 +151,14 @@ export default function RehearsalsPage() {
             </h2>
 
             <p>
-              Before an audience arrives, performers,
-              directors and creative teams test ideas,
-              discover relationships and shape the rhythm
+              Before an audience arrives,
+              performers, directors and creative
+              teams test ideas, discover
+              relationships and shape the rhythm
               and character of a production.
             </p>
           </div>
         </header>
-
-        {rehearsalImages.length === 0 ? (
-          <p>
-            No photographs have been added to this
-            collection yet.
-          </p>
-        ) : galleryImages.length === 0 ? null : (
-          <div
-            className={styles.productionList}
-          >
-            {galleryImages.map(
-              (image) => (
-                <article
-                  className={
-                    styles.productionFeature
-                  }
-                  key={`rehearsal-${image.filename}`}
-                >
-                  <div
-                    className={
-                      styles.productionImageFrame
-                    }
-                    style={imageFrameStyle(
-                      image,
-                    )}
-                  >
-                    <Image
-                      src={`/images/selected-work/rehearsal/${image.filename}`}
-                      alt={image.alt}
-                      fill
-                      sizes="(max-width: 900px) calc(100vw - 2.8rem), 88vw"
-                      className={
-                        styles.productionImage
-                      }
-                    />
-                  </div>
-                </article>
-              ),
-            )}
-          </div>
-        )}
       </section>
 
       <section className={styles.archiveCta}>
@@ -237,8 +175,8 @@ export default function RehearsalsPage() {
         >
           <p>
             Explore selected production photography
-            capturing the atmosphere, scale and emotion
-            of live performance.
+            capturing the atmosphere, scale and
+            emotion of live performance.
           </p>
 
           <Link
@@ -246,7 +184,9 @@ export default function RehearsalsPage() {
             className={styles.archiveLink}
           >
             View production photography
-            <span aria-hidden="true">→</span>
+            <span aria-hidden="true">
+              →
+            </span>
           </Link>
         </div>
       </section>

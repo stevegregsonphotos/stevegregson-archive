@@ -1404,8 +1404,10 @@ a {
   }
 
   .image-viewer-stage {
-    height: 82svh;
-  }
+  width: 100%;
+  height: 100dvh;
+  max-height: 100dvh;
+}
 
   .image-viewer-close {
     top: 1rem;
@@ -1521,4 +1523,20 @@ a {
     margin-top: 0;
     padding-top: 1.5rem;
   }
+  .selected-work-image-button {
+  display: block;
+  width: 100%;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: zoom-in;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .selected-work-image-button:hover img {
+    opacity: 0.92;
+  }
+}
 }
