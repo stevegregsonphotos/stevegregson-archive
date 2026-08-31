@@ -49,22 +49,22 @@ export function ProductionGallery({
             className={`curated-production-shot curated-production-shot-${image.layout}`}
             key={image.src}
           >
-            <button
-              className="curated-production-image-button"
-              type="button"
-              onClick={() =>
-                setViewerIndex(index + 1)
-              }
-              aria-label={`Open photograph ${index + 2} from ${title} fullscreen`}
-            >
-              <Image
-                src={`${imageDirectory}/${image.src}`}
-                alt={image.alt}
-                width={2000}
-                height={1333}
-                sizes="(max-width: 768px) calc(100vw - 2.8rem), 90vw"
-              />
-            </button>
+                          <button
+                className="curated-production-image-button"
+                type="button"
+                onClick={() =>
+                  setViewerIndex(index + 1)
+                }
+                aria-label={`Open photograph ${index + 2} from ${title} fullscreen`}
+              >
+                <Image
+                  src={`${imageDirectory}/${image.src}`}
+                  alt={image.alt}
+                  width={2000}
+                  height={1333}
+                  sizes="(max-width: 768px) calc(100vw - 2.8rem), 90vw"
+                />
+              </button>
           </figure>
         ))}
       </section>
