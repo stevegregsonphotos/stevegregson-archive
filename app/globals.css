@@ -485,7 +485,7 @@ a {
 .homepage-client-track {
   display: flex;
   width: max-content;
-  animation: homepage-client-marquee 45s linear infinite;
+  animation: homepage-client-marquee 75s linear infinite;
   will-change: transform;
 }
 

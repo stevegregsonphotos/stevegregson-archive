@@ -14,6 +14,19 @@ const trustedBy = [
   "Glyndebourne",
   "Jermyn Street Theatre",
   "Park Theatre",
+  "Guildford School of Acting",
+  "Mischief Worldwide",
+  "London School of Musical Theatre",
+  "Polka Theatre",
+  "Arcola Theatre",
+  "Rose Bruford College",
+  "Waterperry Opera",
+  "Chickenshed Theatre",
+  "Emil Dale Academy",
+  "Hackney Empire",
+  "Regents Opera",
+  "London Studio Centre",
+  "Marlowe Theatre",
 ];
 
 type CategoryId = "production" | "rehearsal" | "campaign";
