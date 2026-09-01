@@ -98,30 +98,34 @@ export default function ArchivePage() {
         }
 
         @media (max-width: 900px) {
-          .archive-page {
-            padding: 8.5rem 1.4rem 6rem;
-          }
+  .archive-page {
+  padding: 0 1.4rem 5rem;
+}
 
-          .archive-search-position {
-            justify-content: stretch;
-            min-height: auto;
-            margin-bottom: 3rem;
-          }
+  .archive-search-position {
+    justify-content: stretch;
+    min-height: auto;
+    margin-bottom: 1.5rem;
+  }
 
-          .archive-intro {
-            padding: 0 0 4.5rem;
-          }
+  .archive-intro {
+  padding: 0 0 1.5rem;
+}
 
-          .archive-intro h1 {
-            max-width: none;
-            font-size: clamp(3.6rem, 14vw, 5.8rem);
-          }
+  .archive-intro h1 {
+    max-width: 21rem;
+    margin-top: 1.25rem;
+    font-size: clamp(2.8rem, 12vw, 4rem);
+    line-height: 0.92;
+  }
 
-          .archive-lead {
-            max-width: none;
-            margin-top: 2.25rem;
-          }
-        }
+  .archive-lead {
+    max-width: 21rem;
+    margin-top: 1.5rem;
+    font-size: 0.78rem;
+    line-height: 1.65;
+  }
+}
       `}</style>
     </main>
   );
