@@ -4,7 +4,7 @@ import ContactForm from "./ContactForm";
 export const metadata: Metadata = {
   title: "Contact | Steve Gregson",
   description:
-    "Enquire about theatre, production, rehearsal, portrait and performing arts photography with London photographer Steve Gregson.",
+    "Get in touch about theatre, production, rehearsal, portrait and performing arts photography with London photographer Steve Gregson.",
 };
 
 export default function ContactPage() {

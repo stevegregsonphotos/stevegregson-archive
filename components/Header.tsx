@@ -36,7 +36,7 @@ export default function Header() {
           href="/contact"
           className="enquire-link"
         >
-          Enquire
+          Contact
         </Link>
       </nav>
     </header>

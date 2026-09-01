@@ -106,9 +106,7 @@ export default function Home() {
             the closing night.
           </h1>
 
-          <p className="hero-subheading">
-            Great photography ensures it is never forgotten.
-          </p>
+          
         </div>
 
         <div className="hero-footer">
@@ -179,7 +177,7 @@ export default function Home() {
 
       <section className="homepage-work">
         <header className="homepage-work-heading">
-          <p>Work</p>
+         
 
           <h2>
             Explore photography built around the life of a
