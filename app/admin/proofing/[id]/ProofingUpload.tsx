@@ -2,9 +2,9 @@
 
 import {
   ChangeEvent,
+  useRef,
   useState,
 } from "react";
-
 import { useRouter } from "next/navigation";
 
 type ProofingUploadProps = {
@@ -20,8 +20,12 @@ export default function ProofingUpload({
   galleryId,
 }: ProofingUploadProps) {
   const router = useRouter();
+  const inputRef =
+    useRef<HTMLInputElement | null>(null);
 
-  const [files, setFiles] = useState<File[]>([]);
+  const [files, setFiles] =
+    useState<File[]>([]);
+
   const [isUploading, setIsUploading] =
     useState(false);
 
@@ -71,10 +75,11 @@ export default function ProofingUpload({
           },
         );
 
-        const result = (await response.json()) as {
-          ok: boolean;
-          message?: string;
-        };
+        const result =
+          (await response.json()) as {
+            ok: boolean;
+            message?: string;
+          };
 
         if (!response.ok || !result.ok) {
           uploadFailures.push({
@@ -87,7 +92,8 @@ export default function ProofingUpload({
       } catch {
         uploadFailures.push({
           filename: file.name,
-          message: "Upload request failed.",
+          message:
+            "Upload request failed.",
         });
       }
 
@@ -99,12 +105,22 @@ export default function ProofingUpload({
     setFailures(uploadFailures);
     setIsUploading(false);
 
+    if (uploadFailures.length === 0) {
+      setFiles([]);
+
+      if (inputRef.current) {
+        inputRef.current.value = "";
+      }
+    }
+
     router.refresh();
   }
 
   return (
-  <div className="proofing-upload">
+    <div className="proofing-upload-control">
       <input
+        ref={inputRef}
+        className="proofing-upload-input"
         type="file"
         accept="image/jpeg,image/png,image/webp"
         multiple
@@ -112,37 +128,67 @@ export default function ProofingUpload({
         onChange={handleFiles}
       />
 
-      {files.length > 0 ? (
-        <div>
-          <p>
-            {files.length} photograph
-            {files.length === 1 ? "" : "s"} selected
-          </p>
+      <div className="proofing-upload-actions">
+        <button
+          type="button"
+          className="proofing-upload-choose"
+          disabled={isUploading}
+          onClick={() =>
+            inputRef.current?.click()
+          }
+        >
+          Add Photos
+        </button>
 
-          <button
-            type="button"
-            onClick={uploadFiles}
-            disabled={isUploading}
-          >
-            {isUploading
-              ? `Uploading ${completed} of ${files.length}…`
-              : `Upload ${files.length} photographs`}
-          </button>
+        {files.length > 0 ? (
+          <>
+            <p className="proofing-upload-selection">
+              {files.length} photograph
+              {files.length === 1
+                ? ""
+                : "s"}{" "}
+              selected
+            </p>
+
+            <button
+              type="button"
+              className="proofing-upload-submit"
+              onClick={uploadFiles}
+              disabled={isUploading}
+            >
+              {isUploading
+                ? `Uploading ${completed} of ${files.length}…`
+                : `Upload ${files.length}`}
+            </button>
+          </>
+        ) : (
+          <p className="proofing-upload-hint">
+            JPEG, PNG or WebP
+          </p>
+        )}
+      </div>
+
+      {isUploading ? (
+        <div className="proofing-upload-progress">
+          <progress
+            value={completed}
+            max={files.length}
+          />
+
+          <span>
+            {completed} of {files.length}
+          </span>
         </div>
       ) : null}
 
-      {isUploading ? (
-        <progress
-          value={completed}
-          max={files.length}
-        />
-      ) : null}
-
       {failures.length > 0 ? (
-        <div>
+        <div className="proofing-upload-failures">
           <p>
             {failures.length} upload
-            {failures.length === 1 ? "" : "s"} failed:
+            {failures.length === 1
+              ? ""
+              : "s"}{" "}
+            failed
           </p>
 
           <ul>

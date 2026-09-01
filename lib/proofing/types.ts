@@ -37,6 +37,8 @@ export type ProofingImage = {
 
   sortOrder: number;
 
+createdAt?: string;
+
   blurDataURL?: string;
 };
 

@@ -2,7 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { getProofingGallery } from "../../../../lib/proofing/repository";
-
+import ProofingImageActions from "./ProofingImageActions";
+import ProofingImageSort from "./ProofingImageSort";
 import ProofingPresentationEditor from "./ProofingPresentationEditor";
 import ProofingSelectionCopy from "./ProofingSelectionCopy";
 import ProofingUpload from "./ProofingUpload";
@@ -26,6 +27,10 @@ export default async function ProofingGalleryPage({
     notFound();
   }
 
+  const orderedImages = [...gallery.images].sort(
+    (a, b) => a.sortOrder - b.sortOrder,
+  );
+
   const visitorFavouriteCount =
     gallery.visitors?.reduce(
       (total, visitor) =>
@@ -42,44 +47,96 @@ export default async function ProofingGalleryPage({
 
   return (
     <main className="proofing-admin">
-      {/* Header */}
+      {/* Gallery workspace header */}
 
-      <header className="proofing-header">
-        <div>
-          <p className="proofing-eyebrow">
-            Client Proofing
-          </p>
-
-          <h1>{gallery.title}</h1>
-
-          <p className="proofing-subtitle">
-            {gallery.clientName ?? "No client name"}
-
-            {gallery.venue ? (
-              <>
-                <span aria-hidden="true">
-                  {" "}
-                  ·{" "}
-                </span>
-
-                {gallery.venue}
-              </>
-            ) : null}
-          </p>
-        </div>
-
+      <div className="proofing-gallery-workspace-top">
         <Link
           href="/admin/proofing"
           className="proofing-back-link"
         >
-          ← Proofing galleries
+          ← All galleries
         </Link>
-      </header>
 
-      {/* Gallery overview */}
+        <div className="proofing-gallery-workspace-heading">
+          <div>
+            <div className="proofing-gallery-title-row">
+              <h1>{gallery.title}</h1>
 
-      <section className="proofing-section">
-        <h2>Gallery overview</h2>
+              <span
+                className={`proofing-workspace-status proofing-workspace-status-${gallery.status}`}
+              >
+                {gallery.status}
+              </span>
+            </div>
+
+            <p className="proofing-subtitle">
+              {gallery.clientName ?? "No client name"}
+
+              {gallery.venue ? (
+                <>
+                  <span aria-hidden="true">
+                    {" "}
+                    ·{" "}
+                  </span>
+
+                  {gallery.venue}
+                </>
+              ) : null}
+            </p>
+          </div>
+
+          <div className="proofing-gallery-workspace-actions">
+            <Link
+              href={`/proofing/${gallery.slug}`}
+              className="proofing-button proofing-button-secondary"
+              target="_blank"
+            >
+              View Client Gallery
+            </Link>
+          </div>
+        </div>
+
+        <nav
+          className="proofing-gallery-workspace-nav"
+          aria-label="Gallery management"
+        >
+          <a href="#overview">
+            Overview
+          </a>
+
+          <a href="#photos">
+            Photos
+            <span>{gallery.images.length}</span>
+          </a>
+
+          <a href="#presentation">
+            Presentation
+          </a>
+
+          <a href="#selections">
+            Selections
+            <span>
+              {gallery.visitors?.length ?? 0}
+            </span>
+          </a>
+        </nav>
+      </div>
+
+      {/* Overview */}
+
+      <section
+        className="proofing-section"
+        id="overview"
+      >
+        <div className="proofing-section-heading-row">
+          <div>
+            <p className="proofing-section-label">
+              Gallery
+            </p>
+
+            <h2>Overview</h2>
+          </div>
+        </div>
 
         <dl className="proofing-details">
           <div>
@@ -105,7 +162,7 @@ export default async function ProofingGalleryPage({
           </div>
 
           <div>
-            <dt>Gallery slug</dt>
+            <dt>Gallery URL</dt>
             <dd>{gallery.slug}</dd>
           </div>
 
@@ -118,7 +175,6 @@ export default async function ProofingGalleryPage({
 
           <div>
             <dt>Watermark</dt>
-
             <dd>
               {gallery.watermarkEnabled
                 ? "Enabled"
@@ -128,11 +184,10 @@ export default async function ProofingGalleryPage({
 
           <div>
             <dt>Access</dt>
-
             <dd>
               {gallery.passwordHash
                 ? "Password protected"
-                : "Not protected"}
+                : "Email access"}
             </dd>
           </div>
         </dl>
@@ -140,7 +195,10 @@ export default async function ProofingGalleryPage({
 
       {/* Gallery presentation */}
 
-      <section className="proofing-section">
+      <section
+        className="proofing-section"
+        id="presentation"
+      >
         <div className="proofing-presentation-heading">
           <div>
             <p className="proofing-section-label">
@@ -165,7 +223,7 @@ export default async function ProofingGalleryPage({
           initialCoverImageId={
             gallery.coverImageId ?? null
           }
-          images={gallery.images.map(
+          images={orderedImages.map(
             (image) => ({
               id: image.id,
 
@@ -184,9 +242,37 @@ export default async function ProofingGalleryPage({
 
       {/* Photographs */}
 
-      <section className="proofing-section">
-        <h2>Photographs</h2>
+      <section
+        className="proofing-section"
+        id="photos"
+      >
+        <div className="proofing-section-heading-row">
+          <div>
+            <p className="proofing-section-label">
+              Gallery images
+            </p>
 
+            <h2>Photographs</h2>
+          </div>
+
+          <p className="proofing-selection-total">
+            {gallery.images.length} photograph
+            {gallery.images.length === 1
+              ? ""
+              : "s"}
+          </p>
+        </div>
+        
+<ProofingImageSort
+  galleryId={gallery.id}
+  images={orderedImages.map((image) => ({
+    id: image.id,
+    originalFilename:
+      image.originalFilename,
+    createdAt: image.createdAt,
+    sortOrder: image.sortOrder,
+  }))}
+/>
         <div className="proofing-upload">
           <ProofingUpload
             galleryId={gallery.id}
@@ -200,7 +286,7 @@ export default async function ProofingGalleryPage({
           </p>
         ) : (
           <div className="proofing-image-grid">
-            {gallery.images.map((image) => (
+            {orderedImages.map((image) => (
               <article
                 key={image.id}
                 className="proofing-image-card"
@@ -218,14 +304,28 @@ export default async function ProofingGalleryPage({
                 </div>
 
                 <div className="proofing-image-meta">
-                  <p>
-                    {image.originalFilename}
-                  </p>
+                  <div>
+                    <p>
+                      {image.originalFilename}
+                    </p>
 
-                  <span>
-                    {image.width} ×{" "}
-                    {image.height}
-                  </span>
+                    <span>
+                      {image.width} ×{" "}
+                      {image.height}
+                    </span>
+                  </div>
+
+                  <ProofingImageActions
+                    galleryId={gallery.id}
+                    imageId={image.id}
+                    introMessage={
+                      gallery.introMessage ?? ""
+                    }
+                    isCover={
+                      gallery.coverImageId ===
+                      image.id
+                    }
+                  />
                 </div>
               </article>
             ))}
@@ -235,7 +335,10 @@ export default async function ProofingGalleryPage({
 
       {/* Client selections */}
 
-      <section className="proofing-section">
+      <section
+        className="proofing-section"
+        id="selections"
+      >
         <div className="proofing-selection-heading">
           <div>
             <p className="proofing-section-label">
@@ -248,8 +351,7 @@ export default async function ProofingGalleryPage({
           <p className="proofing-selection-total">
             {gallery.visitors?.length ?? 0}{" "}
             identified visitor
-            {(gallery.visitors?.length ??
-              0) === 1
+            {(gallery.visitors?.length ?? 0) === 1
               ? ""
               : "s"}
           </p>
@@ -295,47 +397,56 @@ export default async function ProofingGalleryPage({
                         </p>
 
                         <p className="proofing-selection-meta">
-  {selectedImages.length} photograph
-  {selectedImages.length === 1
-    ? ""
-    : "s"}{" "}
-  selected
+                          {selectedImages.length}{" "}
+                          photograph
+                          {selectedImages.length === 1
+                            ? ""
+                            : "s"}{" "}
+                          selected
 
-  <span aria-hidden="true">
-    {" "}
-    ·{" "}
-  </span>
+                          <span aria-hidden="true">
+                            {" "}
+                            ·{" "}
+                          </span>
 
-  {visitor.selection.status === "submitted"
-    ? "Submitted"
-    : visitor.selection.status === "in-progress"
-      ? "Selection in progress"
-      : "No selection started"}
+                          {visitor.selection.status ===
+                          "submitted"
+                            ? "Submitted"
+                            : visitor.selection.status ===
+                                "in-progress"
+                              ? "Selection in progress"
+                              : "No selection started"}
 
-  {visitor.selection.status === "submitted" &&
-  visitor.selection.submittedAt ? (
-    <>
-      <span aria-hidden="true">
-        {" "}
-        ·{" "}
-      </span>
+                          {visitor.selection.status ===
+                            "submitted" &&
+                          visitor.selection
+                            .submittedAt ? (
+                            <>
+                              <span aria-hidden="true">
+                                {" "}
+                                ·{" "}
+                              </span>
 
-      {new Date(
-        visitor.selection.submittedAt,
-      ).toLocaleString("en-GB", {
-        dateStyle: "medium",
-        timeStyle: "short",
-      })}
-    </>
-  ) : null}
-</p>
+                              {new Date(
+                                visitor.selection
+                                  .submittedAt,
+                              ).toLocaleString(
+                                "en-GB",
+                                {
+                                  dateStyle:
+                                    "medium",
+                                  timeStyle:
+                                    "short",
+                                },
+                              )}
+                            </>
+                          ) : null}
+                        </p>
                       </div>
 
                       <div className="proofing-selection-count">
                         <strong>
-                          {
-                            selectedImages.length
-                          }
+                          {selectedImages.length}
                         </strong>
 
                         <span>
@@ -344,16 +455,13 @@ export default async function ProofingGalleryPage({
                       </div>
                     </header>
 
-                    {selectedImages.length >
-                    0 ? (
+                    {selectedImages.length > 0 ? (
                       <>
                         <div className="proofing-selection-thumbnails">
                           {selectedImages.map(
                             (image) => (
                               <figure
-                                key={
-                                  image.id
-                                }
+                                key={image.id}
                                 className="proofing-selection-thumbnail"
                               >
                                 <div className="proofing-selection-thumbnail-image">
@@ -363,9 +471,7 @@ export default async function ProofingGalleryPage({
                                     )}&imageId=${encodeURIComponent(
                                       image.id,
                                     )}`}
-                                    alt={
-                                      image.alt
-                                    }
+                                    alt={image.alt}
                                     loading="lazy"
                                   />
                                 </div>
@@ -428,13 +534,9 @@ export default async function ProofingGalleryPage({
 
                   return (
                     <li
-                      key={
-                        favourite.imageId
-                      }
+                      key={favourite.imageId}
                     >
-                      {
-                        image.originalFilename
-                      }
+                      {image.originalFilename}
                     </li>
                   );
                 },

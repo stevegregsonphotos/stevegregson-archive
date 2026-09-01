@@ -303,80 +303,69 @@ export default function ProofingGalleryClient({
   return (
     <>
       <div className="proofing-client-selection-toolbar">
-        <div className="proofing-client-live-summary">
-          <span>
-            {images.length} photograph
-            {images.length === 1 ? "" : "s"}
-          </span>
+  <div className="proofing-client-view-controls">
+    <button
+      type="button"
+      className={
+        view === "all"
+          ? "is-active"
+          : ""
+      }
+      onClick={() => setView("all")}
+    >
+      Photos
+      <span>{images.length}</span>
+    </button>
 
-          <span>
-            ♥ {favourites.length} favourite
-            {favourites.length === 1
-              ? ""
-              : "s"}
-          </span>
-        </div>
+    <button
+      type="button"
+      className={
+        view === "favourites"
+          ? "is-active"
+          : ""
+      }
+      onClick={() =>
+        setView("favourites")
+      }
+    >
+      Favourites
+      <span>
+        ♥ {favourites.length}
+      </span>
+    </button>
+  </div>
 
-        <div className="proofing-client-view-controls">
-          <button
-            type="button"
-            className={
-              view === "all"
-                ? "is-active"
-                : ""
-            }
-            onClick={() => setView("all")}
-          >
-            All photographs
-          </button>
+  {toolbarAction ? (
+    <div className="proofing-client-toolbar-submit">
+      {toolbarAction.status ? (
+        <span
+          className={
+            hasPendingChanges
+              ? "proofing-toolbar-pending"
+              : "proofing-toolbar-submitted"
+          }
+        >
+          {toolbarAction.status}
+        </span>
+      ) : null}
 
-          <button
-            type="button"
-            className={
-              view === "favourites"
-                ? "is-active"
-                : ""
-            }
-            onClick={() =>
-              setView("favourites")
-            }
-          >
-            My favourites
-            <span>
-              {favourites.length}
-            </span>
-          </button>
-        </div>
-
-        {toolbarAction ? (
-          <div className="proofing-client-toolbar-submit">
-            {toolbarAction.status ? (
-              <span
-                className={
-                  hasPendingChanges
-                    ? "proofing-toolbar-pending"
-                    : "proofing-toolbar-submitted"
-                }
-              >
-                {toolbarAction.status}
-              </span>
-            ) : null}
-
-            {toolbarAction.label ? (
-              <button
-                type="button"
-                className="proofing-toolbar-submit-button"
-                disabled={isSubmitting}
-                onClick={submitSelection}
-              >
-                {isSubmitting
-                  ? "Submitting…"
-                  : toolbarAction.label}
-              </button>
-            ) : null}
-          </div>
-        ) : null}
-      </div>
+      {toolbarAction.label ? (
+        <button
+          type="button"
+          className="proofing-toolbar-submit-button"
+          disabled={isSubmitting}
+          onClick={submitSelection}
+        >
+          {isSubmitting
+            ? "Sending…"
+            : hasPendingChanges
+              ? "Send changes"
+              : "Send favourites"}
+        </button>
+      ) : null}
+    </div>
+  ) : null}
+</div>
 
       {submitError && view === "all" ? (
         <p
@@ -584,9 +573,7 @@ export default function ProofingGalleryClient({
                   </button>
                 </div>
 
-                <figcaption className="proofing-client-filename">
-                  {image.originalFilename}
-                </figcaption>
+                
               </figure>
             );
           })}

@@ -27,6 +27,9 @@ export default async function ProofingClientPage({
   if (!gallery) {
     notFound();
   }
+  const orderedImages = [...gallery.images].sort(
+  (a, b) => a.sortOrder - b.sortOrder,
+);
 
   const cookieStore = await cookies();
 
@@ -135,14 +138,14 @@ export default async function ProofingClientPage({
         ) : (
           <ProofingGalleryClient
             gallerySlug={gallery.slug}
-            images={gallery.images.map(
-              (image) => ({
-                id: image.id,
-                originalFilename:
-                  image.originalFilename,
-                alt: image.alt,
-              }),
-            )}
+            images={orderedImages.map(
+  (image) => ({
+    id: image.id,
+    originalFilename:
+      image.originalFilename,
+    alt: image.alt,
+  }),
+)}
             initialFavourites={
               visitor.selection.favourites.map(
                 (favourite) =>

@@ -133,7 +133,11 @@ export async function POST(request: Request) {
 
       alt: originalFilename,
 
-      sortOrder: 0,
+sortOrder: 0,
+
+createdAt: new Date(
+  uploadedFile.lastModified || Date.now(),
+).toISOString(),
     };
 
     const updatedGallery = updateProofingGallery(
