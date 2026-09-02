@@ -15,6 +15,7 @@ type ProofingPresentationEditorProps = {
   initialIntroMessage: string;
   initialCoverImageId: string | null;
   images: PresentationImage[];
+  introTemplates: IntroTemplate[];
 };
 
 type SaveResponse = {
@@ -22,14 +23,34 @@ type SaveResponse = {
   message?: string;
 };
 
+type IntroTemplate = {
+  id: string;
+  name: string;
+  message: string;
+  isDefault: boolean;
+};
+
 export default function ProofingPresentationEditor({
   galleryId,
   initialIntroMessage,
   initialCoverImageId,
   images,
+  introTemplates,
 }: ProofingPresentationEditorProps) {
   const [introMessage, setIntroMessage] =
     useState(initialIntroMessage);
+
+  const [introTemplateId, setIntroTemplateId] =
+    useState(() => {
+      const matchingTemplate =
+        introTemplates.find(
+          (template) =>
+            template.message ===
+            initialIntroMessage,
+        );
+
+      return matchingTemplate?.id ?? "custom";
+    });
 
   const [coverImageId, setCoverImageId] =
     useState<string | null>(
@@ -98,14 +119,75 @@ export default function ProofingPresentationEditor({
   return (
     <div className="proofing-presentation-editor">
       <div className="proofing-presentation-field">
-        <label htmlFor="proofing-intro-message">
-          Gallery introduction
-        </label>
+        <div className="proofing-intro-heading">
+          <div>
+            <label htmlFor="proofing-intro-message">
+              Gallery introduction
+            </label>
 
-        <p className="proofing-presentation-help">
-          This message is shown to clients when
-          they first open the gallery.
-        </p>
+            <p className="proofing-presentation-help">
+              Choose a saved starting point or write
+              a custom message for this gallery.
+            </p>
+          </div>
+
+          <div className="proofing-intro-template">
+            <label htmlFor="proofing-intro-template">
+              Template
+            </label>
+
+            <select
+              id="proofing-intro-template"
+              value={introTemplateId}
+              onChange={(event) => {
+                const templateId =
+                  event.target.value;
+
+                setIntroTemplateId(templateId);
+
+                if (templateId === "blank") {
+                  setIntroMessage("");
+                } else if (
+                  templateId !== "custom"
+                ) {
+                  const template =
+                    introTemplates.find(
+                      (candidate) =>
+                        candidate.id ===
+                        templateId,
+                    );
+
+                  if (template) {
+                    setIntroMessage(
+                      template.message,
+                    );
+                  }
+                }
+
+                setSaveState("idle");
+              }}
+            >
+              <option value="custom">
+                Custom
+              </option>
+
+              <option value="blank">
+                Blank
+              </option>
+
+              {introTemplates.map(
+                (template) => (
+                  <option
+                    key={template.id}
+                    value={template.id}
+                  >
+                    {template.name}
+                  </option>
+                ),
+              )}
+            </select>
+          </div>
+        </div>
 
         <textarea
           id="proofing-intro-message"
@@ -115,9 +197,10 @@ export default function ProofingPresentationEditor({
               event.target.value,
             );
 
+            setIntroTemplateId("custom");
             setSaveState("idle");
           }}
-          rows={5}
+          rows={4}
           placeholder="Add a welcome message for your client…"
         />
       </div>

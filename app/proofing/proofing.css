@@ -888,3 +888,343 @@
     padding: 1.25rem;
   }
 }
+
+/* Full-screen photograph viewer */
+
+.proofing-client-image-open {
+  display: block;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: zoom-in;
+}
+
+.proofing-viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  background: rgba(10, 9, 8, 0.97);
+  padding: 3rem 5rem;
+}
+
+.proofing-viewer-stage {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: 1.15rem;
+  width: min(100%, 1500px);
+  max-height: 100%;
+}
+
+.proofing-viewer-image {
+  display: block;
+  max-width: 100%;
+  max-height: calc(100vh - 9rem);
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
+.proofing-viewer-close {
+  position: fixed;
+  top: 1.5rem;
+  right: 1.75rem;
+  z-index: 2;
+  border: 0;
+  background: transparent;
+  padding: 0.5rem;
+  color: rgba(242, 238, 230, 0.72);
+  cursor: pointer;
+  font: inherit;
+  font-size: 2rem;
+  font-weight: 300;
+  line-height: 1;
+}
+
+.proofing-viewer-close:hover {
+  color: #f2eee6;
+}
+
+.proofing-viewer-nav {
+  position: fixed;
+  top: 50%;
+  z-index: 2;
+  transform: translateY(-50%);
+  border: 0;
+  background: transparent;
+  padding: 1rem;
+  color: rgba(242, 238, 230, 0.6);
+  cursor: pointer;
+  font: inherit;
+  font-size: 3rem;
+  font-weight: 300;
+  line-height: 1;
+}
+
+.proofing-viewer-nav:hover {
+  color: #f2eee6;
+}
+
+.proofing-viewer-previous {
+  left: 1.25rem;
+}
+
+.proofing-viewer-next {
+  right: 1.25rem;
+}
+
+.proofing-viewer-favourite {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  border: 0;
+  background: transparent;
+  padding: 0.5rem 0;
+  color: rgba(242, 238, 230, 0.7);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.proofing-viewer-favourite span {
+  color: #c7a369;
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.proofing-viewer-favourite:hover,
+.proofing-viewer-favourite.is-favourite {
+  color: #c7a369;
+}
+
+.proofing-viewer-favourite:disabled {
+  cursor: wait;
+  opacity: 0.5;
+}
+
+@media (max-width: 700px) {
+  .proofing-viewer {
+    padding: 4rem 1rem 2rem;
+  }
+
+  .proofing-viewer-image {
+    max-height: calc(100vh - 10rem);
+  }
+
+  .proofing-viewer-nav {
+    top: auto;
+    bottom: 1rem;
+    transform: none;
+    font-size: 2.5rem;
+  }
+
+  .proofing-viewer-previous {
+    left: 1rem;
+  }
+
+  .proofing-viewer-next {
+    right: 1rem;
+  }
+
+  .proofing-viewer-close {
+    top: 0.8rem;
+    right: 0.8rem;
+  }
+}
+
+/* Unavailable gallery */
+
+.proofing-client-unavailable h2 {
+  margin: 0.45rem 0 0;
+  color: #f2eee6;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.proofing-client-unavailable > p {
+  max-width: 34rem;
+  margin: 0.65rem 0 0;
+  color: rgba(242, 238, 230, 0.62);
+  font-size: 0.72rem;
+  line-height: 1.65;
+}
+
+.proofing-client-unavailable-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1.5rem;
+  padding: 0.9rem 1.35rem;
+  border: 1px solid #c7a369;
+  background: #c7a369;
+  color: #11100f;
+  font-size: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  line-height: 1;
+  text-decoration: none;
+  text-transform: uppercase;
+  transition:
+    background 160ms ease,
+    color 160ms ease;
+}
+
+.proofing-client-unavailable-cta:hover {
+  background: transparent;
+  color: #c7a369;
+}
+
+/* Proofing viewer actions */
+
+.proofing-viewer-actions {
+  position: absolute;
+  right: 1rem;
+  bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.proofing-viewer-actions .proofing-viewer-favourite {
+  position: static;
+}
+
+.proofing-viewer-download {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.6rem;
+  padding: 0 1rem;
+  border: 1px solid rgba(242, 238, 230, 0.35);
+  background: rgba(17, 16, 15, 0.82);
+  color: #f2eee6;
+  font-size: 0.48rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  text-decoration: none;
+  text-transform: uppercase;
+  backdrop-filter: blur(8px);
+}
+
+.proofing-viewer-download:hover {
+  border-color: #c7a369;
+  background: #c7a369;
+  color: #11100f;
+}
+
+@media (max-width: 600px) {
+  .proofing-viewer-actions {
+    right: 0.75rem;
+    bottom: 0.75rem;
+    left: 0.75rem;
+    justify-content: flex-end;
+  }
+}
+
+/* Keep viewer actions together beneath the photograph */
+
+.proofing-viewer-actions {
+  position: static;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1.25rem;
+}
+
+.proofing-viewer-actions .proofing-viewer-favourite {
+  position: static;
+  flex: 0 0 auto;
+  min-height: 2.6rem;
+  margin: 0;
+  padding: 0 0.25rem;
+  white-space: nowrap;
+}
+
+.proofing-viewer-download {
+  flex: 0 0 auto;
+  min-height: 2.6rem;
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .proofing-viewer-actions {
+    position: static;
+    width: 100%;
+    justify-content: center;
+    gap: 1rem;
+  }
+}
+
+/* Client gallery introduction */
+
+.proofing-client-intro {
+  max-width: 46rem;
+  margin: 1.5rem 0 0;
+  color: rgba(242, 238, 230, 0.78);
+  font-size: 0.95rem;
+  line-height: 1.7;
+  white-space: pre-line;
+}
+
+/* Client introduction modal */
+
+.proofing-intro-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: rgba(8, 8, 8, 0.78);
+  backdrop-filter: blur(5px);
+}
+
+.proofing-intro-modal {
+  width: min(100%, 42rem);
+  max-height: min(80vh, 46rem);
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: 2.5rem;
+  border: 1px solid rgba(199, 163, 105, 0.38);
+  background: #111;
+  box-shadow: 0 2rem 6rem rgba(0, 0, 0, 0.5);
+}
+
+.proofing-intro-modal h2 {
+  margin: 0.55rem 0 1.35rem;
+  color: #f2eee6;
+  font-size: clamp(1.5rem, 3vw, 2.15rem);
+  font-weight: 400;
+}
+
+.proofing-intro-modal-message {
+  margin: 0;
+  color: rgba(242, 238, 230, 0.78);
+  font-size: 0.95rem;
+  line-height: 1.75;
+  white-space: pre-line;
+}
+
+.proofing-intro-modal button {
+  margin-top: 2rem;
+  padding: 0.85rem 1.25rem;
+  border: 1px solid #c7a369;
+  background: #c7a369;
+  color: #111;
+  font: inherit;
+  cursor: pointer;
+}
+
+@media (max-width: 650px) {
+  .proofing-intro-modal {
+    padding: 1.75rem;
+  }
+}

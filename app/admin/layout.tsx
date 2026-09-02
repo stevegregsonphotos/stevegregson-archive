@@ -24,6 +24,14 @@ const navigation = [
   href: "/admin/productions",
 },
   {
+    label: "Proofing",
+    href: "/admin/proofing",
+  },
+  {
+    label: "Watermarks",
+    href: "/admin/proofing/watermarks",
+  },
+  {
     label: "Selected Work",
     href: "/admin/selected-work",
   },

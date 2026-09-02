@@ -1,0 +1,34 @@
+[
+  {
+    "id": "a53ca1d4-3ce4-4e6c-880b-3f3783b54eab",
+    "name": "Standard proofing",
+    "message": "Please note, none of these images have yet been properly edited. I've applied some changes globally so that they're not flat RAW files, but not edited! As such, please ignore any tonal balances, colour changes, too dark/light and cropping etc, etc... They are all easily amended when editing. Simply select the photographs you would like, by clicking the icon to favourite the image.\nWhen you are happy with your selection, submit it and I’ll take it from there.\nPlease note: These images are for proofing only. Do not download or distribute.\nAny questions, do get in touch.\nEnjoy! Steve.",
+    "isDefault": true,
+    "createdAt": "2026-09-02T19:57:36.956Z",
+    "updatedAt": "2026-09-02T20:23:13.796Z"
+  },
+  {
+    "id": "ab0c303d-aea6-472d-ae89-1e0f7c347b0d",
+    "name": "Rehearsal selection",
+    "message": "Welcome to your rehearsal proofing gallery. Please look through the photographs and select the images you would like me to work from. Once you have finished, submit your selection and I’ll begin the final edits.",
+    "isDefault": false,
+    "createdAt": "2026-09-02T19:57:36.956Z",
+    "updatedAt": "2026-09-02T19:57:36.956Z"
+  },
+  {
+    "id": "8a1adb42-b680-4e89-8534-f80e6119335a",
+    "name": "Production selection",
+    "message": "Welcome to your production proofing gallery. Please review the photographs and favourite the images you would like to select. When your selection is complete, submit it to let me know you are finished.",
+    "isDefault": false,
+    "createdAt": "2026-09-02T19:57:36.956Z",
+    "updatedAt": "2026-09-02T19:57:36.956Z"
+  },
+  {
+    "id": "ccaf3d9b-c4d4-4f6d-a192-c926a0a1343f",
+    "name": "Shortlist / final choices",
+    "message": "Here is your private gallery of shortlisted photographs. Please mark your final choices as favourites and submit the selection when you are happy with it.",
+    "isDefault": false,
+    "createdAt": "2026-09-02T19:57:36.956Z",
+    "updatedAt": "2026-09-02T19:57:36.956Z"
+  }
+]

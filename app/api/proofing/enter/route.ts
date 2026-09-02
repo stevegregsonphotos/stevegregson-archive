@@ -83,6 +83,30 @@ export async function POST(
     );
   }
 
+  /*
+   * Do not create visitor sessions for galleries
+   * that are not currently available.
+   */
+  const hasExpiredByDate =
+    Boolean(gallery.expiresAt) &&
+    new Date(
+      gallery.expiresAt as string,
+    ).getTime() < Date.now();
+
+  if (
+    gallery.status !== "live" ||
+    hasExpiredByDate
+  ) {
+    return NextResponse.json(
+      {
+        ok: false,
+        message:
+          "This gallery is not currently available.",
+      },
+      { status: 403 },
+    );
+  }
+
   let visitorId = "";
 
   const updatedGallery =

@@ -31,19 +31,38 @@ export function getProofingGalleries(): ProofingGallery[] {
     .readdirSync(proofingDirectory)
     .filter((filename) => filename.endsWith(".json"));
 
-  const galleries = filenames.map((filename) => {
-    const filePath = path.join(
-      proofingDirectory,
-      filename,
-    );
+  const galleries = filenames
+    .map((filename) => {
+      const filePath = path.join(
+        proofingDirectory,
+        filename,
+      );
 
-    const contents = fs.readFileSync(
-      filePath,
-      "utf8",
-    );
+      const contents = fs.readFileSync(
+        filePath,
+        "utf8",
+      );
 
-    return JSON.parse(contents) as ProofingGallery;
-  });
+      try {
+        return JSON.parse(contents) as Partial<ProofingGallery>;
+      } catch {
+        return null;
+      }
+    })
+    .filter(
+      (
+        gallery,
+      ): gallery is ProofingGallery =>
+        Boolean(
+          gallery &&
+            typeof gallery.id === "string" &&
+            typeof gallery.slug === "string" &&
+            gallery.slug.trim() &&
+            typeof gallery.title === "string" &&
+            typeof gallery.createdAt === "string" &&
+            Array.isArray(gallery.images),
+        ),
+    );
 
   return galleries.sort((first, second) =>
     second.createdAt.localeCompare(first.createdAt),

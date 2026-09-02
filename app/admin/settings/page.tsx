@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 
 import PublishingSettingsForm from "../../../components/admin/PublishingSettingsForm";
 import TestOpenAIConnection from "../../../components/admin/TestOpenAIConnection";
+import ProofingIntroTemplatesManager from "../../../components/admin/ProofingIntroTemplatesManager";
+import { getProofingIntroTemplates } from "../../../lib/proofing/intro-templates";
 
 export const dynamic = "force-dynamic";
 
@@ -50,6 +52,9 @@ function StatusBadge({
 }
 
 export default function SettingsPage() {
+  const introTemplates =
+    getProofingIntroTemplates();
+
   const hasOpenAiKey = Boolean(
     process.env.OPENAI_API_KEY?.trim(),
   );
@@ -187,6 +192,17 @@ export default function SettingsPage() {
               </article>
             ))}
           </div>
+        </section>
+
+        <section className="backstage-section">
+          <div className="backstage-section-heading">
+            <h2>Proofing introductions</h2>
+            <p>Reusable client messages</p>
+          </div>
+
+          <ProofingIntroTemplatesManager
+            initialTemplates={introTemplates}
+          />
         </section>
 
         <section className="backstage-section">

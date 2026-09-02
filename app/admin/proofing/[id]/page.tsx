@@ -2,10 +2,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { getProofingGallery } from "../../../../lib/proofing/repository";
+import { getProofingWatermarks } from "../../../../lib/proofing/watermarks";
+import { getProofingIntroTemplates } from "../../../../lib/proofing/intro-templates";
 import ProofingImageActions from "./ProofingImageActions";
 import ProofingImageSort from "./ProofingImageSort";
 import ProofingPresentationEditor from "./ProofingPresentationEditor";
 import ProofingSelectionCopy from "./ProofingSelectionCopy";
+import ProofingUrlEditor from "./ProofingUrlEditor";
+import ProofingSettingsEditor from "./ProofingSettingsEditor";
 import ProofingUpload from "./ProofingUpload";
 
 export const dynamic = "force-dynamic";
@@ -21,11 +25,16 @@ export default async function ProofingGalleryPage({
 }: ProofingGalleryPageProps) {
   const { id } = await params;
 
+  const introTemplates =
+    getProofingIntroTemplates();
+
   const gallery = getProofingGallery(id);
 
   if (!gallery) {
     notFound();
   }
+
+  const watermarks = getProofingWatermarks();
 
   const orderedImages = [...gallery.images].sort(
     (a, b) => a.sortOrder - b.sortOrder,
@@ -163,7 +172,12 @@ export default async function ProofingGalleryPage({
 
           <div>
             <dt>Gallery URL</dt>
-            <dd>{gallery.slug}</dd>
+            <dd>
+              <ProofingUrlEditor
+                galleryId={gallery.id}
+                initialSlug={gallery.slug}
+              />
+            </dd>
           </div>
 
           <div>
@@ -191,6 +205,67 @@ export default async function ProofingGalleryPage({
             </dd>
           </div>
         </dl>
+      </section>
+
+      {/* Access and delivery */}
+
+      <section
+        className="proofing-section"
+        id="access"
+      >
+        <div className="proofing-presentation-heading">
+          <div>
+            <p className="proofing-section-label">
+              Client access
+            </p>
+
+            <h2>Access &amp; delivery</h2>
+          </div>
+
+          <p className="proofing-presentation-heading-copy">
+            Control when this gallery is available and
+            what your client can do with the photographs.
+          </p>
+        </div>
+
+        <ProofingSettingsEditor
+          galleryId={gallery.id}
+          initialStatus={gallery.status}
+          initialDownloadPermission={
+            gallery.downloadPermission === "full"
+              ? "web"
+              : gallery.downloadPermission
+          }
+          initialWatermarkEnabled={
+            gallery.watermarkEnabled
+          }
+          initialWatermarkId={gallery.watermarkId}
+          initialWatermarkPosition={
+            gallery.watermarkPosition
+          }
+          initialWatermarkSize={
+            gallery.watermarkSize
+          }
+          initialWatermarkOpacity={
+            gallery.watermarkOpacity
+          }
+          previewImageUrl={
+            orderedImages[0]
+              ? `/api/admin/proofing/image?galleryId=${encodeURIComponent(
+                  gallery.id,
+                )}&imageId=${encodeURIComponent(
+                  orderedImages[0].id,
+                )}`
+              : "/images/selected-work/rehearsal/full-echo-rehearsals-stevegregson-04138.jpg"
+          }
+          initialExpiresAt={gallery.expiresAt}
+          watermarks={watermarks.map(
+            (watermark) => ({
+              id: watermark.id,
+              name: watermark.name,
+            }),
+          )}
+        />
       </section>
 
       {/* Gallery presentation */}
@@ -223,6 +298,7 @@ export default async function ProofingGalleryPage({
           initialCoverImageId={
             gallery.coverImageId ?? null
           }
+          introTemplates={introTemplates}
           images={orderedImages.map(
             (image) => ({
               id: image.id,

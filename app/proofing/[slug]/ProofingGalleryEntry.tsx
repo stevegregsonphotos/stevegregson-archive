@@ -5,14 +5,11 @@ import {
   useState,
 } from "react";
 
-import ProofingGalleryWelcome from "./ProofingGalleryWelcome";
-
 type ProofingGalleryEntryProps = {
   gallerySlug: string;
   title: string;
   clientName?: string;
   venue?: string;
-  introMessage?: string;
   coverImageUrl?: string;
 };
 
@@ -26,7 +23,6 @@ export default function ProofingGalleryEntry({
   title,
   clientName,
   venue,
-  introMessage,
   coverImageUrl,
 }: ProofingGalleryEntryProps) {
   const [email, setEmail] =
@@ -37,9 +33,6 @@ export default function ProofingGalleryEntry({
 
   const [error, setError] =
     useState<string | null>(null);
-
-  const [showWelcome, setShowWelcome] =
-    useState(false);
 
   async function handleSubmit(
     event: FormEvent<HTMLFormElement>,
@@ -77,7 +70,11 @@ export default function ProofingGalleryEntry({
         );
       }
 
-      setShowWelcome(true);
+      window.location.assign(
+        `/proofing/${encodeURIComponent(
+          gallerySlug,
+        )}?welcome=1`,
+      );
     } catch (error) {
       setError(
         error instanceof Error
@@ -87,18 +84,6 @@ export default function ProofingGalleryEntry({
     } finally {
       setIsSubmitting(false);
     }
-  }
-
-  if (showWelcome) {
-    return (
-      <ProofingGalleryWelcome
-        title={title}
-        introMessage={introMessage}
-        onContinue={() => {
-          window.location.reload();
-        }}
-      />
-    );
   }
 
   return (

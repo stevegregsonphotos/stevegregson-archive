@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -13,6 +14,12 @@ type ProofingClientImage = {
 
 type ProofingGalleryClientProps = {
   gallerySlug: string;
+  introMessage?: string;
+  showIntroOnLoad?: boolean;
+  downloadPermission:
+    | "none"
+    | "web"
+    | "selected";
   images: ProofingClientImage[];
   initialFavourites: string[];
   initialSelectionStatus?: string;
@@ -53,6 +60,9 @@ function sameSelection(
 
 export default function ProofingGalleryClient({
   gallerySlug,
+  introMessage,
+  showIntroOnLoad = false,
+  downloadPermission,
   images,
   initialFavourites,
   initialSelectionStatus = "not-started",
@@ -89,6 +99,31 @@ export default function ProofingGalleryClient({
   const [submitError, setSubmitError] =
     useState<string | null>(null);
 
+  const [viewerImageId, setViewerImageId] =
+    useState<string | null>(null);
+
+  const [showIntro, setShowIntro] =
+    useState(
+      Boolean(
+        showIntroOnLoad &&
+        introMessage,
+      ),
+    );
+
+  useEffect(() => {
+    if (!showIntroOnLoad) {
+      return;
+    }
+
+    window.history.replaceState(
+      null,
+      "",
+      `/proofing/${encodeURIComponent(
+        gallerySlug,
+      )}`,
+    );
+  }, [gallerySlug, showIntroOnLoad]);
+
   const favouriteSet = useMemo(
     () => new Set(favourites),
     [favourites],
@@ -106,6 +141,69 @@ export default function ProofingGalleryClient({
     view === "favourites"
       ? favouriteImages
       : images;
+
+  const viewerImageIndex = viewerImageId
+    ? visibleImages.findIndex(
+        (image) => image.id === viewerImageId,
+      )
+    : -1;
+
+  const viewerImage =
+    viewerImageIndex >= 0
+      ? visibleImages[viewerImageIndex]
+      : null;
+
+  const previousViewerImage =
+    viewerImageIndex > 0
+      ? visibleImages[viewerImageIndex - 1]
+      : null;
+
+  const nextViewerImage =
+    viewerImageIndex >= 0 &&
+    viewerImageIndex < visibleImages.length - 1
+      ? visibleImages[viewerImageIndex + 1]
+      : null;
+
+  useEffect(() => {
+    if (!viewerImage) {
+      return;
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setViewerImageId(null);
+        return;
+      }
+
+      if (
+        event.key === "ArrowLeft" &&
+        previousViewerImage
+      ) {
+        setViewerImageId(previousViewerImage.id);
+        return;
+      }
+
+      if (
+        event.key === "ArrowRight" &&
+        nextViewerImage
+      ) {
+        setViewerImageId(nextViewerImage.id);
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener(
+        "keydown",
+        handleKeyDown,
+      );
+    };
+  }, [
+    viewerImage,
+    previousViewerImage,
+    nextViewerImage,
+  ]);
 
   const hasSubmittedSelection =
     submittedFavourites.length > 0 &&
@@ -302,6 +400,38 @@ export default function ProofingGalleryClient({
 
   return (
     <>
+      {showIntro && introMessage ? (
+        <div
+          className="proofing-intro-modal-backdrop"
+          role="presentation"
+        >
+          <section
+            className="proofing-intro-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="proofing-intro-title"
+          >
+            <p className="proofing-client-eyebrow">
+              Private Client Gallery
+            </p>
+
+            <h2 id="proofing-intro-title">
+              Before you begin
+            </h2>
+
+            <p className="proofing-intro-modal-message">
+              {introMessage}
+            </p>
+
+            <button
+              type="button"
+              onClick={() => setShowIntro(false)}
+            >
+              View photographs
+            </button>
+          </section>
+        </div>
+      ) : null}
       <div className="proofing-client-selection-toolbar">
   <div className="proofing-client-view-controls">
     <button
@@ -529,16 +659,25 @@ export default function ProofingGalleryClient({
                 className="proofing-client-card"
               >
                 <div className="proofing-client-image-wrap">
-                  <img
-                    src={`/api/proofing/image?gallery=${encodeURIComponent(
-                      gallerySlug,
-                    )}&image=${encodeURIComponent(
-                      image.id,
-                    )}`}
-                    alt={image.alt}
-                    loading="lazy"
-                    className="proofing-client-image"
-                  />
+                  <button
+                    type="button"
+                    className="proofing-client-image-open"
+                    aria-label={`View ${image.originalFilename}`}
+                    onClick={() =>
+                      setViewerImageId(image.id)
+                    }
+                  >
+                    <img
+                      src={`/api/proofing/image?gallery=${encodeURIComponent(
+                        gallerySlug,
+                      )}&image=${encodeURIComponent(
+                        image.id,
+                      )}`}
+                      alt={image.alt}
+                      loading="lazy"
+                      className="proofing-client-image"
+                    />
+                  </button>
 
                   <button
                     type="button"
@@ -579,6 +718,111 @@ export default function ProofingGalleryClient({
           })}
         </section>
       )}
+        {viewerImage ? (
+          <div
+            className="proofing-viewer"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Photograph viewer"
+          >
+            <button
+              type="button"
+              className="proofing-viewer-close"
+              aria-label="Close photograph"
+              onClick={() => setViewerImageId(null)}
+            >
+              ×
+            </button>
+
+            {previousViewerImage ? (
+              <button
+                type="button"
+                className="proofing-viewer-nav proofing-viewer-previous"
+                aria-label="Previous photograph"
+                onClick={() =>
+                  setViewerImageId(previousViewerImage.id)
+                }
+              >
+                ‹
+              </button>
+            ) : null}
+
+            <div className="proofing-viewer-stage">
+              <img
+                src={`/api/proofing/image?gallery=${encodeURIComponent(
+                  gallerySlug,
+                )}&image=${encodeURIComponent(
+                  viewerImage.id,
+                )}`}
+                alt={viewerImage.alt}
+                className="proofing-viewer-image"
+              />
+
+              <div className="proofing-viewer-actions">
+                <div className="proofing-viewer-actions">
+                  <button
+                    type="button"
+                    className={
+                      favouriteSet.has(viewerImage.id)
+                        ? "proofing-viewer-favourite is-favourite"
+                        : "proofing-viewer-favourite"
+                    }
+                    aria-pressed={favouriteSet.has(
+                      viewerImage.id,
+                    )}
+                    disabled={
+                      updatingImageId === viewerImage.id ||
+                      isSubmitting
+                    }
+                    onClick={() =>
+                      toggleFavourite(viewerImage.id)
+                    }
+                  >
+                    <span aria-hidden="true">
+                      {favouriteSet.has(viewerImage.id)
+                        ? "♥"
+                        : "♡"}
+                    </span>
+
+                    {favouriteSet.has(viewerImage.id)
+                      ? "Favourite"
+                      : "Add to favourites"}
+                  </button>
+
+                  {downloadPermission === "web" ||
+                  (downloadPermission === "selected" &&
+                    favouriteSet.has(viewerImage.id)) ? (
+                    <a
+                      className="proofing-viewer-download"
+                      href={`/api/proofing/download?gallery=${encodeURIComponent(
+                        gallerySlug,
+                      )}&image=${encodeURIComponent(
+                        viewerImage.id,
+                      )}`}
+                    >
+                      Download
+                    </a>
+                  ) : null}
+                </div>
+
+              </div>
+            </div>
+
+            {nextViewerImage ? (
+              <button
+                type="button"
+                className="proofing-viewer-nav proofing-viewer-next"
+                aria-label="Next photograph"
+                onClick={() =>
+                  setViewerImageId(nextViewerImage.id)
+                }
+              >
+                ›
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+
     </>
   );
 }

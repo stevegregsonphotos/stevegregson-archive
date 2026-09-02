@@ -294,3 +294,207 @@
   border-color: rgba(242, 238, 230, 0.5);
   color: #f2eee6;
 }
+
+/* Proofing introduction template manager */
+
+.proofing-intro-template-manager {
+  margin-top: 1.5rem;
+}
+
+.proofing-intro-template-list {
+  border-top: 1px solid rgba(242, 238, 230, 0.14);
+}
+
+.proofing-intro-template-card {
+  display: grid;
+  grid-template-columns: minmax(12rem, 0.32fr) minmax(0, 1fr) auto;
+  gap: 2rem;
+  align-items: center;
+  min-height: 7rem;
+  padding: 1.35rem 0;
+  border-bottom: 1px solid rgba(242, 238, 230, 0.14);
+}
+
+.proofing-intro-template-card-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  min-width: 0;
+}
+
+.proofing-intro-template-card-heading h3 {
+  margin: 0;
+  color: #f2eee6;
+  font-family:
+    "Iowan Old Style",
+    "Palatino Linotype",
+    Georgia,
+    serif;
+  font-size: 1.2rem;
+  font-weight: 400;
+  line-height: 1.25;
+}
+
+.proofing-intro-template-card-heading span {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  padding: 0.28rem 0.45rem;
+  background: #c7a369;
+  color: #11100f;
+  font-size: 0.42rem;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.proofing-intro-template-card > p {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 0;
+  color: rgba(242, 238, 230, 0.58);
+  font-size: 0.78rem;
+  line-height: 1.65;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.proofing-intro-template-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.45rem;
+}
+
+.proofing-intro-template-actions button {
+  min-height: 2.35rem;
+  padding: 0 0.75rem;
+  border: 1px solid rgba(242, 238, 230, 0.16);
+  border-radius: 0;
+  background: transparent;
+  color: rgba(242, 238, 230, 0.7);
+  font: inherit;
+  font-size: 0.47rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.proofing-intro-template-actions button:hover {
+  border-color: #c7a369;
+  color: #c7a369;
+}
+
+.proofing-intro-template-actions button:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.proofing-intro-template-card > input,
+.proofing-intro-template-card > textarea,
+.proofing-intro-template-add input,
+.proofing-intro-template-add textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid rgba(242, 238, 230, 0.16);
+  border-radius: 0;
+  outline: none;
+  background: #0d0c0b;
+  color: #f2eee6;
+  font: inherit;
+}
+
+.proofing-intro-template-card > input,
+.proofing-intro-template-add input {
+  min-height: 3rem;
+  padding: 0 0.9rem;
+}
+
+.proofing-intro-template-card > textarea,
+.proofing-intro-template-add textarea {
+  min-height: 6.5rem;
+  padding: 0.85rem 0.9rem;
+  line-height: 1.55;
+  resize: vertical;
+}
+
+.proofing-intro-template-card > input:focus,
+.proofing-intro-template-card > textarea:focus,
+.proofing-intro-template-add input:focus,
+.proofing-intro-template-add textarea:focus {
+  border-color: rgba(199, 163, 105, 0.75);
+}
+
+.proofing-intro-template-add {
+  display: grid;
+  grid-template-columns: minmax(12rem, 0.32fr) minmax(0, 1fr);
+  gap: 1.25rem 2rem;
+  align-items: start;
+  margin-top: 2rem;
+  padding: 1.75rem;
+  border: 1px solid rgba(242, 238, 230, 0.14);
+  background: rgba(242, 238, 230, 0.025);
+}
+
+.proofing-intro-template-add > div {
+  grid-row: span 2;
+}
+
+.proofing-intro-template-add h3 {
+  margin: 0.45rem 0 0;
+  color: #f2eee6;
+  font-family:
+    "Iowan Old Style",
+    "Palatino Linotype",
+    Georgia,
+    serif;
+  font-size: 1.5rem;
+  font-weight: 400;
+}
+
+.proofing-intro-template-add button[type="submit"] {
+  justify-self: start;
+  min-height: 2.8rem;
+  padding: 0 1rem;
+  border: 1px solid #c7a369;
+  border-radius: 0;
+  background: #c7a369;
+  color: #11100f;
+  font: inherit;
+  font-size: 0.5rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.proofing-intro-template-message {
+  grid-column: 2;
+  margin: 0;
+  color: #c7a369;
+  font-size: 0.7rem;
+}
+
+@media (max-width: 900px) {
+  .proofing-intro-template-card {
+    grid-template-columns: 1fr;
+    gap: 0.8rem;
+  }
+
+  .proofing-intro-template-actions {
+    justify-content: flex-start;
+  }
+
+  .proofing-intro-template-add {
+    grid-template-columns: 1fr;
+  }
+
+  .proofing-intro-template-add > div {
+    grid-row: auto;
+  }
+
+  .proofing-intro-template-message {
+    grid-column: 1;
+  }
+}

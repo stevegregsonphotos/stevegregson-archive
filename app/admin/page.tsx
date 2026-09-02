@@ -11,6 +11,13 @@ export const metadata: Metadata = {
 
 const secondaryActions = [
   {
+    title: "Client Proofing",
+    description:
+      "Create and manage private client galleries, image selections and favourites.",
+    href: "/admin/proofing",
+    label: "Manage galleries",
+  },
+  {
     title: "Selected Work",
     description:
       "Upload, arrange and remove photographs from the curated public portfolio.",
@@ -191,7 +198,7 @@ export default function AdminPage() {
         .backstage-shell {
           width: min(100% - 8vw, 88rem);
           margin: 0 auto;
-          padding: 8rem 0 5rem;
+          padding: 2.5rem 0 5rem;
         }
 
         .backstage-intro {
@@ -201,12 +208,12 @@ export default function AdminPage() {
             minmax(18rem, 0.8fr);
           column-gap: 5rem;
           align-items: end;
-          margin-bottom: 7rem;
+          margin-bottom: 2.5rem;
         }
 
         .backstage-eyebrow {
           grid-column: 1 / -1;
-          margin: 0 0 1.5rem;
+          margin: 0 0 0.7rem;
           color: #c7a369;
           font-size: 0.55rem;
           font-weight: 700;
@@ -221,32 +228,32 @@ export default function AdminPage() {
             "Palatino Linotype",
             Georgia,
             serif;
-          font-size: clamp(5rem, 11vw, 11rem);
+          font-size: clamp(2.5rem, 4vw, 4rem);
           font-weight: 400;
           letter-spacing: -0.07em;
           line-height: 0.8;
         }
 
         .backstage-lead {
-          max-width: 34rem;
-          margin: 0 0 0.5rem;
-          color: rgba(242, 238, 230, 0.64);
-          font-size: 1rem;
-          line-height: 1.75;
+          max-width: 30rem;
+          margin: 0;
+          color: rgba(242, 238, 230, 0.56);
+          font-size: 0.72rem;
+          line-height: 1.6;
         }
 
         .backstage-primary {
           display: grid;
           grid-template-columns:
-            5rem
+            4rem
             minmax(0, 1fr)
-            minmax(16rem, 22rem);
+            minmax(13rem, 18rem);
           gap: 2.5rem;
           align-items: stretch;
-          min-height: 32rem;
+          min-height: 22rem;
           border-top: 1px solid rgba(242, 238, 230, 0.22);
           border-bottom: 1px solid rgba(242, 238, 230, 0.22);
-          padding: 3rem 0;
+          padding: 2rem 0;
         }
 
         .backstage-primary-number,
@@ -273,13 +280,13 @@ export default function AdminPage() {
         }
 
         .backstage-primary-copy h2 {
-          margin: 2.5rem 0;
+          margin: 1.5rem 0;
           font-family:
             "Iowan Old Style",
             "Palatino Linotype",
             Georgia,
             serif;
-          font-size: clamp(4rem, 7.5vw, 8rem);
+          font-size: clamp(3rem, 5vw, 5.5rem);
           font-weight: 400;
           letter-spacing: -0.06em;
           line-height: 0.85;
@@ -330,7 +337,7 @@ export default function AdminPage() {
         }
 
         .backstage-secondary {
-          margin-top: 6rem;
+          margin-top: 0;
           border-top: 1px solid rgba(242, 238, 230, 0.18);
         }
 
@@ -467,15 +474,15 @@ export default function AdminPage() {
 
           .backstage-shell {
             width: calc(100% - 2.8rem);
-            padding-top: 6rem;
+            padding-top: 2.5rem;
           }
 
           .backstage-intro {
-            margin-bottom: 5rem;
+            margin-bottom: 2.5rem;
           }
 
           .backstage-intro h1 {
-            font-size: clamp(4.5rem, 24vw, 7rem);
+            font-size: clamp(2.5rem, 14vw, 4rem);
           }
 
           .backstage-primary {

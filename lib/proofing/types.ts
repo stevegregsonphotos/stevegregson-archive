@@ -15,6 +15,17 @@ export type ProofingDownloadPermission =
   | "full"
   | "selected";
 
+export type ProofingWatermarkPosition =
+  | "top-left"
+  | "top-center"
+  | "top-right"
+  | "center-left"
+  | "center"
+  | "center-right"
+  | "bottom-left"
+  | "bottom-center"
+  | "bottom-right";
+
 export type ProofingImage = {
   id: string;
 
@@ -133,6 +144,21 @@ export type ProofingGallery = {
     ProofingDownloadPermission;
 
   watermarkEnabled: boolean;
+
+  /*
+   * Optional reusable watermark selected from
+   * the Backstage watermark library.
+   */
+  watermarkId?: string;
+
+  /*
+   * Per-gallery watermark presentation.
+   *
+   * size and opacity are percentages.
+   */
+  watermarkPosition?: ProofingWatermarkPosition;
+  watermarkSize?: number;
+  watermarkOpacity?: number;
 
   images: ProofingImage[];
 

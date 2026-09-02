@@ -14,12 +14,17 @@ type ProofingClientPageProps = {
   params: Promise<{
     slug: string;
   }>;
+  searchParams: Promise<{
+    welcome?: string;
+  }>;
 };
 
 export default async function ProofingClientPage({
   params,
+  searchParams,
 }: ProofingClientPageProps) {
   const { slug } = await params;
+  const { welcome } = await searchParams;
 
   const gallery =
     getProofingGalleryBySlug(slug);
@@ -27,6 +32,63 @@ export default async function ProofingClientPage({
   if (!gallery) {
     notFound();
   }
+
+  const hasExpiredByDate =
+    Boolean(gallery.expiresAt) &&
+    new Date(gallery.expiresAt as string).getTime() <
+      Date.now();
+
+  const unavailableReason =
+    gallery.status === "draft"
+      ? {
+          title: "This gallery is not yet available.",
+          message:
+            "The gallery is still being prepared. Please check back later, or contact me if you were expecting access.",
+        }
+      : gallery.status === "expired" ||
+          hasExpiredByDate
+        ? {
+            title: "This gallery has expired.",
+            message:
+              "If you need access again, please get in touch and I can reopen the gallery for you.",
+          }
+        : gallery.status === "archived"
+          ? {
+              title: "This gallery is no longer available.",
+              message:
+                "If you need access again, please get in touch and I can reopen the gallery for you.",
+            }
+          : null;
+
+  if (unavailableReason) {
+    return (
+      <main className="proofing-client-page">
+        <div className="proofing-client-shell">
+          <section className="proofing-client-unavailable">
+            <p className="proofing-client-eyebrow">
+              Private Client Gallery
+            </p>
+
+            <h1>{gallery.title}</h1>
+
+            <h2>{unavailableReason.title}</h2>
+
+            <p>
+              {unavailableReason.message}
+            </p>
+
+            <a
+              href="/contact"
+              className="proofing-client-unavailable-cta"
+            >
+              Contact Steve
+            </a>
+          </section>
+        </div>
+      </main>
+    );
+  }
+
   const orderedImages = [...gallery.images].sort(
   (a, b) => a.sortOrder - b.sortOrder,
 );
@@ -72,7 +134,6 @@ export default async function ProofingClientPage({
           title={gallery.title}
           clientName={gallery.clientName}
           venue={gallery.venue}
-          introMessage={gallery.introMessage}
           coverImageUrl={coverImageUrl}
         />
       </main>
@@ -127,6 +188,7 @@ export default async function ProofingClientPage({
                 </>
               ) : null}
             </p>
+
           </div>
         </header>
 
@@ -138,6 +200,13 @@ export default async function ProofingClientPage({
         ) : (
           <ProofingGalleryClient
             gallerySlug={gallery.slug}
+            introMessage={gallery.introMessage}
+            showIntroOnLoad={welcome === "1"}
+            downloadPermission={
+              gallery.downloadPermission === "full"
+                ? "web"
+                : gallery.downloadPermission
+            }
             images={orderedImages.map(
   (image) => ({
     id: image.id,
