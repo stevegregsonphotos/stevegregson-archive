@@ -100,6 +100,51 @@ export type ProofingVisitor = {
   selection: ProofingSelection;
 };
 
+export type ProofingCompany = {
+  id: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ProofingContact = {
+  id: string;
+  name: string;
+  companyId?: string;
+
+  /*
+   * Store normalised lowercase email.
+   */
+  email: string;
+
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ProofingGalleryRecipient = {
+  id: string;
+
+  /*
+   * Present when this recipient came from
+   * the private Backstage address book.
+   *
+   * One-off email recipients do not require
+   * a saved contact.
+   */
+  contactId?: string;
+
+  /*
+   * Snapshot the recipient details used for
+   * this gallery so historical galleries do
+   * not change when a contact is later edited.
+   */
+  name?: string;
+  company?: string;
+  email: string;
+
+  addedAt: string;
+};
+
 export type ProofingGallery = {
   id: string;
   slug: string;
@@ -168,6 +213,18 @@ export type ProofingGallery = {
    * own independent selection.
    */
   visitors: ProofingVisitor[];
+
+  /*
+   * People this gallery was sent to.
+   *
+   * This is deliberately separate from visitors:
+   * recipients are chosen by Steve, while visitors
+   * are people who actually enter the gallery.
+   *
+   * Optional while existing filesystem galleries
+   * are migrated to persistent storage.
+   */
+  recipients?: ProofingGalleryRecipient[];
 
   /*
    * Temporary backwards compatibility

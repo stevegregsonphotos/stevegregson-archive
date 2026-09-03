@@ -1,3 +1,4 @@
+import { getProofingContacts } from "@/lib/proofing/contacts-repository";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -113,6 +114,8 @@ export default function ProofingPage() {
     );
   }
 
+  const contacts = getProofingContacts();
+
   const galleries =
     getProofingGalleries().sort(
       (first, second) =>
@@ -211,6 +214,7 @@ export default function ProofingPage() {
 
             <NewGalleryModal
               createGallery={createGallery}
+              contacts={contacts}
             />
           </div>
         </header>
@@ -229,6 +233,7 @@ export default function ProofingPage() {
 
             <NewGalleryModal
               createGallery={createGallery}
+              contacts={contacts}
             />
           </section>
         ) : (

@@ -28,6 +28,10 @@ const navigation = [
     href: "/admin/proofing",
   },
   {
+    label: "Clients",
+    href: "/admin/clients",
+  },
+  {
     label: "Watermarks",
     href: "/admin/proofing/watermarks",
   },

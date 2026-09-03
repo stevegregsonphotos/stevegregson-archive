@@ -6,10 +6,13 @@ import {
   useState,
 } from "react";
 
+
+import type { ProofingContact } from "@/lib/proofing/types";
 type Props = {
   createGallery: (
     formData: FormData,
   ) => Promise<void>;
+  contacts: ProofingContact[];
 };
 
 function todayForInput() {
@@ -28,6 +31,7 @@ function todayForInput() {
 
 export default function NewGalleryModal({
   createGallery,
+  contacts,
 }: Props) {
   const [open, setOpen] = useState(false);
 

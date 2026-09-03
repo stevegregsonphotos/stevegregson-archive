@@ -46,3 +46,6 @@ next-env.d.ts
 # Client proofing runtime data
 /data/proofing/
 /data/proofing-images/
+
+# Private local proofing address book data
+data/proofing-address-book/
