@@ -1,8 +1,6 @@
 "use client";
 
-import {
-  useState,
-} from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 type SortImage = {
@@ -145,18 +143,7 @@ export default function ProofingImageSort({
         );
       }
 
-      const scrollPosition = window.scrollY;
-
-router.refresh();
-
-requestAnimationFrame(() => {
-  requestAnimationFrame(() => {
-    window.scrollTo({
-      top: scrollPosition,
-      behavior: "instant",
-    });
-  });
-});
+      router.refresh();
     } catch (error) {
       setErrorMessage(
         error instanceof Error
@@ -169,21 +156,20 @@ requestAnimationFrame(() => {
   }
 
   return (
-    <div className="proofing-image-sort">
-      <label htmlFor="proofing-image-sort">
-        Sort photographs
-      </label>
+    <div className="sp-media-sort">
+      <span aria-hidden="true">
+        ↕
+      </span>
 
       <select
-        id="proofing-image-sort"
+        aria-label="Sort photographs"
         defaultValue=""
         disabled={
           isSaving || images.length < 2
         }
         onChange={(event) => {
           const value =
-            event.target
-              .value as SortOption;
+            event.target.value as SortOption;
 
           if (value) {
             void sortImages(value);
@@ -194,8 +180,8 @@ requestAnimationFrame(() => {
       >
         <option value="" disabled>
           {isSaving
-            ? "Saving order..."
-            : "Choose order"}
+            ? "Saving…"
+            : "Sort"}
         </option>
 
         <option value="filename-asc">
@@ -207,21 +193,21 @@ requestAnimationFrame(() => {
         </option>
 
         <option value="created-asc">
-          Date / time — oldest first
+          Oldest first
         </option>
 
         <option value="created-desc">
-          Date / time — newest first
+          Newest first
         </option>
       </select>
 
       {errorMessage ? (
-        <p
-          className="proofing-image-sort-error"
+        <span
+          className="sp-media-sort-error"
           role="alert"
         >
           {errorMessage}
-        </p>
+        </span>
       ) : null}
     </div>
   );

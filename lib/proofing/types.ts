@@ -108,6 +108,7 @@ export type ProofingGallery = {
   clientName?: string;
 
   venue?: string;
+  shootDate?: string;
   description?: string;
 
   /*

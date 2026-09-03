@@ -3,6 +3,7 @@
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -85,6 +86,36 @@ export default function ProofingGalleryClient({
   const [view, setView] =
     useState<"all" | "favourites">("all");
 
+  useEffect(() => {
+    const params = new URLSearchParams(
+      window.location.search,
+    );
+
+    if (params.get("view") === "favourites") {
+      setView("favourites");
+    }
+  }, []);
+
+  function changeView(
+    nextView: "all" | "favourites",
+  ) {
+    setView(nextView);
+
+    const url = new URL(window.location.href);
+
+    if (nextView === "favourites") {
+      url.searchParams.set("view", "favourites");
+    } else {
+      url.searchParams.delete("view");
+    }
+
+    window.history.replaceState(
+      {},
+      "",
+      `${url.pathname}${url.search}${url.hash}`,
+    );
+  }
+
   const [selectionStatus, setSelectionStatus] =
     useState(initialSelectionStatus);
 
@@ -101,6 +132,83 @@ export default function ProofingGalleryClient({
 
   const [viewerImageId, setViewerImageId] =
     useState<string | null>(null);
+
+  const viewerTouchStartX =
+    useRef<number | null>(null);
+
+  const viewerTouchStartY =
+    useRef<number | null>(null);
+
+  function handleViewerTouchStart(
+    event: React.TouchEvent<HTMLDivElement>,
+  ) {
+    const touch = event.touches[0];
+
+    if (!touch) {
+      return;
+    }
+
+    viewerTouchStartX.current =
+      touch.clientX;
+    viewerTouchStartY.current =
+      touch.clientY;
+  }
+
+  function handleViewerTouchEnd(
+    event: React.TouchEvent<HTMLDivElement>,
+  ) {
+    const touch = event.changedTouches[0];
+
+    if (
+      !touch ||
+      viewerTouchStartX.current === null ||
+      viewerTouchStartY.current === null
+    ) {
+      return;
+    }
+
+    const distanceX =
+      touch.clientX -
+      viewerTouchStartX.current;
+
+    const distanceY =
+      touch.clientY -
+      viewerTouchStartY.current;
+
+    viewerTouchStartX.current = null;
+    viewerTouchStartY.current = null;
+
+    const minimumSwipeDistance = 40;
+
+    if (
+      Math.abs(distanceX) <=
+      Math.abs(distanceY)
+    ) {
+      return;
+    }
+
+    if (
+      distanceX <= -minimumSwipeDistance &&
+      nextViewerImage
+    ) {
+      setViewerImageId(nextViewerImage.id);
+      return;
+    }
+
+    if (
+      distanceX >= minimumSwipeDistance &&
+      previousViewerImage
+    ) {
+      setViewerImageId(
+        previousViewerImage.id,
+      );
+    }
+  }
+
+  function handleViewerTouchCancel() {
+    viewerTouchStartX.current = null;
+    viewerTouchStartY.current = null;
+  }
 
   const [showIntro, setShowIntro] =
     useState(
@@ -123,6 +231,44 @@ export default function ProofingGalleryClient({
       )}`,
     );
   }, [gallerySlug, showIntroOnLoad]);
+
+  const isViewerOpen =
+    viewerImageId !== null;
+
+  useEffect(() => {
+    if (!isViewerOpen) {
+      return;
+    }
+
+    const scrollY = window.scrollY;
+
+    const previousBodyPosition =
+      document.body.style.position;
+    const previousBodyTop =
+      document.body.style.top;
+    const previousBodyWidth =
+      document.body.style.width;
+    const previousBodyOverflow =
+      document.body.style.overflow;
+
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = "100%";
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.position =
+        previousBodyPosition;
+      document.body.style.top =
+        previousBodyTop;
+      document.body.style.width =
+        previousBodyWidth;
+      document.body.style.overflow =
+        previousBodyOverflow;
+
+      window.scrollTo(0, scrollY);
+    };
+  }, [isViewerOpen]);
 
   const favouriteSet = useMemo(
     () => new Set(favourites),
@@ -385,16 +531,20 @@ export default function ProofingGalleryClient({
       ? null
       : hasPendingChanges
         ? {
-            label: "Submit changes",
-            status: "Changes not submitted",
+            label: "Send changes",
+            status: "Changes not sent",
           }
         : isSelectionCurrent
           ? {
               label: null,
-              status: "Selection submitted",
+              status: `✓ ${submittedFavourites.length} favourite${
+                submittedFavourites.length === 1
+                  ? ""
+                  : "s"
+              } sent`,
             }
           : {
-              label: "Submit selection",
+              label: "Send favourites",
               status: null,
             };
 
@@ -441,7 +591,7 @@ export default function ProofingGalleryClient({
           ? "is-active"
           : ""
       }
-      onClick={() => setView("all")}
+      onClick={() => changeView("all")}
     >
       Photos
       <span>{images.length}</span>
@@ -455,7 +605,7 @@ export default function ProofingGalleryClient({
           : ""
       }
       onClick={() =>
-        setView("favourites")
+        changeView("favourites")
       }
     >
       Favourites
@@ -465,7 +615,33 @@ export default function ProofingGalleryClient({
     </button>
   </div>
 
-  {toolbarAction ? (
+  {downloadPermission === "web" && view === "all" ? (
+      <a
+        className="proofing-toolbar-download-button"
+        href={`/api/proofing/download-all?gallery=${encodeURIComponent(
+          gallerySlug,
+        )}`}
+      >
+        Download all {images.length} photo
+        {images.length === 1 ? "" : "s"}
+      </a>
+    ) : null}
+
+    {downloadPermission === "selected" &&
+    view === "favourites" &&
+    favourites.length > 0 ? (
+      <a
+        className="proofing-toolbar-download-button"
+        href={`/api/proofing/download-all?gallery=${encodeURIComponent(
+          gallerySlug,
+        )}`}
+      >
+        Download {favourites.length} selected photo
+        {favourites.length === 1 ? "" : "s"}
+      </a>
+    ) : null}
+
+    {toolbarAction && view === "favourites" ? (
     <div className="proofing-client-toolbar-submit">
       {toolbarAction.status ? (
         <span
@@ -490,7 +666,11 @@ export default function ProofingGalleryClient({
             ? "Sending…"
             : hasPendingChanges
               ? "Send changes"
-              : "Send favourites"}
+              : `Send ${favourites.length} favourite${
+                    favourites.length === 1
+                      ? ""
+                      : "s"
+                  }`}
         </button>
       ) : null}
     </div>
@@ -513,13 +693,17 @@ export default function ProofingGalleryClient({
               Your selection
             </p>
 
-            <h2>My favourites</h2>
+            <h2>
+              Selected photographs
+              <span className="proofing-review-count">
+                {favourites.length}
+              </span>
+            </h2>
 
             <p className="proofing-review-copy">
-              Review your selected photographs
-              below. You can remove photographs
-              before submitting your final
-              selection.
+              Review your chosen photographs below.
+              You can add or remove images until you
+              are happy with your selection.
             </p>
           </div>
 
@@ -535,16 +719,7 @@ export default function ProofingGalleryClient({
                 submit these updates.
               </p>
 
-              <button
-                type="button"
-                className="proofing-submit-button"
-                disabled={isSubmitting}
-                onClick={submitSelection}
-              >
-                {isSubmitting
-                  ? "Submitting…"
-                  : "Submit changes"}
-              </button>
+
 
               {submitError ? (
                 <p
@@ -558,7 +733,7 @@ export default function ProofingGalleryClient({
           ) : isSelectionCurrent ? (
             <div className="proofing-submitted-state">
               <strong>
-                Selection submitted
+                ✓ Favourites sent
               </strong>
 
               <span>
@@ -566,7 +741,7 @@ export default function ProofingGalleryClient({
                 {submittedFavourites.length === 1
                   ? ""
                   : "s"}{" "}
-                received
+                sent
               </span>
 
               {submittedAt ? (
@@ -582,19 +757,7 @@ export default function ProofingGalleryClient({
             </div>
           ) : (
             <div className="proofing-submit-area">
-              <button
-                type="button"
-                className="proofing-submit-button"
-                disabled={
-                  favourites.length === 0 ||
-                  isSubmitting
-                }
-                onClick={submitSelection}
-              >
-                {isSubmitting
-                  ? "Submitting…"
-                  : "Submit selection"}
-              </button>
+
 
               {favourites.length > 0 ? (
                 <p>
@@ -632,7 +795,7 @@ export default function ProofingGalleryClient({
 
           <button
             type="button"
-            onClick={() => setView("all")}
+            onClick={() => changeView("all")}
           >
             View photographs
           </button>
@@ -704,15 +867,28 @@ export default function ProofingGalleryClient({
                       )
                     }
                   >
-                    <span aria-hidden="true">
-                      {isFavourite
-                        ? "♥"
-                        : "♡"}
-                    </span>
+                      {isFavourite ? (
+                        <>
+                          <span
+                            className="proofing-selected-check"
+                            aria-hidden="true"
+                          >
+                            ✓
+                          </span>
+
+                          <span className="proofing-selected-label">
+                            Selected
+                          </span>
+                        </>
+                      ) : (
+                        <span aria-hidden="true">
+                          ♡
+                        </span>
+                      )}
                   </button>
                 </div>
 
-                
+
               </figure>
             );
           })}
@@ -747,7 +923,12 @@ export default function ProofingGalleryClient({
               </button>
             ) : null}
 
-            <div className="proofing-viewer-stage">
+            <div
+              className="proofing-viewer-stage"
+              onTouchStart={handleViewerTouchStart}
+              onTouchEnd={handleViewerTouchEnd}
+              onTouchCancel={handleViewerTouchCancel}
+            >
               <img
                 src={`/api/proofing/image?gallery=${encodeURIComponent(
                   gallerySlug,
@@ -800,7 +981,9 @@ export default function ProofingGalleryClient({
                         viewerImage.id,
                       )}`}
                     >
-                      Download
+                      {downloadPermission === "selected"
+                        ? "Download selected photo"
+                        : "Download photo"}
                     </a>
                   ) : null}
                 </div>

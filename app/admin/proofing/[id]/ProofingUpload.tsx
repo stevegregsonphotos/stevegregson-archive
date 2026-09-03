@@ -137,7 +137,7 @@ export default function ProofingUpload({
             inputRef.current?.click()
           }
         >
-          Add Photos
+          Upload Media
         </button>
 
         {files.length > 0 ? (
