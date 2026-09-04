@@ -1,5 +1,7 @@
-import fs from "node:fs/promises";
-import path from "node:path";
+import {
+  deleteProofingImage,
+  putProofingImage,
+} from "../../../../../lib/proofing/image-storage";
 
 import sharp from "sharp";
 import { NextResponse } from "next/server";
@@ -8,12 +10,6 @@ import { updateProofingGallery } from "../../../../../lib/proofing/repository";
 import type { ProofingImage } from "../../../../../lib/proofing/types";
 
 export const runtime = "nodejs";
-
-const proofingImagesDirectory = path.join(
-  process.cwd(),
-  "data",
-  "proofing-images",
-);
 
 function safeFilename(filename: string) {
   return filename
@@ -76,27 +72,13 @@ export async function POST(request: Request) {
 
     const imageId = crypto.randomUUID();
 
-    const galleryDirectory = path.join(
-      proofingImagesDirectory,
-      galleryId,
-    );
-
-    await fs.mkdir(galleryDirectory, {
-      recursive: true,
-    });
-
     const baseFilename =
       safeFilename(originalFilename) || "proof";
 
     const webFilename =
       `${baseFilename}-${imageId}.webp`;
 
-    const outputPath = path.join(
-      galleryDirectory,
-      webFilename,
-    );
-
-    await sharp(inputBuffer)
+    const proofBuffer = await sharp(inputBuffer)
       .rotate()
       .resize({
         width: 2400,
@@ -108,11 +90,16 @@ export async function POST(request: Request) {
         quality: 82,
         effort: 4,
       })
-      .toFile(outputPath);
+      .toBuffer();
 
-    const proofMetadata = await sharp(
-      outputPath,
-    ).metadata();
+    const proofMetadata =
+      await sharp(proofBuffer).metadata();
+
+    await putProofingImage(
+      galleryId,
+      webFilename,
+      proofBuffer,
+    );
 
     const proofingImage: ProofingImage = {
       id: imageId,
@@ -156,9 +143,10 @@ createdAt: new Date(
     );
 
     if (!updatedGallery) {
-      await fs.rm(outputPath, {
-        force: true,
-      });
+      await deleteProofingImage(
+          galleryId,
+          webFilename,
+        );
 
       return NextResponse.json(
         {

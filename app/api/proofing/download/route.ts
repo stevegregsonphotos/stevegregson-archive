@@ -1,5 +1,6 @@
-import fs from "node:fs/promises";
-import path from "node:path";
+import {
+  getProofingImage,
+} from "../../../../lib/proofing/image-storage";
 
 import { cookies } from "next/headers";
 import {
@@ -13,12 +14,6 @@ import {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-const proofingImagesDirectory = path.join(
-  process.cwd(),
-  "data",
-  "proofing-images",
-);
 
 function isSafeSegment(value: string) {
   return (
@@ -214,14 +209,11 @@ export async function GET(
     );
   }
 
-  const imagePath = path.join(
-    proofingImagesDirectory,
-    gallery.id,
-    image.webFilename,
-  );
-
   try {
-    const file = await fs.readFile(imagePath);
+    const file = await getProofingImage(
+      gallery.id,
+      image.webFilename,
+    );
 
     return new NextResponse(file, {
       headers: {

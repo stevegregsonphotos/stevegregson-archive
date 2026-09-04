@@ -1,6 +1,8 @@
-import fs from "node:fs";
-import path from "node:path";
 import { PassThrough } from "node:stream";
+
+import {
+  getProofingImage,
+} from "../../../../lib/proofing/image-storage";
 
 import { ZipArchive } from "archiver";
 import { cookies } from "next/headers";
@@ -15,12 +17,6 @@ import {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-const proofingImagesDirectory = path.join(
-  process.cwd(),
-  "data",
-  "proofing-images",
-);
 
 function isSafeSegment(value: string) {
   return (
@@ -177,6 +173,8 @@ export async function GET(
     );
   }
 
+  const imageFiles = new Map<string, Buffer>();
+
   for (const image of imagesToDownload) {
     if (!isSafeSegment(image.webFilename)) {
       return NextResponse.json(
@@ -189,14 +187,13 @@ export async function GET(
       );
     }
 
-    const imagePath = path.join(
-      proofingImagesDirectory,
-      gallery.id,
-      image.webFilename,
-    );
-
     try {
-      await fs.promises.access(imagePath);
+      const file = await getProofingImage(
+        gallery.id,
+        image.webFilename,
+      );
+
+      imageFiles.set(image.id, file);
     } catch {
       return NextResponse.json(
         {
@@ -222,11 +219,18 @@ export async function GET(
   const usedNames = new Map<string, number>();
 
   for (const image of imagesToDownload) {
-    const imagePath = path.join(
-      proofingImagesDirectory,
-      gallery.id,
-      image.webFilename,
-    );
+    const file = imageFiles.get(image.id);
+
+    if (!file) {
+      return NextResponse.json(
+        {
+          ok: false,
+          message:
+            "One or more photographs could not be downloaded.",
+        },
+        { status: 404 },
+      );
+    }
 
     const initialName = safeFilename(
       image.originalFilename,
@@ -248,7 +252,7 @@ export async function GET(
             `-${previousCount + 1}.webp`,
           );
 
-    archive.file(imagePath, {
+    archive.append(file, {
       name: archiveName,
     });
   }

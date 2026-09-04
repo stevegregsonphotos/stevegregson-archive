@@ -1,5 +1,6 @@
-import fs from "node:fs";
-import path from "node:path";
+import {
+  deleteProofingImage,
+} from "../../../../../lib/proofing/image-storage";
 
 import {
   NextRequest,
@@ -188,21 +189,14 @@ export async function POST(
     );
   }
 
-  const imagePath = path.join(
-    process.cwd(),
-    "data",
-    "proofing-images",
-    gallery.id,
-    image.webFilename,
-  );
-
   try {
-    fs.rmSync(imagePath, {
-      force: true,
-    });
+    await deleteProofingImage(
+      gallery.id,
+      image.webFilename,
+    );
   } catch (error) {
     console.error(
-      "Proofing image file could not be removed:",
+      "Proofing image object could not be removed:",
       error,
     );
   }
