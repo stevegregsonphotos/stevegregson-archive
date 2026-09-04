@@ -176,7 +176,7 @@ export default async function ProofingPage() {
 
 
     const defaultIntroTemplate =
-      getDefaultProofingIntroTemplate();
+      await getDefaultProofingIntroTemplate();
 
     const gallery: ProofingGallery = {
       id,

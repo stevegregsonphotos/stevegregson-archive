@@ -53,7 +53,7 @@ export default function NewProofingGalleryPage() {
     const now = new Date().toISOString();
 
     const defaultIntroTemplate =
-      getDefaultProofingIntroTemplate();
+      await getDefaultProofingIntroTemplate();
 
     const gallery: ProofingGallery = {
       id,

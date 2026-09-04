@@ -77,7 +77,7 @@ export default async function ProofingGalleryPage({
   }
 
   const introTemplates =
-    getProofingIntroTemplates();
+    await getProofingIntroTemplates();
 
   const watermarks =
     await getProofingWatermarks();

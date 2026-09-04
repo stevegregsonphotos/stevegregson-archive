@@ -19,7 +19,8 @@ export async function POST(request: Request) {
     const body = await request.json();
 
     const action = clean(body.action);
-    const templates = getProofingIntroTemplates();
+    const templates =
+      await getProofingIntroTemplates();
     const now = new Date().toISOString();
 
     if (action === "create") {
@@ -46,7 +47,7 @@ export async function POST(request: Request) {
         updatedAt: now,
       };
 
-      saveProofingIntroTemplates([
+      await saveProofingIntroTemplates([
         ...templates,
         template,
       ]);
@@ -113,7 +114,7 @@ export async function POST(request: Request) {
             : template,
       );
 
-      saveProofingIntroTemplates(updated);
+      await saveProofingIntroTemplates(updated);
 
       return NextResponse.json({
         ok: true,
@@ -147,7 +148,7 @@ export async function POST(request: Request) {
         }),
       );
 
-      saveProofingIntroTemplates(updated);
+      await saveProofingIntroTemplates(updated);
 
       return NextResponse.json({
         ok: true,
@@ -185,7 +186,7 @@ export async function POST(request: Request) {
         };
       }
 
-      saveProofingIntroTemplates(remaining);
+      await saveProofingIntroTemplates(remaining);
 
       return NextResponse.json({
         ok: true,

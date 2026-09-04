@@ -1,6 +1,4 @@
-import fs from "node:fs";
-import path from "node:path";
-import { randomUUID } from "node:crypto";
+import { neon } from "@neondatabase/serverless";
 
 export type ProofingIntroTemplate = {
   id: string;
@@ -11,106 +9,139 @@ export type ProofingIntroTemplate = {
   updatedAt: string;
 };
 
-const proofingDirectory = path.join(
-  process.cwd(),
-  "data",
-  "proofing-settings",
-);
+function getSql() {
+  const databaseUrl = process.env.DATABASE_URL;
 
-const templateFile = path.join(
-  proofingDirectory,
-  "intro-templates.json",
-);
+  if (!databaseUrl) {
+    throw new Error(
+      "DATABASE_URL is not configured.",
+    );
+  }
 
-const initialTemplates: Array<{
+  return neon(databaseUrl);
+}
+
+function mapTemplate(row: {
+  id: string;
   name: string;
   message: string;
-  isDefault: boolean;
-}> = [
-  {
-    name: "Standard proofing",
-    message:
-      "Welcome to your private proofing gallery. Please take a look through the photographs and select your favourites. When you are happy with your selection, submit it and I’ll take it from there.",
-    isDefault: true,
-  },
-  {
-    name: "Rehearsal selection",
-    message:
-      "Welcome to your rehearsal proofing gallery. Please look through the photographs and select the images you would like me to work from. Once you have finished, submit your selection and I’ll begin the final edits.",
-    isDefault: false,
-  },
-  {
-    name: "Production selection",
-    message:
-      "Welcome to your production proofing gallery. Please review the photographs and favourite the images you would like to select. When your selection is complete, submit it to let me know you are finished.",
-    isDefault: false,
-  },
-  {
-    name: "Shortlist / final choices",
-    message:
-      "Here is your private gallery of shortlisted photographs. Please mark your final choices as favourites and submit the selection when you are happy with it.",
-    isDefault: false,
-  },
-];
-
-function ensureTemplateStorage() {
-  fs.mkdirSync(proofingDirectory, {
-    recursive: true,
-  });
-
-  if (!fs.existsSync(templateFile)) {
-    const now = new Date().toISOString();
-
-    const templates: ProofingIntroTemplate[] =
-      initialTemplates.map((template) => ({
-        id: randomUUID(),
-        name: template.name,
-        message: template.message,
-        isDefault: template.isDefault,
-        createdAt: now,
-        updatedAt: now,
-      }));
-
-    fs.writeFileSync(
-      templateFile,
-      JSON.stringify(templates, null, 2),
-    );
-  }
+  is_default: boolean;
+  created_at: Date | string;
+  updated_at: Date | string;
+}): ProofingIntroTemplate {
+  return {
+    id: row.id,
+    name: row.name,
+    message: row.message,
+    isDefault: row.is_default,
+    createdAt: new Date(
+      row.created_at,
+    ).toISOString(),
+    updatedAt: new Date(
+      row.updated_at,
+    ).toISOString(),
+  };
 }
 
-export function getProofingIntroTemplates():
-  ProofingIntroTemplate[] {
-  ensureTemplateStorage();
+export async function getProofingIntroTemplates():
+  Promise<ProofingIntroTemplate[]> {
+  const sql = getSql();
 
-  try {
-    const raw = fs.readFileSync(
-      templateFile,
-      "utf8",
-    );
+  const rows = await sql`
+    SELECT
+      id,
+      name,
+      message,
+      is_default,
+      created_at,
+      updated_at
+    FROM proofing_intro_templates
+    ORDER BY created_at ASC
+  `;
 
-    const parsed = JSON.parse(raw);
-
-    return Array.isArray(parsed)
-      ? (parsed as ProofingIntroTemplate[])
-      : [];
-  } catch {
-    return [];
-  }
+  return rows.map((row) =>
+    mapTemplate(
+      row as Parameters<typeof mapTemplate>[0],
+    ),
+  );
 }
 
-export function saveProofingIntroTemplates(
+export async function saveProofingIntroTemplates(
   templates: ProofingIntroTemplate[],
 ) {
-  ensureTemplateStorage();
+  const sql = getSql();
 
-  fs.writeFileSync(
-    templateFile,
-    JSON.stringify(templates, null, 2),
+  const existing = await sql`
+    SELECT id
+    FROM proofing_intro_templates
+  `;
+
+  const wantedIds = new Set(
+    templates.map((template) => template.id),
   );
+
+  for (const row of existing) {
+    const id = String(row.id);
+
+    if (!wantedIds.has(id)) {
+      await sql`
+        DELETE FROM proofing_intro_templates
+        WHERE id = ${id}
+      `;
+    }
+  }
+
+  for (const template of templates) {
+    await sql`
+      INSERT INTO proofing_intro_templates (
+        id,
+        name,
+        message,
+        is_default,
+        created_at,
+        updated_at
+      )
+      VALUES (
+        ${template.id},
+        ${template.name},
+        ${template.message},
+        ${template.isDefault},
+        ${template.createdAt},
+        ${template.updatedAt}
+      )
+      ON CONFLICT (id)
+      DO UPDATE SET
+        name = EXCLUDED.name,
+        message = EXCLUDED.message,
+        is_default = EXCLUDED.is_default,
+        created_at = EXCLUDED.created_at,
+        updated_at = EXCLUDED.updated_at
+    `;
+  }
 }
 
-export function getDefaultProofingIntroTemplate() {
-  return getProofingIntroTemplates().find(
-    (template) => template.isDefault,
-  );
+export async function getDefaultProofingIntroTemplate() {
+  const sql = getSql();
+
+  const rows = await sql`
+    SELECT
+      id,
+      name,
+      message,
+      is_default,
+      created_at,
+      updated_at
+    FROM proofing_intro_templates
+    WHERE is_default = true
+    ORDER BY created_at ASC
+    LIMIT 1
+  `;
+
+  const row = rows[0];
+
+  return row
+    ? mapTemplate(
+        row as Parameters<typeof mapTemplate>[0],
+      )
+    : undefined;
 }

@@ -51,9 +51,9 @@ function StatusBadge({
   );
 }
 
-export default function SettingsPage() {
+export default async function SettingsPage() {
   const introTemplates =
-    getProofingIntroTemplates();
+    await getProofingIntroTemplates();
 
   const hasOpenAiKey = Boolean(
     process.env.OPENAI_API_KEY?.trim(),
