@@ -1,185 +1,188 @@
-import fs from "node:fs";
-import path from "node:path";
 import { randomUUID } from "node:crypto";
+
+import { neon } from "@neondatabase/serverless";
 
 import type {
   ProofingCompany,
   ProofingContact,
 } from "./types";
 
-const addressBookDirectory = path.join(
-  process.cwd(),
-  "data",
-  "proofing-address-book",
-);
+function getSql() {
+  const databaseUrl = process.env.DATABASE_URL;
 
-const companiesFile = path.join(
-  addressBookDirectory,
-  "companies.json",
-);
-
-const contactsFile = path.join(
-  addressBookDirectory,
-  "contacts.json",
-);
-
-function ensureAddressBook() {
-  if (!fs.existsSync(addressBookDirectory)) {
-    fs.mkdirSync(addressBookDirectory, {
-      recursive: true,
-    });
-  }
-
-  if (!fs.existsSync(companiesFile)) {
-    fs.writeFileSync(
-      companiesFile,
-      "[]\n",
-      "utf8",
-    );
-  }
-
-  if (!fs.existsSync(contactsFile)) {
-    fs.writeFileSync(
-      contactsFile,
-      "[]\n",
-      "utf8",
-    );
-  }
-}
-
-function readCompanies(): ProofingCompany[] {
-  ensureAddressBook();
-
-  const contents = fs.readFileSync(
-    companiesFile,
-    "utf8",
-  );
-
-  const parsed = JSON.parse(contents);
-
-  if (!Array.isArray(parsed)) {
+  if (!databaseUrl) {
     throw new Error(
-      "Proofing companies data is invalid.",
+      "DATABASE_URL is not configured.",
     );
   }
 
-  return parsed as ProofingCompany[];
-}
-
-function readContacts(): ProofingContact[] {
-  ensureAddressBook();
-
-  const contents = fs.readFileSync(
-    contactsFile,
-    "utf8",
-  );
-
-  const parsed = JSON.parse(contents);
-
-  if (!Array.isArray(parsed)) {
-    throw new Error(
-      "Proofing contacts data is invalid.",
-    );
-  }
-
-  return parsed as ProofingContact[];
-}
-
-function writeCompanies(
-  companies: ProofingCompany[],
-) {
-  ensureAddressBook();
-
-  fs.writeFileSync(
-    companiesFile,
-    `${JSON.stringify(companies, null, 2)}\n`,
-    "utf8",
-  );
-}
-
-function writeContacts(
-  contacts: ProofingContact[],
-) {
-  ensureAddressBook();
-
-  fs.writeFileSync(
-    contactsFile,
-    `${JSON.stringify(contacts, null, 2)}\n`,
-    "utf8",
-  );
+  return neon(databaseUrl);
 }
 
 function normaliseEmail(email: string) {
   return email.trim().toLowerCase();
 }
 
-export function getProofingCompanies() {
-  return readCompanies().sort((a, b) =>
-    a.name.localeCompare(b.name),
+function mapCompany(row: {
+  id: string;
+  name: string;
+  created_at: Date | string;
+  updated_at: Date | string;
+}): ProofingCompany {
+  return {
+    id: row.id,
+    name: row.name,
+    createdAt: new Date(
+      row.created_at,
+    ).toISOString(),
+    updatedAt: new Date(
+      row.updated_at,
+    ).toISOString(),
+  };
+}
+
+function mapContact(row: {
+  id: string;
+  name: string;
+  email: string;
+  company_id: string | null;
+  created_at: Date | string;
+  updated_at: Date | string;
+}): ProofingContact {
+  return {
+    id: row.id,
+    name: row.name,
+    email: row.email,
+    companyId: row.company_id ?? undefined,
+    createdAt: new Date(
+      row.created_at,
+    ).toISOString(),
+    updatedAt: new Date(
+      row.updated_at,
+    ).toISOString(),
+  };
+}
+
+export async function getProofingCompanies() {
+  const sql = getSql();
+
+  const rows = await sql`
+    SELECT
+      id,
+      name,
+      created_at,
+      updated_at
+    FROM proofing_companies
+    ORDER BY name ASC
+  `;
+
+  return rows.map((row) =>
+    mapCompany(
+      row as Parameters<typeof mapCompany>[0],
+    ),
   );
 }
 
-export function getProofingContacts() {
-  return readContacts().sort((a, b) =>
-    a.name.localeCompare(b.name),
+export async function getProofingContacts() {
+  const sql = getSql();
+
+  const rows = await sql`
+    SELECT
+      id,
+      name,
+      email,
+      company_id,
+      created_at,
+      updated_at
+    FROM proofing_contacts
+    ORDER BY name ASC
+  `;
+
+  return rows.map((row) =>
+    mapContact(
+      row as Parameters<typeof mapContact>[0],
+    ),
   );
 }
 
-export function getProofingContact(
+export async function getProofingContact(
   id: string,
 ) {
-  return readContacts().find(
-    (contact) => contact.id === id,
-  );
+  const sql = getSql();
+
+  const rows = await sql`
+    SELECT
+      id,
+      name,
+      email,
+      company_id,
+      created_at,
+      updated_at
+    FROM proofing_contacts
+    WHERE id = ${id}
+    LIMIT 1
+  `;
+
+  const row = rows[0];
+
+  return row
+    ? mapContact(
+        row as Parameters<typeof mapContact>[0],
+      )
+    : undefined;
 }
 
-export function createProofingCompany(
+export async function createProofingCompany(
   name: string,
-): ProofingCompany {
+): Promise<ProofingCompany> {
   const cleanName = name.trim();
 
   if (!cleanName) {
     throw new Error("Company name is required.");
   }
 
-  const companies = readCompanies();
-
-  const existing = companies.find(
-    (company) =>
-      company.name.toLowerCase() ===
-      cleanName.toLowerCase(),
-  );
-
-  if (existing) {
-    return existing;
-  }
-
+  const sql = getSql();
   const now = new Date().toISOString();
+  const id = randomUUID();
 
-  const company: ProofingCompany = {
-    id: randomUUID(),
-    name: cleanName,
-    createdAt: now,
-    updatedAt: now,
-  };
+  const rows = await sql`
+    INSERT INTO proofing_companies (
+      id,
+      name,
+      created_at,
+      updated_at
+    )
+    VALUES (
+      ${id},
+      ${cleanName},
+      ${now},
+      ${now}
+    )
+    ON CONFLICT (
+      LOWER(name)
+    )
+    DO UPDATE SET
+      name = proofing_companies.name
+    RETURNING
+      id,
+      name,
+      created_at,
+      updated_at
+  `;
 
-  writeCompanies([
-    ...companies,
-    company,
-  ]);
-
-  return company;
+  return mapCompany(
+    rows[0] as Parameters<typeof mapCompany>[0],
+  );
 }
 
-
-export function updateProofingContact(
+export async function updateProofingContact(
   id: string,
   input: {
     name: string;
     email: string;
     companyId?: string;
   },
-): ProofingContact {
+): Promise<ProofingContact> {
   const name = input.name.trim();
   const email = normaliseEmail(input.email);
   const companyId =
@@ -193,85 +196,88 @@ export function updateProofingContact(
     throw new Error("Contact email is required.");
   }
 
-  const contacts = readContacts();
-
-  const existingIndex = contacts.findIndex(
-    (contact) => contact.id === id,
-  );
-
-  if (existingIndex === -1) {
-    throw new Error("Contact could not be found.");
-  }
-
-  const duplicateEmail = contacts.some(
-    (contact) =>
-      contact.id !== id &&
-      contact.email === email,
-  );
-
-  if (duplicateEmail) {
-    throw new Error(
-      "A contact with this email already exists.",
-    );
-  }
+  const sql = getSql();
 
   if (companyId) {
-    const companyExists =
-      readCompanies().some(
-        (company) =>
-          company.id === companyId,
-      );
+    const companies = await sql`
+      SELECT id
+      FROM proofing_companies
+      WHERE id = ${companyId}
+      LIMIT 1
+    `;
 
-    if (!companyExists) {
+    if (!companies[0]) {
       throw new Error(
         "Selected company could not be found.",
       );
     }
   }
 
-  const existing = contacts[existingIndex];
+  const duplicate = await sql`
+    SELECT id
+    FROM proofing_contacts
+    WHERE email = ${email}
+      AND id <> ${id}
+    LIMIT 1
+  `;
 
-  const updated: ProofingContact = {
-    ...existing,
-    name,
-    email,
-    companyId,
-    updatedAt: new Date().toISOString(),
-  };
-
-  const nextContacts = [...contacts];
-  nextContacts[existingIndex] = updated;
-
-  writeContacts(nextContacts);
-
-  return updated;
-}
-
-export function deleteProofingContact(
-  id: string,
-) {
-  const contacts = readContacts();
-
-  const exists = contacts.some(
-    (contact) => contact.id === id,
-  );
-
-  if (!exists) {
-    throw new Error("Contact could not be found.");
+  if (duplicate[0]) {
+    throw new Error(
+      "A contact with this email already exists.",
+    );
   }
 
-  writeContacts(
-    contacts.filter(
-      (contact) => contact.id !== id,
-    ),
+  const rows = await sql`
+    UPDATE proofing_contacts
+    SET
+      name = ${name},
+      email = ${email},
+      company_id = ${companyId ?? null},
+      updated_at = ${new Date().toISOString()}
+    WHERE id = ${id}
+    RETURNING
+      id,
+      name,
+      email,
+      company_id,
+      created_at,
+      updated_at
+  `;
+
+  if (!rows[0]) {
+    throw new Error(
+      "Contact could not be found.",
+    );
+  }
+
+  return mapContact(
+    rows[0] as Parameters<typeof mapContact>[0],
   );
 }
 
-export function createProofingContact(input: {
+export async function deleteProofingContact(
+  id: string,
+) {
+  const sql = getSql();
+
+  const rows = await sql`
+    DELETE FROM proofing_contacts
+    WHERE id = ${id}
+    RETURNING id
+  `;
+
+  if (!rows[0]) {
+    throw new Error(
+      "Contact could not be found.",
+    );
+  }
+}
+
+export async function createProofingContact(input: {
   name: string;
   email: string;
   companyId?: string;
-}): ProofingContact {
+}): Promise<ProofingContact> {
   const name = input.name.trim();
   const email = normaliseEmail(input.email);
   const companyId =
@@ -285,47 +291,65 @@ export function createProofingContact(input: {
     throw new Error("Contact email is required.");
   }
 
-  const contacts = readContacts();
-
-  const existing = contacts.find(
-    (contact) => contact.email === email,
-  );
-
-  if (existing) {
-    throw new Error(
-      "A contact with this email already exists.",
-    );
-  }
+  const sql = getSql();
 
   if (companyId) {
-    const companyExists =
-      readCompanies().some(
-        (company) =>
-          company.id === companyId,
-      );
+    const companies = await sql`
+      SELECT id
+      FROM proofing_companies
+      WHERE id = ${companyId}
+      LIMIT 1
+    `;
 
-    if (!companyExists) {
+    if (!companies[0]) {
       throw new Error(
         "Selected company could not be found.",
       );
     }
+  }
+
+  const existing = await sql`
+    SELECT id
+    FROM proofing_contacts
+    WHERE email = ${email}
+    LIMIT 1
+  `;
+
+  if (existing[0]) {
+    throw new Error(
+      "A contact with this email already exists.",
+    );
   }
 
   const now = new Date().toISOString();
 
-  const contact: ProofingContact = {
-    id: randomUUID(),
-    name,
-    email,
-    companyId,
-    createdAt: now,
-    updatedAt: now,
-  };
+  const rows = await sql`
+    INSERT INTO proofing_contacts (
+      id,
+      name,
+      email,
+      company_id,
+      created_at,
+      updated_at
+    )
+    VALUES (
+      ${randomUUID()},
+      ${name},
+      ${email},
+      ${companyId ?? null},
+      ${now},
+      ${now}
+    )
+    RETURNING
+      id,
+      name,
+      email,
+      company_id,
+      created_at,
+      updated_at
+  `;
 
-  writeContacts([
-    ...contacts,
-    contact,
-  ]);
-
-  return contact;
+  return mapContact(
+    rows[0] as Parameters<typeof mapContact>[0],
+  );
 }

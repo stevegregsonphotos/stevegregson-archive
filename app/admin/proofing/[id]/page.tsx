@@ -82,8 +82,8 @@ export default async function ProofingGalleryPage({
   const watermarks =
     getProofingWatermarks();
 
-    const contacts = getProofingContacts();
-    const companies = getProofingCompanies();
+    const contacts = await getProofingContacts();
+    const companies = await getProofingCompanies();
 
   const orderedImages =
     [...gallery.images].sort(

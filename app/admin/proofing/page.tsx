@@ -23,7 +23,7 @@ import NewGalleryModal from "./NewGalleryModal";
 
 export const dynamic = "force-dynamic";
 
-export default function ProofingPage() {
+export default async function ProofingPage() {
   async function createGallery(
     formData: FormData,
   ) {
@@ -100,10 +100,10 @@ export default function ProofingPage() {
     const now = new Date().toISOString();
 
       const addressBookContacts =
-        getProofingContacts();
+        await getProofingContacts();
 
       const addressBookCompanies =
-        getProofingCompanies();
+        await getProofingCompanies();
 
       const recipientEmailsSeen =
         new Set<string>();
@@ -217,8 +217,8 @@ export default function ProofingPage() {
     );
   }
 
-  const contacts = getProofingContacts();
-    const companies = getProofingCompanies();
+  const contacts = await getProofingContacts();
+    const companies = await getProofingCompanies();
 
   const galleries =
     getProofingGalleries().sort(

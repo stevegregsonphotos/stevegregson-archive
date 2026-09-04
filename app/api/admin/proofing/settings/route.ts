@@ -167,10 +167,10 @@ export async function POST(request: Request) {
       : [];
 
   const addressBookContacts =
-    getProofingContacts();
+    await getProofingContacts();
 
   const addressBookCompanies =
-    getProofingCompanies();
+    await getProofingCompanies();
 
   const recipientEmailsSeen =
     new Set<string>();

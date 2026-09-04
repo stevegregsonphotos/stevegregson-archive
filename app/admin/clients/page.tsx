@@ -22,7 +22,7 @@ export const metadata: Metadata = {
   },
 };
 
-export default function ClientsPage() {
+export default async function ClientsPage() {
   async function createContact(
     formData: FormData,
   ) {
@@ -50,12 +50,12 @@ export default function ClientsPage() {
 
     if (companyName) {
       const company =
-        createProofingCompany(companyName);
+        await createProofingCompany(companyName);
 
       companyId = company.id;
     }
 
-    createProofingContact({
+    await createProofingContact({
       name,
       email,
       companyId,
@@ -95,12 +95,12 @@ export default function ClientsPage() {
 
     if (companyName) {
       const company =
-        createProofingCompany(companyName);
+        await createProofingCompany(companyName);
 
       companyId = company.id;
     }
 
-    updateProofingContact(
+    await updateProofingContact(
       id,
       {
         name,
@@ -125,13 +125,13 @@ export default function ClientsPage() {
       return;
     }
 
-    deleteProofingContact(id);
+    await deleteProofingContact(id);
 
     revalidatePath("/admin/clients");
   }
 
-  const contacts = getProofingContacts();
-  const companies = getProofingCompanies();
+  const contacts = await getProofingContacts();
+  const companies = await getProofingCompanies();
 
   return (
     <main className="clients-page">
