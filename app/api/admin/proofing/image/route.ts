@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const gallery = getProofingGallery(galleryId);
+  const gallery = await getProofingGallery(galleryId);
 
   if (!gallery) {
     return NextResponse.json(

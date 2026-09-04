@@ -70,7 +70,7 @@ export default async function ProofingGalleryPage({
   const { id } = await params;
 
   const gallery =
-    getProofingGallery(id);
+    await getProofingGallery(id);
 
   if (!gallery) {
     notFound();

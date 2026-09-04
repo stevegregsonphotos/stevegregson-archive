@@ -41,7 +41,7 @@ export default function NewProofingGalleryPage() {
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "");
 
-    const duplicateGallery = getProofingGalleries().find(
+    const duplicateGallery = (await getProofingGalleries()).find(
       (gallery) =>
         gallery.slug.trim().toLowerCase() === slug,
     );
@@ -85,7 +85,7 @@ selection: {
 },
     };
 
-    saveProofingGallery(gallery);
+    await saveProofingGallery(gallery);
 
     redirect(`/admin/proofing/${id}`);
   }

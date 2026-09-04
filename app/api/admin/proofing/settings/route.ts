@@ -288,7 +288,7 @@ export async function POST(request: Request) {
     recipientEmailsSeen.add(email);
   }
 
-  const updatedGallery = updateProofingGallery(
+  const updatedGallery = await updateProofingGallery(
     galleryId,
     (gallery) => ({
       ...gallery,

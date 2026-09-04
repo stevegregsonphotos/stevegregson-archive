@@ -59,7 +59,7 @@ export async function POST(
   }
 
   const gallery =
-    getProofingGallery(galleryId);
+    await getProofingGallery(galleryId);
 
   if (!gallery) {
     return NextResponse.json(
@@ -96,7 +96,7 @@ export async function POST(
   }
 
   const updatedGallery =
-    updateProofingGallery(
+    await updateProofingGallery(
       gallery.id,
       (currentGallery) => ({
         ...currentGallery,

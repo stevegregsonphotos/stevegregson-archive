@@ -35,7 +35,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const duplicateGallery = getProofingGalleries().find(
+  const duplicateGallery = (await getProofingGalleries()).find(
     (gallery) =>
       gallery.id !== galleryId &&
       gallery.slug.trim().toLowerCase() === slug,
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const updatedGallery = updateProofingGallery(
+  const updatedGallery = await updateProofingGallery(
     galleryId,
     (gallery) => ({
       ...gallery,

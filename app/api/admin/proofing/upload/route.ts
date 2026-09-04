@@ -140,7 +140,7 @@ createdAt: new Date(
 ).toISOString(),
     };
 
-    const updatedGallery = updateProofingGallery(
+    const updatedGallery = await updateProofingGallery(
       galleryId,
       (gallery) => ({
         ...gallery,

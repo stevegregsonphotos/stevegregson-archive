@@ -81,7 +81,7 @@ export default async function ProofingPage() {
     }
 
     const existingSlugs = new Set(
-      getProofingGalleries().map(
+      (await getProofingGalleries()).map(
         (gallery) =>
           gallery.slug
             .trim()
@@ -210,7 +210,7 @@ export default async function ProofingPage() {
       },
     };
 
-    saveProofingGallery(gallery);
+    await saveProofingGallery(gallery);
 
     redirect(
       `/admin/proofing/${id}`,
@@ -221,7 +221,7 @@ export default async function ProofingPage() {
     const companies = await getProofingCompanies();
 
   const galleries =
-    getProofingGalleries().sort(
+    (await getProofingGalleries()).sort(
       (first, second) =>
         new Date(
           second.createdAt,

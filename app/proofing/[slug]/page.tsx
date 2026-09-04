@@ -27,7 +27,7 @@ export default async function ProofingClientPage({
   const { welcome } = await searchParams;
 
   const gallery =
-    getProofingGalleryBySlug(slug);
+    await getProofingGalleryBySlug(slug);
 
   if (!gallery) {
     notFound();

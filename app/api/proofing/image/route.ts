@@ -163,7 +163,7 @@ export async function GET(request: NextRequest) {
   }
 
   const gallery =
-    getProofingGalleryBySlug(gallerySlug);
+    await getProofingGalleryBySlug(gallerySlug);
 
   if (!gallery) {
     return NextResponse.json(

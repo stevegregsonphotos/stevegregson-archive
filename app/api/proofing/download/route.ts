@@ -71,7 +71,7 @@ export async function GET(
   }
 
   const gallery =
-    getProofingGalleryBySlug(gallerySlug);
+    await getProofingGalleryBySlug(gallerySlug);
 
   if (!gallery) {
     return NextResponse.json(

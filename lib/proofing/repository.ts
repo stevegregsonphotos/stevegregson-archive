@@ -1,126 +1,125 @@
-import fs from "node:fs";
-import path from "node:path";
+import { neon } from "@neondatabase/serverless";
 
 import type { ProofingGallery } from "./types";
 
-const proofingDirectory = path.join(
-  process.cwd(),
-  "data",
-  "proofing",
-);
+function getSql() {
+  const databaseUrl = process.env.DATABASE_URL;
 
-function ensureProofingDirectory() {
-  if (!fs.existsSync(proofingDirectory)) {
-    fs.mkdirSync(proofingDirectory, {
-      recursive: true,
-    });
-  }
-}
-
-function galleryFilePath(id: string) {
-  return path.join(
-    proofingDirectory,
-    `${id}.json`,
-  );
-}
-
-export function getProofingGalleries(): ProofingGallery[] {
-  ensureProofingDirectory();
-
-  const filenames = fs
-    .readdirSync(proofingDirectory)
-    .filter((filename) => filename.endsWith(".json"));
-
-  const galleries = filenames
-    .map((filename) => {
-      const filePath = path.join(
-        proofingDirectory,
-        filename,
-      );
-
-      const contents = fs.readFileSync(
-        filePath,
-        "utf8",
-      );
-
-      try {
-        return JSON.parse(contents) as Partial<ProofingGallery>;
-      } catch {
-        return null;
-      }
-    })
-    .filter(
-      (
-        gallery,
-      ): gallery is ProofingGallery =>
-        Boolean(
-          gallery &&
-            typeof gallery.id === "string" &&
-            typeof gallery.slug === "string" &&
-            gallery.slug.trim() &&
-            typeof gallery.title === "string" &&
-            typeof gallery.createdAt === "string" &&
-            Array.isArray(gallery.images),
-        ),
+  if (!databaseUrl) {
+    throw new Error(
+      "DATABASE_URL is not configured.",
     );
+  }
 
-  return galleries.sort((first, second) =>
-    second.createdAt.localeCompare(first.createdAt),
+  return neon(databaseUrl);
+}
+
+type GalleryRow = {
+  data: unknown;
+};
+
+function mapGallery(
+  row: GalleryRow,
+): ProofingGallery {
+  return row.data as ProofingGallery;
+}
+
+export async function getProofingGalleries():
+  Promise<ProofingGallery[]> {
+  const sql = getSql();
+
+  const rows = await sql`
+    SELECT data
+    FROM proofing_galleries
+    ORDER BY created_at DESC
+  `;
+
+  return rows.map((row) =>
+    mapGallery(row as GalleryRow),
   );
 }
 
-export function getProofingGallery(
+export async function getProofingGallery(
   id: string,
-): ProofingGallery | undefined {
-  ensureProofingDirectory();
+): Promise<ProofingGallery | undefined> {
+  const sql = getSql();
 
-  const filePath = galleryFilePath(id);
+  const rows = await sql`
+    SELECT data
+    FROM proofing_galleries
+    WHERE id = ${id}
+    LIMIT 1
+  `;
 
-  if (!fs.existsSync(filePath)) {
+  if (!rows[0]) {
     return undefined;
   }
 
-  const contents = fs.readFileSync(
-    filePath,
-    "utf8",
-  );
-
-  return JSON.parse(contents) as ProofingGallery;
+  return mapGallery(rows[0] as GalleryRow);
 }
 
-export function getProofingGalleryBySlug(
+export async function getProofingGalleryBySlug(
   slug: string,
-): ProofingGallery | undefined {
+): Promise<ProofingGallery | undefined> {
   const normalisedSlug = decodeURIComponent(slug)
     .trim()
     .toLowerCase();
 
-  return getProofingGalleries().find(
-    (gallery) =>
-      gallery.slug.trim().toLowerCase() ===
-      normalisedSlug,
-  );
+  const sql = getSql();
+
+  const rows = await sql`
+    SELECT data
+    FROM proofing_galleries
+    WHERE LOWER(slug) = ${normalisedSlug}
+    LIMIT 1
+  `;
+
+  if (!rows[0]) {
+    return undefined;
+  }
+
+  return mapGallery(rows[0] as GalleryRow);
 }
 
-export function saveProofingGallery(
+export async function saveProofingGallery(
   gallery: ProofingGallery,
-) {
-  ensureProofingDirectory();
+): Promise<void> {
+  const sql = getSql();
 
-  fs.writeFileSync(
-    galleryFilePath(gallery.id),
-    JSON.stringify(gallery, null, 2),
-    "utf8",
-  );
+  await sql`
+    INSERT INTO proofing_galleries (
+      id,
+      slug,
+      title,
+      created_at,
+      updated_at,
+      data
+    )
+    VALUES (
+      ${gallery.id},
+      ${gallery.slug},
+      ${gallery.title},
+      ${gallery.createdAt},
+      ${gallery.updatedAt},
+      ${JSON.stringify(gallery)}::jsonb
+    )
+    ON CONFLICT (id)
+    DO UPDATE SET
+      slug = EXCLUDED.slug,
+      title = EXCLUDED.title,
+      created_at = EXCLUDED.created_at,
+      updated_at = EXCLUDED.updated_at,
+      data = EXCLUDED.data
+  `;
 }
 
-export function updateProofingGallery(
+export async function updateProofingGallery(
   id: string,
   updater: (
     gallery: ProofingGallery,
   ) => ProofingGallery,
-): ProofingGallery | undefined {
-  const gallery = getProofingGallery(id);
+): Promise<ProofingGallery | undefined> {
+  const gallery = await getProofingGallery(id);
 
   if (!gallery) {
     return undefined;
@@ -131,7 +130,7 @@ export function updateProofingGallery(
   updatedGallery.updatedAt =
     new Date().toISOString();
 
-  saveProofingGallery(updatedGallery);
+  await saveProofingGallery(updatedGallery);
 
   return updatedGallery;
 }
