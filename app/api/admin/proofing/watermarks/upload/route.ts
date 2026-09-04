@@ -1,4 +1,3 @@
-import fs from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 
@@ -6,10 +5,14 @@ import { NextResponse } from "next/server";
 import sharp from "sharp";
 
 import {
-  getProofingWatermarkDirectory,
   getProofingWatermarks,
   saveProofingWatermarks,
 } from "../../../../../../lib/proofing/watermarks";
+
+import {
+  deleteProofingWatermark,
+  putProofingWatermark,
+} from "../../../../../../lib/proofing/watermark-storage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -116,11 +119,8 @@ export async function POST(request: Request) {
       originalBaseName ||
       "Watermark";
 
-    const directory =
-      getProofingWatermarkDirectory();
-
-    await fs.writeFile(
-      path.join(directory, filename),
+    await putProofingWatermark(
+      filename,
       input,
     );
 
@@ -135,12 +135,20 @@ export async function POST(request: Request) {
     };
 
     const watermarks =
-      getProofingWatermarks();
+      await getProofingWatermarks();
 
-    saveProofingWatermarks([
-      ...watermarks,
-      watermark,
-    ]);
+    try {
+      await saveProofingWatermarks([
+        ...watermarks,
+        watermark,
+      ]);
+    } catch (error) {
+      await deleteProofingWatermark(
+        filename,
+      ).catch(() => undefined);
+
+      throw error;
+    }
 
     return NextResponse.json({
       ok: true,

@@ -80,7 +80,7 @@ export default async function ProofingGalleryPage({
     getProofingIntroTemplates();
 
   const watermarks =
-    getProofingWatermarks();
+    await getProofingWatermarks();
 
     const contacts = await getProofingContacts();
     const companies = await getProofingCompanies();

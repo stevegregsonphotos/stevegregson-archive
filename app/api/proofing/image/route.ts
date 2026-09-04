@@ -1,6 +1,3 @@
-import fs from "node:fs/promises";
-import path from "node:path";
-
 import sharp from "sharp";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
@@ -12,8 +9,11 @@ import {
 import { getProofingImage } from "../../../../lib/proofing/image-storage";
 import {
   getProofingWatermark,
-  getProofingWatermarkDirectory,
 } from "../../../../lib/proofing/watermarks";
+
+import {
+  getProofingWatermarkFile,
+} from "../../../../lib/proofing/watermark-storage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -284,7 +284,7 @@ export async function GET(request: NextRequest) {
     }
 
     const watermark =
-      getProofingWatermark(
+      await getProofingWatermark(
         gallery.watermarkId,
       );
 
@@ -298,13 +298,10 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const watermarkPath = path.join(
-      getProofingWatermarkDirectory(),
-      watermark.filename,
-    );
-
     const watermarkFile =
-      await fs.readFile(watermarkPath);
+      await getProofingWatermarkFile(
+        watermark.filename,
+      );
 
     const baseImage = sharp(file);
 

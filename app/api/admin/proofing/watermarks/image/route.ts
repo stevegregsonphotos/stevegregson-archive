@@ -1,6 +1,3 @@
-import fs from "node:fs/promises";
-import path from "node:path";
-
 import {
   NextRequest,
   NextResponse,
@@ -8,8 +5,11 @@ import {
 
 import {
   getProofingWatermark,
-  getProofingWatermarkDirectory,
 } from "../../../../../../lib/proofing/watermarks";
+
+import {
+  getProofingWatermarkFile,
+} from "../../../../../../lib/proofing/watermark-storage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -33,7 +33,7 @@ export async function GET(
   }
 
   const watermark =
-    getProofingWatermark(id);
+    await getProofingWatermark(id);
 
   if (!watermark) {
     return NextResponse.json(
@@ -45,14 +45,11 @@ export async function GET(
     );
   }
 
-  const filePath = path.join(
-    getProofingWatermarkDirectory(),
-    watermark.filename,
-  );
-
   try {
     const file =
-      await fs.readFile(filePath);
+      await getProofingWatermarkFile(
+        watermark.filename,
+      );
 
     return new NextResponse(file, {
       headers: {

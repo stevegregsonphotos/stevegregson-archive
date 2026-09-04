@@ -17,9 +17,9 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-export default function WatermarksPage() {
+export default async function WatermarksPage() {
   const watermarks =
-    getProofingWatermarks();
+    await getProofingWatermarks();
 
   return (
     <main className="proofing-admin watermark-admin-page">

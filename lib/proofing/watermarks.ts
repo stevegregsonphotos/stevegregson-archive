@@ -1,5 +1,4 @@
-import fs from "node:fs";
-import path from "node:path";
+import { neon } from "@neondatabase/serverless";
 
 export type ProofingWatermarkPosition =
   | "top-left"
@@ -20,71 +19,113 @@ export type ProofingWatermark = {
   updatedAt: string;
 };
 
-const watermarkDirectory = path.join(
-  process.cwd(),
-  "data",
-  "proofing-watermarks",
-);
+function getSql() {
+  const databaseUrl = process.env.DATABASE_URL;
 
-const watermarkIndexPath = path.join(
-  watermarkDirectory,
-  "watermarks.json",
-);
-
-function ensureWatermarkStorage() {
-  fs.mkdirSync(watermarkDirectory, {
-    recursive: true,
-  });
-
-  if (!fs.existsSync(watermarkIndexPath)) {
-    fs.writeFileSync(
-      watermarkIndexPath,
-      JSON.stringify([], null, 2),
+  if (!databaseUrl) {
+    throw new Error(
+      "DATABASE_URL is not configured.",
     );
   }
+
+  return neon(databaseUrl);
 }
 
-export function getProofingWatermarks():
-  ProofingWatermark[] {
-  ensureWatermarkStorage();
-
-  try {
-    const raw = fs.readFileSync(
-      watermarkIndexPath,
-      "utf8",
-    );
-
-    const parsed = JSON.parse(raw);
-
-    return Array.isArray(parsed)
-      ? (parsed as ProofingWatermark[])
-      : [];
-  } catch {
-    return [];
-  }
+function mapWatermark(row: {
+  id: string;
+  name: string;
+  filename: string;
+  created_at: Date | string;
+  updated_at: Date | string;
+}): ProofingWatermark {
+  return {
+    id: row.id,
+    name: row.name,
+    filename: row.filename,
+    createdAt: new Date(
+      row.created_at,
+    ).toISOString(),
+    updatedAt: new Date(
+      row.updated_at,
+    ).toISOString(),
+  };
 }
 
-export function saveProofingWatermarks(
+export async function getProofingWatermarks():
+  Promise<ProofingWatermark[]> {
+  const sql = getSql();
+
+  const rows = await sql`
+    SELECT
+      id,
+      name,
+      filename,
+      created_at,
+      updated_at
+    FROM proofing_watermarks
+    ORDER BY created_at ASC
+  `;
+
+  return rows.map((row) =>
+    mapWatermark(
+      row as Parameters<typeof mapWatermark>[0],
+    ),
+  );
+}
+
+export async function saveProofingWatermarks(
   watermarks: ProofingWatermark[],
 ) {
-  ensureWatermarkStorage();
+  const sql = getSql();
 
-  fs.writeFileSync(
-    watermarkIndexPath,
-    JSON.stringify(watermarks, null, 2),
-  );
+  for (const watermark of watermarks) {
+    await sql`
+      INSERT INTO proofing_watermarks (
+        id,
+        name,
+        filename,
+        created_at,
+        updated_at
+      )
+      VALUES (
+        ${watermark.id},
+        ${watermark.name},
+        ${watermark.filename},
+        ${watermark.createdAt},
+        ${watermark.updatedAt}
+      )
+      ON CONFLICT (id)
+      DO UPDATE SET
+        name = EXCLUDED.name,
+        filename = EXCLUDED.filename,
+        created_at = EXCLUDED.created_at,
+        updated_at = EXCLUDED.updated_at
+    `;
+  }
 }
 
-export function getProofingWatermark(
+export async function getProofingWatermark(
   id: string,
 ) {
-  return getProofingWatermarks().find(
-    (watermark) => watermark.id === id,
-  );
-}
+  const sql = getSql();
 
-export function getProofingWatermarkDirectory() {
-  ensureWatermarkStorage();
+  const rows = await sql`
+    SELECT
+      id,
+      name,
+      filename,
+      created_at,
+      updated_at
+    FROM proofing_watermarks
+    WHERE id = ${id}
+    LIMIT 1
+  `;
 
-  return watermarkDirectory;
+  const row = rows[0];
+
+  return row
+    ? mapWatermark(
+        row as Parameters<typeof mapWatermark>[0],
+      )
+    : undefined;
 }
