@@ -1,3 +1,10 @@
+import { randomUUID } from "node:crypto";
+
+import {
+  getProofingCompanies,
+  getProofingContacts,
+} from "../../../../../lib/proofing/contacts-repository";
+
 import { NextResponse } from "next/server";
 
 import { updateProofingGallery } from "../../../../../lib/proofing/repository";
@@ -147,6 +154,140 @@ export async function POST(request: Request) {
     expiresAt = parsedDate.toISOString();
   }
 
+  const submittedRecipients: {
+    id?: unknown;
+    contactId?: unknown;
+    name?: unknown;
+    company?: unknown;
+    email?: unknown;
+    addedAt?: unknown;
+  }[] =
+    Array.isArray(body.recipients)
+      ? body.recipients
+      : [];
+
+  const addressBookContacts =
+    getProofingContacts();
+
+  const addressBookCompanies =
+    getProofingCompanies();
+
+  const recipientEmailsSeen =
+    new Set<string>();
+
+  const validatedRecipients: {
+    id: string;
+    contactId?: string;
+    name?: string;
+    company?: string;
+    email: string;
+    addedAt: string;
+  }[] = [];
+
+  for (const submittedRecipient of submittedRecipients) {
+    if (
+      !submittedRecipient ||
+      typeof submittedRecipient !== "object"
+    ) {
+      continue;
+    }
+
+    const submittedId = String(
+      submittedRecipient.id ?? "",
+    ).trim();
+
+    const contactId = String(
+      submittedRecipient.contactId ?? "",
+    ).trim();
+
+    const email = String(
+      submittedRecipient.email ?? "",
+    )
+      .trim()
+      .toLowerCase();
+
+    if (
+      !email ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ||
+      recipientEmailsSeen.has(email)
+    ) {
+      continue;
+    }
+
+    if (contactId) {
+      const contact =
+        addressBookContacts.find(
+          (item) => item.id === contactId,
+        );
+
+      if (!contact) {
+        continue;
+      }
+
+      const contactEmail =
+        contact.email.trim().toLowerCase();
+
+      if (
+        recipientEmailsSeen.has(contactEmail)
+      ) {
+        continue;
+      }
+
+      const existingRecipient =
+        submittedId
+          ? submittedRecipients.find(
+              (item) =>
+                item &&
+                typeof item === "object" &&
+                String(item.id ?? "").trim() ===
+                  submittedId,
+            )
+          : undefined;
+
+      const company = contact.companyId
+        ? addressBookCompanies.find(
+            (item) =>
+              item.id === contact.companyId,
+          )
+        : undefined;
+
+      validatedRecipients.push({
+        id: submittedId || randomUUID(),
+        contactId: contact.id,
+        name: String(
+          existingRecipient?.name ??
+            contact.name,
+        ).trim(),
+        company: String(
+          existingRecipient?.company ??
+            company?.name ??
+            "",
+        ).trim() || undefined,
+        email: contactEmail,
+        addedAt:
+          String(
+            existingRecipient?.addedAt ?? "",
+          ).trim() ||
+          new Date().toISOString(),
+      });
+
+      recipientEmailsSeen.add(contactEmail);
+      continue;
+    }
+
+    validatedRecipients.push({
+      id: submittedId || randomUUID(),
+      email,
+      addedAt:
+        String(
+          submittedRecipient.addedAt ?? "",
+        ).trim() ||
+        new Date().toISOString(),
+    });
+
+    recipientEmailsSeen.add(email);
+  }
+
   const updatedGallery = updateProofingGallery(
     galleryId,
     (gallery) => ({
@@ -163,6 +304,7 @@ export async function POST(request: Request) {
       watermarkOpacity:
         watermarkOpacityValue,
       expiresAt,
+      recipients: validatedRecipients,
     }),
   );
 

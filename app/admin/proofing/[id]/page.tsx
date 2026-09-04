@@ -1,3 +1,8 @@
+import {
+  getProofingCompanies,
+  getProofingContacts,
+} from "../../../../lib/proofing/contacts-repository";
+
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -76,6 +81,9 @@ export default async function ProofingGalleryPage({
 
   const watermarks =
     getProofingWatermarks();
+
+    const contacts = getProofingContacts();
+    const companies = getProofingCompanies();
 
   const orderedImages =
     [...gallery.images].sort(
@@ -226,6 +234,9 @@ export default async function ProofingGalleryPage({
         initialExpiresAt={
           gallery.expiresAt
         }
+        initialRecipients={gallery.recipients ?? []}
+        contacts={contacts}
+        companies={companies}
         watermarks={watermarks.map(
           (watermark) => ({
             id: watermark.id,
@@ -547,6 +558,47 @@ export default async function ProofingGalleryPage({
             {gallery.venue ? (
               <p>{gallery.venue}</p>
             ) : null}
+          </div>
+
+          <div className="sp-gallery-sidebar-card">
+            <span className="sp-gallery-sidebar-label">
+              Recipients
+            </span>
+
+            {gallery.recipients?.length ? (
+              <div className="sp-gallery-sidebar-recipients">
+                {gallery.recipients.map(
+                  (recipient) => (
+                    <div
+                      className="sp-gallery-sidebar-recipient"
+                      key={recipient.id}
+                    >
+                      <strong>
+                        {recipient.name ??
+                          recipient.email}
+                      </strong>
+
+                      {recipient.name ? (
+                        <p>
+                          {recipient.company
+                            ? `${recipient.company} · `
+                            : ""}
+                          {recipient.email}
+                        </p>
+                      ) : (
+                        <p>
+                          One-off recipient
+                        </p>
+                      )}
+                    </div>
+                  ),
+                )}
+              </div>
+            ) : (
+              <strong>
+                No recipients assigned
+              </strong>
+            )}
           </div>
 
           <div className="sp-gallery-sidebar-card">

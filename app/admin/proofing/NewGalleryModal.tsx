@@ -7,12 +7,16 @@ import {
 } from "react";
 
 
-import type { ProofingContact } from "@/lib/proofing/types";
+import type {
+  ProofingCompany,
+  ProofingContact,
+} from "@/lib/proofing/types";
 type Props = {
   createGallery: (
     formData: FormData,
   ) => Promise<void>;
   contacts: ProofingContact[];
+  companies: ProofingCompany[];
 };
 
 function todayForInput() {
@@ -32,8 +36,51 @@ function todayForInput() {
 export default function NewGalleryModal({
   createGallery,
   contacts,
+  companies,
 }: Props) {
   const [open, setOpen] = useState(false);
+
+  const [
+    selectedRecipientIds,
+    setSelectedRecipientIds,
+  ] = useState<string[]>([]);
+
+  const [recipientQuery, setRecipientQuery] =
+    useState("");
+
+  const [
+    oneOffRecipientEmails,
+    setOneOffRecipientEmails,
+  ] = useState<string[]>([]);
+
+  const cleanRecipientQuery =
+    recipientQuery.trim().toLowerCase();
+
+  const recipientQueryIsEmail =
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+      cleanRecipientQuery,
+    );
+
+  const recipientQueryMatchesSavedEmail =
+    contacts.some(
+      (contact) =>
+        contact.email.toLowerCase() ===
+        cleanRecipientQuery,
+    );
+
+  const canAddOneOffRecipient =
+    recipientQueryIsEmail &&
+    !recipientQueryMatchesSavedEmail &&
+    !oneOffRecipientEmails.includes(
+      cleanRecipientQuery,
+    );
+
+  const companyNames = new Map(
+    companies.map((company) => [
+      company.id,
+      company.name,
+    ]),
+  );
 
   const dialogRef =
     useRef<HTMLDivElement>(null);
@@ -153,6 +200,228 @@ export default function NewGalleryModal({
                     required
                   />
                 </div>
+              </div>
+
+              <div className="sp-create-gallery-field sp-create-gallery-recipients">
+                <label htmlFor="modal-recipient">
+                  Recipients
+                </label>
+
+                {selectedRecipientIds.length > 0 ||
+                oneOffRecipientEmails.length > 0 ? (
+                  <div className="sp-create-gallery-recipient-chips">
+                    {selectedRecipientIds.map(
+                      (contactId) => {
+                        const contact =
+                          contacts.find(
+                            (item) =>
+                              item.id ===
+                              contactId,
+                          );
+
+                        if (!contact) {
+                          return null;
+                        }
+
+                        return (
+                          <button
+                            key={contact.id}
+                            type="button"
+                            className="sp-create-gallery-recipient-chip"
+                            onClick={() =>
+                              setSelectedRecipientIds(
+                                (current) =>
+                                  current.filter(
+                                    (id) =>
+                                      id !==
+                                      contact.id,
+                                  ),
+                              )
+                            }
+                            aria-label={`Remove ${contact.name}`}
+                          >
+                            <span>
+                              {contact.name}
+                            </span>
+
+                            <span aria-hidden="true">
+                              ×
+                            </span>
+                          </button>
+                        );
+                      },
+                    )}
+
+                    {oneOffRecipientEmails.map(
+                      (email) => (
+                        <button
+                          key={email}
+                          type="button"
+                          className="sp-create-gallery-recipient-chip"
+                          onClick={() =>
+                            setOneOffRecipientEmails(
+                              (current) =>
+                                current.filter(
+                                  (item) =>
+                                    item !== email,
+                                ),
+                            )
+                          }
+                          aria-label={`Remove ${email}`}
+                        >
+                          <span>{email}</span>
+
+                          <span aria-hidden="true">
+                            ×
+                          </span>
+                        </button>
+                      ),
+                    )}
+                  </div>
+                ) : null}
+
+                <input
+                  id="modal-recipient"
+                  type="search"
+                  value={recipientQuery}
+                  onChange={(event) =>
+                    setRecipientQuery(
+                      event.target.value,
+                    )
+                  }
+                  placeholder="Search name, company or email"
+                  autoComplete="off"
+                />
+
+                {recipientQuery.trim() ? (
+                  <div className="sp-create-gallery-recipient-results">
+                    {contacts
+                      .filter((contact) => {
+                        if (
+                          selectedRecipientIds.includes(
+                            contact.id,
+                          )
+                        ) {
+                          return false;
+                        }
+
+                        const query =
+                          recipientQuery
+                            .trim()
+                            .toLowerCase();
+
+                        const company =
+                          contact.companyId
+                            ? companyNames.get(
+                                contact.companyId,
+                              ) ?? ""
+                            : "";
+
+                        return [
+                          contact.name,
+                          company,
+                          contact.email,
+                        ].some((value) =>
+                          value
+                            .toLowerCase()
+                            .includes(query),
+                        );
+                      })
+                      .map((contact) => {
+                        const company =
+                          contact.companyId
+                            ? companyNames.get(
+                                contact.companyId,
+                              )
+                            : undefined;
+
+                        return (
+                          <button
+                            key={contact.id}
+                            type="button"
+                            className="sp-create-gallery-recipient-result"
+                            onClick={() => {
+                              setSelectedRecipientIds(
+                                (current) => [
+                                  ...current,
+                                  contact.id,
+                                ],
+                              );
+                              setRecipientQuery("");
+                            }}
+                          >
+                            <strong>
+                              {contact.name}
+                            </strong>
+
+                            {company ? (
+                              <span>
+                                {company}
+                              </span>
+                            ) : null}
+
+                            <span>
+                              {contact.email}
+                            </span>
+
+                            <span aria-hidden="true">
+                              +
+                            </span>
+                          </button>
+                        );
+                      })}
+
+                    {canAddOneOffRecipient ? (
+                      <button
+                        type="button"
+                        className="sp-create-gallery-recipient-result"
+                        onClick={() => {
+                          setOneOffRecipientEmails(
+                            (current) => [
+                              ...current,
+                              cleanRecipientQuery,
+                            ],
+                          );
+                          setRecipientQuery("");
+                        }}
+                      >
+                        <strong>
+                          Add {cleanRecipientQuery}
+                        </strong>
+
+                        <span>
+                          One-off recipient
+                        </span>
+
+                        <span aria-hidden="true">
+                          +
+                        </span>
+                      </button>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                {selectedRecipientIds.map(
+                  (contactId) => (
+                    <input
+                      key={contactId}
+                      type="hidden"
+                      name="recipientContactId"
+                      value={contactId}
+                    />
+                  ),
+                )}
+
+                {oneOffRecipientEmails.map(
+                  (email) => (
+                    <input
+                      key={email}
+                      type="hidden"
+                      name="recipientEmail"
+                      value={email}
+                    />
+                  ),
+                )}
               </div>
 
               <div className="sp-create-gallery-field">

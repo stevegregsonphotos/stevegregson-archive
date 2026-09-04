@@ -1,4 +1,7 @@
-import { getProofingContacts } from "@/lib/proofing/contacts-repository";
+import {
+  getProofingCompanies,
+  getProofingContacts,
+} from "@/lib/proofing/contacts-repository";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -38,6 +41,29 @@ export default function ProofingPage() {
       formData.get("shootDate") ?? "",
     ).trim();
 
+      const recipientContactIds =
+        formData
+          .getAll("recipientContactId")
+          .map((value) =>
+            String(value).trim(),
+          )
+          .filter(Boolean);
+
+      const recipientEmails =
+        formData
+          .getAll("recipientEmail")
+          .map((value) =>
+            String(value)
+              .trim()
+              .toLowerCase(),
+          )
+          .filter((email) =>
+            /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+              email,
+            ),
+          );
+
+
     if (!title || !shootDate) {
       return;
     }
@@ -73,6 +99,82 @@ export default function ProofingPage() {
 
     const now = new Date().toISOString();
 
+      const addressBookContacts =
+        getProofingContacts();
+
+      const addressBookCompanies =
+        getProofingCompanies();
+
+      const recipientEmailsSeen =
+        new Set<string>();
+
+      const recipients:
+        NonNullable<
+          ProofingGallery["recipients"]
+        > = [];
+
+      for (
+        const contactId of new Set(
+          recipientContactIds,
+        )
+      ) {
+        const contact =
+          addressBookContacts.find(
+            (candidate) =>
+              candidate.id === contactId,
+          );
+
+        if (!contact) {
+          continue;
+        }
+
+        const email =
+          contact.email
+            .trim()
+            .toLowerCase();
+
+        if (
+          !email ||
+          recipientEmailsSeen.has(email)
+        ) {
+          continue;
+        }
+
+        const company = contact.companyId
+          ? addressBookCompanies.find(
+              (candidate) =>
+                candidate.id ===
+                contact.companyId,
+            )?.name
+          : undefined;
+
+        recipients.push({
+          id: crypto.randomUUID(),
+          contactId: contact.id,
+          name: contact.name,
+          company,
+          email,
+          addedAt: now,
+        });
+
+        recipientEmailsSeen.add(email);
+      }
+
+      for (const email of recipientEmails) {
+        if (recipientEmailsSeen.has(email)) {
+          continue;
+        }
+
+        recipients.push({
+          id: crypto.randomUUID(),
+          email,
+          addedAt: now,
+        });
+
+        recipientEmailsSeen.add(email);
+      }
+
+
     const defaultIntroTemplate =
       getDefaultProofingIntroTemplate();
 
@@ -100,6 +202,7 @@ export default function ProofingPage() {
 
       images: [],
       visitors: [],
+      recipients,
 
       selection: {
         status: "not-started",
@@ -115,6 +218,7 @@ export default function ProofingPage() {
   }
 
   const contacts = getProofingContacts();
+    const companies = getProofingCompanies();
 
   const galleries =
     getProofingGalleries().sort(
@@ -215,6 +319,7 @@ export default function ProofingPage() {
             <NewGalleryModal
               createGallery={createGallery}
               contacts={contacts}
+                companies={companies}
             />
           </div>
         </header>
@@ -234,6 +339,7 @@ export default function ProofingPage() {
             <NewGalleryModal
               createGallery={createGallery}
               contacts={contacts}
+                companies={companies}
             />
           </section>
         ) : (

@@ -30,6 +30,27 @@ type Watermark = {
   name: string;
 };
 
+type Contact = {
+  id: string;
+  name: string;
+  email: string;
+  companyId?: string;
+};
+
+type Company = {
+  id: string;
+  name: string;
+};
+
+type Recipient = {
+  id: string;
+  contactId?: string;
+  name?: string;
+  company?: string;
+  email: string;
+  addedAt: string;
+};
+
 type ProofingSettingsEditorProps = {
   galleryId: string;
   initialStatus: GalleryStatus;
@@ -42,6 +63,9 @@ type ProofingSettingsEditorProps = {
   previewImageUrl: string;
   initialExpiresAt?: string;
   watermarks: Watermark[];
+  initialRecipients: Recipient[];
+  contacts: Contact[];
+  companies: Company[];
 };
 
 const watermarkPositions: {
@@ -79,6 +103,9 @@ export default function ProofingSettingsEditor({
   previewImageUrl,
   initialExpiresAt,
   watermarks,
+  initialRecipients,
+  contacts,
+  companies,
 }: ProofingSettingsEditorProps) {
   const router = useRouter();
 
@@ -115,6 +142,12 @@ export default function ProofingSettingsEditor({
     dateInputValue(initialExpiresAt),
   );
 
+  const [recipients, setRecipients] =
+    useState<Recipient[]>(initialRecipients);
+
+  const [recipientQuery, setRecipientQuery] =
+    useState("");
+
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -136,6 +169,7 @@ export default function ProofingSettingsEditor({
           },
           body: JSON.stringify({
             galleryId,
+            recipients,
             status,
             downloadPermission,
             watermarkEnabled,
@@ -167,6 +201,140 @@ export default function ProofingSettingsEditor({
     } finally {
       setIsSaving(false);
     }
+  }
+
+  const companyNames = new Map(
+    companies.map((company) => [
+      company.id,
+      company.name,
+    ]),
+  );
+
+  const cleanRecipientQuery =
+    recipientQuery.trim().toLowerCase();
+
+  const filteredContacts = contacts.filter(
+    (contact) => {
+      const companyName =
+        contact.companyId
+          ? companyNames.get(contact.companyId) ?? ""
+          : "";
+
+      const alreadyAdded = recipients.some(
+        (recipient) =>
+          recipient.contactId === contact.id ||
+          recipient.email.toLowerCase() ===
+            contact.email.toLowerCase(),
+      );
+
+      if (alreadyAdded) {
+        return false;
+      }
+
+      if (!cleanRecipientQuery) {
+        return false;
+      }
+
+      return [
+        contact.name,
+        contact.email,
+        companyName,
+      ].some((value) =>
+        value
+          .toLowerCase()
+          .includes(cleanRecipientQuery),
+      );
+    },
+  );
+
+  const recipientQueryIsEmail =
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+      cleanRecipientQuery,
+    );
+
+  const recipientQueryMatchesSavedEmail =
+    contacts.some(
+      (contact) =>
+        contact.email.toLowerCase() ===
+        cleanRecipientQuery,
+    );
+
+  const recipientQueryAlreadyAdded =
+    recipients.some(
+      (recipient) =>
+        recipient.email.toLowerCase() ===
+        cleanRecipientQuery,
+    );
+
+  const canAddOneOffRecipient =
+    recipientQueryIsEmail &&
+    !recipientQueryMatchesSavedEmail &&
+    !recipientQueryAlreadyAdded;
+
+  function removeRecipient(id: string) {
+    setRecipients((current) =>
+      current.filter(
+        (recipient) => recipient.id !== id,
+      ),
+    );
+    setMessage("");
+  }
+
+  function addSavedContact(contact: Contact) {
+    const companyName =
+      contact.companyId
+        ? companyNames.get(contact.companyId)
+        : undefined;
+
+    setRecipients((current) => [
+      ...current,
+      {
+        id: `new-contact-${contact.id}`,
+        contactId: contact.id,
+        name: contact.name,
+        company: companyName,
+        email: contact.email.toLowerCase(),
+        addedAt: new Date().toISOString(),
+      },
+    ]);
+
+    setRecipientQuery("");
+    setMessage("");
+  }
+
+  function addOneOffRecipient() {
+    if (!canAddOneOffRecipient) {
+      return;
+    }
+
+    setRecipients((current) => [
+      ...current,
+      {
+        id: `new-email-${Date.now()}`,
+        email: cleanRecipientQuery,
+        addedAt: new Date().toISOString(),
+      },
+    ]);
+
+    setRecipientQuery("");
+    setMessage("");
+  }
+
+  function updateOneOffRecipient(
+    id: string,
+    email: string,
+  ) {
+    setRecipients((current) =>
+      current.map((recipient) =>
+        recipient.id === id
+          ? {
+              ...recipient,
+              email,
+            }
+          : recipient,
+      ),
+    );
+    setMessage("");
   }
 
   return (
@@ -430,6 +598,165 @@ export default function ProofingSettingsEditor({
           )}
         </div>
       ) : null}
+
+        <section className="proofing-settings-recipients">
+          <div className="proofing-settings-recipients-heading">
+            <div>
+              <span className="proofing-settings-field-label">
+                Gallery access
+              </span>
+
+              <h3>Recipients</h3>
+            </div>
+
+            <p>
+              Add or remove the people who should have
+              access to this gallery.
+            </p>
+          </div>
+
+          <div className="proofing-settings-recipient-list">
+            {recipients.length > 0 ? (
+              recipients.map((recipient) => (
+                <div
+                  className="proofing-settings-recipient"
+                  key={recipient.id}
+                >
+                  <div className="proofing-settings-recipient-details">
+                    {recipient.contactId ? (
+                      <>
+                        <strong>
+                          {recipient.name ??
+                            recipient.email}
+                        </strong>
+
+                        <span>
+                          {recipient.company
+                            ? `${recipient.company} · `
+                            : ""}
+                          {recipient.email}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <strong>
+                          One-off recipient
+                        </strong>
+
+                        <input
+                          type="email"
+                          value={recipient.email}
+                          aria-label="Recipient email"
+                          onChange={(event) =>
+                            updateOneOffRecipient(
+                              recipient.id,
+                              event.target.value,
+                            )
+                          }
+                        />
+                      </>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    className="proofing-settings-recipient-remove"
+                    onClick={() =>
+                      removeRecipient(recipient.id)
+                    }
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))
+            ) : (
+              <p className="proofing-settings-recipient-empty">
+                No recipients assigned to this gallery.
+              </p>
+            )}
+          </div>
+
+          <div className="proofing-settings-recipient-add">
+            <label htmlFor="proofing-recipient-search">
+              Add recipient
+            </label>
+
+            <input
+              id="proofing-recipient-search"
+              type="text"
+              value={recipientQuery}
+              placeholder="Search name, company or email"
+              autoComplete="off"
+              onChange={(event) => {
+                setRecipientQuery(event.target.value);
+                setMessage("");
+              }}
+              onKeyDown={(event) => {
+                if (
+                  event.key === "Enter" &&
+                  canAddOneOffRecipient
+                ) {
+                  event.preventDefault();
+                  addOneOffRecipient();
+                }
+              }}
+            />
+
+            {cleanRecipientQuery &&
+            (filteredContacts.length > 0 ||
+              canAddOneOffRecipient) ? (
+              <div className="proofing-settings-recipient-results">
+                {filteredContacts.map((contact) => {
+                  const companyName =
+                    contact.companyId
+                      ? companyNames.get(
+                          contact.companyId,
+                        )
+                      : undefined;
+
+                  return (
+                    <button
+                      type="button"
+                      key={contact.id}
+                      className="proofing-settings-recipient-result"
+                      onClick={() =>
+                        addSavedContact(contact)
+                      }
+                    >
+                      <strong>{contact.name}</strong>
+
+                      <span>
+                        {companyName || "No company"}
+                      </span>
+
+                      <span>{contact.email}</span>
+
+                      <span aria-hidden="true">+</span>
+                    </button>
+                  );
+                })}
+
+                {canAddOneOffRecipient ? (
+                  <button
+                    type="button"
+                    className="proofing-settings-recipient-result"
+                    onClick={addOneOffRecipient}
+                  >
+                    <strong>
+                      Add {cleanRecipientQuery}
+                    </strong>
+
+                    <span>One-off recipient</span>
+
+                    <span>{cleanRecipientQuery}</span>
+
+                    <span aria-hidden="true">+</span>
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+        </section>
 
       <div className="proofing-settings-footer">
         <p>
