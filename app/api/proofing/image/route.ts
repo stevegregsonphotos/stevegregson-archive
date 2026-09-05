@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import sharp from "sharp";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
@@ -6,7 +8,11 @@ import {
   getProofingGalleryBySlug,
 } from "../../../../lib/proofing/repository";
 
-import { getProofingImage } from "../../../../lib/proofing/image-storage";
+import {
+  getProofingImage,
+  getRenderedProof,
+  putRenderedProof,
+} from "../../../../lib/proofing/image-storage";
 import {
   getProofingWatermark,
 } from "../../../../lib/proofing/watermarks";
@@ -298,6 +304,53 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    const sizePercent =
+      gallery.watermarkSize ?? 30;
+
+    const opacityPercent =
+      gallery.watermarkOpacity ?? 65;
+
+    const position =
+      gallery.watermarkPosition ??
+      "bottom-right";
+
+    const renderCacheKey = createHash(
+      "sha256",
+    )
+      .update(
+        JSON.stringify({
+          image: image.webFilename,
+          watermarkId: watermark.id,
+          watermarkUpdatedAt:
+            watermark.updatedAt,
+          sizePercent,
+          opacityPercent,
+          position,
+        }),
+      )
+      .digest("hex")
+      .slice(0, 32);
+
+    const cachedOutput =
+      await getRenderedProof(
+        gallery.id,
+        image.id,
+        renderCacheKey,
+      );
+
+    if (cachedOutput) {
+      return new NextResponse(
+        new Uint8Array(cachedOutput),
+        {
+          headers: {
+            "Content-Type": "image/webp",
+            "Cache-Control":
+              "private, no-store",
+          },
+        },
+      );
+    }
+
     const watermarkFile =
       await getProofingWatermarkFile(
         watermark.filename,
@@ -316,16 +369,6 @@ export async function GET(request: NextRequest) {
         "Could not read proof dimensions.",
       );
     }
-
-    const sizePercent =
-      gallery.watermarkSize ?? 30;
-
-    const opacityPercent =
-      gallery.watermarkOpacity ?? 65;
-
-    const position =
-      gallery.watermarkPosition ??
-      "bottom-right";
 
     /*
      * Width is relative to the photograph.
@@ -440,6 +483,13 @@ export async function GET(request: NextRequest) {
           effort: 4,
         })
         .toBuffer();
+
+    await putRenderedProof(
+      gallery.id,
+      image.id,
+      renderCacheKey,
+      output,
+    );
 
     return new NextResponse(
       new Uint8Array(output),

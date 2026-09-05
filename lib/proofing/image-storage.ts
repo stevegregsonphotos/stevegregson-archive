@@ -129,3 +129,81 @@ export async function deleteProofingImage(
     }),
   );
 }
+
+function getRenderedProofObjectKey(
+  galleryId: string,
+  imageId: string,
+  cacheKey: string,
+) {
+  return [
+    "rendered",
+    safeSegment(galleryId),
+    safeSegment(imageId),
+    `${safeSegment(cacheKey)}.webp`,
+  ].join("/");
+}
+
+export async function getRenderedProof(
+  galleryId: string,
+  imageId: string,
+  cacheKey: string,
+) {
+  try {
+    const result = await getClient().send(
+      new GetObjectCommand({
+        Bucket: getBucket(),
+        Key: getRenderedProofObjectKey(
+          galleryId,
+          imageId,
+          cacheKey,
+        ),
+      }),
+    );
+
+    if (!result.Body) {
+      return undefined;
+    }
+
+    const bytes =
+      await result.Body.transformToByteArray();
+
+    return Buffer.from(bytes);
+  } catch (error) {
+    const status =
+      typeof error === "object" &&
+      error !== null &&
+      "$metadata" in error
+        ? (error as {
+            $metadata?: {
+              httpStatusCode?: number;
+            };
+          }).$metadata?.httpStatusCode
+        : undefined;
+
+    if (status === 404) {
+      return undefined;
+    }
+
+    throw error;
+  }
+}
+
+export async function putRenderedProof(
+  galleryId: string,
+  imageId: string,
+  cacheKey: string,
+  body: Buffer,
+) {
+  await getClient().send(
+    new PutObjectCommand({
+      Bucket: getBucket(),
+      Key: getRenderedProofObjectKey(
+        galleryId,
+        imageId,
+        cacheKey,
+      ),
+      Body: body,
+      ContentType: "image/webp",
+    }),
+  );
+}
