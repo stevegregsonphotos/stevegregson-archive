@@ -441,18 +441,21 @@ export async function GET(request: NextRequest) {
         })
         .toBuffer();
 
-    return new NextResponse(output, {
-      headers: {
-        "Content-Type": "image/webp",
-        /*
-         * Watermark settings can change at any time,
-         * so don't let an old clean/watermarked image
-         * remain cached in the browser.
-         */
-        "Cache-Control":
-          "private, no-store",
+    return new NextResponse(
+      new Uint8Array(output),
+      {
+        headers: {
+          "Content-Type": "image/webp",
+          /*
+           * Watermark settings can change at any time,
+           * so don't let an old clean/watermarked image
+           * remain cached in the browser.
+           */
+          "Cache-Control":
+            "private, no-store",
+        },
       },
-    });
+    );
   } catch (error) {
     console.error(
       "Proofing image delivery failed:",
