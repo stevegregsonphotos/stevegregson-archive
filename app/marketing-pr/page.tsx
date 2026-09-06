@@ -40,7 +40,7 @@ type WorkNavigationItem = {
 
 const workNavigation: WorkNavigationItem[] = [
   {
-    href: "/selected-work",
+    href: "/production",
     label: "Production",
   },
   {
