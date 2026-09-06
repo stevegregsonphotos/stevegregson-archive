@@ -1584,7 +1584,9 @@ a {
     margin-top: 0;
     padding-top: 1.5rem;
   }
-  .selected-work-image-button {
+}
+
+.selected-work-image-button {
   display: block;
   width: 100%;
   padding: 0;
@@ -1599,11 +1601,4 @@ a {
   .selected-work-image-button:hover img {
     opacity: 0.92;
   }
-}
-}
-
-.collection-gallery-image {
-  display: block;
-  width: 100%;
-  height: auto;
 }

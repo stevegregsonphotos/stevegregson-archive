@@ -67,10 +67,9 @@ export default function MarketingPrGallery({
               <Image
                 src={`/images/selected-work/campaign/${openingImage.filename}`}
                 alt={openingImage.alt}
-                width={openingImage.width}
-                height={openingImage.height}
+                fill
                 sizes="(max-width: 900px) calc(100vw - 2.8rem), 88vw"
-                className={`${imageClassName} collection-gallery-image`}
+                className={imageClassName}
                 priority
               />
             </div>
@@ -103,10 +102,9 @@ export default function MarketingPrGallery({
                   <Image
                     src={`/images/selected-work/campaign/${image.filename}`}
                     alt={image.alt}
-                    width={image.width}
-                    height={image.height}
+                    fill
                     sizes="(max-width: 900px) calc(100vw - 2.8rem), 88vw"
-                    className={`${imageClassName} collection-gallery-image`}
+                    className={imageClassName}
                   />
                 </div>
               </button>
