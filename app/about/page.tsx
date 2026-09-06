@@ -132,14 +132,15 @@ export default function AboutPage() {
           display: grid;
           grid-template-columns: minmax(0, 1fr) minmax(360px, 42vw);
           gap: clamp(3rem, 7vw, 8rem);
-          min-height: 100svh;
-          padding: 10rem 6vw 5rem;
-          align-items: center;
+          min-height: 0;
+          padding: 7.5rem 6vw 3.5rem;
+          align-items: start;
         }
 
         .intro {
-          align-self: end;
-          padding-bottom: 2rem;
+          align-self: start;
+          padding-top: 0.5rem;
+          padding-bottom: 0;
         }
 
         .eyebrow,
@@ -161,18 +162,18 @@ export default function AboutPage() {
 
         h1 {
           max-width: 58rem;
-          margin: 2rem 0 0;
-          font-size: clamp(4rem, 7.5vw, 8rem);
+          margin: 0.9rem 0 0;
+          font-size: clamp(2.8rem, 3.6vw, 4.3rem);
           letter-spacing: -0.058em;
           line-height: 0.9;
         }
 
         .lead {
           max-width: 34rem;
-          margin: 2.5rem 0 0;
+          margin: 0.9rem 0 0;
           color: rgba(242, 238, 230, 0.68);
-          font-size: 1.05rem;
-          line-height: 1.7;
+          font-size: 0.82rem;
+          line-height: 1.6;
         }
 
         .portrait {
@@ -254,10 +255,10 @@ export default function AboutPage() {
 
         .closing {
           display: flex;
-          min-height: 75vh;
-          padding: 8rem 7vw 6rem;
+          min-height: 0;
+          padding: 3.5rem 7vw 4.5rem;
           flex-direction: column;
-          justify-content: center;
+          justify-content: flex-start;
           background: #191817;
         }
 

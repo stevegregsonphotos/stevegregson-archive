@@ -92,8 +92,8 @@ export default function ContactPage() {
   gap: clamp(4rem, 10vw, 11rem);
   max-width: 94rem;
   margin: 0 auto;
-  padding: 9.5rem 6vw 4.5rem;
-  align-items: end;
+  padding: 7.5rem 6vw 3.5rem;
+  align-items: start;
 }
 
         .contact-intro {
@@ -124,8 +124,8 @@ export default function ContactPage() {
         }
 
         .contact-intro h1 {
-  margin: 1.4rem 0 0;
-  font-size: clamp(4rem, 6.5vw, 7rem);
+  margin: 0.9rem 0 0;
+  font-size: clamp(2.8rem, 3.6vw, 4.3rem);
           letter-spacing: -0.06em;
           line-height: 0.88;
         }
@@ -138,10 +138,10 @@ export default function ContactPage() {
 
         .contact-lead {
   max-width: 38rem;
-  margin: 2rem 0 0;
+  margin: 0.9rem 0 0;
           color: rgba(242, 238, 230, 0.68);
-          font-size: 1.05rem;
-          line-height: 1.75;
+          font-size: 0.82rem;
+          line-height: 1.6;
         }
 
         .contact-details {
@@ -344,20 +344,20 @@ export default function ContactPage() {
 
         .contact-footer-statement {
           display: flex;
-          min-height: 70svh;
-          padding: 8rem 7vw 6rem;
+          min-height: 0;
+          padding: 3.5rem 7vw 4.5rem;
           flex-direction: column;
-          justify-content: center;
+          justify-content: flex-start;
           border-top: 1px solid
             rgba(242, 238, 230, 0.16);
         }
 
         .contact-footer-statement h2 {
-          max-width: 75rem;
-          margin: 2rem 0 0;
-          font-size: clamp(4rem, 8vw, 8rem);
-          letter-spacing: -0.06em;
-          line-height: 0.88;
+          max-width: 12ch;
+          margin: 1.25rem 0 0;
+          font-size: clamp(2.8rem, 3.8vw, 4.2rem);
+          letter-spacing: -0.055em;
+          line-height: 0.93;
         }
 
         @media (max-width: 850px) {

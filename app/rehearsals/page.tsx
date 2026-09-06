@@ -108,60 +108,31 @@ export default function RehearsalsPage() {
       </section>
 
       <section
-        className={`${styles.collection} ${styles.primaryCollection} ${styles.rehearsalsCollection}`}
+        className={`${styles.collection} ${styles.primaryCollection} ${styles.rehearsalsCollection} ${styles.editorialCollection}`}
         id="rehearsals"
       >
         <RehearsalGallery
           images={rehearsalImages}
-          openingFeatureClassName={
-            styles.rehearsalOpeningFeature
+          featuredIndices={[]}
+          galleryClassName={
+            styles.editorialGallery
           }
-          productionListClassName={
-            styles.productionList
+          galleryItemClassName={
+            styles.editorialGalleryItem
           }
-          productionFeatureClassName={
-            styles.productionFeature
-          }
-          imageFrameClassName={
-            styles.productionImageFrame
+          featuredClassName={
+            styles.editorialGalleryFeatured
           }
           imageClassName={
-            styles.productionImage
+            styles.editorialGalleryImage
           }
         />
 
-        <header
-          className={`${styles.collectionHeader} ${styles.rehearsalEditorialHeader}`}
-        >
-          <p
-            className={
-              styles.collectionNumber
-            }
-          >
-            02
-          </p>
-
-          <div
-            className={
-              styles.collectionHeadingCopy
-            }
-          >
-            <h2>
-              Inside the rehearsal room.
-            </h2>
-
-            <p>
-              Before an audience arrives,
-              performers, directors and creative
-              teams test ideas, discover
-              relationships and shape the rhythm
-              and character of a production.
-            </p>
-          </div>
-        </header>
       </section>
 
-      <section className={styles.archiveCta}>
+      <section
+        className={`${styles.archiveCta} ${styles.compactArchiveCta}`}
+      >
         <p className={styles.eyebrow}>
           Explore further
         </p>

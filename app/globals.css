@@ -557,7 +557,7 @@ a {
 }
 
 .homepage-work {
-  padding: clamp(5.5rem, 8vw, 8rem) 6vw clamp(6rem, 9vw, 9rem);
+  padding: 2rem 6vw clamp(6rem, 9vw, 9rem);
   background: #11100f;
   color: #f2eee6;
 }
@@ -567,17 +567,17 @@ a {
   grid-template-columns: minmax(10rem, 0.4fr) minmax(0, 1fr);
   gap: 4rem;
   align-items: start;
-  margin-bottom: clamp(3.5rem, 6vw, 6rem);
+  margin-bottom: 2rem;
 }
 
 .homepage-work-heading h2 {
-  max-width: 52rem;
+  max-width: 38rem;
   margin: 0;
   font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
-  font-size: clamp(2.8rem, 5.5vw, 6rem);
+  font-size: clamp(2.4rem, 3.6vw, 4rem);
   font-weight: 400;
-  letter-spacing: -0.06em;
-  line-height: 0.92;
+  letter-spacing: -0.055em;
+  line-height: 0.94;
 }
 
 .homepage-work-grid {

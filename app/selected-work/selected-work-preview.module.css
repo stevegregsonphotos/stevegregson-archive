@@ -369,3 +369,10 @@
     transform: none;
   }
 }
+
+/* Align desktop Selected Work intro with public hero rhythm */
+@media (min-width: 901px) {
+  .introduction {
+    transform: translateY(0);
+  }
+}

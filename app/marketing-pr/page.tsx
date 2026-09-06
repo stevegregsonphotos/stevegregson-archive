@@ -107,59 +107,31 @@ export default function MarketingPrPage() {
       </section>
 
       <section
-        className={`${styles.collection} ${styles.primaryCollection} ${styles.rehearsalsCollection}`}
+        className={`${styles.collection} ${styles.primaryCollection} ${styles.rehearsalsCollection} ${styles.editorialCollection}`}
         id="marketing-pr"
       >
         <MarketingPrGallery
           images={campaignImages}
-          openingFeatureClassName={
-            styles.rehearsalOpeningFeature
+          featuredIndices={[]}
+          galleryClassName={
+            styles.editorialGallery
           }
-          productionListClassName={
-            styles.productionList
+          galleryItemClassName={
+            styles.editorialGalleryItem
           }
-          productionFeatureClassName={
-            styles.productionFeature
-          }
-          imageFrameClassName={
-            styles.productionImageFrame
+          featuredClassName={
+            styles.editorialGalleryFeatured
           }
           imageClassName={
-            styles.productionImage
+            styles.editorialGalleryImage
           }
         />
 
-        <header
-          className={`${styles.collectionHeader} ${styles.rehearsalEditorialHeader}`}
-        >
-          <p
-            className={
-              styles.collectionNumber
-            }
-          >
-            03
-          </p>
-
-          <div
-            className={
-              styles.collectionHeadingCopy
-            }
-          >
-            <h2>
-              Made for an audience.
-            </h2>
-
-            <p>
-              Distinctive campaign, press and
-              publicity imagery created to give
-              productions a clear visual identity
-              across print, press and digital media.
-            </p>
-          </div>
-        </header>
       </section>
 
-      <section className={styles.archiveCta}>
+      <section
+        className={`${styles.archiveCta} ${styles.compactArchiveCta}`}
+      >
         <p className={styles.eyebrow}>
           Explore further
         </p>

@@ -59,7 +59,10 @@ export default function ArchivePage() {
         }
 
         .archive-intro {
-          padding: 2rem 0 5.5rem;
+          position: relative;
+          top: -4rem;
+          margin-bottom: -4rem;
+          padding: 0 0 2.5rem;
           border-bottom: 1px solid
             rgba(242, 238, 230, 0.06);
         }
@@ -75,13 +78,13 @@ export default function ArchivePage() {
 
         .archive-intro h1 {
           max-width: 12.5ch;
-          margin: 2rem 0 0;
+          margin: 0.9rem 0 0;
           font-family:
             "Iowan Old Style",
             "Palatino Linotype",
             Georgia,
             serif;
-          font-size: clamp(4rem, 6.7vw, 7.2rem);
+          font-size: clamp(2.8rem, 3.6vw, 4.3rem);
           font-weight: 400;
           letter-spacing: -0.058em;
           line-height: 0.92;
@@ -90,10 +93,10 @@ export default function ArchivePage() {
 
         .archive-lead {
           max-width: 40rem;
-          margin: 3rem 0 0;
+          margin: 0.9rem 0 0;
           color: rgba(242, 238, 230, 0.62);
-          font-size: 1rem;
-          line-height: 1.8;
+          font-size: 0.82rem;
+          line-height: 1.6;
           text-wrap: pretty;
         }
 

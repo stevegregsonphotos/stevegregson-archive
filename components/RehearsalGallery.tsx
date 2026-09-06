@@ -1,6 +1,5 @@
 "use client";
 
-import type { CSSProperties } from "react";
 import Image from "next/image";
 import { useState } from "react";
 
@@ -15,103 +14,75 @@ type RehearsalImage = {
 
 type RehearsalGalleryProps = {
   images: RehearsalImage[];
-  openingFeatureClassName: string;
-  productionListClassName: string;
-  productionFeatureClassName: string;
-  imageFrameClassName: string;
+  featuredIndices: number[];
+  galleryClassName: string;
+  galleryItemClassName: string;
+  featuredClassName: string;
   imageClassName: string;
 };
 
-function imageFrameStyle(
-  image: RehearsalImage,
-): CSSProperties {
-  return {
-    aspectRatio: `${image.width} / ${image.height}`,
-  };
-}
-
 export default function RehearsalGallery({
   images,
-  openingFeatureClassName,
-  productionListClassName,
-  productionFeatureClassName,
-  imageFrameClassName,
+  featuredIndices,
+  galleryClassName,
+  galleryItemClassName,
+  featuredClassName,
   imageClassName,
 }: RehearsalGalleryProps) {
-  const [viewerIndex, setViewerIndex] = useState<
-    number | null
-  >(null);
+  const [viewerIndex, setViewerIndex] = useState<number | null>(null);
 
-  const openingImage = images[0];
-  const galleryImages = images.slice(1);
+  const featured = new Set(featuredIndices);
 
   const viewerImages = images.map((image) => ({
     src: `/images/selected-work/rehearsal/${image.filename}`,
     alt: image.alt,
   }));
 
+  if (images.length === 0) {
+    return (
+      <p>No photographs have been added to this collection yet.</p>
+    );
+  }
+
   return (
     <>
-      {openingImage ? (
-        <article className={openingFeatureClassName}>
-          <button
-            type="button"
-            className="selected-work-image-button"
-            onClick={() => setViewerIndex(0)}
-            aria-label="Open rehearsal photograph 1 fullscreen"
-          >
-            <div
-              className={imageFrameClassName}
-              style={imageFrameStyle(openingImage)}
-            >
-              <Image
-                src={`/images/selected-work/rehearsal/${openingImage.filename}`}
-                alt={openingImage.alt}
-                fill
-                sizes="(max-width: 900px) calc(100vw - 2.8rem), 88vw"
-                className={imageClassName}
-                priority
-              />
-            </div>
-          </button>
-        </article>
-      ) : null}
+      <div className={galleryClassName}>
+        {images.map((image, index) => {
+          const isFeatured = featured.has(index);
 
-      {images.length === 0 ? (
-        <p>
-          No photographs have been added to this collection
-          yet.
-        </p>
-      ) : galleryImages.length === 0 ? null : (
-        <div className={productionListClassName}>
-          {galleryImages.map((image, index) => (
-            <article
-              className={productionFeatureClassName}
-              key={`rehearsal-${image.filename}`}
+          return (
+            <figure
+              className={
+                isFeatured
+                  ? `${galleryItemClassName} ${featuredClassName}`
+                  : galleryItemClassName
+              }
+              key={image.filename}
             >
               <button
                 type="button"
                 className="selected-work-image-button"
-                onClick={() => setViewerIndex(index + 1)}
-                aria-label={`Open rehearsal photograph ${index + 2} fullscreen`}
+                onClick={() => setViewerIndex(index)}
+                aria-label={`Open rehearsal photograph ${index + 1} fullscreen`}
               >
-                <div
-                  className={imageFrameClassName}
-                  style={imageFrameStyle(image)}
-                >
-                  <Image
-                    src={`/images/selected-work/rehearsal/${image.filename}`}
-                    alt={image.alt}
-                    fill
-                    sizes="(max-width: 900px) calc(100vw - 2.8rem), 88vw"
-                    className={imageClassName}
-                  />
-                </div>
+                <Image
+                  src={`/images/selected-work/rehearsal/${image.filename}`}
+                  alt={image.alt}
+                  width={image.width}
+                  height={image.height}
+                  sizes={
+                    isFeatured
+                      ? "(max-width: 760px) 100vw, 94vw"
+                      : "(max-width: 760px) 100vw, 46vw"
+                  }
+                  className={imageClassName}
+                  priority={index === 0}
+                />
               </button>
-            </article>
-          ))}
-        </div>
-      )}
+            </figure>
+          );
+        })}
+      </div>
 
       <ImageViewer
         images={viewerImages}
