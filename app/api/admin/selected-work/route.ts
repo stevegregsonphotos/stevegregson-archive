@@ -1,3 +1,8 @@
+import {
+  createUnauthorizedResponse,
+  isBackstageRequestAuthenticated,
+} from "@/lib/backstage-auth";
+
 import { randomUUID } from "node:crypto";
 
 import {
@@ -592,7 +597,11 @@ async function rollbackRenames(
  * Load
  */
 
-export async function GET() {
+export async function GET(request: Request) {
+  if (!isBackstageRequestAuthenticated(request)) {
+    return createUnauthorizedResponse();
+  }
+
   try {
     const data =
       await readData();
@@ -627,6 +636,10 @@ export async function GET() {
 export async function POST(
   request: Request,
 ) {
+  if (!isBackstageRequestAuthenticated(request)) {
+    return createUnauthorizedResponse();
+  }
+
   try {
     const formData =
       await request.formData();
@@ -894,6 +907,10 @@ export async function POST(
 export async function PUT(
   request: Request,
 ) {
+  if (!isBackstageRequestAuthenticated(request)) {
+    return createUnauthorizedResponse();
+  }
+
   try {
     const body =
   (await request.json()) as {
@@ -1328,6 +1345,10 @@ const applyFilenameChanges =
 export async function DELETE(
   request: Request,
 ) {
+  if (!isBackstageRequestAuthenticated(request)) {
+    return createUnauthorizedResponse();
+  }
+
   try {
     const body =
       (await request.json()) as {

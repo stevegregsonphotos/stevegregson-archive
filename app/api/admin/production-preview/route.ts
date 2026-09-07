@@ -1,3 +1,8 @@
+import {
+  createUnauthorizedResponse,
+  isBackstageRequestAuthenticated,
+} from "@/lib/backstage-auth";
+
 import JSZip from "jszip";
 import sharp from "sharp";
 
@@ -815,6 +820,10 @@ function curateImages(images: PreviewImage[]) {
 }
 
 export async function POST(request: Request) {
+  if (!isBackstageRequestAuthenticated(request)) {
+    return createUnauthorizedResponse();
+  }
+
   try {
     const formData = await request.formData();
     const upload = formData.get(

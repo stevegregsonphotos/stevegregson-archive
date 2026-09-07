@@ -1,4 +1,9 @@
 import {
+  createUnauthorizedResponse,
+  isBackstageRequestAuthenticated,
+} from "@/lib/backstage-auth";
+
+import {
   deleteProofingImage,
 } from "../../../../../lib/proofing/image-storage";
 
@@ -23,6 +28,10 @@ type DeleteImageRequest = {
 export async function POST(
   request: NextRequest,
 ) {
+  if (!isBackstageRequestAuthenticated(request)) {
+    return createUnauthorizedResponse();
+  }
+
   let payload: DeleteImageRequest;
 
   try {

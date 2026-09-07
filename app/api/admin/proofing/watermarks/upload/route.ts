@@ -1,3 +1,8 @@
+import {
+  createUnauthorizedResponse,
+  isBackstageRequestAuthenticated,
+} from "@/lib/backstage-auth";
+
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 
@@ -27,6 +32,10 @@ function safeName(value: string) {
 }
 
 export async function POST(request: Request) {
+  if (!isBackstageRequestAuthenticated(request)) {
+    return createUnauthorizedResponse();
+  }
+
   try {
     const formData = await request.formData();
 

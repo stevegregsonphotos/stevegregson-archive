@@ -1,4 +1,9 @@
 import {
+  createUnauthorizedResponse,
+  isBackstageRequestAuthenticated,
+} from "@/lib/backstage-auth";
+
+import {
   NextRequest,
   NextResponse,
 } from "next/server";
@@ -20,6 +25,10 @@ type PresentationRequest = {
 export async function POST(
   request: NextRequest,
 ) {
+  if (!isBackstageRequestAuthenticated(request)) {
+    return createUnauthorizedResponse();
+  }
+
   let payload: PresentationRequest;
 
   try {

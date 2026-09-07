@@ -1,9 +1,18 @@
+import {
+  createUnauthorizedResponse,
+  isBackstageRequestAuthenticated,
+} from "@/lib/backstage-auth";
+
 import OpenAI from "openai";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function POST() {
+export async function POST(request: Request) {
+  if (!isBackstageRequestAuthenticated(request)) {
+    return createUnauthorizedResponse();
+  }
+
   const apiKey = process.env.OPENAI_API_KEY?.trim();
   const model =
     process.env.OPENAI_VISION_MODEL?.trim() || "gpt-5";

@@ -1,3 +1,8 @@
+import {
+  createUnauthorizedResponse,
+  isBackstageRequestAuthenticated,
+} from "@/lib/backstage-auth";
+
 import { randomUUID } from "node:crypto";
 
 import { NextResponse } from "next/server";
@@ -15,6 +20,10 @@ function clean(value: unknown) {
 }
 
 export async function POST(request: Request) {
+  if (!isBackstageRequestAuthenticated(request)) {
+    return createUnauthorizedResponse();
+  }
+
   try {
     const body = await request.json();
 

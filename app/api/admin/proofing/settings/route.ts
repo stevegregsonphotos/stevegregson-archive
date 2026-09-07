@@ -1,3 +1,8 @@
+import {
+  createUnauthorizedResponse,
+  isBackstageRequestAuthenticated,
+} from "@/lib/backstage-auth";
+
 import { randomUUID } from "node:crypto";
 
 import {
@@ -42,6 +47,10 @@ const validWatermarkPositions: ProofingWatermarkPosition[] =
   ];
 
 export async function POST(request: Request) {
+  if (!isBackstageRequestAuthenticated(request)) {
+    return createUnauthorizedResponse();
+  }
+
   const body = await request.json();
 
   const galleryId = String(

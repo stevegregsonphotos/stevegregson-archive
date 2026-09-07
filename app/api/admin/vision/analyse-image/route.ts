@@ -1,3 +1,8 @@
+import {
+  createUnauthorizedResponse,
+  isBackstageRequestAuthenticated,
+} from "@/lib/backstage-auth";
+
 import OpenAI from "openai";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
@@ -423,6 +428,10 @@ async function loadSelectedWorkContext(
 }
 
 export async function POST(request: Request) {
+  if (!isBackstageRequestAuthenticated(request)) {
+    return createUnauthorizedResponse();
+  }
+
   try {
     const body =
       (await request.json()) as AnalyseImageRequest;

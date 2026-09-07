@@ -1,4 +1,9 @@
 import {
+  createUnauthorizedResponse,
+  isBackstageRequestAuthenticated,
+} from "@/lib/backstage-auth";
+
+import {
   getProofingImage,
 } from "../../../../../lib/proofing/image-storage";
 
@@ -20,6 +25,10 @@ function isSafeSegment(value: string) {
 }
 
 export async function GET(request: NextRequest) {
+  if (!isBackstageRequestAuthenticated(request)) {
+    return createUnauthorizedResponse();
+  }
+
   const galleryId =
     request.nextUrl.searchParams.get("galleryId")?.trim() ?? "";
 

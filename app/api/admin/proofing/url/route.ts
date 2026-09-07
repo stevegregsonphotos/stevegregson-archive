@@ -1,3 +1,8 @@
+import {
+  createUnauthorizedResponse,
+  isBackstageRequestAuthenticated,
+} from "@/lib/backstage-auth";
+
 import { NextResponse } from "next/server";
 
 import {
@@ -14,6 +19,10 @@ function normaliseSlug(value: string) {
 }
 
 export async function POST(request: Request) {
+  if (!isBackstageRequestAuthenticated(request)) {
+    return createUnauthorizedResponse();
+  }
+
   const body = await request.json();
 
   const galleryId = String(

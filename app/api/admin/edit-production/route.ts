@@ -1,3 +1,8 @@
+import {
+  createUnauthorizedResponse,
+  isBackstageRequestAuthenticated,
+} from "@/lib/backstage-auth";
+
 import { readFile, writeFile } from "node:fs/promises";
 import {
   createCipheriv,
@@ -316,6 +321,10 @@ function parseImages(value: unknown) {
 }
 
 export async function GET(request: Request) {
+  if (!isBackstageRequestAuthenticated(request)) {
+    return createUnauthorizedResponse();
+  }
+
   try {
     const url = new URL(request.url);
     const slug = url.searchParams.get("slug");
@@ -374,6 +383,10 @@ return Response.json({
 }
 
 export async function POST(request: Request) {
+  if (!isBackstageRequestAuthenticated(request)) {
+    return createUnauthorizedResponse();
+  }
+
   try {
     const body = (await request.json()) as UpdateRequest;
 

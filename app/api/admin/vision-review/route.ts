@@ -1,3 +1,8 @@
+import {
+  createUnauthorizedResponse,
+  isBackstageRequestAuthenticated,
+} from "@/lib/backstage-auth";
+
 import OpenAI from "openai";
 
 import { openai } from "@/lib/vision/client";
@@ -32,6 +37,10 @@ function createPrompt(
 }
 
 export async function POST(req: Request) {
+  if (!isBackstageRequestAuthenticated(req)) {
+    return createUnauthorizedResponse();
+  }
+
   try {
     const body =
       (await req.json()) as VisionReviewRequest;

@@ -1,3 +1,8 @@
+import {
+  createUnauthorizedResponse,
+  isBackstageRequestAuthenticated,
+} from "@/lib/backstage-auth";
+
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -32,7 +37,11 @@ async function readSettings(): Promise<PublishingSettings> {
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  if (!isBackstageRequestAuthenticated(request)) {
+    return createUnauthorizedResponse();
+  }
+
   return Response.json({
     ok: true,
     settings: await readSettings(),
@@ -40,6 +49,10 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  if (!isBackstageRequestAuthenticated(request)) {
+    return createUnauthorizedResponse();
+  }
+
   try {
     const body = (await request.json()) as unknown;
 

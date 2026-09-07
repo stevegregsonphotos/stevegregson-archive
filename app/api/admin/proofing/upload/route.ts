@@ -1,4 +1,9 @@
 import {
+  createUnauthorizedResponse,
+  isBackstageRequestAuthenticated,
+} from "@/lib/backstage-auth";
+
+import {
   deleteProofingImage,
   putProofingImage,
 } from "../../../../../lib/proofing/image-storage";
@@ -19,6 +24,10 @@ function safeFilename(filename: string) {
 }
 
 export async function POST(request: Request) {
+  if (!isBackstageRequestAuthenticated(request)) {
+    return createUnauthorizedResponse();
+  }
+
   try {
     const formData = await request.formData();
 

@@ -1,3 +1,8 @@
+import {
+  createUnauthorizedResponse,
+  isBackstageRequestAuthenticated,
+} from "@/lib/backstage-auth";
+
 import { randomUUID } from "node:crypto";
 import {
   access,
@@ -466,6 +471,10 @@ async function publishArchiveImage(
 export async function POST(
   request: Request,
 ) {
+  if (!isBackstageRequestAuthenticated(request)) {
+    return createUnauthorizedResponse();
+  }
+
   let stagingRoot: string | null =
     null;
 
