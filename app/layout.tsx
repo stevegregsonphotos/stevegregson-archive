@@ -41,12 +41,21 @@ export const metadata: Metadata = {
     title: "Steve Gregson | London Theatre Photographer",
     description:
       "Production, rehearsal, backstage, marketing and PR photography for theatre and the performing arts.",
+    images: [
+      {
+        url: "/images/homepage-hero.jpg",
+        width: 2048,
+        height: 1365,
+        alt: "Theatre production photography by Steve Gregson",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "Steve Gregson | London Theatre Photographer",
     description:
       "Production, rehearsal, backstage, marketing and PR photography for theatre and the performing arts.",
+    images: ["/images/homepage-hero.jpg"],
   },
 };
 
