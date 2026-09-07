@@ -51,6 +51,28 @@ a {
   color: var(--background);
 }
 
+/* Skip link */
+
+.skip-link {
+  position: fixed;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 2000;
+  transform: translateY(-200%);
+  border: 1px solid #c7a369;
+  padding: 0.7rem 0.9rem;
+  background: #11100f;
+  color: #f2eee6;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
 /* Header */
 
 .site-header {
