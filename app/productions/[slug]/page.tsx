@@ -241,6 +241,32 @@ export default async function ProductionPage({
         acquireLicensePage:
           "https://www.stevegregson.com/contact",
       },
+      {
+        "@type": "BreadcrumbList",
+        "@id": `${productionUrl}#breadcrumb`,
+        itemListElement: [
+          {
+            "@type": "ListItem",
+            position: 1,
+            name: "Home",
+            item:
+              "https://www.stevegregson.com/",
+          },
+          {
+            "@type": "ListItem",
+            position: 2,
+            name: "Archive",
+            item:
+              "https://www.stevegregson.com/archive",
+          },
+          {
+            "@type": "ListItem",
+            position: 3,
+            name: production.title,
+            item: productionUrl,
+          },
+        ],
+      },
     ],
   };
 
