@@ -113,7 +113,7 @@
 
 .documentSidebar > p {
   margin: 0 0 1.5rem;
-  color: rgba(17, 16, 15, 0.38);
+  color: rgba(17, 16, 15, 0.62);
   font-size: 0.5rem;
   font-weight: 700;
   letter-spacing: 0.14em;
@@ -127,7 +127,7 @@
 
 .documentSidebar a {
   padding: 0.6rem 0;
-  color: rgba(17, 16, 15, 0.48);
+  color: rgba(17, 16, 15, 0.62);
   font-size: 0.61rem;
   line-height: 1.4;
   text-decoration: none;
@@ -187,7 +187,7 @@
 
 .sectionHeader span {
   padding-top: 0.65rem;
-  color: #9c7848;
+  color: #795a2f;
   font-size: 0.52rem;
   font-weight: 700;
   letter-spacing: 0.14em;
@@ -241,7 +241,7 @@
 }
 
 .sectionContent a {
-  color: #9c7848;
+  color: #795a2f;
   text-decoration-thickness: 1px;
   text-underline-offset: 0.18em;
 }
@@ -298,7 +298,7 @@
 }
 
 .documentFooter span {
-  color: rgba(17, 16, 15, 0.5);
+  color: rgba(17, 16, 15, 0.62);
   font-size: 0.54rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -318,7 +318,7 @@
 
 .sidebarGroup > p {
   margin: 0 0 0.45rem;
-  color: #9c7848;
+  color: #795a2f;
   font-size: 0.48rem;
   font-weight: 700;
   letter-spacing: 0.14em;
@@ -366,7 +366,7 @@
 
 .callout > p {
   margin: 0 0 1rem;
-  color: #9c7848;
+  color: #795a2f;
   font-size: 0.5rem;
   font-weight: 700;
   letter-spacing: 0.14em;
@@ -441,11 +441,11 @@
 
 .relatedPolicies a:hover {
   padding-left: 0.5rem;
-  color: #9c7848;
+  color: #795a2f;
 }
 
 .relatedPolicies a > span:last-child {
-  color: #9c7848;
+  color: #795a2f;
 }
 @media (max-width: 900px) {
   .heroLayout {
