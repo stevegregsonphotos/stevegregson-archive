@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 
+import {
+  isContactRateLimited,
+  recordContactSubmission,
+} from "../../../lib/contact-rate-limit";
+
 export const runtime = "nodejs";
 
 function readField(
@@ -25,6 +30,24 @@ function escapeHtml(value: string) {
 
 export async function POST(request: Request) {
   try {
+    if (
+      await isContactRateLimited(request)
+    ) {
+      return NextResponse.json(
+        {
+          ok: false,
+          message:
+            "Too many enquiries have been sent. Please try again later.",
+        },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": "3600",
+          },
+        },
+      );
+    }
+
     const apiKey =
       process.env.RESEND_API_KEY;
 
@@ -424,6 +447,10 @@ export async function POST(request: Request) {
         { status: 500 },
       );
     }
+
+    await recordContactSubmission(
+      request,
+    );
 
     return NextResponse.json({
       ok: true,
