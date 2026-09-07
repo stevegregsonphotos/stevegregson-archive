@@ -5,8 +5,10 @@ import RelatedPolicies from "../RelatedPolicies";
 import styles from "../policy-document.module.css";
 
 export const metadata: Metadata = {
-  title:
-    "Accessibility Statement | Steve Gregson Photography",
+  title: "Accessibility Statement",
+  alternates: {
+    canonical: "/policies/accessibility",
+  },
   description:
     "Our commitment to accessible design and inclusive access across the Steve Gregson Photography website and archive.",
 };

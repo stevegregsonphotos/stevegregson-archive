@@ -2,7 +2,10 @@ import type { Metadata } from "next";
 import ContactForm from "./ContactForm";
 
 export const metadata: Metadata = {
-  title: "Contact | Steve Gregson",
+  title: "Contact",
+  alternates: {
+    canonical: "/contact",
+  },
   description:
     "Get in touch about theatre, production, rehearsal, portrait and performing arts photography with London photographer Steve Gregson.",
 };

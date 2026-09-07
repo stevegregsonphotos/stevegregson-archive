@@ -600,6 +600,18 @@ export default function ProductionUpload() {
 
     setVisionReview(data.review);
 
+    if (data.review.editorialSummary?.trim()) {
+      setProductionFields((current) =>
+        current.description.trim()
+          ? current
+          : {
+              ...current,
+              description:
+                data.review.editorialSummary.trim(),
+            },
+      );
+    }
+
     const suggestedHero =
       curatedImages.find(
         (image) =>
@@ -891,6 +903,16 @@ setMetadataComplete(false);
       },
     ].filter((credit) => credit.name);
 
+    const description =
+      productionFields.description.trim();
+
+    if (!description) {
+      alert(
+        "Add a production description before publishing.",
+      );
+      return;
+    }
+
     const genericAlt = `${productionFields.title.trim()} at ${productionFields.venue.trim()}, photographed by Steve Gregson`;
 
     const productionData = {
@@ -899,9 +921,8 @@ setMetadataComplete(false);
       venue: productionFields.venue.trim(),
       month,
       year,
-      description:
-        productionFields.description.trim(),
-            hero: {
+      description,
+      hero: {
         filepath: selectedHero.filepath,
         filename:
           selectedHero.aiFilename ||

@@ -17,13 +17,90 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Steve Gregson",
-  description: "The Steve Gregson Archive",
+  metadataBase: new URL("https://www.stevegregson.com"),
+  title: {
+    default: "Steve Gregson | London Theatre Photographer",
+    template: "%s | Steve Gregson",
+  },
+  description:
+    "London theatre photographer Steve Gregson creates production, rehearsal, backstage, marketing and PR photography for theatres, producers and performing arts organisations across the UK and internationally.",
+  applicationName: "Steve Gregson Photography",
+  authors: [
+    {
+      name: "Steve Gregson",
+      url: "https://www.stevegregson.com",
+    },
+  ],
+  creator: "Steve Gregson",
+  publisher: "Steve Gregson",
+  category: "Photography",
+  openGraph: {
+    type: "website",
+    locale: "en_GB",
+    siteName: "Steve Gregson",
+    title: "Steve Gregson | London Theatre Photographer",
+    description:
+      "Production, rehearsal, backstage, marketing and PR photography for theatre and the performing arts.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Steve Gregson | London Theatre Photographer",
+    description:
+      "Production, rehearsal, backstage, marketing and PR photography for theatre and the performing arts.",
+  },
 };
 
 type RootLayoutProps = Readonly<{
   children: React.ReactNode;
 }>;
+
+const structuredData = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": "https://www.stevegregson.com/#website",
+      url: "https://www.stevegregson.com/",
+      name: "Steve Gregson Photography",
+      description:
+        "Theatre and performance photography by London photographer Steve Gregson.",
+      inLanguage: "en-GB",
+      publisher: {
+        "@id": "https://www.stevegregson.com/#steve-gregson",
+      },
+    },
+    {
+      "@type": "Person",
+      "@id": "https://www.stevegregson.com/#steve-gregson",
+      name: "Steve Gregson",
+      url: "https://www.stevegregson.com/",
+      image:
+        "https://www.stevegregson.com/images/portrait/steve-gregson.jpg",
+      jobTitle: "Theatre Photographer",
+      description:
+        "London-based theatre and performing arts photographer specialising in production, rehearsal, backstage, marketing, PR and portrait photography.",
+      homeLocation: {
+        "@type": "Place",
+        name: "London, United Kingdom",
+      },
+      knowsAbout: [
+        "Theatre photography",
+        "Production photography",
+        "Rehearsal photography",
+        "Backstage photography",
+        "Performing arts photography",
+        "Marketing photography",
+        "PR photography",
+        "Portrait photography",
+      ],
+      email: "mailto:info@stevegregson.com",
+      telephone: "+447729435728",
+      mainEntityOfPage: {
+        "@id": "https://www.stevegregson.com/#website",
+      },
+    },
+  ],
+};
 
 export default function RootLayout({
   children,
@@ -33,6 +110,15 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(structuredData).replace(
+              /</g,
+              "\\u003c",
+            ),
+          }}
+        />
         <PublicChrome>
           {children}
         </PublicChrome>

@@ -6,7 +6,7 @@ export const theTempest: Production = {
   "venue": "Jermyn Street Theatre",
   "month": 11,
   "year": 2021,
-  "description": "",
+  "description": "Theatre photography for The Tempest at Jermyn Street Theatre, directed by Tom Littler.",
   "hero": "hero-thetempest-full-290.webp",
   "heroAlt": "The Tempest at Jermyn Street Theatre, photographed by Steve Gregson",
   "heroBlurDataURL": "data:image/webp;base64,UklGRtoAAABXRUJQVlA4IM4AAADQBACdASoYABAAPvVkqk4qpaOiMAgBUB6JYgCxC8GJqi2O3bV8VVUfSEQNr0S/kAD+z1/m+ZEJWaMlVtUFo5ah+URyWoTqNLWT8c8uW594wdAGkBXbWioRiyZ4dbrSq0SjWsUHBnrWql7G7OdWWFFdQ+biO7BYGH5/MMfGqKEdRMxdB8qO0J81ey3UdpznDYcOid5a8agPzbcSSf6i5Q5h95c2IlDRLcGUGMOuFxcb6DY1mqsgtvpmgXQXOPCEu7c3r1eu9o+QrQVR/b0AAA==",

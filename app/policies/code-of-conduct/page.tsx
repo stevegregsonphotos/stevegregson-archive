@@ -5,8 +5,10 @@ import RelatedPolicies from "../RelatedPolicies";
 import styles from "../policy-document.module.css";
 
 export const metadata: Metadata = {
-  title:
-    "Code of Conduct | Steve Gregson Photography",
+  title: "Code of Conduct",
+  alternates: {
+    canonical: "/policies/code-of-conduct",
+  },
   description:
     "Professional conduct and safeguarding responsibilities for adults working with children on behalf of Steve Gregson Photography.",
 };

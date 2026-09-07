@@ -76,12 +76,59 @@ export async function generateMetadata({
   if (!production) {
     return {
       title: "Production not found",
+      robots: {
+        index: false,
+        follow: false,
+      },
     };
   }
 
+  if (production.access === "password") {
+    return {
+      title: production.title,
+      robots: {
+        index: false,
+        follow: false,
+        noarchive: true,
+      },
+    };
+  }
+
+  const canonicalPath =
+    `/productions/${production.slug}`;
+
+  const title =
+    `${production.title} — Theatre Photography at ${production.venue}`;
+
+  const description =
+    `${production.title} at ${production.venue} (${production.year}), photographed by London theatre photographer Steve Gregson. ${production.description}`;
+
   return {
-    title: `${production.title} | Steve Gregson`,
-    description: `${production.title} at ${production.venue}, photographed by Steve Gregson.`,
+    title,
+    description,
+    alternates: {
+      canonical: canonicalPath,
+    },
+    openGraph: {
+      type: "article",
+      url: canonicalPath,
+      title,
+      description,
+      images: [
+        {
+          url: `/images/productions/${production.slug}/${production.hero}`,
+          alt: production.heroAlt,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [
+        `/images/productions/${production.slug}/${production.hero}`,
+      ],
+    },
   };
 }
 
@@ -144,8 +191,71 @@ export default async function ProductionPage({
   const imageDirectory =
     `/images/productions/${production.slug}`;
 
+  const productionUrl =
+    `https://www.stevegregson.com/productions/${production.slug}`;
+
+  const heroImageUrl =
+    `https://www.stevegregson.com${imageDirectory}/${production.hero}`;
+
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "CreativeWork",
+        "@id": `${productionUrl}#production`,
+        url: productionUrl,
+        name: production.title,
+        ...(production.description
+          ? {
+              description:
+                production.description,
+            }
+          : {}),
+        dateCreated: String(production.year),
+        locationCreated: {
+          "@type": "Place",
+          name: production.venue,
+        },
+        creator: {
+          "@id":
+            "https://www.stevegregson.com/#steve-gregson",
+        },
+        image: {
+          "@id": `${productionUrl}#hero-image`,
+        },
+        mainEntityOfPage: productionUrl,
+      },
+      {
+        "@type": "ImageObject",
+        "@id": `${productionUrl}#hero-image`,
+        contentUrl: heroImageUrl,
+        url: heroImageUrl,
+        caption: production.heroAlt,
+        creator: {
+          "@id":
+            "https://www.stevegregson.com/#steve-gregson",
+        },
+        creditText: "Steve Gregson",
+        copyrightNotice:
+          "© Steve Gregson Photography",
+        acquireLicensePage:
+          "https://www.stevegregson.com/contact",
+      },
+    ],
+  };
+
   return (
-    <main className="curated-production-page">
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(
+            structuredData,
+          ).replace(/</g, "\\u003c"),
+        }}
+      />
+
+      <main className="curated-production-page">
       <section className="curated-production-hero">
         <Image
           src={`${imageDirectory}/${production.hero}`}
@@ -303,5 +413,6 @@ export default async function ProductionPage({
         </section>
       )}
     </main>
+    </>
   );
 }

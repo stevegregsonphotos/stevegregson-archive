@@ -5,9 +5,12 @@ import { productions } from "../../lib/productions";
 import ArchiveExplorer from "./ArchiveExplorer";
 
 export const metadata: Metadata = {
-  title: "Archive | Steve Gregson",
+  title: "Theatre Photography Archive",
   description:
-    "A curated archive of theatre productions photographed by Steve Gregson.",
+    "Explore Steve Gregson's theatre photography archive, documenting productions, performances, venues and creative teams across London and the performing arts.",
+  alternates: {
+    canonical: "/archive",
+  },
 };
 
 export default function ArchivePage() {

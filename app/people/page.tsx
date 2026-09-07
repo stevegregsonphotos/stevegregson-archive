@@ -5,7 +5,10 @@ import { getDirectoryUrl } from "../../lib/directory";
 import { productions } from "../../lib/productions";
 
 export const metadata: Metadata = {
-  title: "People | Steve Gregson",
+  title: "People in the Theatre Archive",
+  alternates: {
+    canonical: "/people",
+  },
   description:
     "Directors, designers and theatre-makers represented throughout the Steve Gregson photography archive.",
 };

@@ -7,7 +7,7 @@ export const theCode: Production = {
   year: 2025,
 
   description:
-    "Dress rehearsal photography created for the production’s publicity campaign.",
+    "Dress rehearsal photography for The Code at Southwark Elephant Playhouse, directed by Christopher Renshaw and created for the production’s publicity campaign.",
 
   hero: "A1_00042-Edit.jpg",
 

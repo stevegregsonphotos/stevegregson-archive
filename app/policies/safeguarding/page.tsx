@@ -5,8 +5,10 @@ import RelatedPolicies from "../RelatedPolicies";
 import styles from "../policy-document.module.css";
 
 export const metadata: Metadata = {
-  title:
-    "Safeguarding Policy | Steve Gregson Photography",
+  title: "Safeguarding Policy",
+  alternates: {
+    canonical: "/policies/safeguarding",
+  },
   description:
     "Safeguarding and child protection principles for Steve Gregson Photography when working with children and young people.",
 };

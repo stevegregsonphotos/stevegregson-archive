@@ -5,7 +5,7 @@ export const aSherlockCarol: Production = {
   "title": "A Sherlock Carol",
   "venue": "Marylebone Theatre",
   "year": 2025,
-  "description": "Dress rehearsal photography for publicity campaign",
+  "description": "Dress rehearsal photography for A Sherlock Carol at Marylebone Theatre, created for the production’s publicity campaign.",
   "hero": "SherlockCarolDress-1532-Edit-Edit-Edit.jpg",
   "heroAlt": "A Sherlock Carol at Marylebone Theatre, photographed by Steve Gregson",
   "credits": [

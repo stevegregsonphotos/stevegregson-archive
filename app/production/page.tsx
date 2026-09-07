@@ -7,8 +7,10 @@ import selectedWorkData from "../../content/selected-work.json";
 import styles from "../selected-work/selected-work.module.css";
 
 export const metadata: Metadata = {
-  title:
-    "Production Photography | Steve Gregson Theatre Photographer",
+  title: "Production Photography",
+  alternates: {
+    canonical: "/production",
+  },
   description:
     "A curated selection of production photography by London theatre photographer Steve Gregson, celebrating the energy, atmosphere and artistry of live performance.",
 };

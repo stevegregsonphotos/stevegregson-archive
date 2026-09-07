@@ -6,7 +6,7 @@ export const foal: Production = {
   "venue": "Finborough Theatre",
   "month": 5,
   "year": 2026,
-  "description": "Written by Titas Halder",
+  "description": "Theatre photography for FOAL at Finborough Theatre, written by Titas Halder and directed by Annie Kershaw.",
   "hero": "hero-foal-1134.webp",
   "heroAlt": "FOAL at Finborough Theatre, photographed by Steve Gregson",
   "heroBlurDataURL": "data:image/webp;base64,UklGRqQAAABXRUJQVlA4IJgAAAAQBACdASoYABAAPvVkq04qpaQiMAgBUB6JZgCdAYwcnATnNFM7c6MpAAD+8rSNoEd3rVn/cuzf+SrehjOPIaLo9ITxw7w/pC1sFgulxXO31+yCKRH18yGd8xOgfvBeyGE+8vf7CG8clB9yKaoVeFJo419Ucn7/G1i0JW/N+Xqd2jP7bmUYZirTxU+lQ7ThX4K4Jn2+UAAAAA==",

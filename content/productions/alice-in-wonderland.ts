@@ -7,7 +7,7 @@ export const aliceInWonderland: Production = {
   year: 2025,
 
   description:
-    "Dress rehearsal photography created for the production’s publicity campaign.",
+    "Dress rehearsal photography for Alice in Wonderland at Marylebone Theatre, created for the production’s publicity campaign.",
 
   hero: "A1_02664-Edit-Edit.jpg",
 
@@ -18,7 +18,7 @@ export const aliceInWonderland: Production = {
     { role: "Venue", name: "Marylebone Theatre" },
     { role: "Director", name: "Nate Bertone" },
     { role: "Associate Director", name: "Eva Sampson" },
-    { role: "Lighting", name: "Jack Weir" },
+    { role: "Lighting Design", name: "Jack Weir" },
     {
       role: "Set & Costume Design",
       name: "Nate Bertone",

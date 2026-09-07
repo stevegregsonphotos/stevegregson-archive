@@ -3,7 +3,10 @@ import Image from "next/image";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "About | Steve Gregson",
+  title: "About",
+  alternates: {
+    canonical: "/about",
+  },
   description:
     "Steve Gregson is a London-based theatre and performing arts photographer.",
 };

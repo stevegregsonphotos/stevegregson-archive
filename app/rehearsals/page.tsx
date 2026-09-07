@@ -7,8 +7,10 @@ import selectedWorkData from "../../content/selected-work.json";
 import styles from "../selected-work/selected-work.module.css";
 
 export const metadata: Metadata = {
-  title:
-    "Rehearsal Photography | Steve Gregson Theatre Photographer",
+  title: "Rehearsal & Backstage Photography",
+  alternates: {
+    canonical: "/rehearsals",
+  },
   description:
     "Rehearsal and backstage photography by London theatre photographer Steve Gregson, documenting collaboration, experimentation and the making of theatre.",
 };
@@ -151,7 +153,7 @@ export default function RehearsalsPage() {
           </p>
 
           <Link
-            href="/selected-work"
+            href="/production"
             className={styles.archiveLink}
           >
             View production photography

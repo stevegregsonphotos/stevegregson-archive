@@ -231,7 +231,8 @@ function validatePayload(
     !Number.isInteger(payload.year) ||
     payload.year < 1800 ||
     payload.year > 2200 ||
-    typeof payload.description !== "string"
+    typeof payload.description !== "string" ||
+    !payload.description.trim()
   ) {
     return false;
   }

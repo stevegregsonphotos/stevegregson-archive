@@ -5,8 +5,10 @@ import RelatedPolicies from "../RelatedPolicies";
 import styles from "../policy-document.module.css";
 
 export const metadata: Metadata = {
-  title:
-    "AI & Content Statement | Steve Gregson Photography",
+  title: "AI & Content Statement",
+  alternates: {
+    canonical: "/policies/ai-content",
+  },
   description:
     "How Steve Gregson Photography uses artificial intelligence while protecting photographic authenticity, copyright and creative integrity.",
 };

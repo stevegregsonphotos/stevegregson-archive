@@ -5,7 +5,10 @@ import RelatedPolicies from "../RelatedPolicies";
 import styles from "../policy-document.module.css";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy | Steve Gregson Photography",
+  title: "Privacy Policy",
+  alternates: {
+    canonical: "/policies/privacy",
+  },
   description:
     "How Steve Gregson Photography collects, uses, stores and protects personal information.",
 };

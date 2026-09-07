@@ -7,7 +7,7 @@ export const extraordinaryWomen: Production = {
   year: 2025,
 
   description:
-    "Dress rehearsal photography created for the production’s publicity campaign.",
+    "Dress rehearsal photography for Extraordinary Women at Jermyn Street Theatre, directed by Paul Foster and created for the production’s publicity campaign.",
 
   hero: "A9_03345.jpg",
 

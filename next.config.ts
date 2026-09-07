@@ -2,6 +2,38 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
     allowedDevOrigins: ["192.168.86.59"],
+
+  async headers() {
+    const noIndexHeaders = [
+      {
+        key: "X-Robots-Tag",
+        value: "noindex, nofollow, noarchive",
+      },
+    ];
+
+    const headers = [
+      {
+        source: "/admin/:path*",
+        headers: noIndexHeaders,
+      },
+      {
+        source: "/proofing/:path*",
+        headers: noIndexHeaders,
+      },
+    ];
+
+    if (
+      process.env.VERCEL_ENV &&
+      process.env.VERCEL_ENV !== "production"
+    ) {
+      headers.push({
+        source: "/:path*",
+        headers: noIndexHeaders,
+      });
+    }
+
+    return headers;
+  },
   experimental: {
     proxyClientMaxBodySize: "500mb",
   },

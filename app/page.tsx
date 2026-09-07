@@ -1,7 +1,17 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 
 import selectedWorkData from "../content/selected-work.json";
+
+export const metadata: Metadata = {
+  title: "London Theatre Photographer",
+  description:
+    "London theatre photographer Steve Gregson creates production, rehearsal, backstage, marketing and PR photography for theatres, producers and performing arts organisations.",
+  alternates: {
+    canonical: "/",
+  },
+};
 
 const trustedBy = [
   "Young Vic",
@@ -66,7 +76,7 @@ const workCards: Array<{
   },
   {
     id: "campaign",
-    title: "Campaign & PR",
+    title: "Marketing & PR",
     description:
       "Distinctive imagery created for press, publicity and production marketing.",
     href: "/selected-work#campaign",
@@ -115,12 +125,12 @@ export default function Home() {
               Production Photography
             </Link>
 
-            <Link href="/selected-work#campaign">
-              Campaign &amp; PR
-            </Link>
-
             <Link href="/selected-work#rehearsal">
               Rehearsal &amp; Backstage
+            </Link>
+
+            <Link href="/selected-work#campaign">
+              Marketing &amp; PR
             </Link>
           </div>
 

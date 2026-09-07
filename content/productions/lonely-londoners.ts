@@ -6,7 +6,7 @@ export const lonelyLondoners: Production = {
   venue: "Kiln Theatre",
   year: 2025,
   description:
-    "Dress rehearsal photography created for the production’s publicity campaign.",
+    "Dress rehearsal photography for The Lonely Londoners at Kiln Theatre, created for the production’s publicity campaign.",
   hero: "ProofOnly-LonelyLondoners-113-Enhanced-NR-Edit.jpg",
   heroAlt:
     "The Lonely Londoners at Kiln Theatre, photographed by Steve Gregson",

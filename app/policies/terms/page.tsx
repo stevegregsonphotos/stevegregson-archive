@@ -5,8 +5,10 @@ import RelatedPolicies from "../RelatedPolicies";
 import styles from "../policy-document.module.css";
 
 export const metadata: Metadata = {
-  title:
-    "Terms & Conditions | Steve Gregson Photography",
+  title: "Terms & Conditions",
+  alternates: {
+    canonical: "/policies/terms",
+  },
   description:
     "Terms governing photographic commissions, copyright, licensing, payment and reproduction of photographs by Steve Gregson Photography.",
 };

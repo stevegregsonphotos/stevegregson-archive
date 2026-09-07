@@ -7,7 +7,7 @@ export const footfallsAndRockaby: Production = {
   year: 2024,
 
   description:
-    "Dress rehearsal photography created for the production’s publicity campaign.",
+    "Dress rehearsal photography for Footfalls and Rockaby at Jermyn Street Theatre, directed by Richard Beecham and created for the production’s publicity campaign.",
 
   hero: "Footfalls&Rockaby-6.jpg",
 

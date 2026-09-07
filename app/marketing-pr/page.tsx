@@ -7,8 +7,10 @@ import selectedWorkData from "../../content/selected-work.json";
 import styles from "../selected-work/selected-work.module.css";
 
 export const metadata: Metadata = {
-  title:
-    "Marketing and PR Photography | Steve Gregson Theatre Photographer",
+  title: "Marketing & PR Photography",
+  alternates: {
+    canonical: "/marketing-pr",
+  },
   description:
     "Marketing, campaign and publicity photography by London theatre photographer Steve Gregson, created for theatres, producers and audiences.",
 };
@@ -150,7 +152,7 @@ export default function MarketingPrPage() {
           </p>
 
           <Link
-            href="/selected-work"
+            href="/production"
             className={styles.archiveLink}
           >
             View production photography

@@ -4,7 +4,10 @@ import Link from "next/link";
 import styles from "./policies.module.css";
 
 export const metadata: Metadata = {
-  title: "Policies | Steve Gregson Photography",
+  title: "Policies",
+  alternates: {
+    canonical: "/policies",
+  },
   description:
     "Professional, legal, accessibility and safeguarding policies for Steve Gregson Photography.",
 };

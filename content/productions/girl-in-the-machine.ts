@@ -7,7 +7,7 @@ export const girlInTheMachine: Production = {
   year: 2025,
 
   description:
-    "Dress rehearsal photography created for the production’s publicity campaign.",
+    "Dress rehearsal photography for Girl In The Machine at Young Vic Theatre, created for the production’s publicity campaign.",
 
   hero: "hero.jpg",
 

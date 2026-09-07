@@ -7,10 +7,12 @@ import selectedWorkData from "../../content/selected-work.json";
 import styles from "./selected-work-preview.module.css";
 
 export const metadata: Metadata = {
-  title:
-    "Selected Work Preview | Steve Gregson Theatre Photographer",
+  title: "Selected Work",
   description:
-    "A preview of selected production photography by London theatre photographer Steve Gregson.",
+    "Selected theatre photography by London photographer Steve Gregson, including production, rehearsal, backstage, marketing and PR photography.",
+  alternates: {
+    canonical: "/selected-work",
+  },
 };
 
 type SelectedWorkImage = {

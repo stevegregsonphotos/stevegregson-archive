@@ -7,7 +7,7 @@ export const godspell: Production = {
   year: 2026,
 
   description:
-    "Dress rehearsal photography created for the production’s publicity campaign.",
+    "Dress rehearsal photography for Godspell at Mountview, created for the production’s publicity campaign.",
 
   hero: "GODSPELL-Genesis-58.jpg",
 
