@@ -1124,7 +1124,7 @@ a {
 
 .curated-production-count {
   margin: 1.75rem 0 0;
-  color: rgba(242, 238, 230, 0.42);
+  color: rgba(242, 238, 230, 0.5);
   font-size: 0.5rem;
   font-weight: 700;
   letter-spacing: 0.16em;
@@ -1179,7 +1179,7 @@ a {
 
 .curated-production-shot figcaption {
   margin-top: 0.65rem;
-  color: rgba(242, 238, 230, 0.42);
+  color: rgba(242, 238, 230, 0.5);
   font-size: 0.48rem;
   letter-spacing: 0.16em;
   text-align: right;

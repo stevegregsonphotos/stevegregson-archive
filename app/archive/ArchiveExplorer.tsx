@@ -388,7 +388,7 @@ export default function ArchiveExplorer({
         }
 
         .archive-results-header span {
-          color: rgba(242, 238, 230, 0.46);
+          color: rgba(242, 238, 230, 0.5);
           font-weight: 600;
         }
 
@@ -466,7 +466,7 @@ export default function ArchiveExplorer({
           flex-wrap: wrap;
           gap: 0.35rem;
           margin: 0 0 1rem;
-          color: rgba(242, 238, 230, 0.46);
+          color: rgba(242, 238, 230, 0.5);
           font-size: 0.52rem;
           font-weight: 700;
           letter-spacing: 0.14em;

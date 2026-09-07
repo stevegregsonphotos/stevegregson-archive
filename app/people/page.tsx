@@ -345,7 +345,7 @@ export default function PeoplePage() {
         }
 
         .person-productions small {
-          color: rgba(242, 238, 230, 0.38);
+          color: rgba(242, 238, 230, 0.5);
           font: inherit;
         }
 
