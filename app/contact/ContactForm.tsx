@@ -2,6 +2,8 @@
 
 import {
   FormEvent,
+  useEffect,
+  useRef,
   useState,
 } from "react";
 
@@ -19,6 +21,14 @@ export default function ContactForm() {
 
   const [error, setError] =
     useState<string | null>(null);
+
+  const successRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (submitted) {
+      successRef.current?.focus();
+    }
+  }, [submitted]);
 
   async function handleSubmit(
     event: FormEvent<HTMLFormElement>,
@@ -65,7 +75,13 @@ export default function ContactForm() {
 
   if (submitted) {
     return (
-      <div className="contact-success">
+      <div
+        ref={successRef}
+        className="contact-success"
+        role="status"
+        aria-live="polite"
+        tabIndex={-1}
+      >
         <p className="contact-success-eyebrow">
           Enquiry sent
         </p>
