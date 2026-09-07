@@ -34,6 +34,52 @@ const nextConfig: NextConfig = {
 
     return headers;
   },
+
+  async redirects() {
+    return [
+      {
+        source: "/theatrephotographer",
+        destination: "/production",
+        permanent: true,
+      },
+      {
+        source: "/backstage",
+        destination: "/rehearsals",
+        permanent: true,
+      },
+      {
+        source: "/dancephotography",
+        destination: "/production",
+        permanent: true,
+      },
+      {
+        source: "/theatregif",
+        destination: "/production",
+        permanent: true,
+      },
+      {
+        source: "/mens-headshots",
+        destination: "/contact",
+        permanent: true,
+      },
+      {
+        source: "/womens-headshots",
+        destination: "/contact",
+        permanent: true,
+      },
+      {
+        source: "/my-approach",
+        destination: "/contact",
+        permanent: true,
+      },
+      {
+        source: "/packages2022",
+        destination: "/contact",
+        permanent: true,
+      },
+    ];
+  },
+
   experimental: {
     proxyClientMaxBodySize: "500mb",
   },
