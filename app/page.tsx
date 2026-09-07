@@ -5,7 +5,9 @@ import Link from "next/link";
 import selectedWorkData from "../content/selected-work.json";
 
 export const metadata: Metadata = {
-  title: "London Theatre Photographer",
+  title: {
+    absolute: "London Theatre Photographer | Steve Gregson",
+  },
   description:
     "London theatre photographer Steve Gregson creates production, rehearsal, backstage, marketing and PR photography for theatres, producers and performing arts organisations.",
   alternates: {
