@@ -139,6 +139,12 @@ export default function ProofingGalleryClient({
   const viewerTouchStartY =
     useRef<number | null>(null);
 
+  const viewerDialogRef =
+    useRef<HTMLDivElement | null>(null);
+
+  const viewerPreviousFocusRef =
+    useRef<HTMLElement | null>(null);
+
   function handleViewerTouchStart(
     event: React.TouchEvent<HTMLDivElement>,
   ) {
@@ -218,6 +224,12 @@ export default function ProofingGalleryClient({
       ),
     );
 
+  const introDialogRef =
+    useRef<HTMLElement | null>(null);
+
+  const firstGalleryControlRef =
+    useRef<HTMLButtonElement | null>(null);
+
   useEffect(() => {
     if (!showIntroOnLoad) {
       return;
@@ -232,6 +244,75 @@ export default function ProofingGalleryClient({
     );
   }, [gallerySlug, showIntroOnLoad]);
 
+  useEffect(() => {
+    if (!showIntro || !introMessage) {
+      return;
+    }
+
+    const introButton =
+      introDialogRef.current?.querySelector<HTMLButtonElement>(
+        "button",
+      );
+
+    introButton?.focus();
+
+    function handleIntroKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setShowIntro(false);
+        return;
+      }
+
+      if (
+        event.key === "Tab" &&
+        introDialogRef.current
+      ) {
+        const focusableElements = Array.from(
+          introDialogRef.current.querySelectorAll<HTMLElement>(
+            'button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])',
+          ),
+        );
+
+        if (focusableElements.length > 0) {
+          const firstElement = focusableElements[0];
+          const lastElement =
+            focusableElements[focusableElements.length - 1];
+
+          if (
+            event.shiftKey &&
+            document.activeElement === firstElement
+          ) {
+            event.preventDefault();
+            lastElement.focus();
+          } else if (
+            !event.shiftKey &&
+            document.activeElement === lastElement
+          ) {
+            event.preventDefault();
+            firstElement.focus();
+          }
+        }
+      }
+    }
+
+    window.addEventListener(
+      "keydown",
+      handleIntroKeyDown,
+    );
+
+    return () => {
+      window.removeEventListener(
+        "keydown",
+        handleIntroKeyDown,
+      );
+
+      window.setTimeout(() => {
+        firstGalleryControlRef.current?.focus();
+      }, 0);
+    };
+  }, [showIntro, introMessage]);
+
+
   const isViewerOpen =
     viewerImageId !== null;
 
@@ -239,6 +320,18 @@ export default function ProofingGalleryClient({
     if (!isViewerOpen) {
       return;
     }
+
+    viewerPreviousFocusRef.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+
+    const closeButton =
+      viewerDialogRef.current?.querySelector<HTMLButtonElement>(
+        ".proofing-viewer-close",
+      );
+
+    closeButton?.focus();
 
     const scrollY = window.scrollY;
 
@@ -267,6 +360,7 @@ export default function ProofingGalleryClient({
         previousBodyOverflow;
 
       window.scrollTo(0, scrollY);
+      viewerPreviousFocusRef.current?.focus();
     };
   }, [isViewerOpen]);
 
@@ -317,6 +411,7 @@ export default function ProofingGalleryClient({
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
+        event.preventDefault();
         setViewerImageId(null);
         return;
       }
@@ -325,6 +420,7 @@ export default function ProofingGalleryClient({
         event.key === "ArrowLeft" &&
         previousViewerImage
       ) {
+        event.preventDefault();
         setViewerImageId(previousViewerImage.id);
         return;
       }
@@ -333,7 +429,40 @@ export default function ProofingGalleryClient({
         event.key === "ArrowRight" &&
         nextViewerImage
       ) {
+        event.preventDefault();
         setViewerImageId(nextViewerImage.id);
+        return;
+      }
+
+      if (
+        event.key === "Tab" &&
+        viewerDialogRef.current
+      ) {
+        const focusableElements = Array.from(
+          viewerDialogRef.current.querySelectorAll<HTMLElement>(
+            'button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])',
+          ),
+        );
+
+        if (focusableElements.length > 0) {
+          const firstElement = focusableElements[0];
+          const lastElement =
+            focusableElements[focusableElements.length - 1];
+
+          if (
+            event.shiftKey &&
+            document.activeElement === firstElement
+          ) {
+            event.preventDefault();
+            lastElement.focus();
+          } else if (
+            !event.shiftKey &&
+            document.activeElement === lastElement
+          ) {
+            event.preventDefault();
+            firstElement.focus();
+          }
+        }
       }
     }
 
@@ -556,6 +685,7 @@ export default function ProofingGalleryClient({
           role="presentation"
         >
           <section
+            ref={introDialogRef}
             className="proofing-intro-modal"
             role="dialog"
             aria-modal="true"
@@ -585,6 +715,7 @@ export default function ProofingGalleryClient({
       <div className="proofing-client-selection-toolbar">
   <div className="proofing-client-view-controls">
     <button
+      ref={firstGalleryControlRef}
       type="button"
       className={
         view === "all"
@@ -896,6 +1027,7 @@ export default function ProofingGalleryClient({
       )}
         {viewerImage ? (
           <div
+            ref={viewerDialogRef}
             className="proofing-viewer"
             role="dialog"
             aria-modal="true"
