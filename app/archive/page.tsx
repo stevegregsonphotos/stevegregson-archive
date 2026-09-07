@@ -125,8 +125,8 @@ export default function ArchivePage() {
 
         @media (max-width: 900px) {
   .archive-page {
-  padding: 0 1.4rem 5rem;
-}
+    padding: 8.5rem 1.4rem 5rem;
+  }
 
   .archive-search-position {
     justify-content: stretch;
@@ -135,8 +135,10 @@ export default function ArchivePage() {
   }
 
   .archive-intro {
-  padding: 0 0 1.5rem;
-}
+    top: 0;
+    margin-bottom: 0;
+    padding: 0 0 1.5rem;
+  }
 
   .archive-intro h1 {
     max-width: 21rem;
