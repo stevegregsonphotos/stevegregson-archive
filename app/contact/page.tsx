@@ -27,7 +27,7 @@ export const metadata: Metadata = {
     images: ["/images/homepage-hero.jpg"],
   },
   description:
-    "Get in touch about theatre, production, rehearsal, portrait and performing arts photography with London photographer Steve Gregson.",
+    "Get in touch about theatre, production, rehearsal and performing arts photography with London photographer Steve Gregson.",
 };
 
 export default function ContactPage() {

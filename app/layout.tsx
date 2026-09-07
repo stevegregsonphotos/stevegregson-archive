@@ -87,7 +87,7 @@ const structuredData = {
         "https://www.stevegregson.com/images/portrait/steve-gregson.jpg",
       jobTitle: "Theatre Photographer",
       description:
-        "London-based theatre and performing arts photographer specialising in production, rehearsal, backstage, marketing, PR and portrait photography.",
+        "London-based theatre and performing arts photographer specialising in production, rehearsal, backstage, marketing and PR photography.",
       homeLocation: {
         "@type": "Place",
         name: "London, United Kingdom",
@@ -100,7 +100,6 @@ const structuredData = {
         "Performing arts photography",
         "Marketing photography",
         "PR photography",
-        "Portrait photography",
       ],
       email: "mailto:info@stevegregson.com",
       telephone: "+447729435728",

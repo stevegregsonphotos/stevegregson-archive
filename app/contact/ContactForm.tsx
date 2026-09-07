@@ -172,10 +172,6 @@ export default function ContactForm() {
             Rehearsal photography
           </option>
 
-          <option value="Portraits / headshots">
-            Portraits / headshots
-          </option>
-
           <option value="Campaign / publicity">
             Campaign / publicity
           </option>

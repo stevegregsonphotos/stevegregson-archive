@@ -71,7 +71,7 @@ export default function AboutPage() {
           <div className="copy">
             <p>
               I am a London-based theatre photographer specialising in
-              production, live arts and portrait photography. My work is
+              production and live arts photography. My work is
               shaped by almost two decades inside theatre and the performing
               arts, alongside more than a decade working in education.
             </p>
