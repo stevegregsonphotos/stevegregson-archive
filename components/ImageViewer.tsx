@@ -32,6 +32,8 @@ export default function ImageViewer({
 
   const touchStartX = useRef<number | null>(null);
   const controlsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+  const previouslyFocusedElement = useRef<HTMLElement | null>(null);
 
   const isOpen = initialIndex !== null && images.length > 0;
 
@@ -91,19 +93,73 @@ export default function ImageViewer({
     if (!isOpen) return;
 
     const previousOverflow = document.body.style.overflow;
+
+    previouslyFocusedElement.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+
     document.body.style.overflow = "hidden";
+
+    const closeButton =
+      dialogRef.current?.querySelector<HTMLButtonElement>(
+        ".image-viewer-close",
+      );
+
+    closeButton?.focus();
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      previouslyFocusedElement.current?.focus();
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
+        event.preventDefault();
         onClose();
+        return;
       }
 
       if (event.key === "ArrowRight") {
+        event.preventDefault();
         showNext();
       }
 
       if (event.key === "ArrowLeft") {
+        event.preventDefault();
         showPrevious();
+      }
+
+      if (event.key === "Tab" && dialogRef.current) {
+        const focusableElements = Array.from(
+          dialogRef.current.querySelectorAll<HTMLElement>(
+            'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+          ),
+        );
+
+        if (focusableElements.length > 0) {
+          const firstElement = focusableElements[0];
+          const lastElement =
+            focusableElements[focusableElements.length - 1];
+
+          if (
+            event.shiftKey &&
+            document.activeElement === firstElement
+          ) {
+            event.preventDefault();
+            lastElement.focus();
+          } else if (
+            !event.shiftKey &&
+            document.activeElement === lastElement
+          ) {
+            event.preventDefault();
+            firstElement.focus();
+          }
+        }
       }
 
       showControls();
@@ -113,7 +169,6 @@ export default function ImageViewer({
     window.addEventListener("mousemove", showControls);
 
     return () => {
-      document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("mousemove", showControls);
 
@@ -186,6 +241,7 @@ export default function ImageViewer({
 
   return (
     <div
+      ref={dialogRef}
       className="image-viewer"
       role="dialog"
       aria-modal="true"

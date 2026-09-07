@@ -1340,6 +1340,11 @@ a {
   cursor: zoom-in;
 }
 
+.curated-production-image-button:focus-visible {
+  outline: 1px solid #c7a369;
+  outline-offset: 0.35rem;
+}
+
 .curated-production-image-button img {
   transition:
     transform 500ms ease,
@@ -1595,6 +1600,11 @@ a {
   background: transparent;
   color: inherit;
   cursor: zoom-in;
+}
+
+.selected-work-image-button:focus-visible {
+  outline: 1px solid #c7a369;
+  outline-offset: 0.35rem;
 }
 
 @media (hover: hover) and (pointer: fine) {
