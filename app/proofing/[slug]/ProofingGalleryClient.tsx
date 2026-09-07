@@ -722,6 +722,7 @@ export default function ProofingGalleryClient({
           ? "is-active"
           : ""
       }
+      aria-pressed={view === "all"}
       onClick={() => changeView("all")}
     >
       Photos
@@ -735,6 +736,7 @@ export default function ProofingGalleryClient({
           ? "is-active"
           : ""
       }
+      aria-pressed={view === "favourites"}
       onClick={() =>
         changeView("favourites")
       }
