@@ -6,9 +6,9 @@
 
 .hero {
   padding:
-    clamp(8rem, 12vw, 12rem)
+    clamp(6rem, 8vw, 8rem)
     4vw
-    clamp(4rem, 7vw, 7rem);
+    clamp(3rem, 4.5vw, 4.5rem);
   background: #11100f;
   color: #f2eee6;
 }
@@ -17,7 +17,7 @@
   display: inline-flex;
   gap: 0.75rem;
   align-items: center;
-  margin-bottom: clamp(4rem, 7vw, 7rem);
+  margin-bottom: clamp(2.5rem, 4vw, 4rem);
   color: rgba(242, 238, 230, 0.58);
   font-size: 0.54rem;
   font-weight: 700;
@@ -47,7 +47,7 @@
     minmax(17rem, 0.55fr);
   gap: clamp(3rem, 8vw, 9rem);
   align-items: end;
-  margin-top: 2rem;
+  margin-top: 1.25rem;
 }
 
 .hero h1 {
@@ -57,7 +57,7 @@
     "Palatino Linotype",
     Georgia,
     serif;
-  font-size: clamp(4rem, 9vw, 9.5rem);
+  font-size: clamp(3.4rem, 6.5vw, 7rem);
   font-weight: 400;
   line-height: 0.88;
   letter-spacing: -0.05em;
