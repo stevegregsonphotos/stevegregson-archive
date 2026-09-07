@@ -271,6 +271,13 @@ export default function ContactPage() {
           border-bottom-color: #c7a369;
         }
 
+        .contact-field input:focus-visible,
+        .contact-field select:focus-visible,
+        .contact-field textarea:focus-visible {
+          outline: 1px solid #c7a369;
+          outline-offset: 0.35rem;
+        }
+
         .contact-field input::placeholder,
         .contact-field textarea::placeholder {
           color: rgba(242, 238, 230, 0.3);
