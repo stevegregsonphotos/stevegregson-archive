@@ -24,9 +24,11 @@ export default async function LoginPage({
   const errorMessage =
     error === "invalid"
       ? "The username or password was not recognised."
-      : error === "configuration"
-        ? "Backstage login is not configured correctly. Check the development terminal."
-        : null;
+      : error === "rate_limited"
+        ? "Too many unsuccessful sign-in attempts. Please wait 15 minutes before trying again."
+        : error === "configuration"
+          ? "Backstage login is not configured correctly. Check the development terminal."
+          : null;
 
   return (
     <main className="backstage-login">
