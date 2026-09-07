@@ -11,6 +11,26 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "/production",
   },
+  openGraph: {
+    type: "website",
+    url: "/production",
+    title: "Production Photography | Steve Gregson",
+    description: "A curated selection of production photography by London theatre photographer Steve Gregson, celebrating the energy, atmosphere and artistry of live performance.",
+    images: [
+      {
+        url: "/images/homepage-hero.jpg",
+        width: 2048,
+        height: 1365,
+        alt: "Theatre production photography by Steve Gregson",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Production Photography | Steve Gregson",
+    description: "A curated selection of production photography by London theatre photographer Steve Gregson, celebrating the energy, atmosphere and artistry of live performance.",
+    images: ["/images/homepage-hero.jpg"],
+  },
   description:
     "A curated selection of production photography by London theatre photographer Steve Gregson, celebrating the energy, atmosphere and artistry of live performance.",
 };

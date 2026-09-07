@@ -11,6 +11,26 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "/rehearsals",
   },
+  openGraph: {
+    type: "website",
+    url: "/rehearsals",
+    title: "Rehearsal & Backstage Photography | Steve Gregson",
+    description: "Rehearsal and backstage photography by London theatre photographer Steve Gregson, documenting collaboration, experimentation and the making of theatre.",
+    images: [
+      {
+        url: "/images/homepage-hero.jpg",
+        width: 2048,
+        height: 1365,
+        alt: "Theatre production photography by Steve Gregson",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Rehearsal & Backstage Photography | Steve Gregson",
+    description: "Rehearsal and backstage photography by London theatre photographer Steve Gregson, documenting collaboration, experimentation and the making of theatre.",
+    images: ["/images/homepage-hero.jpg"],
+  },
   description:
     "Rehearsal and backstage photography by London theatre photographer Steve Gregson, documenting collaboration, experimentation and the making of theatre.",
 };

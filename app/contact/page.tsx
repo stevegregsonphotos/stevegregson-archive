@@ -6,6 +6,26 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "/contact",
   },
+  openGraph: {
+    type: "website",
+    url: "/contact",
+    title: "Contact Steve Gregson | Theatre Photographer",
+    description: "Get in touch about theatre, production, rehearsal and performing arts photography with London photographer Steve Gregson.",
+    images: [
+      {
+        url: "/images/homepage-hero.jpg",
+        width: 2048,
+        height: 1365,
+        alt: "Theatre production photography by Steve Gregson",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Contact Steve Gregson | Theatre Photographer",
+    description: "Get in touch about theatre, production, rehearsal and performing arts photography with London photographer Steve Gregson.",
+    images: ["/images/homepage-hero.jpg"],
+  },
   description:
     "Get in touch about theatre, production, rehearsal, portrait and performing arts photography with London photographer Steve Gregson.",
 };
