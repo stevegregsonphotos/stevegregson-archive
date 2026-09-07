@@ -51,7 +51,7 @@ export default function AIContentPage() {
 
             <div>
               <span>Last reviewed</span>
-              <strong>11 August 2026</strong>
+              <strong>7 September 2026</strong>
             </div>
 
             <div>
@@ -118,53 +118,6 @@ export default function AIContentPage() {
     copyright and creative integrity.
   </p>
 </section>
-
-          <PolicySection
-            id="data-protection-law"
-            number="01"
-            title="Data protection law"
-          >
-            <p>
-              Personal information is handled in
-              accordance with applicable UK data
-              protection legislation, including the UK
-              General Data Protection Regulation, the
-              Data Protection Act 2018 and relevant
-              amendments introduced by the Data (Use
-              and Access) Act 2025.
-            </p>
-
-            <p>
-              I aim to ensure that personal information
-              is:
-            </p>
-
-            <ul>
-              <li>
-                used lawfully, fairly and transparently;
-              </li>
-              <li>
-                collected for clear and legitimate
-                purposes;
-              </li>
-              <li>
-                limited to what is reasonably necessary;
-              </li>
-              <li>
-                accurate and kept up to date where
-                appropriate;
-              </li>
-              <li>
-                retained only for as long as reasonably
-                necessary;
-              </li>
-              <li>kept secure; and</li>
-              <li>
-                handled in a way that respects your
-                legal rights.
-              </li>
-            </ul>
-          </PolicySection>
 
           <PolicySection
   id="principle"
@@ -367,10 +320,10 @@ export default function AIContentPage() {
             </p>
 
             <div>
-              <span>Version 1.0</span>
-              <span>11 August 2026</span>
+              <span>Version 1.1</span>
+              <span>7 September 2026</span>
               <span>
-                Complete review and modernisation
+                Content and implementation review
               </span>
             </div>
           </footer>
