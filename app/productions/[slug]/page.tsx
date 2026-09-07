@@ -1,7 +1,3 @@
-import {
-  createHash,
-  timingSafeEqual,
-} from "node:crypto";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import Image from "next/image";
@@ -11,6 +7,11 @@ import { notFound } from "next/navigation";
 import ProductionAccessGate from "../../../components/ProductionAccessGate";
 import { ProductionGallery } from "../../../components/ProductionGallery";
 import { getDirectoryUrl } from "../../../lib/directory";
+import {
+  createProductionAccessToken,
+  productionAccessCookieName,
+  productionAccessTokenMatches,
+} from "../../../lib/production-access";
 import {
   getNextProduction,
   getProduction,
@@ -24,42 +25,6 @@ type ProductionPageProps = {
     slug: string;
   }>;
 };
-
-function createAccessToken(
-  slug: string,
-  passwordHash: string,
-) {
-  return createHash("sha256")
-    .update(
-      `steve-gregson-production-access:${slug}:${passwordHash}`,
-      "utf8",
-    )
-    .digest("hex");
-}
-
-function cookieName(slug: string) {
-  return `sg-production-access-${slug}`;
-}
-
-function safeCompare(
-  first: string,
-  second: string,
-) {
-  const firstBuffer = Buffer.from(first);
-  const secondBuffer = Buffer.from(second);
-
-  if (
-    firstBuffer.length !==
-    secondBuffer.length
-  ) {
-    return false;
-  }
-
-  return timingSafeEqual(
-    firstBuffer,
-    secondBuffer,
-  );
-}
 
 export function generateStaticParams() {
   return productions.map((production) => ({
@@ -145,28 +110,28 @@ export default async function ProductionPage({
   if (
     production.access === "password"
   ) {
-    const passwordHash =
-      production.accessPasswordHash;
+    const encryptedPassword =
+      production.accessPasswordEncrypted;
 
     let hasAccess = false;
 
-    if (passwordHash) {
+    if (encryptedPassword) {
       const cookieStore =
         await cookies();
 
       const storedToken =
         cookieStore.get(
-          cookieName(production.slug),
+          productionAccessCookieName(production.slug),
         )?.value;
 
       if (storedToken) {
         const expectedToken =
-          createAccessToken(
+          createProductionAccessToken(
             production.slug,
-            passwordHash,
+            encryptedPassword,
           );
 
-        hasAccess = safeCompare(
+        hasAccess = productionAccessTokenMatches(
           storedToken,
           expectedToken,
         );

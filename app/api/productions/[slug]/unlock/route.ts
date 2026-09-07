@@ -1,9 +1,10 @@
-import {
-  createHash,
-  timingSafeEqual,
-} from "node:crypto";
 import { cookies } from "next/headers";
 
+import {
+  createProductionAccessToken,
+  productionAccessCookieName,
+  productionPasswordMatches,
+} from "../../../../../lib/production-access";
 import { getProduction } from "../../../../../lib/productions";
 
 export const runtime = "nodejs";
@@ -12,48 +13,6 @@ export const dynamic = "force-dynamic";
 type UnlockPayload = {
   password?: string;
 };
-
-function hashPassword(password: string) {
-  return createHash("sha256")
-    .update(password, "utf8")
-    .digest("hex");
-}
-
-function safeCompare(
-  first: string,
-  second: string,
-) {
-  const firstBuffer = Buffer.from(first);
-  const secondBuffer = Buffer.from(second);
-
-  if (
-    firstBuffer.length !==
-    secondBuffer.length
-  ) {
-    return false;
-  }
-
-  return timingSafeEqual(
-    firstBuffer,
-    secondBuffer,
-  );
-}
-
-function createAccessToken(
-  slug: string,
-  passwordHash: string,
-) {
-  return createHash("sha256")
-    .update(
-      `steve-gregson-production-access:${slug}:${passwordHash}`,
-      "utf8",
-    )
-    .digest("hex");
-}
-
-function cookieName(slug: string) {
-  return `sg-production-access-${slug}`;
-}
 
 export async function POST(
   request: Request,
@@ -89,7 +48,7 @@ export async function POST(
   }
 
   if (
-    !production.accessPasswordHash
+    !production.accessPasswordEncrypted
   ) {
     return Response.json(
       {
@@ -135,13 +94,10 @@ export async function POST(
     );
   }
 
-  const submittedHash =
-    hashPassword(password);
-
   if (
-    !safeCompare(
-      submittedHash,
-      production.accessPasswordHash,
+    !productionPasswordMatches(
+      password,
+      production.accessPasswordEncrypted,
     )
   ) {
     return Response.json(
@@ -158,10 +114,10 @@ export async function POST(
   const cookieStore = await cookies();
 
   cookieStore.set(
-    cookieName(production.slug),
-    createAccessToken(
+    productionAccessCookieName(production.slug),
+    createProductionAccessToken(
       production.slug,
-      production.accessPasswordHash,
+      production.accessPasswordEncrypted,
     ),
     {
       httpOnly: true,

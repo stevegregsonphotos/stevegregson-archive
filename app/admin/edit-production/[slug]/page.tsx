@@ -43,7 +43,6 @@ type Production = {
   hero: string;
   heroAlt: string;
   access?: "public" | "password";
-accessPasswordHash?: string;
 accessPassword?: string;
   credits: ProductionCredit[];
   images: ProductionImage[];

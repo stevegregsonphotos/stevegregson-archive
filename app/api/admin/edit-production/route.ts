@@ -4,12 +4,12 @@ import {
 } from "@/lib/backstage-auth";
 
 import { readFile, writeFile } from "node:fs/promises";
-import {
-  createCipheriv,
-  createDecipheriv,
-  randomBytes,
-} from "node:crypto";
 import path from "node:path";
+
+import {
+  decryptProductionPassword,
+  encryptProductionPassword,
+} from "@/lib/production-access";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -90,70 +90,6 @@ function isSafeFilename(value: string) {
     value !== ".."
   );
 }
-function getPasswordKey() {
-  const value = process.env.PRODUCTION_PASSWORD_KEY;
-
-  if (!value || !/^[a-f0-9]{64}$/i.test(value)) {
-    throw new Error(
-      "PRODUCTION_PASSWORD_KEY is missing or invalid.",
-    );
-  }
-
-  return Buffer.from(value, "hex");
-}
-
-function encryptAccessPassword(password: string) {
-  const iv = randomBytes(12);
-  const cipher = createCipheriv(
-    "aes-256-gcm",
-    getPasswordKey(),
-    iv,
-  );
-
-  const encrypted = Buffer.concat([
-    cipher.update(password, "utf8"),
-    cipher.final(),
-  ]);
-
-  const authTag = cipher.getAuthTag();
-
-  return [
-    iv.toString("hex"),
-    authTag.toString("hex"),
-    encrypted.toString("hex"),
-  ].join(":");
-}
-
-function decryptAccessPassword(value: string) {
-  const [ivHex, authTagHex, encryptedHex] =
-    value.split(":");
-
-  if (!ivHex || !authTagHex || !encryptedHex) {
-    throw new Error(
-      "The stored production password is invalid.",
-    );
-  }
-
-  const decipher = createDecipheriv(
-    "aes-256-gcm",
-    getPasswordKey(),
-    Buffer.from(ivHex, "hex"),
-  );
-
-  decipher.setAuthTag(
-    Buffer.from(authTagHex, "hex"),
-  );
-
-  const decrypted = Buffer.concat([
-    decipher.update(
-      Buffer.from(encryptedHex, "hex"),
-    ),
-    decipher.final(),
-  ]);
-
-  return decrypted.toString("utf8");
-}
-
 function getProductionFile(slug: string) {
   return path.join(
     process.cwd(),
@@ -356,7 +292,7 @@ const responseProduction = {
   accessPassword:
     production.access === "password" &&
     production.accessPasswordEncrypted
-      ? decryptAccessPassword(
+      ? decryptProductionPassword(
           production.accessPasswordEncrypted,
         )
       : "",
@@ -558,7 +494,7 @@ if (body.access !== undefined) {
   if (password) {
     production.access = "password";
     production.accessPasswordEncrypted =
-      encryptAccessPassword(password);
+      encryptProductionPassword(password);
   } else if (
     production.access === "password" &&
     production.accessPasswordEncrypted
@@ -595,7 +531,7 @@ if (body.access !== undefined) {
   accessPassword:
     production.access === "password" &&
     production.accessPasswordEncrypted
-      ? decryptAccessPassword(
+      ? decryptProductionPassword(
           production.accessPasswordEncrypted,
         )
       : "",
