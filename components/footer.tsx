@@ -182,7 +182,7 @@ export default function Footer() {
 
         .site-footer-lower p {
           margin: 0;
-          color: rgba(17, 16, 15, 0.4);
+          color: rgba(17, 16, 15, 0.62);
           font-size: 0.47rem;
           letter-spacing: 0.14em;
           text-transform: uppercase;
@@ -195,7 +195,7 @@ export default function Footer() {
 }
 
 .site-footer-legal a {
-  color: rgba(17, 16, 15, 0.4);
+  color: rgba(17, 16, 15, 0.62);
   font-size: 0.47rem;
   font-weight: 700;
   letter-spacing: 0.14em;
@@ -312,7 +312,7 @@ export default function Footer() {
 }
 
 .site-footer-lower .site-footer-legal a {
-  color: rgba(17, 16, 15, 0.5);
+  color: rgba(17, 16, 15, 0.62);
   font-size: 0.46rem;
   letter-spacing: 0.08em;
   white-space: nowrap;
