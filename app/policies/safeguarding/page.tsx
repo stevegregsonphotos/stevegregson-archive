@@ -388,6 +388,7 @@ function PolicySection({
     <section
       className={styles.section}
       id={id}
+      tabIndex={-1}
     >
       <header className={styles.sectionHeader}>
         <span>{number}</span>
