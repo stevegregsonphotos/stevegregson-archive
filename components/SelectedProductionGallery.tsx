@@ -1,10 +1,16 @@
 "use client";
 
 import type { CSSProperties } from "react";
+import dynamic from "next/dynamic";
 import Image from "next/image";
 import { useState } from "react";
 
-import ImageViewer from "./ImageViewer";
+const ImageViewer = dynamic(
+  () => import("./ImageViewer"),
+  {
+    ssr: false,
+  },
+);
 
 type SelectedProductionImage = {
   filename: string;
@@ -112,11 +118,13 @@ export default function SelectedProductionGallery({
         </div>
       ) : null}
 
-      <ImageViewer
-        images={viewerImages}
-        initialIndex={viewerIndex}
-        onClose={() => setViewerIndex(null)}
-      />
+      {viewerIndex !== null ? (
+        <ImageViewer
+          images={viewerImages}
+          initialIndex={viewerIndex}
+          onClose={() => setViewerIndex(null)}
+        />
+      ) : null}
     </>
   );
 }
