@@ -59,6 +59,19 @@ export default function ArchivePage() {
           them — preserved through photography long after
           the curtain falls.
         </p>
+
+        <div className="archive-progress-note">
+          <p className="archive-progress-title">
+            An archive in progress.
+          </p>
+
+          <p className="archive-progress-copy">
+            Almost two decades of theatre and performance
+            photography are currently being catalogued for
+            this growing archive. New productions and
+            previously unseen work will be added regularly.
+          </p>
+        </div>
       </section>
 
       <ArchiveExplorer
@@ -120,6 +133,33 @@ export default function ArchivePage() {
           color: rgba(242, 238, 230, 0.62);
           font-size: 0.82rem;
           line-height: 1.6;
+          text-wrap: pretty;
+        }
+
+        .archive-progress-note {
+          max-width: 40rem;
+          margin: 1.7rem auto 0;
+          padding-top: 1.2rem;
+          border-top: 1px solid
+            rgba(242, 238, 230, 0.08);
+          text-align: center;
+        }
+
+        .archive-progress-title {
+          margin: 0;
+          color: #c7a369;
+          font-size: 0.62rem;
+          font-weight: 700;
+          letter-spacing: 0.14em;
+          text-transform: uppercase;
+        }
+
+        .archive-progress-copy {
+          max-width: 36rem;
+          margin: 0.55rem auto 0;
+          color: rgba(242, 238, 230, 0.55);
+          font-size: 0.76rem;
+          line-height: 1.65;
           text-wrap: pretty;
         }
 

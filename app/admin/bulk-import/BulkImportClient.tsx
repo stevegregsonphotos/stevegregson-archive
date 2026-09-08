@@ -635,10 +635,6 @@ export default function BulkImportClient({
             issues.push("Venue missing");
           }
 
-          if (!details.description.trim()) {
-            issues.push("Description missing");
-          }
-
           const status: ProductionPreflight["status"] =
             existingProduction
               ? "existing"
@@ -1403,6 +1399,31 @@ export default function BulkImportClient({
       (production) => production.locked,
     ).length;
 
+  const issueCounts =
+    productions
+      .filter(
+        (production) =>
+          production.status === "attention",
+      )
+      .flatMap(
+        (production) => production.issues,
+      )
+      .reduce<Record<string, number>>(
+        (counts, issue) => ({
+          ...counts,
+          [issue]:
+            (counts[issue] ?? 0) + 1,
+        }),
+        {},
+      );
+
+  const sortedIssueCounts =
+    Object.entries(issueCounts).sort(
+      (a, b) =>
+        b[1] - a[1] ||
+        a[0].localeCompare(b[0]),
+    );
+
   return (
     <section
       style={{
@@ -1474,6 +1495,28 @@ export default function BulkImportClient({
               <span>Reading production details…</span>
             ) : null}
           </div>
+
+          {sortedIssueCounts.length > 0 ? (
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: "0.65rem 1.25rem",
+                margin: "-1rem 0 2rem",
+                color:
+                  "rgba(242, 238, 230, 0.55)",
+                fontSize: "0.68rem",
+              }}
+            >
+              {sortedIssueCounts.map(
+                ([issue, count]) => (
+                  <span key={issue}>
+                    {count} × {issue}
+                  </span>
+                ),
+              )}
+            </div>
+          ) : null}
 
           <div
             style={{
