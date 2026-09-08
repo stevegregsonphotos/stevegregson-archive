@@ -158,7 +158,7 @@ export async function sendProofingSubmissionEmails({
 
   const photographerEmailResult =
     await resend.emails.send({
-      from,
+      from: `Steve Gregson Photography - Proofing <${from}>`,
 
       to: photographerEmail,
 
@@ -285,7 +285,7 @@ export async function sendProofingSubmissionEmails({
 
   const clientEmailResult =
     await resend.emails.send({
-      from,
+      from: `Steve Gregson Photography - Proofing <${from}>`,
 
       to: clientEmail,
 

@@ -155,7 +155,7 @@ export async function POST(request: Request) {
 
     const { error } =
       await resend.emails.send({
-        from,
+        from: `Steve Gregson Photography - Contact <${from}>`,
         to: photographerEmail,
         replyTo: email,
         subject: `New enquiry — ${name}`,
