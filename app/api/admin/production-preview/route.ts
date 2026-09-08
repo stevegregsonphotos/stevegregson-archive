@@ -366,11 +366,17 @@ function normaliseLabel(value: string) {
 }
 
 function cleanExtractedValue(value: string) {
-  return value
+  const cleaned = value
     .trim()
     .replace(/\s+\.$/, ".")
     .replace(/\.$/, "")
     .trim();
+
+  if (/^not\s+found$/i.test(cleaned)) {
+    return "";
+  }
+
+  return cleaned;
 }
 
 function rtfToPlainText(rtf: string) {
@@ -511,13 +517,16 @@ function parseLabelledDetails(
   return fields;
 }
 
-async function extractRtfDetails(
+async function extractProductionDetails(
   zip: JSZip,
   detailsFiles: string[],
 ): Promise<ExtractedProductionDetails> {
   const preferredFile =
     detailsFiles.find((filepath) =>
-      /(^|\/)details?\.rtf$/i.test(filepath),
+      /(^|\/)details?\.(?:txt|rtf)$/i.test(filepath),
+    ) ??
+    detailsFiles.find((filepath) =>
+      filepath.toLowerCase().endsWith(".txt"),
     ) ??
     detailsFiles.find((filepath) =>
       filepath.toLowerCase().endsWith(".rtf"),
@@ -542,8 +551,16 @@ async function extractRtfDetails(
     };
   }
 
-  const rawRtf = await entry.async("string");
-  const plainText = rtfToPlainText(rawRtf);
+  const rawText = await entry.async("string");
+
+  const plainText =
+    preferredFile.toLowerCase().endsWith(".rtf")
+      ? rtfToPlainText(rawText)
+      : rawText
+          .split(/\r?\n/)
+          .map((line) => line.trim())
+          .filter(Boolean)
+          .join("\n");
 
   return {
     sourceFile: preferredFile,
@@ -936,7 +953,7 @@ export async function POST(request: Request) {
     );
 
     const extractedDetails =
-      await extractRtfDetails(
+      await extractProductionDetails(
         zip,
         detailsFiles,
       );

@@ -2,6 +2,9 @@ import {
   createUnauthorizedResponse,
   isBackstageRequestAuthenticated,
 } from "@/lib/backstage-auth";
+import {
+  encryptProductionPassword,
+} from "@/lib/production-access";
 
 import { randomUUID } from "node:crypto";
 import {
@@ -78,6 +81,7 @@ type PublishPayload = {
   month: number;
   year: number;
   description: string;
+  access?: "public" | "password";
   hero: {
     filepath: string;
     filename: string;
@@ -145,13 +149,17 @@ function createWebFilename(
 function createExportName(slug: string) {
   const parts = slug.split("-");
 
-  return parts
+  const exportName = parts
     .map((part, index) =>
       index === 0
         ? part
         : `${part.charAt(0).toUpperCase()}${part.slice(1)}`,
     )
     .join("");
+
+  return /^[0-9]/.test(exportName)
+    ? `production${exportName.charAt(0).toUpperCase()}${exportName.slice(1)}`
+    : exportName;
 }
 
 function createRegistrySource(slugs: string[]) {
@@ -237,7 +245,12 @@ function validatePayload(
     payload.year < 1800 ||
     payload.year > 2200 ||
     typeof payload.description !== "string" ||
-    !payload.description.trim()
+    !payload.description.trim() ||
+    (
+      payload.access !== undefined &&
+      payload.access !== "public" &&
+      payload.access !== "password"
+    )
   ) {
     return false;
   }
@@ -324,7 +337,9 @@ function validatePayload(
     new Set(filenames).size ===
     filenames.length
   );
-}function createProductionSource(
+}
+
+function createProductionSource(
   payload: PublishPayload,
   exportName: string,
   heroAsset: PublishedImageAsset,
@@ -337,6 +352,21 @@ function validatePayload(
     ]),
   );
 
+  const access =
+    payload.access ?? "public";
+
+  const defaultLockedPassword =
+    process.env.BULK_IMPORT_SCHOOL_DEFAULT_PASSWORD?.trim();
+
+  if (
+    access === "password" &&
+    !defaultLockedPassword
+  ) {
+    throw new Error(
+      "BULK_IMPORT_SCHOOL_DEFAULT_PASSWORD is not configured.",
+    );
+  }
+
   const production = {
     slug: payload.slug,
     title: payload.title.trim(),
@@ -345,6 +375,15 @@ function validatePayload(
     year: payload.year,
     description:
       payload.description.trim(),
+    access,
+    ...(access === "password"
+      ? {
+          accessPasswordEncrypted:
+            encryptProductionPassword(
+              defaultLockedPassword as string,
+            ),
+        }
+      : {}),
     hero: heroAsset.filename,
     heroAlt: payload.hero.alt.trim(),
     heroBlurDataURL:

@@ -20,9 +20,13 @@ const navigation = [
     href: "/admin/new-production",
   },
   {
-  label: "Productions",
-  href: "/admin/productions",
-},
+    label: "Bulk import",
+    href: "/admin/bulk-import",
+  },
+  {
+    label: "Productions",
+    href: "/admin/productions",
+  },
   {
     label: "Proofing",
     href: "/admin/proofing",
