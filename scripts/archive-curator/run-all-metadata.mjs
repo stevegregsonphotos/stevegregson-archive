@@ -7,6 +7,18 @@ const EXCLUSION_PATH = path.resolve(
   "scripts/archive-curator/excluded-productions.txt",
 );
 
+function normaliseProductionName(value) {
+  return value
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[—–−]/g, "-")
+    .replace(/\s*-\s*/g, "-")
+    .replace(/[^a-zA-Z0-9]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLowerCase();
+}
+
 async function readExclusions() {
   try {
     const text =
@@ -18,7 +30,11 @@ async function readExclusions() {
     return new Set(
       text
         .split(/\r?\n/)
-        .map((value) => value.trim())
+        .map((value) =>
+          normaliseProductionName(
+            value.trim(),
+          ),
+        )
         .filter(Boolean),
     );
   } catch {
@@ -216,7 +232,11 @@ const exclusions =
 const productions =
   allProductions.filter(
     (production) =>
-      !exclusions.has(production),
+      !exclusions.has(
+        normaliseProductionName(
+          production,
+        ),
+      ),
   );
 
 const log =
