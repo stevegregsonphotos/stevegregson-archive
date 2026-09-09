@@ -11,6 +11,8 @@ type ProductionAccessGateProps = {
   title: string;
   venue: string;
   year: number;
+  hero?: string;
+  heroAlt?: string;
 };
 
 type UnlockResponse = {
@@ -23,6 +25,8 @@ export default function ProductionAccessGate({
   title,
   venue,
   year,
+  hero,
+  heroAlt,
 }: ProductionAccessGateProps) {
   const router = useRouter();
 
@@ -88,7 +92,19 @@ export default function ProductionAccessGate({
   }
 
   return (
-    <main className="production-access-page">
+    <main
+      className={`production-access-page${hero ? " production-access-page--with-hero" : ""}`}
+      style={
+        hero
+          ? {
+              backgroundImage: `linear-gradient(rgba(17, 16, 15, 0.68), rgba(17, 16, 15, 0.82)), url("/images/productions/${slug}/${hero}")`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+            }
+          : undefined
+      }
+      aria-label={heroAlt}
+    >
       <section className="production-access-panel">
         <p className="production-access-eyebrow">
           Private gallery

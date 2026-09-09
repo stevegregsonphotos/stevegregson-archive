@@ -59,5 +59,6 @@ export const treasureIsland: Production = {
       "layout": "full"
     }
   ],
-  "accessPasswordEncrypted": "dc02d8dde5d8e80881ff32f3:03ff2eac5dd76e49143c85a08828c190:86cafb92877fb79936b11e979a96"
+  "accessPasswordEncrypted": "e520895feab81918e4f0df17:9707c4a1622da6827831691b56653da8:d5f9a07884a198c4dc1744113dbf",
+  "showHeroWhenLocked": true
 };

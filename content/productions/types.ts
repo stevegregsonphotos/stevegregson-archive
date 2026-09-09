@@ -35,6 +35,7 @@ export type Production = {
   heroBlurDataURL?: string;
 
   access?: "public" | "password";
+  showHeroWhenLocked?: boolean;
     accessPasswordEncrypted?: string;
   credits: ProductionCredit[];
   images: ProductionImage[];

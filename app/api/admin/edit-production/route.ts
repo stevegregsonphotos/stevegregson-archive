@@ -50,6 +50,7 @@ type ProductionData = {
   hero: string;
   heroAlt: string;
   access?: "public" | "password";
+  showHeroWhenLocked?: boolean;
 accessPasswordEncrypted?: string;
   credits: ProductionCredit[];
   images: ProductionImage[];
@@ -63,6 +64,7 @@ type UpdateRequest = {
   year?: unknown;
   description?: unknown;
   access?: unknown;
+  showHeroWhenLocked?: unknown;
 accessPassword?: unknown;
   credits?: unknown;
   images?: unknown;
@@ -515,6 +517,24 @@ if (body.access !== undefined) {
   }
 }
 }
+
+    if (body.showHeroWhenLocked !== undefined) {
+      if (typeof body.showHeroWhenLocked !== "boolean") {
+        return Response.json(
+          {
+            ok: false,
+            message: "The locked hero setting is invalid.",
+          },
+          { status: 400 },
+        );
+      }
+
+      if (body.showHeroWhenLocked) {
+        production.showHeroWhenLocked = true;
+      } else {
+        delete production.showHeroWhenLocked;
+      }
+    }
 
     if (body.credits !== undefined) {
       production.credits = parseCredits(body.credits);

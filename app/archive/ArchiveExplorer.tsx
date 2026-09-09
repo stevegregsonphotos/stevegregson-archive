@@ -24,6 +24,7 @@ type ArchiveProduction = {
   hero: string;
   heroAlt: string;
   access?: "public" | "password";
+  showHeroWhenLocked?: boolean;
   credits: ProductionCredit[];
 };
 
@@ -294,8 +295,18 @@ export default function ArchiveExplorer({
                 >
                   <div className="archive-card-image">
                     {production.access === "password" ? (
-                      <div
-                        className="archive-card-locked-state"
+                      <>
+                        {production.showHeroWhenLocked ? (
+                          <Image
+                            src={`/images/productions/${production.slug}/${production.hero}`}
+                            alt={production.heroAlt}
+                            fill
+                            sizes="(max-width: 700px) calc(100vw - 2.8rem), (max-width: 1100px) 46vw, 29vw"
+                            priority={index < 3}
+                          />
+                        ) : null}
+                        <div
+                        className={`archive-card-locked-state${production.showHeroWhenLocked ? " archive-card-locked-state--with-hero" : ""}`}
                         aria-label="This gallery is locked"
                       >
                         <svg
@@ -321,6 +332,7 @@ export default function ArchiveExplorer({
                           This gallery is not publicly accessible.
                         </p>
                       </div>
+                      </>
                     ) : (
                       <Image
                         src={`/images/productions/${production.slug}/${production.hero}`}
@@ -453,6 +465,15 @@ export default function ArchiveExplorer({
               rgba(22, 21, 20, 0.98)
             );
           text-align: center;
+        }
+
+        .archive-card-locked-state--with-hero {
+          background:
+            linear-gradient(
+              180deg,
+              rgba(17, 16, 15, 0.58),
+              rgba(17, 16, 15, 0.76)
+            );
         }
 
         .archive-card-locked-state svg {

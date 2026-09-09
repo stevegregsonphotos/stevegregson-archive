@@ -143,6 +143,16 @@ export default async function ProductionPage({
         <ProductionAccessGate
           slug={production.slug}
           title={production.title}
+          hero={
+            production.showHeroWhenLocked
+              ? production.hero
+              : undefined
+          }
+          heroAlt={
+            production.showHeroWhenLocked
+              ? production.heroAlt
+              : undefined
+          }
           venue={production.venue}
           year={production.year}
         />

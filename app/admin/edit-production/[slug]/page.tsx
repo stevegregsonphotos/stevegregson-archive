@@ -43,6 +43,7 @@ type Production = {
   hero: string;
   heroAlt: string;
   access?: "public" | "password";
+  showHeroWhenLocked?: boolean;
 accessPassword?: string;
   credits: ProductionCredit[];
   images: ProductionImage[];
@@ -74,6 +75,8 @@ export default function EditProductionPage() {
   const [description, setDescription] = useState("");
   const [access, setAccess] =
   useState<"public" | "password">("public");
+  const [showHeroWhenLocked, setShowHeroWhenLocked] =
+    useState(false);
 
 const [accessPassword, setAccessPassword] =
   useState("");
@@ -118,6 +121,7 @@ const [accessPassword, setAccessPassword] =
         setYear(String(data.production.year));
         setDescription(data.production.description);
         setAccess(data.production.access ?? "public");
+        setShowHeroWhenLocked(data.production.showHeroWhenLocked ?? false);
        setAccessPassword(
   data.production.accessPassword ?? accessPassword,
 );
@@ -225,6 +229,7 @@ const [accessPassword, setAccessPassword] =
             year: parsedYear,
             description: description.trim(),
             access,
+            showHeroWhenLocked,
 accessPassword:
   access === "password"
     ? accessPassword.trim()
@@ -250,6 +255,7 @@ accessPassword:
       setYear(String(data.production.year));
       setDescription(data.production.description);
       setAccess(data.production.access ?? "public");
+      setShowHeroWhenLocked(data.production.showHeroWhenLocked ?? false);
 setAccessPassword("");
       setCredits(data.production.credits);
       setGalleryImages(data.production.images);
@@ -516,6 +522,26 @@ setAccessPassword("");
 >
   {showAccessPassword ? "Hide password" : "Show password"}
 </button>
+
+      <label
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "0.6rem",
+          marginTop: "1.25rem",
+          cursor: "pointer",
+        }}
+      >
+        <input
+          type="checkbox"
+          checked={showHeroWhenLocked}
+          onChange={(event) => {
+            setShowHeroWhenLocked(event.target.checked);
+            clearMessage();
+          }}
+        />
+        <span>Show hero image while locked</span>
+      </label>
 
       <p
         style={{
