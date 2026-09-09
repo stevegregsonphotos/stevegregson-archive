@@ -24,6 +24,10 @@ const navigation = [
     href: "/admin/bulk-import",
   },
   {
+    label: "Curated import",
+    href: "/admin/curated-archive-import",
+  },
+  {
     label: "Productions",
     href: "/admin/productions",
   },

@@ -1,0 +1,37 @@
+{
+  "A Role To Die For (July 2025)": {
+    "title": "A Role To Die For",
+    "venue": "Marylebone Theatre",
+    "month": 7,
+    "year": 2025,
+    "description": "DEM Productions presented the Barn Theatre production of Jordan Waller’s comedy A Role To Die For at Marylebone Theatre in summer 2025, following its Cirencester premiere. Directed by Derek Bond, the London transfer starred Tanya Franks, Philip Bretherton, Harry Goodson-Bevan and Obioma Ugoala in a farcical backstage crisis over casting a Bond-style spy franchise.",
+    "credits": [
+      {
+        "role": "Director",
+        "name": "Derek Bond"
+      },
+      {
+        "role": "Associate Director",
+        "name": "Anna Ryder"
+      },
+      {
+        "role": "Lighting Design",
+        "name": "Adam Foley",
+        "website": "https://adamfoley.design/"
+      },
+      {
+        "role": "Set & Costume Design",
+        "name": "Cory Shipp",
+        "website": "https://www.coryshippdesign.com"
+      },
+      {
+        "role": "Sound Design",
+        "name": "Amanda Priestley"
+      },
+      {
+        "role": "Commissioned by",
+        "name": "DEM Productions"
+      }
+    ]
+  }
+}

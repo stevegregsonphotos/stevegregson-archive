@@ -10,6 +10,9 @@ import {
   decryptProductionPassword,
   encryptProductionPassword,
 } from "@/lib/production-access";
+import {
+  rememberDirectoryCredits,
+} from "@/lib/directory-writer";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -523,25 +526,60 @@ if (body.access !== undefined) {
     );
 
     if (updatedSource !== source) {
-      await writeFile(productionFile, updatedSource, "utf8");
+      await writeFile(
+        productionFile,
+        updatedSource,
+        "utf8",
+      );
+    }
+
+    let directorySync:
+      Awaited<
+        ReturnType<
+          typeof rememberDirectoryCredits
+        >
+      > | null = null;
+
+    let directoryWarning:
+      string | null = null;
+
+    try {
+      directorySync =
+        await rememberDirectoryCredits(
+          production.credits,
+        );
+    } catch (directoryError) {
+      console.error(
+        "Directory sync failed:",
+        directoryError,
+      );
+
+      directoryWarning =
+        directoryError instanceof Error
+          ? directoryError.message
+          : "The global website directory could not be updated.";
     }
 
     const responseProduction = {
-  ...production,
-  accessPassword:
-    production.access === "password" &&
-    production.accessPasswordEncrypted
-      ? decryptProductionPassword(
-          production.accessPasswordEncrypted,
-        )
-      : "",
-};
+      ...production,
+      accessPassword:
+        production.access === "password" &&
+        production.accessPasswordEncrypted
+          ? decryptProductionPassword(
+              production.accessPasswordEncrypted,
+            )
+          : "",
+    };
 
-return Response.json({
-  ok: true,
-  message: "Production updated successfully.",
-  production: responseProduction,
-});
+    return Response.json({
+      ok: true,
+      message:
+        "Production updated successfully.",
+      production:
+        responseProduction,
+      directorySync,
+      directoryWarning,
+    });
   } catch (error) {
     console.error("Production update failed:", error);
 

@@ -1,3 +1,7 @@
+import {
+  getDirectoryUrl,
+} from "@/lib/directory";
+
 type Credit = {
   role: string;
   name: string;
@@ -19,14 +23,31 @@ export default function CreditsEditor({
     value: string,
   ) {
     onChange(
-      credits.map((credit, creditIndex) =>
-        creditIndex === index
-          ? {
-              ...credit,
-              [field]: value,
-            }
-          : credit,
-      ),
+      credits.map((credit, creditIndex) => {
+        if (creditIndex !== index) {
+          return credit;
+        }
+
+        const updatedCredit = {
+          ...credit,
+          [field]: value,
+        };
+
+        if (
+          field === "name" &&
+          !credit.website?.trim()
+        ) {
+          const knownWebsite =
+            getDirectoryUrl(value);
+
+          if (knownWebsite) {
+            updatedCredit.website =
+              knownWebsite;
+          }
+        }
+
+        return updatedCredit;
+      }),
     );
   }
 

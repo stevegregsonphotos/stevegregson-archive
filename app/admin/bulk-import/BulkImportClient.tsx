@@ -10,6 +10,8 @@ import {
 
 import JSZip from "jszip";
 
+import { getDirectoryUrl } from "@/lib/directory";
+
 const IMAGE_EXTENSIONS = new Set([
   "jpg",
   "jpeg",
@@ -487,7 +489,19 @@ function createCredits(
       role: "Photography",
       name: "Steve Gregson",
     },
-  ].filter((credit) => credit.name);
+  ]
+    .filter((credit) => credit.name)
+    .map((credit) => {
+      const website =
+        getDirectoryUrl(credit.name);
+
+      return website
+        ? {
+            ...credit,
+            website,
+          }
+        : credit;
+    });
 }
 
 export default function BulkImportClient({
