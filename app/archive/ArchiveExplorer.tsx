@@ -293,19 +293,10 @@ export default function ArchiveExplorer({
                   className="archive-card-main"
                 >
                   <div className="archive-card-image">
-                    <Image
-                      src={`/images/productions/${production.slug}/${production.hero}`}
-                      alt={production.heroAlt}
-                      fill
-                      sizes="(max-width: 700px) calc(100vw - 2.8rem), (max-width: 1100px) 46vw, 29vw"
-                      priority={index < 3}
-                    />
-
                     {production.access === "password" ? (
-                      <span
-                        className="archive-card-lock"
-                        aria-label="Private gallery"
-                        title="Private gallery"
+                      <div
+                        className="archive-card-locked-state"
+                        aria-label="This gallery is locked"
                       >
                         <svg
                           viewBox="0 0 24 24"
@@ -321,8 +312,24 @@ export default function ArchiveExplorer({
                             strokeLinejoin="round"
                           />
                         </svg>
-                      </span>
-                    ) : null}
+
+                        <p className="archive-card-locked-title">
+                          This gallery is locked
+                        </p>
+
+                        <p className="archive-card-locked-copy">
+                          This gallery is not publicly accessible.
+                        </p>
+                      </div>
+                    ) : (
+                      <Image
+                        src={`/images/productions/${production.slug}/${production.hero}`}
+                        alt={production.heroAlt}
+                        fill
+                        sizes="(max-width: 700px) calc(100vw - 2.8rem), (max-width: 1100px) 46vw, 29vw"
+                        priority={index < 3}
+                      />
+                    )}
                   </div>
 
                   <div className="archive-card-copy">
@@ -429,26 +436,47 @@ export default function ArchiveExplorer({
             opacity 400ms ease;
         }
 
-        .archive-card-lock {
+        .archive-card-locked-state {
           position: absolute;
-          top: 0.9rem;
-          right: 0.9rem;
-          z-index: 2;
-          display: grid;
-          place-items: center;
-          width: 1.8rem;
-          height: 1.8rem;
-          border: 1px solid rgba(242, 238, 230, 0.28);
-          border-radius: 999px;
-          background: rgba(17, 16, 15, 0.74);
-          color: #c7a369;
-          backdrop-filter: blur(10px);
-          -webkit-backdrop-filter: blur(10px);
+          inset: 0;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: 1.5rem;
+          border: 1px solid
+            rgba(242, 238, 230, 0.12);
+          background:
+            linear-gradient(
+              180deg,
+              rgba(30, 29, 28, 0.96),
+              rgba(22, 21, 20, 0.98)
+            );
+          text-align: center;
         }
 
-        .archive-card-lock svg {
-          width: 0.9rem;
-          height: 0.9rem;
+        .archive-card-locked-state svg {
+          width: 2rem;
+          height: 2rem;
+          margin-bottom: 1.15rem;
+          color: #c7a369;
+        }
+
+        .archive-card-locked-title {
+          margin: 0;
+          color: #c7a369;
+          font-size: 0.58rem;
+          font-weight: 700;
+          letter-spacing: 0.18em;
+          text-transform: uppercase;
+        }
+
+        .archive-card-locked-copy {
+          max-width: 15rem;
+          margin: 0.75rem 0 0;
+          color: rgba(242, 238, 230, 0.62);
+          font-size: 0.72rem;
+          line-height: 1.55;
         }
 
         .archive-card-copy {
