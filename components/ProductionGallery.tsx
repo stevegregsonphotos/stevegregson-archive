@@ -3,13 +3,14 @@
 import Image from "next/image";
 import { useState } from "react";
 
+import { getProductionImageUrl } from "../lib/production-image-url";
 import type { ProductionImage } from "../lib/productions";
 
 import ImageViewer from "./ImageViewer";
 
 type ProductionGalleryProps = {
   title: string;
-  imageDirectory: string;
+  productionSlug: string;
   hero: {
     src: string;
     alt: string;
@@ -19,7 +20,7 @@ type ProductionGalleryProps = {
 
 export function ProductionGallery({
   title,
-  imageDirectory,
+  productionSlug,
   hero,
   images,
 }: ProductionGalleryProps) {
@@ -29,11 +30,17 @@ export function ProductionGallery({
 
   const viewerImages = [
     {
-      src: `${imageDirectory}/${hero.src}`,
+      src: getProductionImageUrl(
+        productionSlug,
+        hero.src,
+      ),
       alt: hero.alt,
     },
     ...images.map((image) => ({
-      src: `${imageDirectory}/${image.src}`,
+      src: getProductionImageUrl(
+        productionSlug,
+        image.src,
+      ),
       alt: image.alt,
     })),
   ];
@@ -58,7 +65,10 @@ export function ProductionGallery({
                 aria-label={`Open photograph ${index + 2} from ${title} fullscreen`}
               >
                 <Image
-                  src={`${imageDirectory}/${image.src}`}
+                  src={getProductionImageUrl(
+                    productionSlug,
+                    image.src,
+                  )}
                   alt={image.alt}
                   width={2000}
                   height={1333}

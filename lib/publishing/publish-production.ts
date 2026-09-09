@@ -5,6 +5,11 @@ import {
   type PublishedImageAsset,
 } from "@/lib/publishing/publish-image";
 import {
+  deleteProductionImage,
+  productionImageExists,
+  putProductionImage,
+} from "@/lib/publishing/production-image-storage";
+import {
   createExportName,
   createProductionSource,
   createRegistrySource,
@@ -15,6 +20,7 @@ import { randomUUID } from "node:crypto";
 import {
   access,
   mkdir,
+  readFile,
   readdir,
   rename,
   rm,
@@ -151,28 +157,11 @@ export async function publishProduction(
       "generated.ts",
     );
 
-  const imagesDirectory =
-    path.join(
-      projectRoot,
-      "public",
-      "images",
-      "productions",
-      payload.slug,
-    );
-
   if (
     await exists(productionFile)
   ) {
     throw new ProductionConflictError(
       `A production file already exists for "${payload.slug}".`,
-    );
-  }
-
-  if (
-    await exists(imagesDirectory)
-  ) {
-    throw new ProductionConflictError(
-      `An image folder already exists for "${payload.slug}".`,
     );
   }
 
@@ -207,9 +196,8 @@ export async function publishProduction(
       "generated.ts",
     );
 
-  let createdImageDirectory:
-    | string
-    | null = null;
+  const uploadedImageFilenames:
+    string[] = [];
 
   let createdProductionFile:
     | string
@@ -294,22 +282,46 @@ export async function publishProduction(
       "utf8",
     );
 
-    await mkdir(
-      path.dirname(
-        imagesDirectory,
-      ),
-      {
-        recursive: true,
-      },
-    );
+    const publishedAssets = [
+      heroAsset,
+      ...galleryAssets,
+    ];
 
-    await rename(
-      stagedImagesDirectory,
-      imagesDirectory,
-    );
+    for (const asset of publishedAssets) {
+      if (
+        await productionImageExists(
+          payload.slug,
+          asset.filename,
+        )
+      ) {
+        throw new ProductionConflictError(
+          `A production image already exists in R2 for "${payload.slug}/${asset.filename}".`,
+        );
+      }
+    }
 
-    createdImageDirectory =
-      imagesDirectory;
+    for (const asset of publishedAssets) {
+      const stagedImagePath =
+        path.join(
+          stagedImagesDirectory,
+          asset.filename,
+        );
+
+      const imageBuffer =
+        await readFile(
+          stagedImagePath,
+        );
+
+      await putProductionImage(
+        payload.slug,
+        asset.filename,
+        imageBuffer,
+      );
+
+      uploadedImageFilenames.push(
+        asset.filename,
+      );
+    }
 
     await rename(
       stagedProductionFile,
@@ -377,7 +389,10 @@ export async function publishProduction(
         productionFile:
           `content/productions/${payload.slug}.ts`,
         imageDirectory:
-          `public/images/productions/${payload.slug}`,
+          `${process.env.NEXT_PUBLIC_PRODUCTION_IMAGE_BASE_URL?.replace(
+            /\/$/,
+            "",
+          )}/${payload.slug}`,
         registryFile:
           "content/productions/generated.ts",
         registration:
@@ -394,13 +409,13 @@ export async function publishProduction(
       ).catch(() => undefined);
     }
 
-    if (createdImageDirectory) {
-      await rm(
-        createdImageDirectory,
-        {
-          recursive: true,
-          force: true,
-        },
+    for (
+      const filename of
+        uploadedImageFilenames
+    ) {
+      await deleteProductionImage(
+        payload.slug,
+        filename,
       ).catch(() => undefined);
     }
 

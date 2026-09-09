@@ -1,3 +1,5 @@
+import { getProductionImageUrl } from "../../../lib/production-image-url";
+
 export type GalleryLayout =
   | "wide"
   | "left"
@@ -79,7 +81,7 @@ export default function GalleryEditor({
             <article key={image.src} style={{ border: isSelectedHero ? "1px solid rgba(199, 163, 105, 0.8)" : "1px solid rgba(242, 238, 230, 0.14)", background: "rgba(255,255,255,0.02)", overflow: "hidden" }}>
               <button type="button" onClick={() => onSelectHero(image.src)} aria-pressed={isSelectedHero} style={{ display: "block", width: "100%", padding: 0, border: 0, background: "#080808", cursor: "pointer" }}>
                 <div style={{ aspectRatio: "4 / 3", background: "#080808" }}>
-                  <img src={`/images/productions/${productionSlug}/${image.src}`} alt={image.alt} loading="lazy" style={{ display: "block", width: "100%", height: "100%", objectFit: "contain" }} />
+                  <img src={getProductionImageUrl(productionSlug, image.src)} alt={image.alt} loading="lazy" style={{ display: "block", width: "100%", height: "100%", objectFit: "contain" }} />
                 </div>
               </button>
 

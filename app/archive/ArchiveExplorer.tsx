@@ -1,6 +1,8 @@
 "use client";
 
 import Image from "next/image";
+
+import { getProductionImageUrl } from "../../lib/production-image-url";
 import Link from "next/link";
 import {
   createContext,
@@ -298,7 +300,10 @@ export default function ArchiveExplorer({
                       <>
                         {production.showHeroWhenLocked ? (
                           <Image
-                            src={`/images/productions/${production.slug}/${production.hero}`}
+                            src={getProductionImageUrl(
+                              production.slug,
+                              production.hero,
+                            )}
                             alt={production.heroAlt}
                             fill
                             sizes="(max-width: 700px) calc(100vw - 2.8rem), (max-width: 1100px) 46vw, 29vw"
@@ -335,7 +340,10 @@ export default function ArchiveExplorer({
                       </>
                     ) : (
                       <Image
-                        src={`/images/productions/${production.slug}/${production.hero}`}
+                        src={getProductionImageUrl(
+                          production.slug,
+                          production.hero,
+                        )}
                         alt={production.heroAlt}
                         fill
                         sizes="(max-width: 700px) calc(100vw - 2.8rem), (max-width: 1100px) 46vw, 29vw"

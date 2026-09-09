@@ -49,3 +49,6 @@ next-env.d.ts
 
 # Private local proofing address book data
 data/proofing-address-book/
+
+# Production photographs are stored in Cloudflare R2
+/public/images/productions/

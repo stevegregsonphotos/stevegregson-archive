@@ -1,3 +1,5 @@
+import { getProductionImageUrl } from "../../../lib/production-image-url";
+
 type GalleryLayout =
   | "wide"
   | "left"
@@ -120,7 +122,10 @@ export default function HeroEditor({
           }}
         >
           <img
-            src={`/images/productions/${slug}/${selectedImage.src}`}
+            src={getProductionImageUrl(
+              slug,
+              selectedImage.src,
+            )}
             alt={selectedImage.alt}
             style={{
               display: "block",
@@ -224,7 +229,10 @@ export default function HeroEditor({
                   }}
                 >
                   <img
-                    src={`/images/productions/${slug}/${image.src}`}
+                    src={getProductionImageUrl(
+                      slug,
+                      image.src,
+                    )}
                     alt={image.alt}
                     loading="lazy"
                     style={{

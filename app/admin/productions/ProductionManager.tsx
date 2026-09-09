@@ -1,6 +1,8 @@
 "use client";
 
 import Image from "next/image";
+
+import { getProductionImageUrl } from "../../../lib/production-image-url";
 import Link from "next/link";
 import {
   useMemo,
@@ -444,7 +446,10 @@ export default function ProductionManager({
                     aria-label={`Edit ${production.title}`}
                   >
                     <Image
-                      src={`/images/productions/${production.slug}/${production.hero}`}
+                      src={getProductionImageUrl(
+                        production.slug,
+                        production.hero,
+                      )}
                       alt=""
                       fill
                       sizes="(max-width: 640px) 100vw, (max-width: 1000px) 13rem, 16rem"

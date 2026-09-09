@@ -6,6 +6,8 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 
+import { getProductionImageUrl } from "../lib/production-image-url";
+
 type ProductionAccessGateProps = {
   slug: string;
   title: string;
@@ -97,7 +99,10 @@ export default function ProductionAccessGate({
       style={
         hero
           ? {
-              backgroundImage: `linear-gradient(rgba(17, 16, 15, 0.68), rgba(17, 16, 15, 0.82)), url("/images/productions/${slug}/${hero}")`,
+              backgroundImage: `linear-gradient(rgba(17, 16, 15, 0.68), rgba(17, 16, 15, 0.82)), url("${getProductionImageUrl(
+                slug,
+                hero,
+              )}")`,
               backgroundSize: "cover",
               backgroundPosition: "center",
             }

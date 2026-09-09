@@ -10,6 +10,9 @@ import path from "node:path";
 import sharp from "sharp";
 
 import { openai } from "@/lib/vision/client";
+import {
+  getProductionImage,
+} from "@/lib/publishing/production-image-storage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -322,19 +325,13 @@ async function loadProductionContext(
     `${slug}.ts`,
   );
 
-  const imageFile = path.join(
-    process.cwd(),
-    "public",
-    "images",
-    "productions",
-    slug,
-    filename,
-  );
-
   const [productionSource, sourceImage] =
     await Promise.all([
       readFile(productionFile, "utf8"),
-      readFile(imageFile),
+      getProductionImage(
+        slug,
+        filename,
+      ),
     ]);
 
   const production =

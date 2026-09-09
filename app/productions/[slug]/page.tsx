@@ -7,6 +7,7 @@ import { notFound } from "next/navigation";
 import ProductionAccessGate from "../../../components/ProductionAccessGate";
 import { ProductionGallery } from "../../../components/ProductionGallery";
 import { getDirectoryUrl } from "../../../lib/directory";
+import { getProductionImageUrl } from "../../../lib/production-image-url";
 import {
   createProductionAccessToken,
   productionAccessCookieName,
@@ -81,7 +82,10 @@ export async function generateMetadata({
       description,
       images: [
         {
-          url: `/images/productions/${production.slug}/${production.hero}`,
+          url: getProductionImageUrl(
+            production.slug,
+            production.hero,
+          ),
           alt: production.heroAlt,
         },
       ],
@@ -91,7 +95,10 @@ export async function generateMetadata({
       title,
       description,
       images: [
-        `/images/productions/${production.slug}/${production.hero}`,
+        getProductionImageUrl(
+          production.slug,
+          production.hero,
+        ),
       ],
     },
   };
@@ -163,14 +170,14 @@ export default async function ProductionPage({
   const nextProduction =
     getNextProduction(slug);
 
-  const imageDirectory =
-    `/images/productions/${production.slug}`;
-
   const productionUrl =
     `https://www.stevegregson.com/productions/${production.slug}`;
 
   const heroImageUrl =
-    `https://www.stevegregson.com${imageDirectory}/${production.hero}`;
+    getProductionImageUrl(
+      production.slug,
+      production.hero,
+    );
 
   const structuredData = {
     "@context": "https://schema.org",
@@ -259,7 +266,10 @@ export default async function ProductionPage({
       <main className="curated-production-page">
       <section className="curated-production-hero">
         <Image
-          src={`${imageDirectory}/${production.hero}`}
+          src={getProductionImageUrl(
+            production.slug,
+            production.hero,
+          )}
           alt={production.heroAlt}
           fill
           priority
@@ -353,8 +363,8 @@ export default async function ProductionPage({
 
       <ProductionGallery
         title={production.title}
-        imageDirectory={
-          imageDirectory
+        productionSlug={
+          production.slug
         }
         hero={{
           src: production.hero,
@@ -374,7 +384,10 @@ export default async function ProductionPage({
                 rgba(8, 7, 6, 0.84),
                 rgba(8, 7, 6, 0.12)
               ),
-              url("/images/productions/${nextProduction.slug}/${nextProduction.hero}")
+              url("${getProductionImageUrl(
+                nextProduction.slug,
+                nextProduction.hero,
+              )}")
             `,
           }}
         >

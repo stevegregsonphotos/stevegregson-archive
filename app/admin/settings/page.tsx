@@ -96,12 +96,14 @@ export default async function SettingsPage() {
     },
     {
       label: "Storage",
-      value: "Local filesystem",
+      value: "Cloudflare R2 + local project data",
       enabled: true,
     },
     {
       label: "Production images",
-      value: "public/images/productions",
+      value:
+        process.env.NEXT_PUBLIC_PRODUCTION_IMAGE_BASE_URL?.trim() ||
+        "Cloudflare R2",
       enabled: true,
     },
     {

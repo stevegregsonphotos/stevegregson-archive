@@ -5,6 +5,7 @@ import {
 
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import ts from "typescript";
 
 import {
   decryptProductionPassword,
@@ -104,21 +105,154 @@ function getProductionFile(slug: string) {
   );
 }
 
+function literalNodeToValue(
+  node: ts.Expression,
+): unknown {
+  if (
+    ts.isStringLiteral(node) ||
+    ts.isNoSubstitutionTemplateLiteral(node)
+  ) {
+    return node.text;
+  }
+
+  if (ts.isNumericLiteral(node)) {
+    return Number(node.text);
+  }
+
+  if (node.kind === ts.SyntaxKind.TrueKeyword) {
+    return true;
+  }
+
+  if (node.kind === ts.SyntaxKind.FalseKeyword) {
+    return false;
+  }
+
+  if (node.kind === ts.SyntaxKind.NullKeyword) {
+    return null;
+  }
+
+  if (ts.isPrefixUnaryExpression(node)) {
+    const value =
+      literalNodeToValue(node.operand);
+
+    if (typeof value !== "number") {
+      throw new Error(
+        "Unsupported unary production value.",
+      );
+    }
+
+    if (
+      node.operator ===
+      ts.SyntaxKind.MinusToken
+    ) {
+      return -value;
+    }
+
+    if (
+      node.operator ===
+      ts.SyntaxKind.PlusToken
+    ) {
+      return value;
+    }
+  }
+
+  if (ts.isArrayLiteralExpression(node)) {
+    return node.elements.map((element) => {
+      if (ts.isSpreadElement(element)) {
+        throw new Error(
+          "Spread values are not supported in production data.",
+        );
+      }
+
+      return literalNodeToValue(
+        element as ts.Expression,
+      );
+    });
+  }
+
+  if (ts.isObjectLiteralExpression(node)) {
+    const result:
+      Record<string, unknown> = {};
+
+    for (const property of node.properties) {
+      if (
+        !ts.isPropertyAssignment(property)
+      ) {
+        throw new Error(
+          "Unsupported production object property.",
+        );
+      }
+
+      let key: string;
+
+      if (
+        ts.isIdentifier(property.name) ||
+        ts.isStringLiteral(property.name) ||
+        ts.isNumericLiteral(property.name)
+      ) {
+        key = property.name.text;
+      } else {
+        throw new Error(
+          "Unsupported production property name.",
+        );
+      }
+
+      result[key] =
+        literalNodeToValue(
+          property.initializer,
+        );
+    }
+
+    return result;
+  }
+
+  throw new Error(
+    "Unsupported value in production data.",
+  );
+}
+
 function readProductionFromSource(
   source: string,
 ): ProductionData {
-  const objectMatch = source.match(
-    /=\s*({[\s\S]*})\s*;\s*$/,
-  );
-
-  if (!objectMatch) {
-    throw new Error(
-      "The production data could not be read.",
+  const sourceFile =
+    ts.createSourceFile(
+      "production.ts",
+      source,
+      ts.ScriptTarget.Latest,
+      true,
+      ts.ScriptKind.TS,
     );
-  }
-  
 
-  return JSON.parse(objectMatch[1]) as ProductionData;
+  for (const statement of
+    sourceFile.statements) {
+    if (
+      !ts.isVariableStatement(statement)
+    ) {
+      continue;
+    }
+
+    for (const declaration of
+      statement.declarationList
+        .declarations) {
+      const initializer =
+        declaration.initializer;
+
+      if (
+        initializer &&
+        ts.isObjectLiteralExpression(
+          initializer,
+        )
+      ) {
+        return literalNodeToValue(
+          initializer,
+        ) as ProductionData;
+      }
+    }
+  }
+
+  throw new Error(
+    "The production data could not be read.",
+  );
 }
 
 function serialiseProductionFile(

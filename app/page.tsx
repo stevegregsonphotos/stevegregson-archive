@@ -3,6 +3,9 @@ import Image from "next/image";
 import Link from "next/link";
 
 import selectedWorkData from "../content/selected-work.json";
+import {
+  getProductionImageUrl,
+} from "../lib/production-image-url";
 
 export const metadata: Metadata = {
   title: {
@@ -224,7 +227,10 @@ export default function Home() {
 
             const imageSrc =
               item.id === "production"
-                ? "/images/productions/godspell/godspell-05.jpg"
+                ? getProductionImageUrl(
+                    "godspell",
+                    "godspell-05.jpg",
+                  )
                 : item.id === "rehearsal"
                   ? "/images/rehearsals/voice-of-the-turtle.jpg"
                   : item.id === "campaign"

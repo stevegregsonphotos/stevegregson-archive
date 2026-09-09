@@ -114,6 +114,13 @@ const nextConfig: NextConfig = {
   },
 
   images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "images.stevegregson.com",
+        pathname: "/**",
+      },
+    ],
     formats: [
       "image/avif",
       "image/webp",

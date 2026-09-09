@@ -13,6 +13,9 @@ import {
   createUnauthorizedResponse,
   isBackstageRequestAuthenticated,
 } from "../../../../lib/backstage-auth";
+import {
+  deleteProductionImages,
+} from "../../../../lib/publishing/production-image-storage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -124,12 +127,7 @@ export async function POST(
     | string
     | null = null;
 
-  let stagedImageDirectory:
-    | string
-    | null = null;
-
   let productionFile = "";
-  let imageDirectory = "";
 
   try {
     const body =
@@ -186,14 +184,6 @@ export async function POST(
         productionDirectory,
         "generated.ts",
       );
-
-    imageDirectory = path.join(
-      projectRoot,
-      "public",
-      "images",
-      "productions",
-      slug,
-    );
 
     if (
       !(await exists(productionFile))
@@ -257,21 +247,6 @@ export async function POST(
       stagedProductionFile,
     );
 
-    if (
-      await exists(imageDirectory)
-    ) {
-      stagedImageDirectory =
-        path.join(
-          stagingRoot,
-          "images",
-        );
-
-      await rename(
-        imageDirectory,
-        stagedImageDirectory,
-      );
-    }
-
     await writeFile(
       generatedRegistryFile,
       updatedRegistry,
@@ -285,7 +260,17 @@ export async function POST(
 
     stagingRoot = null;
     stagedProductionFile = null;
-    stagedImageDirectory = null;
+
+    try {
+      await deleteProductionImages(
+        slug,
+      );
+    } catch (cleanupError) {
+      console.error(
+        "Production deleted, but its R2 images could not be fully cleaned up:",
+        cleanupError,
+      );
+    }
 
     return Response.json({
       ok: true,
@@ -310,19 +295,6 @@ export async function POST(
       await rename(
         stagedProductionFile,
         productionFile,
-      ).catch(() => undefined);
-    }
-
-    if (
-      stagedImageDirectory &&
-      imageDirectory &&
-      (await exists(
-        stagedImageDirectory,
-      ))
-    ) {
-      await rename(
-        stagedImageDirectory,
-        imageDirectory,
       ).catch(() => undefined);
     }
 

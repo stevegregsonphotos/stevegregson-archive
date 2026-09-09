@@ -1,0 +1,3 @@
+# Production photographs are served from Cloudflare R2.
+# Keep the local library on this Mac, but never include it in Vercel deployments.
+public/images/productions/
