@@ -21,6 +21,157 @@ const CURATION_ROOT = path.join(
 
 const ENV_PATH = path.resolve(".env.local");
 
+const METADATA_OVERRIDES_PATH =
+  path.resolve(
+    "scripts/archive-curator/archive-metadata-overrides.json",
+  );
+
+const monthNames = [
+  "",
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+
+async function writeProposedMetadata({
+  production,
+  researched,
+  proposedTxtPath,
+}) {
+  let overrides = {};
+
+  try {
+    overrides =
+      JSON.parse(
+        await fs.readFile(
+          METADATA_OVERRIDES_PATH,
+          "utf8",
+        ),
+      );
+  } catch (error) {
+    if (error?.code !== "ENOENT") {
+      throw error;
+    }
+  }
+
+  const manualOverride =
+    overrides[production] ?? {};
+
+  const proposed = {
+    ...researched,
+    ...manualOverride,
+  };
+
+  const lines = [];
+
+  function addLine(label, value) {
+    if (
+      value !== undefined &&
+      value !== null &&
+      String(value).trim()
+    ) {
+      lines.push(
+        `${label}: ${String(value).trim()}`,
+      );
+    }
+  }
+
+  addLine(
+    "Production",
+    proposed.title,
+  );
+  addLine(
+    "Venue",
+    proposed.venue,
+  );
+
+  const proposedMonth =
+    Number.isInteger(proposed.month) &&
+    proposed.month >= 1 &&
+    proposed.month <= 12
+      ? monthNames[proposed.month]
+      : typeof proposed.month === "string"
+        ? monthNames.find(
+            (month) =>
+              month.toLowerCase() ===
+              proposed.month.trim().toLowerCase(),
+          )
+        : undefined;
+
+  addLine(
+    "Month",
+    proposedMonth,
+  );
+
+  addLine("Year", proposed.year);
+  addLine("Director", proposed.director);
+  addLine(
+    "Associate Director",
+    proposed.associateDirector,
+  );
+  addLine(
+    "Musical Director",
+    proposed.musicalDirector,
+  );
+  addLine(
+    "Choreographer",
+    proposed.choreographer,
+  );
+  addLine(
+    "Movement Director",
+    proposed.movementDirector,
+  );
+  addLine(
+    "Lighting Design",
+    proposed.lightingDesign,
+  );
+  addLine(
+    "Set Design",
+    proposed.setDesign,
+  );
+  addLine(
+    "Costume Design",
+    proposed.costumeDesign,
+  );
+  addLine(
+    "Set & Costume Design",
+    proposed.setCostumeDesign,
+  );
+  addLine(
+    "Sound Design",
+    proposed.soundDesign,
+  );
+  addLine(
+    "Commissioned by",
+    proposed.commissionedBy,
+  );
+  addLine(
+    "Description",
+    proposed.description,
+  );
+
+  await fs.writeFile(
+    proposedTxtPath,
+    `${lines.join("\n")}\n`,
+    "utf8",
+  );
+
+  return {
+    proposed,
+    overrideApplied:
+      Object.keys(manualOverride).length > 0,
+  };
+}
+
 function readEnvValue(text, key) {
   const line = text
     .split(/\r?\n/)
@@ -265,6 +416,16 @@ if (!forceRerun) {
       );
 
     if (cached?.researched?.title) {
+      const {
+        overrideApplied,
+      } =
+        await writeProposedMetadata({
+          production,
+          researched:
+            cached.researched,
+          proposedTxtPath,
+        });
+
       console.log();
       console.log(
         "METADATA RESEARCH",
@@ -273,6 +434,11 @@ if (!forceRerun) {
       console.log(
         "Using cached research.",
       );
+      if (overrideApplied) {
+        console.log(
+          "Steve metadata override applied.",
+        );
+      }
       console.log(
         "Output:",
         outputPath,
@@ -457,118 +623,15 @@ await fs.writeFile(
   "utf8",
 );
 
-const monthNames = [
-  "",
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-];
-
-const lines = [];
-
-function addLine(label, value) {
-  if (
-    value !== undefined &&
-    value !== null &&
-    String(value).trim()
-  ) {
-    lines.push(
-      `${label}: ${String(value).trim()}`,
-    );
-  }
-}
-
-addLine(
-  "Production",
-  researched.title,
-);
-addLine(
-  "Venue",
-  researched.venue,
-);
-
-if (
-  Number.isInteger(
-    researched.month,
-  ) &&
-  researched.month >= 1 &&
-  researched.month <= 12
-) {
-  addLine(
-    "Month",
-    monthNames[
-      researched.month
-    ],
-  );
-}
-
-addLine(
-  "Year",
-  researched.year,
-);
-addLine(
-  "Director",
-  researched.director,
-);
-addLine(
-  "Associate Director",
-  researched.associateDirector,
-);
-addLine(
-  "Musical Director",
-  researched.musicalDirector,
-);
-addLine(
-  "Choreographer",
-  researched.choreographer,
-);
-addLine(
-  "Movement Director",
-  researched.movementDirector,
-);
-addLine(
-  "Lighting Design",
-  researched.lightingDesign,
-);
-addLine(
-  "Set Design",
-  researched.setDesign,
-);
-addLine(
-  "Costume Design",
-  researched.costumeDesign,
-);
-addLine(
-  "Set & Costume Design",
-  researched.setCostumeDesign,
-);
-addLine(
-  "Sound Design",
-  researched.soundDesign,
-);
-addLine(
-  "Commissioned by",
-  researched.commissionedBy,
-);
-addLine(
-  "Description",
-  researched.description,
-);
-
-await fs.writeFile(
-  proposedTxtPath,
-  `${lines.join("\n")}\n`,
-  "utf8",
-);
+const {
+  proposed,
+  overrideApplied,
+} =
+  await writeProposedMetadata({
+    production,
+    researched,
+    proposedTxtPath,
+  });
 
 console.log();
 console.log(
@@ -585,11 +648,16 @@ console.log(
 console.log();
 console.log(
   JSON.stringify(
-    researched,
+    proposed,
     null,
     2,
   ),
 );
+if (overrideApplied) {
+  console.log(
+    "Steve metadata override applied.",
+  );
+}
 console.log();
 console.log(
   "Original TXT was NOT changed.",
