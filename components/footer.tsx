@@ -232,7 +232,7 @@ export default function Footer() {
 
         @media (max-width: 680px) {
   .site-footer {
-    padding: 1.8rem 1.4rem 1.2rem;
+    padding: 1.15rem 1rem 0.85rem;
   }
 
   .site-footer-main {
@@ -240,7 +240,7 @@ export default function Footer() {
     min-height: 0;
     flex-direction: column;
     align-items: center;
-    gap: 1.35rem;
+    gap: 0.8rem;
   }
 
   .site-footer-brand {
@@ -253,13 +253,13 @@ export default function Footer() {
   }
 
   .site-footer-logo {
-    width: 9.5rem;
+    width: 7.5rem;
   }
 
   .site-footer-contact {
     align-items: center;
     gap: 0.3rem;
-    margin-top: 0.8rem;
+    margin-top: 0.45rem;
     text-align: center;
   }
 
@@ -270,7 +270,7 @@ export default function Footer() {
     flex-wrap: nowrap;
     align-items: center;
     justify-content: center;
-    gap: 1rem;
+    gap: 0.7rem;
     text-align: center;
   }
 
@@ -289,10 +289,10 @@ export default function Footer() {
   .site-footer-lower {
   align-items: center;
   flex-direction: column;
-  gap: 0.75rem;
-  margin-top: 1.2rem;
-  padding-top: 1rem;
-  padding-bottom: 0.35rem;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  padding-top: 0.7rem;
+  padding-bottom: 0.1rem;
   text-align: center;
 }
 
