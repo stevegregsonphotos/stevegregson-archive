@@ -67,6 +67,18 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       {
+        source: "/:path*",
+        has: [
+          {
+            type: "host",
+            value: "www.stevegregsonphotos.com",
+          },
+        ],
+        destination:
+          "https://www.stevegregson.com/:path*",
+        permanent: true,
+      },
+      {
         source: "/theatrephotographer",
         destination: "/production",
         permanent: true,
