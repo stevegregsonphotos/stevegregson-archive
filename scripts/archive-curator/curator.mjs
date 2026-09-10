@@ -1314,9 +1314,12 @@ async function runPassTwo(
         );
 
       if (
+        cached.version === 2 &&
         Array.isArray(cached.selected) &&
         Array.isArray(cached.sequence) &&
-        cached.selected.length > 0
+        cached.selected.length > 0 &&
+        cached.altText &&
+        typeof cached.altText === "object"
       ) {
         console.log();
         console.log(
@@ -1512,6 +1515,9 @@ Return JSON only:
   "sequence": [],
   "heroReason": "",
   "editorialSummary": "",
+  "altText": {
+    "123": "Concise factual description of what is visibly happening in selected image 123."
+  },
   "rangeCovered": {
     "scale": [],
     "wide": [],
@@ -1529,6 +1535,14 @@ Requirements:
 - hero MUST also be in selected.
 - sequence should contain every selected image exactly once.
 - rangeCovered should only reference selected images.
+- altText MUST contain one entry for every selected image and no unselected images.
+- Each altText key must be the selected image number written as a string.
+- Each alt text must accurately describe what is visibly present in that specific photograph.
+- Write concise, natural accessibility text, normally one sentence.
+- Mention useful visible theatrical context such as action, staging, costume, lighting, scale, movement, intimacy or atmosphere where relevant.
+- Do not write "image of", "photo of", image numbers, sequence numbers or keyword lists.
+- Do not invent performer identities, character names or facts that cannot be established from the supplied visual evidence.
+- Avoid repeating the same sentence structure across the whole gallery.
 `.trim(),
     },
   ];
@@ -1667,8 +1681,44 @@ Requirements:
       );
   }
 
+  const altText = {};
+
+  if (
+    parsed.altText &&
+    typeof parsed.altText === "object" &&
+    !Array.isArray(parsed.altText)
+  ) {
+    for (const imageIndex of selected) {
+      const value =
+        parsed.altText[String(imageIndex)];
+
+      if (
+        typeof value === "string" &&
+        value.trim()
+      ) {
+        altText[String(imageIndex)] =
+          value
+            .trim()
+            .replace(/\s+/g, " ")
+            .slice(0, 240);
+      }
+    }
+  }
+
+  const missingAltText =
+    selected.filter(
+      (imageIndex) =>
+        !altText[String(imageIndex)],
+    );
+
+  if (missingAltText.length > 0) {
+    throw new Error(
+      `Pass 2 did not return alt text for selected image(s): ${missingAltText.join(", ")}`,
+    );
+  }
+
   const result = {
-    version: 1,
+    version: 2,
     production,
     model,
     finalistCount:
@@ -1689,6 +1739,7 @@ Requirements:
       typeof parsed.editorialSummary === "string"
         ? parsed.editorialSummary.trim()
         : "",
+    altText,
     rangeCovered,
   };
 
@@ -1929,6 +1980,8 @@ async function stageFinalSelection(
         candidate.modified,
       stagedFile:
         destinationName,
+      alt:
+        passTwo.altText[String(imageIndex)],
       cached,
     });
 

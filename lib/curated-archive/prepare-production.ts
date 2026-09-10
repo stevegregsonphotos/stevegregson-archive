@@ -62,6 +62,7 @@ type SourceImage = {
   stagedFile: string;
   sourceName: string;
   absolutePath: string;
+  alt?: string;
 };
 
 export type PreparedCuratedProduction = {
@@ -455,6 +456,7 @@ export async function prepareCuratedProduction(
             hero?: unknown;
             stagedFile?: unknown;
             sourceName?: unknown;
+            alt?: unknown;
           }>;
         }
       | null = null;
@@ -570,6 +572,11 @@ export async function prepareCuratedProduction(
                   "string"
                   ? image.sourceName
                   : image.stagedFile,
+              alt:
+                typeof image.alt === "string" &&
+                image.alt.trim()
+                  ? image.alt.trim()
+                  : undefined,
               sourceHero:
                 image.hero === true,
             },
@@ -660,6 +667,7 @@ export async function prepareCuratedProduction(
               sourceName:
                 source.sourceName,
               absolutePath,
+              alt: source.alt,
             },
           ];
         },
@@ -877,6 +885,7 @@ export async function prepareCuratedProduction(
       gallery.length + 1;
 
     const heroAlt =
+      hero?.alt?.trim() ||
       `${title} at ${venue} — production hero photograph`;
 
     const preparedGallery =
@@ -897,6 +906,7 @@ export async function prepareCuratedProduction(
               filename:
                 image.sourceName,
               alt:
+                image.alt?.trim() ||
                 `${title} at ${venue} — production photograph ${index + 2} of ${totalPublishedImages}`,
               layout:
                 getDeterministicGalleryLayout(
