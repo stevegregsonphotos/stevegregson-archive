@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Steve Gregson | London Theatre Photographer",
     description:
-      "Production, rehearsal, backstage, marketing and PR photography for theatre and the performing arts.",
+      "London theatre photographer Steve Gregson creates production, rehearsal, backstage, marketing and PR photography for theatre and the performing arts.",
     url: "/",
     images: [
       {
@@ -34,7 +34,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Steve Gregson | London Theatre Photographer",
     description:
-      "Production, rehearsal, backstage, marketing and PR photography for theatre and the performing arts.",
+      "London theatre photographer Steve Gregson creates production, rehearsal, backstage, marketing and PR photography for theatre and the performing arts.",
     images: ["/images/homepage-hero.jpg"],
   },
 };
@@ -143,7 +143,13 @@ export default function Home() {
           </h1>
 
           
-        </div>
+
+          <p className="hero-subheading">
+            Steve Gregson is a London theatre photographer creating
+            production, rehearsal, backstage and campaign photography for
+            theatre and the performing arts.
+          </p>
+</div>
 
         <div className="hero-footer">
           <div className="hero-categories">
