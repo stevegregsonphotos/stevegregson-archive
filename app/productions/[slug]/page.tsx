@@ -220,6 +220,8 @@ export default async function ProductionPage({
         creditText: "Steve Gregson",
         copyrightNotice:
           "© Steve Gregson Photography",
+        license:
+          "https://www.stevegregson.com/policies/terms",
         acquireLicensePage:
           "https://www.stevegregson.com/contact",
       },
