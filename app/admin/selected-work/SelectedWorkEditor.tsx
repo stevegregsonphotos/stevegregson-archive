@@ -1577,6 +1577,198 @@ setCategorySaveState(
     }
   }
 
+  async function analyseSelectedImages(
+    category: CategoryId,
+  ) {
+    if (
+      busyCategory ||
+      analysingCategory
+    ) {
+      return;
+    }
+
+    const filenames =
+      Array.from(
+        selectedImages[
+          category
+        ],
+      );
+
+    if (filenames.length === 0) {
+      setMessage(
+        "Select at least one photograph to analyse.",
+      );
+      setError(null);
+      return;
+    }
+
+    setAnalysingCategory(
+      category,
+    );
+
+    setAnalysisProgress({
+      current: 0,
+      total: filenames.length,
+    });
+
+    setError(null);
+    setMessage(null);
+
+    try {
+      for (
+        let itemIndex = 0;
+        itemIndex < filenames.length;
+        itemIndex += 1
+      ) {
+        const filename =
+          filenames[itemIndex];
+
+        setAnalysisProgress({
+          current: itemIndex + 1,
+          total: filenames.length,
+        });
+
+        const currentImage =
+          dataRef.current[
+            category
+          ].find(
+            (image) =>
+              image.filename ===
+              filename,
+          );
+
+        if (!currentImage) {
+          throw new Error(
+            `${filename} could not be found in the collection.`,
+          );
+        }
+
+        const response =
+          await fetch(
+            "/api/admin/vision/analyse-image",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
+              body: JSON.stringify({
+                selectedWorkCategory:
+                  category,
+                image:
+                  currentImage.filename,
+              }),
+            },
+          );
+
+        let result:
+          | VisionResponse
+          | null = null;
+
+        try {
+          result =
+            (await response.json()) as
+              VisionResponse;
+        } catch {
+          result = null;
+        }
+
+        if (
+          !response.ok ||
+          !result?.ok ||
+          !result.metadata
+        ) {
+          throw new Error(
+            result?.message ??
+              `Vision AI could not analyse ${currentImage.filename}.`,
+          );
+        }
+
+        const metadata =
+          result.metadata;
+
+        const analysedAt =
+          new Date().toISOString();
+
+        const updatedImages =
+          dataRef.current[
+            category
+          ].map(
+            (image) =>
+              image.filename ===
+              currentImage.filename
+                ? {
+                    ...image,
+                    alt:
+                      metadata.alt,
+                    suggestedFilename:
+                      metadata.filename,
+                    analysisStatus:
+                      "complete" as const,
+                    analysedAt,
+                  }
+                : image,
+          );
+
+        replaceCategory(
+          category,
+          updatedImages,
+        );
+
+        setCategorySaveState(
+          category,
+          "saving",
+        );
+
+        const savedData =
+          await persistCategory(
+            category,
+            updatedImages,
+            false,
+          );
+
+        replaceCategory(
+          category,
+          normaliseIncomingImages(
+            savedData[category],
+          ),
+        );
+
+        setCategorySaveState(
+          category,
+          "dirty",
+        );
+      }
+
+      setMessage(
+        `${filenames.length} ${
+          filenames.length === 1
+            ? "photograph"
+            : "photographs"
+        } analysed with Vision AI. Review the metadata, then save the collection to apply suggested filenames.`,
+      );
+    } catch (caughtError) {
+      setCategorySaveState(
+        category,
+        "error",
+      );
+
+      setError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Vision AI analysis failed.",
+      );
+    } finally {
+      setAnalysingCategory(
+        null,
+      );
+
+      setAnalysisProgress(
+        null,
+      );
+    }
+  }
+
   async function deleteImage(
     category: CategoryId,
     filename: string,
@@ -2394,6 +2586,26 @@ setCategorySaveState(
 
                     <button
                       type="button"
+                      className="backstage-button backstage-button-primary"
+                      disabled={
+                        selectedCount ===
+                          0 ||
+                        controlsDisabled
+                      }
+                      onClick={() =>
+                        void analyseSelectedImages(
+                          category.id,
+                        )
+                      }
+                    >
+                      {isAnalysing &&
+                      analysisProgress
+                        ? `Analysing ${analysisProgress.current} of ${analysisProgress.total}…`
+                        : `Analyse selected with Vision AI (${selectedCount})`}
+                    </button>
+
+                    <button
+                      type="button"
                       className="backstage-button"
                       disabled={
                         selectedCount ===
@@ -2700,25 +2912,25 @@ setCategorySaveState(
                                 ? "AI analysed"
                                 : "Awaiting AI"}
                             </span>
-                            {image.analysisStatus === "pending" ? (
-  <button
-    type="button"
-    className="backstage-button"
-    disabled={controlsDisabled}
-    onClick={() =>
-      void analyseSingleImage(
-        category.id,
-        image.filename,
-      )
-    }
-    style={{
-      marginTop: "0.75rem",
-      width: "100%",
-    }}
-  >
-    Analyse image
-  </button>
-) : null}
+                            <button
+                              type="button"
+                              className="backstage-button"
+                              disabled={controlsDisabled}
+                              onClick={() =>
+                                void analyseSingleImage(
+                                  category.id,
+                                  image.filename,
+                                )
+                              }
+                              style={{
+                                marginTop: "0.75rem",
+                                width: "100%",
+                              }}
+                            >
+                              {image.analysisStatus === "complete"
+                                ? "Reanalyse image"
+                                : "Analyse image"}
+                            </button>
                           </div>
 
                           <p
