@@ -12,8 +12,13 @@ import {
   encryptProductionPassword,
 } from "@/lib/production-access";
 import {
+  prepareDirectoryCredits,
   rememberDirectoryCredits,
 } from "@/lib/directory-writer";
+import {
+  commitGitHubTextFiles,
+  readGitHubTextFile,
+} from "@/lib/github-content";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -478,8 +483,14 @@ export async function POST(request: Request) {
       );
     }
 
-    const productionFile = getProductionFile(body.slug);
-    const source = await readFile(productionFile, "utf8");
+    const productionPath =
+      `content/productions/${body.slug}.ts`;
+
+    const source =
+      await readGitHubTextFile(
+        productionPath,
+      );
+
     const production = readProductionFromSource(source);
 
     if (!validateProduction(production)) {
@@ -679,14 +690,6 @@ if (body.access !== undefined) {
       production,
     );
 
-    if (updatedSource !== source) {
-      await writeFile(
-        productionFile,
-        updatedSource,
-        "utf8",
-      );
-    }
-
     let directorySync:
       Awaited<
         ReturnType<
@@ -697,21 +700,75 @@ if (body.access !== undefined) {
     let directoryWarning:
       string | null = null;
 
-    try {
-      directorySync =
-        await rememberDirectoryCredits(
+    if (process.env.VERCEL) {
+      const directoryPath =
+        "lib/directory.json";
+
+      const directorySource =
+        await readGitHubTextFile(
+          directoryPath,
+        );
+
+      const preparedDirectory =
+        prepareDirectoryCredits(
+          directorySource,
           production.credits,
         );
-    } catch (directoryError) {
-      console.error(
-        "Directory sync failed:",
-        directoryError,
-      );
 
-      directoryWarning =
-        directoryError instanceof Error
-          ? directoryError.message
-          : "The global website directory could not be updated.";
+      directorySync =
+        preparedDirectory.result;
+
+      const files: Array<{
+        path: string;
+        source: string;
+      }> = [];
+
+      if (updatedSource !== source) {
+        files.push({
+          path: productionPath,
+          source: updatedSource,
+        });
+      }
+
+      if (preparedDirectory.changed) {
+        files.push({
+          path: directoryPath,
+          source: preparedDirectory.source,
+        });
+      }
+
+      if (files.length > 0) {
+        await commitGitHubTextFiles({
+          files,
+          message:
+            `Update production: ${production.title}`,
+        });
+      }
+    } else {
+      if (updatedSource !== source) {
+        await writeFile(
+          getProductionFile(body.slug),
+          updatedSource,
+          "utf8",
+        );
+      }
+
+      try {
+        directorySync =
+          await rememberDirectoryCredits(
+            production.credits,
+          );
+      } catch (directoryError) {
+        console.error(
+          "Directory sync failed:",
+          directoryError,
+        );
+
+        directoryWarning =
+          directoryError instanceof Error
+            ? directoryError.message
+            : "The global website directory could not be updated.";
+      }
     }
 
     const responseProduction = {

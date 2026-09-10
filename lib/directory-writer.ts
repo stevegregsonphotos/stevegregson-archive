@@ -5,15 +5,10 @@ import {
 } from "node:fs/promises";
 import path from "node:path";
 
-export type DirectoryCategory =
-  | "people"
-  | "companies";
-
-export type DirectoryCredit = {
-  role: string;
-  name: string;
-  website?: string;
-};
+type DirectoryCategory =
+  | "venues"
+  | "companies"
+  | "people";
 
 type DirectoryEntry = {
   url: string;
@@ -23,6 +18,12 @@ type DirectoryData = {
   venues: Record<string, DirectoryEntry>;
   companies: Record<string, DirectoryEntry>;
   people: Record<string, DirectoryEntry>;
+};
+
+export type DirectoryCredit = {
+  role: string;
+  name: string;
+  website?: string;
 };
 
 export type DirectoryConflict = {
@@ -44,6 +45,12 @@ export type DirectorySyncResult = {
     url: string;
   }>;
   conflicts: DirectoryConflict[];
+};
+
+export type PreparedDirectorySync = {
+  result: DirectorySyncResult;
+  source: string;
+  changed: boolean;
 };
 
 const DIRECTORY_PATH = path.join(
@@ -127,13 +134,11 @@ function findExistingNameByUrl(
   );
 }
 
-async function readDirectory(): Promise<DirectoryData> {
-  const source = await readFile(
-    DIRECTORY_PATH,
-    "utf8",
-  );
-
-  const parsed = JSON.parse(source) as DirectoryData;
+function parseDirectorySource(
+  source: string,
+): DirectoryData {
+  const parsed =
+    JSON.parse(source) as DirectoryData;
 
   if (
     !parsed ||
@@ -150,28 +155,12 @@ async function readDirectory(): Promise<DirectoryData> {
   return parsed;
 }
 
-async function writeDirectory(
-  directory: DirectoryData,
-) {
-  const temporaryPath =
-    `${DIRECTORY_PATH}.tmp`;
-
-  await writeFile(
-    temporaryPath,
-    `${JSON.stringify(directory, null, 2)}\n`,
-    "utf8",
-  );
-
-  await rename(
-    temporaryPath,
-    DIRECTORY_PATH,
-  );
-}
-
-export async function rememberDirectoryCredits(
+export function prepareDirectoryCredits(
+  source: string,
   credits: DirectoryCredit[],
-): Promise<DirectorySyncResult> {
-  const directory = await readDirectory();
+): PreparedDirectorySync {
+  const directory =
+    parseDirectorySource(source);
 
   const result: DirectorySyncResult = {
     added: [],
@@ -259,9 +248,56 @@ export async function rememberDirectoryCredits(
     });
   }
 
-  if (changed) {
-    await writeDirectory(directory);
+  return {
+    result,
+    source:
+      `${JSON.stringify(directory, null, 2)}\n`,
+    changed,
+  };
+}
+
+async function readDirectorySource() {
+  return readFile(
+    DIRECTORY_PATH,
+    "utf8",
+  );
+}
+
+async function writeDirectorySource(
+  source: string,
+) {
+  const temporaryPath =
+    `${DIRECTORY_PATH}.tmp`;
+
+  await writeFile(
+    temporaryPath,
+    source,
+    "utf8",
+  );
+
+  await rename(
+    temporaryPath,
+    DIRECTORY_PATH,
+  );
+}
+
+export async function rememberDirectoryCredits(
+  credits: DirectoryCredit[],
+): Promise<DirectorySyncResult> {
+  const source =
+    await readDirectorySource();
+
+  const prepared =
+    prepareDirectoryCredits(
+      source,
+      credits,
+    );
+
+  if (prepared.changed) {
+    await writeDirectorySource(
+      prepared.source,
+    );
   }
 
-  return result;
+  return prepared.result;
 }
