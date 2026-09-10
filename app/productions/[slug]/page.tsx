@@ -67,7 +67,7 @@ export async function generateMetadata({
     `${production.title} — Theatre Photography at ${production.venue}`;
 
   const description =
-    `${production.title} at ${production.venue} (${production.year}), photographed by London theatre photographer Steve Gregson. ${production.description}`;
+    `${production.title} at ${production.venue} (${production.year}), photographed by London theatre photographer Steve Gregson. Production photography, cast and creative credits.`;
 
   return {
     title,

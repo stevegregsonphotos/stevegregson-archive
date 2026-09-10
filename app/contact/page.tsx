@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import ContactForm from "./ContactForm";
 
 export const metadata: Metadata = {
-  title: "Contact",
+  title: { absolute: "Contact Steve Gregson | London Theatre Photographer" },
   alternates: {
     canonical: "/contact",
   },
