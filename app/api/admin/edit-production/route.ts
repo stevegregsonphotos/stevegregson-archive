@@ -419,10 +419,18 @@ export async function GET(request: Request) {
       );
     }
 
-    const source = await readFile(
-      getProductionFile(slug),
-      "utf8",
-    );
+    const productionPath =
+      `content/productions/${slug}.ts`;
+
+    const source =
+      process.env.VERCEL
+        ? await readGitHubTextFile(
+            productionPath,
+          )
+        : await readFile(
+            getProductionFile(slug),
+            "utf8",
+          );
     const production = readProductionFromSource(source);
 
     if (!validateProduction(production)) {
