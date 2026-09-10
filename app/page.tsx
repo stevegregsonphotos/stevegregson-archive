@@ -91,21 +91,21 @@ const workCards: Array<{
     title: "Production Photography",
     description:
       "The energy, atmosphere and visual language of live performance.",
-    href: "/selected-work#production",
+    href: "/production",
   },
   {
     id: "rehearsal",
     title: "Rehearsal & Backstage",
     description:
       "The process, collaboration and quieter moments behind the performance.",
-    href: "/selected-work#rehearsal",
+    href: "/rehearsals",
   },
   {
     id: "campaign",
     title: "Marketing & PR",
     description:
       "Distinctive imagery created for press, publicity and production marketing.",
-    href: "/selected-work#campaign",
+    href: "/marketing-pr",
   },
 ];
 
@@ -153,15 +153,15 @@ export default function Home() {
 
         <div className="hero-footer">
           <div className="hero-categories">
-            <Link href="/selected-work#production">
+            <Link href="/production">
               Production Photography
             </Link>
 
-            <Link href="/selected-work#rehearsal">
+            <Link href="/rehearsals">
               Rehearsal &amp; Backstage
             </Link>
 
-            <Link href="/selected-work#campaign">
+            <Link href="/marketing-pr">
               Marketing &amp; PR
             </Link>
           </div>

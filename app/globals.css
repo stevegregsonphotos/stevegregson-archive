@@ -1657,3 +1657,27 @@ a {
     opacity: 0.92;
   }
 }
+
+.production-service-link {
+  display: flex;
+  justify-content: center;
+  padding: 2.2rem 1.4rem 3rem;
+  background: #11100f;
+}
+
+.production-service-link a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+  color: rgba(242, 238, 230, 0.72);
+  font-size: 0.56rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-decoration: none;
+}
+
+.production-service-link a:hover,
+.production-service-link a:focus-visible {
+  color: #c7a369;
+}
