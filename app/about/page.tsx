@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     type: "website",
     url: "/about",
     title: "About Steve Gregson | Theatre Photographer",
-    description: "Steve Gregson is a London-based theatre and performing arts photographer.",
+    description: "Steve Gregson is a London theatre photographer specialising in production, rehearsal, backstage, marketing and PR photography for the performing arts.",
     images: [
       {
         url: "/images/homepage-hero.jpg",
@@ -24,11 +24,11 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "About Steve Gregson | Theatre Photographer",
-    description: "Steve Gregson is a London-based theatre and performing arts photographer.",
+    description: "Steve Gregson is a London theatre photographer specialising in production, rehearsal, backstage, marketing and PR photography for the performing arts.",
     images: ["/images/homepage-hero.jpg"],
   },
   description:
-    "Steve Gregson is a London-based theatre and performing arts photographer.",
+    "Steve Gregson is a London theatre photographer specialising in production, rehearsal, backstage, marketing and PR photography for the performing arts.",
 };
 
 export default function AboutPage() {
@@ -46,8 +46,9 @@ export default function AboutPage() {
             </h1>
 
             <p className="lead">
-              I create striking photography for theatre, live performance and
-              the people who bring productions to life.
+              I’m Steve Gregson, a London theatre photographer creating striking
+              production, rehearsal and promotional photography for theatre,
+              live performance and the people who bring productions to life.
             </p>
           </div>
 
