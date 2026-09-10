@@ -7,15 +7,15 @@ import selectedWorkData from "../../content/selected-work.json";
 import styles from "../selected-work/selected-work.module.css";
 
 export const metadata: Metadata = {
-  title: "Production Photography",
+  title: "London Theatre & Production Photographer",
   alternates: {
     canonical: "/production",
   },
   openGraph: {
     type: "website",
     url: "/production",
-    title: "Production Photography | Steve Gregson",
-    description: "A curated selection of production photography by London theatre photographer Steve Gregson, celebrating the energy, atmosphere and artistry of live performance.",
+    title: "London Theatre & Production Photographer | Steve Gregson",
+    description: "London theatre photographer Steve Gregson creates production photography for theatres, producers and performing arts organisations across the UK and internationally.",
     images: [
       {
         url: "/images/homepage-hero.jpg",
@@ -27,12 +27,12 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Production Photography | Steve Gregson",
-    description: "A curated selection of production photography by London theatre photographer Steve Gregson, celebrating the energy, atmosphere and artistry of live performance.",
+    title: "London Theatre & Production Photographer | Steve Gregson",
+    description: "London theatre photographer Steve Gregson creates production photography for theatres, producers and performing arts organisations across the UK and internationally.",
     images: ["/images/homepage-hero.jpg"],
   },
   description:
-    "A curated selection of production photography by London theatre photographer Steve Gregson, celebrating the energy, atmosphere and artistry of live performance.",
+    "London theatre photographer Steve Gregson creates production photography for theatres, producers and performing arts organisations across the UK and internationally.",
 };
 
 type CategoryId =
@@ -120,9 +120,11 @@ export default function ProductionPage() {
         </h1>
 
         <p className={styles.introText}>
-          A curated selection of production photography
-          celebrating the energy, atmosphere and artistry
-          of live performance.
+          Production photography by London theatre
+          photographer Steve Gregson, capturing the energy,
+          atmosphere and artistry of live performance for
+          theatres, producers and performing arts
+          organisations across the UK and internationally.
         </p>
       </section>
 
