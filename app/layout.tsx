@@ -88,6 +88,10 @@ const structuredData = {
       jobTitle: "Theatre Photographer",
       description:
         "London-based theatre and performing arts photographer specialising in production, rehearsal, backstage, marketing and PR photography.",
+      sameAs: [
+        "https://www.instagram.com/stevegregsonphotos/",
+        "https://www.linkedin.com/in/stevegregsonphotos",
+      ],
       homeLocation: {
         "@type": "Place",
         name: "London, United Kingdom",
