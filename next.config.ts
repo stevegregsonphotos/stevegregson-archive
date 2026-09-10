@@ -76,7 +76,7 @@ const nextConfig: NextConfig = {
         ],
         destination:
           "https://www.stevegregson.com/:path*",
-        permanent: true,
+        statusCode: 301,
       },
       {
         source: "/theatrephotographer",
