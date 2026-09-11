@@ -190,8 +190,9 @@ export async function POST(request: Request) {
       );
     }
 
-    activeSlug = body.slug;
-    const existing = await getProduction(body.slug);
+    const slug = body.slug;
+    activeSlug = slug;
+    const existing = await getProduction(slug);
     if (!existing) {
       return Response.json(
         { ok: false, message: "The production could not be found." },
@@ -328,17 +329,43 @@ export async function POST(request: Request) {
     const renamedFrom: string[] = [];
     const finalImages: ProductionImage[] = [];
 
+    const imageExistence =
+      await Promise.all(
+        nextImages.map(
+          async (image) => ({
+            image,
+            exists:
+              await productionImageExists(
+                slug,
+                image.src,
+              ),
+          }),
+        ),
+      );
+
+    const missingImage =
+      imageExistence.find(
+        ({ exists }) => !exists,
+      );
+
+    if (missingImage) {
+      return Response.json(
+        {
+          ok: false,
+          message:
+            `${missingImage.image.src} exists in the production but its R2 object is missing.`,
+        },
+        {
+          status: 404,
+        },
+      );
+    }
+
     for (const image of nextImages) {
-      if (!(await productionImageExists(body.slug, image.src))) {
-        return Response.json(
-          { ok: false, message: `${image.src} exists in the production but its R2 object is missing.` },
-          { status: 404 },
-        );
-      }
       let finalFilename = image.src;
       if (image.suggestedFilename) {
         finalFilename = await uniqueProductionImageFilename(
-          body.slug,
+          slug,
           image.suggestedFilename,
           image.src,
           reserved,
@@ -347,7 +374,7 @@ export async function POST(request: Request) {
       reserved.add(finalFilename);
       if (finalFilename !== image.src) {
         await copyProductionImage(
-          body.slug,
+          slug,
           image.src,
           finalFilename,
         );
@@ -369,7 +396,7 @@ export async function POST(request: Request) {
 
     for (const oldFilename of renamedFrom) {
       await deleteProductionImage(
-        body.slug,
+        slug,
         oldFilename,
       ).catch((cleanupError) => {
         console.error("Old production R2 image cleanup failed:", cleanupError);
