@@ -1,10 +1,15 @@
 import type { MetadataRoute } from "next";
 
-import { productions } from "../lib/productions";
+import {
+  getProductions,
+} from "../lib/productions-repository";
 
 const siteUrl = "https://www.stevegregson.com";
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const productions =
+    await getProductions();
+
   const staticRoutes: MetadataRoute.Sitemap = [
     {
       url: `${siteUrl}/`,

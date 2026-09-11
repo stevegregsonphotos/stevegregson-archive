@@ -10,7 +10,10 @@ import {
 
 import JSZip from "jszip";
 
-import { getDirectoryUrl } from "@/lib/directory";
+import {
+  getDirectoryUrlFromData,
+  type DirectoryData,
+} from "@/lib/directory-data";
 
 const IMAGE_EXTENSIONS = new Set([
   "jpg",
@@ -77,6 +80,7 @@ type ExistingProduction = {
 
 type BulkImportClientProps = {
   existingProductions: ExistingProduction[];
+  directory: DirectoryData;
 };
 
 type ProductionDetails = {
@@ -439,6 +443,7 @@ function createUniqueFilename(
 
 function createCredits(
   production: ProductionPreflight,
+  directory: DirectoryData,
 ) {
   return [
     {
@@ -493,7 +498,10 @@ function createCredits(
     .filter((credit) => credit.name)
     .map((credit) => {
       const website =
-        getDirectoryUrl(credit.name);
+        getDirectoryUrlFromData(
+          directory,
+          credit.name,
+        );
 
       return website
         ? {
@@ -506,6 +514,7 @@ function createCredits(
 
 export default function BulkImportClient({
   existingProductions,
+  directory,
 }: BulkImportClientProps) {
   const inputRef =
     useRef<HTMLInputElement | null>(null);
@@ -1146,7 +1155,7 @@ export default function BulkImportClient({
           genericAlt,
       },
       credits:
-        createCredits(production),
+        createCredits(production, directory),
       images:
         ordered.map((image) => {
           const metadata =

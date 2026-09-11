@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 
-import { productions } from "../../lib/productions";
+import {
+  getProductions,
+} from "../../lib/productions-repository";
 
 import ArchiveExplorer from "./ArchiveExplorer";
 
@@ -33,7 +35,10 @@ export const metadata: Metadata = {
   },
 };
 
-export default function ArchivePage() {
+export default async function ArchivePage() {
+  const productions =
+    await getProductions();
+
   const sortedProductions = [...productions].sort(
     (a, b) => b.year - a.year,
   );

@@ -2,10 +2,15 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 
-import selectedWorkData from "../content/selected-work.json";
 import {
   getProductionImageUrl,
 } from "../lib/production-image-url";
+import {
+  getSelectedWorkImageUrl,
+} from "../lib/selected-work-image-url";
+import {
+  getSelectedWork,
+} from "../lib/selected-work-repository";
 
 export const metadata: Metadata = {
   title: {
@@ -78,8 +83,6 @@ type SelectedWorkData = Record<
   SelectedWorkImage[]
 >;
 
-const portfolio = selectedWorkData as SelectedWorkData;
-
 const workCards: Array<{
   id: CategoryId;
   title: string;
@@ -109,7 +112,10 @@ const workCards: Array<{
   },
 ];
 
-export default function Home() {
+export default async function Home() {
+  const portfolio =
+    await getSelectedWork() as SelectedWorkData;
+
   return (
     <main className="homepage">
       <section className="homepage-hero">
@@ -242,7 +248,7 @@ export default function Home() {
                   : item.id === "campaign"
                     ? "/images/Marketing-PR/alice-in-wonderland.webp"
                     : image
-                      ? `/images/selected-work/${item.id}/${image.filename}`
+                      ? getSelectedWorkImageUrl(item.id, image.filename)
                       : "/images/homepage-hero.jpg";
 
             const imageAlt =

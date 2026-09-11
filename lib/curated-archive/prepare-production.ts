@@ -2,6 +2,14 @@ import {
   createProductionSlug,
 } from "@/lib/publishing/production-slug";
 import {
+  getProductions,
+} from "@/lib/productions-repository";
+import {
+  getCuratedArchiveAccessOverrides,
+  getCuratedArchiveOverrides,
+  type CuratedArchiveOverride,
+} from "@/lib/curated-archive-overrides-repository";
+import {
   getDeterministicGalleryLayout,
   type GalleryOrientation,
 } from "@/lib/publishing/gallery-layout";
@@ -26,14 +34,6 @@ const EXCLUSION_PATH = path.resolve(
   "scripts/archive-curator/excluded-productions.txt",
 );
 
-const ACCESS_OVERRIDE_PATH = path.resolve(
-  "scripts/archive-curator/archive-access-overrides.json",
-);
-
-const CURATED_OVERRIDE_PATH = path.resolve(
-  "scripts/archive-curator/archive-curated-overrides.json",
-);
-
 type CuratedCredit = {
   role: string;
   name: string;
@@ -45,15 +45,8 @@ type CuratedImageOverride = {
   selectedIndexes: number[];
 };
 
-type CuratedOverride = {
-  title?: string;
-  venue?: string;
-  month?: number;
-  year?: number;
-  description?: string;
-  credits?: CuratedCredit[];
-  images?: CuratedImageOverride;
-};
+type CuratedOverride =
+  CuratedArchiveOverride;
 
 type SourceImage = {
   sequence: number;
@@ -354,25 +347,15 @@ async function findExistingSlug(
       title,
     );
 
-  const productionFile =
-    path.resolve(
-      "content",
-      "productions",
-      `${slug}.ts`,
-    );
+  const productions =
+    await getProductions();
 
-  try {
-    const stat =
-      await fs.stat(
-        productionFile,
-      );
-
-    return stat.isFile()
-      ? slug
-      : null;
-  } catch {
-    return null;
-  }
+  return productions.some(
+    (production) =>
+      production.slug === slug,
+  )
+    ? slug
+    : null;
 }
 
 export async function prepareCuratedProduction(
@@ -413,27 +396,13 @@ export async function prepareCuratedProduction(
         .filter(Boolean),
     );
 
-  const accessOverrides =
-    await readJsonFile<
-      Record<
-        string,
-        "public" | "password"
-      >
-    >(
-      ACCESS_OVERRIDE_PATH,
-      {},
-    );
-
-  const curatedOverrides =
-    await readJsonFile<
-      Record<
-        string,
-        CuratedOverride
-      >
-    >(
-      CURATED_OVERRIDE_PATH,
-      {},
-    );
+  const [
+    accessOverrides,
+    curatedOverrides,
+  ] = await Promise.all([
+    getCuratedArchiveAccessOverrides(),
+    getCuratedArchiveOverrides(),
+  ]);
 
   for (const entry of entries) {
     if (!entry.isDirectory()) {

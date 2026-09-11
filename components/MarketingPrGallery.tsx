@@ -1,5 +1,6 @@
 "use client";
 
+import { getSelectedWorkImageUrl } from "@/lib/selected-work-image-url";
 import Image from "next/image";
 import { useState } from "react";
 
@@ -34,7 +35,7 @@ export default function MarketingPrGallery({
   const featured = new Set(featuredIndices);
 
   const viewerImages = images.map((image) => ({
-    src: `/images/selected-work/campaign/${image.filename}`,
+    src: getSelectedWorkImageUrl("campaign", image.filename),
     alt: image.alt,
   }));
 
@@ -66,7 +67,7 @@ export default function MarketingPrGallery({
                 aria-label={`Open marketing photograph ${index + 1} fullscreen`}
               >
                 <Image
-                  src={`/images/selected-work/campaign/${image.filename}`}
+                  src={getSelectedWorkImageUrl("campaign", image.filename)}
                   alt={image.alt}
                   width={image.width}
                   height={image.height}

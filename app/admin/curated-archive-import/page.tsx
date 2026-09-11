@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 
-import { productions } from "../../../content/productions";
+import {
+  getProductions,
+} from "../../../lib/productions-repository";
 
 import CuratedArchiveImportClient from "./CuratedArchiveImportClient";
 
@@ -12,7 +14,10 @@ export const metadata: Metadata = {
   },
 };
 
-export default function CuratedArchiveImportPage() {
+export default async function CuratedArchiveImportPage() {
+  const productions =
+    await getProductions();
+
   return (
     <main
       style={{

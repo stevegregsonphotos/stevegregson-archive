@@ -5,7 +5,9 @@ import {
   productionAccessCookieName,
   productionPasswordMatches,
 } from "../../../../../lib/production-access";
-import { getProduction } from "../../../../../lib/productions";
+import {
+  getProduction,
+} from "../../../../../lib/productions-repository";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,7 +27,8 @@ export async function POST(
   },
 ) {
   const { slug } = await params;
-  const production = getProduction(slug);
+  const production =
+    await getProduction(slug);
 
   if (!production) {
     return Response.json(

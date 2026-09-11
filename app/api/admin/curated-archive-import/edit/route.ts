@@ -9,6 +9,11 @@ import {
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import {
+  getCuratedArchiveOverrides,
+  setCuratedArchiveOverride,
+  type CuratedArchiveOverride,
+} from "@/lib/curated-archive-overrides-repository";
 
 import { NextResponse } from "next/server";
 
@@ -22,10 +27,6 @@ const CURATION_ROOT = path.join(
   "Automated Curation",
 );
 
-const CURATED_OVERRIDE_PATH = path.resolve(
-  "scripts/archive-curator/archive-curated-overrides.json",
-);
-
 type CuratedCredit = {
   role: string;
   name: string;
@@ -37,15 +38,8 @@ type CuratedImageOverride = {
   selectedIndexes: number[];
 };
 
-type CuratedOverride = {
-  title?: string;
-  venue?: string;
-  month?: number;
-  year?: number;
-  description?: string;
-  credits?: CuratedCredit[];
-  images?: CuratedImageOverride;
-};
+type CuratedOverride =
+  CuratedArchiveOverride;
 
 type EditPayload = {
   production?: unknown;
@@ -277,23 +271,8 @@ async function loadCuratedProduction(
           entries,
         );
 
-      let overrides: Record<
-        string,
-        CuratedOverride
-      > = {};
-
-      try {
-        overrides =
-          JSON.parse(
-            await fs.readFile(
-              CURATED_OVERRIDE_PATH,
-              "utf8",
-            ),
-          ) as Record<
-            string,
-            CuratedOverride
-          >;
-      } catch {}
+      const overrides =
+        await getCuratedArchiveOverrides();
 
       const override =
         overrides[production];
@@ -628,23 +607,8 @@ export async function DELETE(
     );
   }
 
-  let overrides: Record<
-    string,
-    CuratedOverride
-  > = {};
-
-  try {
-    overrides =
-      JSON.parse(
-        await fs.readFile(
-          CURATED_OVERRIDE_PATH,
-          "utf8",
-        ),
-      ) as Record<
-        string,
-        CuratedOverride
-      >;
-  } catch {}
+  const overrides =
+    await getCuratedArchiveOverrides();
 
   const existingOverride =
     overrides[production];
@@ -693,14 +657,9 @@ export async function DELETE(
       delete overrides[production];
     }
 
-    await fs.writeFile(
-      CURATED_OVERRIDE_PATH,
-      `${JSON.stringify(
-        overrides,
-        null,
-        2,
-      )}\n`,
-      "utf8",
+    await setCuratedArchiveOverride(
+      production,
+      overrides[production] ?? null,
     );
   }
 
@@ -776,23 +735,8 @@ export async function PATCH(
     );
   }
 
-  let overrides: Record<
-    string,
-    CuratedOverride
-  > = {};
-
-  try {
-    overrides =
-      JSON.parse(
-        await fs.readFile(
-          CURATED_OVERRIDE_PATH,
-          "utf8",
-        ),
-      ) as Record<
-        string,
-        CuratedOverride
-      >;
-  } catch {}
+  const overrides =
+    await getCuratedArchiveOverrides();
 
   const existingOverride =
     overrides[production];
@@ -822,14 +766,9 @@ export async function PATCH(
       delete overrides[production];
     }
 
-    await fs.writeFile(
-      CURATED_OVERRIDE_PATH,
-      `${JSON.stringify(
-        overrides,
-        null,
-        2,
-      )}\n`,
-      "utf8",
+    await setCuratedArchiveOverride(
+      production,
+      overrides[production] ?? null,
     );
   }
 
@@ -1061,23 +1000,8 @@ export async function PUT(
     );
   }
 
-  let overrides: Record<
-    string,
-    CuratedOverride
-  > = {};
-
-  try {
-    overrides =
-      JSON.parse(
-        await fs.readFile(
-          CURATED_OVERRIDE_PATH,
-          "utf8",
-        ),
-      ) as Record<
-        string,
-        CuratedOverride
-      >;
-  } catch {}
+  const overrides =
+    await getCuratedArchiveOverrides();
 
   const existingOverride =
     overrides[production] ?? {};
@@ -1090,14 +1014,9 @@ export async function PUT(
     },
   };
 
-  await fs.writeFile(
-    CURATED_OVERRIDE_PATH,
-    `${JSON.stringify(
-      overrides,
-      null,
-      2,
-    )}\n`,
-    "utf8",
+  await setCuratedArchiveOverride(
+    production,
+    overrides[production] ?? null,
   );
 
   return NextResponse.json({
@@ -1311,23 +1230,8 @@ export async function POST(
     );
   }
 
-  let overrides: Record<
-    string,
-    CuratedOverride
-  > = {};
-
-  try {
-    overrides =
-      JSON.parse(
-        await fs.readFile(
-          CURATED_OVERRIDE_PATH,
-          "utf8",
-        ),
-      ) as Record<
-        string,
-        CuratedOverride
-      >;
-  } catch {}
+  const overrides =
+    await getCuratedArchiveOverrides();
 
   const existingOverride =
     overrides[production] ?? {};
@@ -1342,14 +1246,9 @@ export async function POST(
     credits,
   };
 
-  await fs.writeFile(
-    CURATED_OVERRIDE_PATH,
-    `${JSON.stringify(
-      overrides,
-      null,
-      2,
-    )}\n`,
-    "utf8",
+  await setCuratedArchiveOverride(
+    production,
+    overrides[production] ?? null,
   );
 
   let directorySync:

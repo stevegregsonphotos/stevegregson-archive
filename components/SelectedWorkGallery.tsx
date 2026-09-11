@@ -1,5 +1,6 @@
 "use client";
 
+import { getSelectedWorkImageUrl } from "@/lib/selected-work-image-url";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import { useState } from "react";
@@ -42,7 +43,7 @@ export default function SelectedWorkGallery({
   const featured = new Set(featuredIndices);
 
   const viewerImages = images.map((image) => ({
-    src: `/images/selected-work/production/${image.filename}`,
+    src: getSelectedWorkImageUrl("production", image.filename),
     alt: image.alt,
   }));
 
@@ -72,7 +73,7 @@ export default function SelectedWorkGallery({
                 aria-label={`Open photograph ${index + 1} fullscreen`}
               >
                 <Image
-                  src={`/images/selected-work/production/${image.filename}`}
+                  src={getSelectedWorkImageUrl("production", image.filename)}
                   alt={image.alt}
                   width={image.width}
                   height={image.height}

@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import RehearsalGallery from "../../components/RehearsalGallery";
-import selectedWorkData from "../../content/selected-work.json";
+import {
+  getSelectedWork,
+} from "../../lib/selected-work-repository";
 
 import styles from "../selected-work/selected-work.module.css";
 
@@ -76,13 +78,12 @@ const workNavigation: WorkNavigationItem[] = [
   },
 ];
 
-const portfolio =
-  selectedWorkData as SelectedWorkData;
+export default async function RehearsalsPage() {
+  const portfolio =
+    await getSelectedWork() as SelectedWorkData;
 
-const rehearsalImages =
-  portfolio.rehearsal ?? [];
-
-export default function RehearsalsPage() {
+  const rehearsalImages =
+    portfolio.rehearsal ?? [];
   return (
     <main className={styles.page}>
       <nav

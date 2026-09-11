@@ -11,6 +11,10 @@ import {
 } from "../../../../lib/proofing/repository";
 
 import {
+  getSelectedWorkImageUrl,
+} from "../../../../lib/selected-work-image-url";
+
+import {
   getProofingWatermarks,
 } from "../../../../lib/proofing/watermarks";
 
@@ -229,7 +233,10 @@ export default async function ProofingGalleryPage({
               )}&imageId=${encodeURIComponent(
                 orderedImages[0].id,
               )}`
-            : "/images/selected-work/rehearsal/full-echo-rehearsals-stevegregson-04138.jpg"
+            : getSelectedWorkImageUrl(
+                "rehearsal",
+                "full-echo-rehearsals-stevegregson-04138.jpg",
+              )
         }
         initialExpiresAt={
           gallery.expiresAt

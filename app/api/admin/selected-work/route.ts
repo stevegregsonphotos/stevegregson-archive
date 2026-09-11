@@ -2,16 +2,20 @@ import {
   createUnauthorizedResponse,
   isBackstageRequestAuthenticated,
 } from "@/lib/backstage-auth";
-
-import { randomUUID } from "node:crypto";
-
 import {
-  mkdir,
-  readFile,
-  rename,
-  rm,
-  writeFile,
-} from "node:fs/promises";
+  deleteSelectedWorkItemAndCompact,
+  getSelectedWork,
+  insertSelectedWorkItems,
+  replaceSelectedWorkCategory,
+} from "@/lib/selected-work-repository";
+import {
+  copySelectedWorkObject,
+  deleteSelectedWorkObject,
+  putSelectedWorkObject,
+  selectedWorkObjectExists,
+  selectedWorkStorageKey,
+  uniqueSelectedWorkFilename,
+} from "@/lib/selected-work-storage";
 
 import path from "node:path";
 
@@ -38,10 +42,6 @@ type SelectedWorkImage = {
 
   /*
    * Explicit AI-analysis state.
-   *
-   * Older data did not contain this field.
-   * readData() migrates those records in
-   * memory using the old alt-text rule.
    */
   analysisStatus: AnalysisStatus;
 
@@ -56,19 +56,6 @@ type SelectedWorkData = Record<
 type ImageDimensions = {
   width: number;
   height: number;
-};
-
-type UploadPlan = {
-  filename: string;
-  bytes: Buffer;
-  dimensions: ImageDimensions;
-  uploadedAt: string;
-};
-
-const EMPTY_DATA: SelectedWorkData = {
-  production: [],
-  rehearsal: [],
-  campaign: [],
 };
 
 function isCategory(
@@ -265,334 +252,6 @@ function readJpegDimensions(
   );
 }
 
-function projectPaths() {
-  const root = process.cwd();
-
-  return {
-    dataFile: path.join(
-      root,
-      "content",
-      "selected-work.json",
-    ),
-
-    imageRoot: path.join(
-      root,
-      "public",
-      "images",
-      "selected-work",
-    ),
-  };
-}
-
-async function ensureStorage() {
-  const {
-    dataFile,
-    imageRoot,
-  } = projectPaths();
-
-  await mkdir(
-    path.dirname(dataFile),
-    {
-      recursive: true,
-    },
-  );
-
-  await mkdir(imageRoot, {
-    recursive: true,
-  });
-
-  try {
-    await readFile(
-      dataFile,
-      "utf8",
-    );
-  } catch {
-    await writeData(EMPTY_DATA);
-  }
-}
-
-function normaliseStoredImage(
-  value: unknown,
-): SelectedWorkImage | null {
-  if (
-    !value ||
-    typeof value !== "object"
-  ) {
-    return null;
-  }
-
-  const record =
-    value as Record<string, unknown>;
-
-  if (
-    typeof record.filename !==
-      "string" ||
-    typeof record.alt !== "string" ||
-    typeof record.uploadedAt !==
-      "string"
-  ) {
-    return null;
-  }
-
-  const alt = record.alt;
-
-  /*
-   * Backwards compatibility:
-   *
-   * Before analysisStatus existed, the
-   * editor considered non-empty alt text
-   * to mean that analysis was complete.
-   */
-  const analysisStatus =
-    isAnalysisStatus(
-      record.analysisStatus,
-    )
-      ? record.analysisStatus
-      : alt.trim()
-        ? "complete"
-        : "pending";
-
-  return {
-    filename: record.filename,
-
-    suggestedFilename:
-      typeof record.suggestedFilename ===
-      "string"
-        ? record.suggestedFilename
-        : "",
-
-    alt,
-
-    uploadedAt:
-      record.uploadedAt,
-
-    width:
-      isPositiveInteger(record.width)
-        ? record.width
-        : undefined,
-
-    height:
-      isPositiveInteger(record.height)
-        ? record.height
-        : undefined,
-
-    analysisStatus,
-
-    analysedAt:
-      typeof record.analysedAt ===
-      "string"
-        ? record.analysedAt
-        : undefined,
-  };
-}
-
-function normaliseStoredImages(
-  value: unknown,
-) {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  return value
-    .map(normaliseStoredImage)
-    .filter(
-      (
-        image,
-      ): image is SelectedWorkImage =>
-        Boolean(image),
-    );
-}
-
-async function readData(): Promise<SelectedWorkData> {
-  await ensureStorage();
-
-  const { dataFile } =
-    projectPaths();
-
-  const source = await readFile(
-    dataFile,
-    "utf8",
-  );
-
-  const parsed =
-    JSON.parse(source) as Record<
-      string,
-      unknown
-    >;
-
-  return {
-    production:
-      normaliseStoredImages(
-        parsed.production,
-      ),
-
-    rehearsal:
-      normaliseStoredImages(
-        parsed.rehearsal,
-      ),
-
-    campaign:
-      normaliseStoredImages(
-        parsed.campaign,
-      ),
-  };
-}
-
-/*
- * Atomic JSON persistence.
- *
- * Write a complete temporary file first,
- * then replace the live file in a single
- * filesystem rename operation.
- */
-async function writeData(
-  data: SelectedWorkData,
-) {
-  const { dataFile } =
-    projectPaths();
-
-  const temporaryFile =
-    `${dataFile}.${randomUUID()}.tmp`;
-
-  const contents =
-    `${JSON.stringify(
-      data,
-      null,
-      2,
-    )}\n`;
-
-  try {
-    await writeFile(
-      temporaryFile,
-      contents,
-      "utf8",
-    );
-
-    await rename(
-      temporaryFile,
-      dataFile,
-    );
-  } catch (error) {
-    await rm(
-      temporaryFile,
-      {
-        force: true,
-      },
-    ).catch(() => undefined);
-
-    throw error;
-  }
-}
-
-async function fileExists(
-  filePath: string,
-) {
-  try {
-    await readFile(filePath);
-
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-async function uniqueFilename(
-  categoryDirectory: string,
-  originalName: string,
-  currentFilename?: string,
-  reservedFilenames:
-    Set<string> = new Set(),
-) {
-  const {
-    base,
-    extension,
-  } = cleanBaseName(
-    originalName,
-  );
-
-  let candidate =
-    `${base}${extension}`;
-
-  let counter = 2;
-
-  while (true) {
-    if (
-      candidate ===
-        currentFilename &&
-      !reservedFilenames.has(candidate)
-    ) {
-      return candidate;
-    }
-
-    const candidatePath =
-      path.join(
-        categoryDirectory,
-        candidate,
-      );
-
-    const unavailable =
-      reservedFilenames.has(
-        candidate,
-      ) ||
-      (await fileExists(
-        candidatePath,
-      ));
-
-    if (!unavailable) {
-      return candidate;
-    }
-
-    candidate =
-      `${base}-${counter}${extension}`;
-
-    counter += 1;
-  }
-}
-
-async function dimensionsFromFile(
-  filePath: string,
-): Promise<ImageDimensions> {
-  const bytes =
-    await readFile(filePath);
-
-  return readJpegDimensions(
-    bytes,
-  );
-}
-
-async function rollbackRenames(
-  renames: Array<{
-    from: string;
-    to: string;
-  }>,
-) {
-  for (
-    let index =
-      renames.length - 1;
-    index >= 0;
-    index -= 1
-  ) {
-    const item =
-      renames[index];
-
-    try {
-      if (
-        await fileExists(item.to)
-      ) {
-        await rename(
-          item.to,
-          item.from,
-        );
-      }
-    } catch (error) {
-      console.error(
-        "Selected Work rename rollback failed:",
-        error,
-      );
-    }
-  }
-}
-
 /*
  * Load
  */
@@ -604,7 +263,7 @@ export async function GET(request: Request) {
 
   try {
     const data =
-      await readData();
+      await getSelectedWork();
 
     return Response.json({
       ok: true,
@@ -683,10 +342,6 @@ export async function POST(
       );
     }
 
-    /*
-     * Validate every file in the request
-     * before writing anything to disk.
-     */
     const invalidFile =
       files.find(
         (file) =>
@@ -710,38 +365,43 @@ export async function POST(
       );
     }
 
-    const data =
-      await readData();
+    const currentData =
+      await getSelectedWork();
 
-    const { imageRoot } =
-      projectPaths();
+    const currentImages =
+      currentData[category];
 
-    const categoryDirectory =
-      path.join(
-        imageRoot,
-        category,
-      );
-
-    await mkdir(
-      categoryDirectory,
-      {
-        recursive: true,
-      },
-    );
+    const nextPosition =
+      currentImages.length > 0
+        ? Math.max(
+            ...currentImages.map(
+              (image) =>
+                image.position,
+            ),
+          ) + 1
+        : 0;
 
     const reservedFilenames =
       new Set<string>();
 
     const uploadPlan:
-      UploadPlan[] = [];
+      Array<{
+        filename: string;
+        storageKey: string;
+        bytes: Buffer;
+        dimensions: ImageDimensions;
+        uploadedAt: string;
+        position: number;
+      }> = [];
 
-    /*
-     * Stage the complete batch in memory.
-     *
-     * No photograph is written until every
-     * photograph has passed validation.
-     */
-    for (const file of files) {
+    for (
+      let index = 0;
+      index < files.length;
+      index += 1
+    ) {
+      const file =
+        files[index];
+
       const bytes =
         Buffer.from(
           await file.arrayBuffer(),
@@ -769,8 +429,8 @@ export async function POST(
       }
 
       const filename =
-        await uniqueFilename(
-          categoryDirectory,
+        await uniqueSelectedWorkFilename(
+          category,
           file.name,
           undefined,
           reservedFilenames,
@@ -782,101 +442,89 @@ export async function POST(
 
       uploadPlan.push({
         filename,
+        storageKey:
+          selectedWorkStorageKey(
+            category,
+            filename,
+          ),
         bytes,
         dimensions,
         uploadedAt:
           new Date().toISOString(),
+        position:
+          nextPosition + index,
       });
     }
 
-    const writtenPaths:
+    const uploadedKeys:
       string[] = [];
+
+    let databaseCommitted =
+      false;
 
     try {
       for (
-        const item of uploadPlan
+        const item of
+        uploadPlan
       ) {
-        const destination =
-          path.join(
-            categoryDirectory,
-            item.filename,
-          );
-
-        await writeFile(
-          destination,
+        await putSelectedWorkObject(
+          item.storageKey,
           item.bytes,
+          "image/jpeg",
         );
 
-        writtenPaths.push(
-          destination,
+        uploadedKeys.push(
+          item.storageKey,
         );
       }
 
-      const uploaded:
-        SelectedWorkImage[] =
+      await insertSelectedWorkItems(
         uploadPlan.map(
           (item) => ({
-            filename:
+            category,
+            storageKey:
+              item.storageKey,
+            displayFilename:
               item.filename,
-
             suggestedFilename:
               "",
-
             alt: "",
-
             uploadedAt:
               item.uploadedAt,
-
             width:
               item.dimensions.width,
-
             height:
               item.dimensions.height,
-
             analysisStatus:
-              "pending",
+              "pending" as const,
+            position:
+              item.position,
           }),
-        );
-
-      const updatedData = {
-        ...data,
-
-        [category]: [
-          ...data[category],
-          ...uploaded,
-        ],
-      };
-
-      /*
-       * Only commit the metadata after all
-       * physical image writes succeeded.
-       */
-      await writeData(
-        updatedData,
+        ),
       );
+
+      databaseCommitted =
+        true;
+
+      const data =
+        await getSelectedWork();
 
       return Response.json({
         ok: true,
-        data: updatedData,
+        data,
       });
     } catch (error) {
-      /*
-       * The request is transactional:
-       * remove every file written by this
-       * failed batch.
-       */
-      for (
-        const filePath of
-        writtenPaths
-      ) {
-        await rm(
-          filePath,
-          {
-            force: true,
-          },
-        ).catch(
-          () => undefined,
-        );
+      if (!databaseCommitted) {
+        for (
+          const storageKey of
+          uploadedKeys
+        ) {
+          await deleteSelectedWorkObject(
+            storageKey,
+          ).catch(
+            () => undefined,
+          );
+        }
       }
 
       throw error;
@@ -1049,49 +697,164 @@ const applyFilenameChanges =
       });
     }
 
-    const data =
-      await readData();
+    if (!applyFilenameChanges) {
+      const currentData =
+        await getSelectedWork();
 
-    const { imageRoot } =
-      projectPaths();
+      const currentImages =
+        currentData[body.category];
 
-    const categoryDirectory =
-      path.join(
-        imageRoot,
-        body.category,
+      if (
+        submittedImages.length !==
+        currentImages.length
+      ) {
+        return Response.json(
+          {
+            ok: false,
+            message:
+              "The collection no longer matches the stored Selected Work data.",
+          },
+          {
+            status: 409,
+          },
+        );
+      }
+
+      const currentByFilename =
+        new Map(
+          currentImages.map(
+            (image) => [
+              image.filename,
+              image,
+            ],
+          ),
+        );
+
+      const updates = [];
+
+      for (
+        const image of
+        submittedImages
+      ) {
+        const currentImage =
+          currentByFilename.get(
+            image.filename,
+          );
+
+        if (!currentImage) {
+          return Response.json(
+            {
+              ok: false,
+              message:
+                `${image.filename} could not be found.`,
+            },
+            {
+              status: 404,
+            },
+          );
+        }
+
+        if (
+          !(
+            await selectedWorkObjectExists(
+              currentImage.storageKey,
+            )
+          )
+        ) {
+          return Response.json(
+            {
+              ok: false,
+              message:
+                `${image.filename} exists in Selected Work but its R2 object is missing.`,
+            },
+            {
+              status: 404,
+            },
+          );
+        }
+
+        updates.push({
+          currentStorageKey:
+            currentImage.storageKey,
+          nextStorageKey:
+            currentImage.storageKey,
+          nextImage: {
+            ...image,
+            storageKey:
+              currentImage.storageKey,
+            position:
+              currentImage.position,
+          },
+        });
+      }
+
+      const savedData =
+        await replaceSelectedWorkCategory(
+          body.category,
+          updates,
+        );
+
+      return Response.json({
+        ok: true,
+        data: savedData,
+      });
+    }
+
+    const currentData =
+      await getSelectedWork();
+
+    const currentImages =
+      currentData[body.category];
+
+    if (
+      submittedImages.length !==
+      currentImages.length
+    ) {
+      return Response.json(
+        {
+          ok: false,
+          message:
+            "The collection no longer matches the stored Selected Work data.",
+        },
+        {
+          status: 409,
+        },
+      );
+    }
+
+    const currentByFilename =
+      new Map(
+        currentImages.map(
+          (image) => [
+            image.filename,
+            image,
+          ],
+        ),
       );
 
-    await mkdir(
-      categoryDirectory,
-      {
-        recursive: true,
-      },
-    );
+    const reservedFilenames =
+      new Set<string>();
 
-    const existingImages =
-      data[body.category];
+    const savePlan:
+      Array<{
+        currentImage:
+          (typeof currentImages)[number];
+        nextImage:
+          (typeof currentImages)[number];
+        currentStorageKey: string;
+        nextStorageKey: string;
+      }> = [];
 
-    /*
-     * First ensure every referenced source
-     * photograph actually exists.
-     */
     for (
       const image of
       submittedImages
     ) {
-      const sourcePath =
-        path.join(
-          categoryDirectory,
+      const currentImage =
+        currentByFilename.get(
           image.filename,
         );
 
-      if (
-        !(
-          await fileExists(
-            sourcePath,
-          )
-        )
-      ) {
+      if (!currentImage) {
         return Response.json(
           {
             ok: false,
@@ -1103,30 +866,30 @@ const applyFilenameChanges =
           },
         );
       }
-    }
 
-    const reservedFilenames =
-      new Set<string>();
+      if (
+        !(
+          await selectedWorkObjectExists(
+            currentImage.storageKey,
+          )
+        )
+      ) {
+        return Response.json(
+          {
+            ok: false,
+            message:
+              `${image.filename} exists in Selected Work but its R2 object is missing.`,
+          },
+          {
+            status: 404,
+          },
+        );
+      }
 
-    const savePlan:
-      Array<{
-        image: SelectedWorkImage;
-        finalFilename: string;
-      }> = [];
-
-    /*
-     * Plan every rename before modifying
-     * the filesystem.
-     */
-    for (
-      const image of
-      submittedImages
-    ) {
       let finalFilename =
         image.filename;
 
-            if (
-        applyFilenameChanges &&
+      if (
         image.suggestedFilename
       ) {
         const suggestion =
@@ -1136,8 +899,8 @@ const applyFilenameChanges =
           );
 
         finalFilename =
-          await uniqueFilename(
-            categoryDirectory,
+          await uniqueSelectedWorkFilename(
+            body.category,
             suggestion,
             image.filename,
             reservedFilenames,
@@ -1148,174 +911,131 @@ const applyFilenameChanges =
         finalFilename,
       );
 
+      const nextStorageKey =
+        selectedWorkStorageKey(
+          body.category,
+          finalFilename,
+        );
+
       savePlan.push({
-        image,
-        finalFilename,
+        currentImage,
+        currentStorageKey:
+          currentImage.storageKey,
+        nextStorageKey,
+        nextImage: {
+          filename:
+            finalFilename,
+          storageKey:
+            nextStorageKey,
+          suggestedFilename:
+            "",
+          alt:
+            image.alt.trim(),
+          uploadedAt:
+            image.uploadedAt,
+          width:
+            image.width ??
+            currentImage.width,
+          height:
+            image.height ??
+            currentImage.height,
+          analysisStatus:
+            image.analysisStatus ??
+            currentImage.analysisStatus,
+          analysedAt:
+            (
+              image.analysisStatus ??
+              currentImage.analysisStatus
+            ) === "complete"
+              ? (
+                  image.analysedAt ??
+                  currentImage.analysedAt
+                )
+              : undefined,
+          position:
+            currentImage.position,
+        },
       });
     }
 
-    const completedRenames:
-      Array<{
-        from: string;
-        to: string;
-      }> = [];
+    const copiedKeys:
+      string[] = [];
 
     try {
-      /*
-       * Apply planned renames.
-       */
       for (
         const item of
         savePlan
       ) {
         if (
-          item.finalFilename ===
-          item.image.filename
+          item.currentStorageKey ===
+          item.nextStorageKey
         ) {
           continue;
         }
 
-        const from =
-          path.join(
-            categoryDirectory,
-            item.image.filename,
-          );
-
-        const to =
-          path.join(
-            categoryDirectory,
-            item.finalFilename,
-          );
-
-        await rename(
-          from,
-          to,
+        await copySelectedWorkObject(
+          item.currentStorageKey,
+          item.nextStorageKey,
         );
 
-        completedRenames.push({
-          from,
-          to,
-        });
+        copiedKeys.push(
+          item.nextStorageKey,
+        );
       }
 
-      const savedImages:
-        SelectedWorkImage[] =
-        [];
+      const savedData =
+        await replaceSelectedWorkCategory(
+          body.category,
+          savePlan.map(
+            (item) => ({
+              currentStorageKey:
+                item.currentStorageKey,
+              nextStorageKey:
+                item.nextStorageKey,
+              nextImage:
+                item.nextImage,
+            }),
+          ),
+        );
 
       for (
         const item of
         savePlan
       ) {
-        const {
-          image,
-          finalFilename,
-        } = item;
-
-        const existingImage =
-          existingImages.find(
-            (existing) =>
-              existing.filename ===
-              image.filename,
-          );
-
-        let width =
-          image.width ??
-          existingImage?.width;
-
-        let height =
-          image.height ??
-          existingImage?.height;
-
         if (
-          !isPositiveInteger(
-            width,
-          ) ||
-          !isPositiveInteger(
-            height,
-          )
+          item.currentStorageKey ===
+          item.nextStorageKey
         ) {
-          const dimensions =
-            await dimensionsFromFile(
-              path.join(
-                categoryDirectory,
-                finalFilename,
-              ),
-            );
-
-          width =
-            dimensions.width;
-
-          height =
-            dimensions.height;
+          continue;
         }
 
-        const analysisStatus =
-          image.analysisStatus ??
-          existingImage?.analysisStatus ??
-          (image.alt.trim()
-            ? "complete"
-            : "pending");
-
-        const analysedAt =
-          image.analysedAt ??
-          existingImage?.analysedAt;
-
-        savedImages.push({
-          filename:
-            finalFilename,
-
-                    suggestedFilename:
-            applyFilenameChanges
-              ? ""
-              : image.suggestedFilename,
-
-          alt:
-            image.alt.trim(),
-
-          uploadedAt:
-            image.uploadedAt,
-
-          width,
-
-          height,
-
-          analysisStatus,
-
-          analysedAt:
-            analysisStatus ===
-            "complete"
-              ? analysedAt
-              : undefined,
-        });
+        try {
+          await deleteSelectedWorkObject(
+            item.currentStorageKey,
+          );
+        } catch (cleanupError) {
+          console.error(
+            "Selected Work old R2 object cleanup failed:",
+            cleanupError,
+          );
+        }
       }
-
-      const updatedData = {
-        ...data,
-
-        [body.category]:
-          savedImages,
-      };
-
-      /*
-       * Commit metadata only after all file
-       * operations have succeeded.
-       */
-      await writeData(
-        updatedData,
-      );
 
       return Response.json({
         ok: true,
-        data: updatedData,
+        data: savedData,
       });
     } catch (error) {
-      /*
-       * Restore filenames if the operation
-       * could not be committed.
-       */
-      await rollbackRenames(
-        completedRenames,
-      );
+      for (
+        const storageKey of
+        copiedKeys
+      ) {
+        await deleteSelectedWorkObject(
+          storageKey,
+        ).catch(
+          () => undefined,
+        );
+      }
 
       throw error;
     }
@@ -1378,19 +1098,13 @@ export async function DELETE(
       );
     }
 
-    const data =
-      await readData();
-
-    const exists =
-      data[
-        body.category
-      ].some(
-        (image) =>
-          image.filename ===
-          body.filename,
+    const deleted =
+      await deleteSelectedWorkItemAndCompact(
+        body.category,
+        body.filename,
       );
 
-    if (!exists) {
+    if (!deleted) {
       return Response.json(
         {
           ok: false,
@@ -1403,108 +1117,36 @@ export async function DELETE(
       );
     }
 
-    const { imageRoot } =
-      projectPaths();
+    let cleanupWarning:
+      string | null = null;
 
-    const imagePath =
-      path.join(
-        imageRoot,
-        body.category,
-        body.filename,
+    try {
+      await deleteSelectedWorkObject(
+        deleted.storageKey,
+      );
+    } catch (error) {
+      console.error(
+        "Selected Work R2 delete cleanup failed:",
+        error,
       );
 
-    if (
-      !(
-        await fileExists(
-          imagePath,
-        )
-      )
-    ) {
-      return Response.json(
-        {
-          ok: false,
-          message:
-            `${body.filename} exists in the collection but the image file is missing.`,
-        },
-        {
-          status: 404,
-        },
-      );
+      cleanupWarning =
+        "The Selected Work record was removed, but its old R2 object could not be cleaned up.";
     }
 
-    /*
-     * Move the file aside instead of
-     * destroying it immediately.
-     */
-    const temporaryPath =
-      `${imagePath}.${randomUUID()}.delete`;
+    const data =
+      await getSelectedWork();
 
-    await rename(
-      imagePath,
-      temporaryPath,
-    );
-
-    const updatedData = {
-  ...data,
-
-  [body.category]:
-    data[
-      body.category
-    ].filter(
-      (image) =>
-        image.filename !==
-        body.filename,
-    ),
-};
-
-try {
-  await writeData(
-    updatedData,
-  );
-} catch (error) {
-  /*
-   * Metadata was not committed, so put
-   * the image back exactly where it was.
-   */
-  if (
-    await fileExists(
-      temporaryPath,
-    )
-  ) {
-    await rename(
-      temporaryPath,
-      imagePath,
-    );
-  }
-
-  throw error;
-}
-
-/*
- * Metadata is now safely committed.
- * Failure to clean up the temporary
- * image must not restore it to the
- * live collection.
- */
-try {
-  await rm(
-    temporaryPath,
-    {
-      force: true,
-    },
-  );
-} catch (cleanupError) {
-  console.error(
-    "Selected Work delete cleanup failed:",
-    cleanupError,
-  );
-}
-
-return Response.json({
-  ok: true,
-  data: updatedData,
-});
-
+    return Response.json({
+      ok: true,
+      data,
+      ...(cleanupWarning
+        ? {
+            message:
+              cleanupWarning,
+          }
+        : {}),
+    });
   } catch (error) {
     console.error(
       "Selected Work delete failed:",
@@ -1515,7 +1157,7 @@ return Response.json({
       {
         ok: false,
         message:
-          "The photograph could not be removed.",
+          "The photograph could not be deleted.",
       },
       {
         status: 500,

@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import SelectedWorkGallery from "../../components/SelectedWorkGallery";
 import Link from "next/link";
 
-import selectedWorkData from "../../content/selected-work.json";
+import {
+  getSelectedWork,
+} from "../../lib/selected-work-repository";
 
 import styles from "./selected-work-preview.module.css";
 
@@ -50,9 +52,6 @@ type SelectedWorkData = {
   campaign: SelectedWorkImage[];
 };
 
-const portfolio =
-  selectedWorkData as SelectedWorkData;
-
 /*
  * These positions become the large,
  * full-width photographs.
@@ -69,7 +68,10 @@ const portfolio =
  */
 
 
-export default function SelectedWorkPreviewPage() {
+export default async function SelectedWorkPreviewPage() {
+  const portfolio =
+    await getSelectedWork() as SelectedWorkData;
+
   /*
    * Start with 15 production photographs.
    *

@@ -1,5 +1,6 @@
 "use client";
 
+import { getSelectedWorkImageUrl } from "@/lib/selected-work-image-url";
 import {
   ChangeEvent,
   useEffect,
@@ -2853,7 +2854,7 @@ setCategorySaveState(
                         >
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
-                            src={`/images/selected-work/${category.id}/${image.filename}`}
+                            src={getSelectedWorkImageUrl(category.id, image.filename)}
                             alt={
                               image.alt
                             }

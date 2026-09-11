@@ -3,39 +3,17 @@ import {
   isBackstageRequestAuthenticated,
 } from "@/lib/backstage-auth";
 
-import { readFile, writeFile } from "node:fs/promises";
-import path from "node:path";
+import {
+  isPublishingSettings,
+} from "../../../../lib/publishing-settings";
 
 import {
-  DEFAULT_PUBLISHING_SETTINGS,
-  isPublishingSettings,
-  type PublishingSettings,
-} from "../../../../lib/publishing-settings";
+  getPublishingSettings,
+  savePublishingSettings,
+} from "../../../../lib/publishing-settings-repository";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-function getSettingsFile() {
-  return path.join(
-    process.cwd(),
-    "content",
-    "settings",
-    "publishing.json",
-  );
-}
-
-async function readSettings(): Promise<PublishingSettings> {
-  try {
-    const source = await readFile(getSettingsFile(), "utf8");
-    const parsed = JSON.parse(source) as unknown;
-
-    return isPublishingSettings(parsed)
-      ? parsed
-      : DEFAULT_PUBLISHING_SETTINGS;
-  } catch {
-    return DEFAULT_PUBLISHING_SETTINGS;
-  }
-}
 
 export async function GET(request: Request) {
   if (!isBackstageRequestAuthenticated(request)) {
@@ -44,7 +22,7 @@ export async function GET(request: Request) {
 
   return Response.json({
     ok: true,
-    settings: await readSettings(),
+    settings: await getPublishingSettings(),
   });
 }
 
@@ -66,16 +44,13 @@ export async function POST(request: Request) {
       );
     }
 
-    await writeFile(
-      getSettingsFile(),
-      `${JSON.stringify(body, null, 2)}\n`,
-      "utf8",
-    );
+    const settings =
+      await savePublishingSettings(body);
 
     return Response.json({
       ok: true,
       message: "Publishing settings saved.",
-      settings: body,
+      settings,
     });
   } catch (error) {
     console.error("Publishing settings update failed:", error);

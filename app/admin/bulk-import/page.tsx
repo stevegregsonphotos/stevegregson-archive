@@ -1,6 +1,11 @@
 import type { Metadata } from "next";
 
-import { productions } from "../../../content/productions";
+import {
+  getDirectory,
+} from "../../../lib/directory-repository";
+import {
+  getProductions,
+} from "../../../lib/productions-repository";
 
 import BulkImportClient from "./BulkImportClient";
 
@@ -12,7 +17,15 @@ export const metadata: Metadata = {
   },
 };
 
-export default function BulkImportPage() {
+export default async function BulkImportPage() {
+  const [
+    productions,
+    directory,
+  ] = await Promise.all([
+    getProductions(),
+    getDirectory(),
+  ]);
+
   return (
     <main
       style={{
@@ -70,6 +83,7 @@ export default function BulkImportPage() {
         </p>
 
         <BulkImportClient
+          directory={directory}
           existingProductions={productions.map(
             (production) => ({
               slug: production.slug,

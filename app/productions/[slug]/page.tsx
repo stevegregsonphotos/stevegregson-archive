@@ -6,7 +6,10 @@ import { notFound } from "next/navigation";
 
 import ProductionAccessGate from "../../../components/ProductionAccessGate";
 import { ProductionGallery } from "../../../components/ProductionGallery";
-import { getDirectoryUrl } from "../../../lib/directory";
+import {
+  getDirectory,
+  getDirectoryUrlFromData,
+} from "../../../lib/directory-repository";
 import { getProductionImageUrl } from "../../../lib/production-image-url";
 import {
   createProductionAccessToken,
@@ -14,10 +17,11 @@ import {
   productionAccessTokenMatches,
 } from "../../../lib/production-access";
 import {
-  getNextProduction,
+  getNextProductionFromData,
   getProduction,
-  productions,
-} from "../../../lib/productions";
+  getProductionFromData,
+  getProductions,
+} from "../../../lib/productions-repository";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +31,10 @@ type ProductionPageProps = {
   }>;
 };
 
-export function generateStaticParams() {
+export async function generateStaticParams() {
+  const productions =
+    await getProductions();
+
   return productions.map((production) => ({
     slug: production.slug,
   }));
@@ -37,7 +44,8 @@ export async function generateMetadata({
   params,
 }: ProductionPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const production = getProduction(slug);
+  const production =
+    await getProduction(slug);
 
   if (!production) {
     return {
@@ -108,7 +116,20 @@ export default async function ProductionPage({
   params,
 }: ProductionPageProps) {
   const { slug } = await params;
-  const production = getProduction(slug);
+
+  const [
+    productions,
+    directory,
+  ] = await Promise.all([
+    getProductions(),
+    getDirectory(),
+  ]);
+
+  const production =
+    getProductionFromData(
+      productions,
+      slug,
+    );
 
   if (!production) {
     notFound();
@@ -168,7 +189,10 @@ export default async function ProductionPage({
   }
 
   const nextProduction =
-    getNextProduction(slug);
+    getNextProductionFromData(
+      productions,
+      slug,
+    );
 
   const productionUrl =
     `https://www.stevegregson.com/productions/${production.slug}`;
@@ -326,7 +350,8 @@ export default async function ProductionPage({
             (credit) => {
               const creditUrl =
                 credit.website ??
-                getDirectoryUrl(
+                getDirectoryUrlFromData(
+                  directory,
                   credit.name,
                 );
 

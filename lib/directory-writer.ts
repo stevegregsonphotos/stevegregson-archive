@@ -1,9 +1,10 @@
+import { randomUUID } from "node:crypto";
+
+import { neon } from "@neondatabase/serverless";
+
 import {
-  readFile,
-  rename,
-  writeFile,
-} from "node:fs/promises";
-import path from "node:path";
+  getDirectory,
+} from "./directory-repository";
 
 type DirectoryCategory =
   | "venues"
@@ -52,12 +53,6 @@ export type PreparedDirectorySync = {
   source: string;
   changed: boolean;
 };
-
-const DIRECTORY_PATH = path.join(
-  process.cwd(),
-  "lib",
-  "directory.json",
-);
 
 function normaliseName(value: string) {
   return value
@@ -256,47 +251,78 @@ export function prepareDirectoryCredits(
   };
 }
 
-async function readDirectorySource() {
-  return readFile(
-    DIRECTORY_PATH,
-    "utf8",
-  );
+function getSql() {
+  const databaseUrl =
+    process.env.DATABASE_URL;
+
+  if (!databaseUrl) {
+    throw new Error(
+      "DATABASE_URL is not configured.",
+    );
+  }
+
+  return neon(databaseUrl);
 }
 
-async function writeDirectorySource(
-  source: string,
+function tableForCategory(
+  category: DirectoryCategory,
 ) {
-  const temporaryPath =
-    `${DIRECTORY_PATH}.tmp`;
-
-  await writeFile(
-    temporaryPath,
-    source,
-    "utf8",
-  );
-
-  await rename(
-    temporaryPath,
-    DIRECTORY_PATH,
-  );
+  switch (category) {
+    case "venues":
+      return "directory_venues";
+    case "companies":
+      return "directory_companies";
+    case "people":
+      return "directory_people";
+  }
 }
 
 export async function rememberDirectoryCredits(
   credits: DirectoryCredit[],
 ): Promise<DirectorySyncResult> {
-  const source =
-    await readDirectorySource();
+  const directory =
+    await getDirectory();
 
   const prepared =
     prepareDirectoryCredits(
-      source,
+      `${JSON.stringify(
+        directory,
+        null,
+        2,
+      )}\n`,
       credits,
     );
 
-  if (prepared.changed) {
-    await writeDirectorySource(
-      prepared.source,
-    );
+  if (!prepared.changed) {
+    return prepared.result;
+  }
+
+  const sql = getSql();
+
+  for (const item of prepared.result.added) {
+    const tableName =
+      tableForCategory(
+        item.category,
+      );
+
+    await sql`
+      INSERT INTO ${sql.unsafe(tableName)} (
+        id,
+        display_name,
+        url,
+        created_at,
+        updated_at,
+        deleted_at
+      )
+      VALUES (
+        ${randomUUID()},
+        ${item.name},
+        ${item.url},
+        now(),
+        now(),
+        null
+      )
+    `;
   }
 
   return prepared.result;

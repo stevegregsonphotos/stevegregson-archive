@@ -1,6 +1,14 @@
+"use client";
+
 import {
-  getDirectoryUrl,
-} from "@/lib/directory";
+  useEffect,
+  useState,
+} from "react";
+
+import {
+  getDirectoryUrlFromData,
+  type DirectoryData,
+} from "@/lib/directory-data";
 
 type Credit = {
   role: string;
@@ -17,6 +25,53 @@ export default function CreditsEditor({
   credits,
   onChange,
 }: CreditsEditorProps) {
+  const [directory, setDirectory] =
+    useState<DirectoryData | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadDirectory() {
+      try {
+        const response =
+          await fetch(
+            "/api/admin/directory",
+            {
+              cache: "no-store",
+            },
+          );
+
+        if (!response.ok) {
+          return;
+        }
+
+        const result =
+          await response.json() as {
+            ok?: boolean;
+            directory?: DirectoryData;
+          };
+
+        if (
+          !cancelled &&
+          result.ok &&
+          result.directory
+        ) {
+          setDirectory(
+            result.directory,
+          );
+        }
+      } catch {
+        // Directory autofill is optional.
+      }
+    }
+
+    void loadDirectory();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   function updateCredit(
     index: number,
     field: "role" | "name" | "website",
@@ -38,7 +93,12 @@ export default function CreditsEditor({
           !credit.website?.trim()
         ) {
           const knownWebsite =
-            getDirectoryUrl(value);
+            directory
+              ? getDirectoryUrlFromData(
+                  directory,
+                  value,
+                )
+              : undefined;
 
           if (knownWebsite) {
             updatedCredit.website =

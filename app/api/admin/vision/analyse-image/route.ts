@@ -13,6 +13,12 @@ import { openai } from "@/lib/vision/client";
 import {
   getProductionImage,
 } from "@/lib/publishing/production-image-storage";
+import {
+  getSelectedWorkItem,
+} from "@/lib/selected-work-repository";
+import {
+  getSelectedWorkObject,
+} from "@/lib/selected-work-storage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -403,16 +409,22 @@ async function loadSelectedWorkContext(
   category: SelectedWorkCategory,
   filename: string,
 ): Promise<AnalysisContext> {
-  const imageFile = path.join(
-    process.cwd(),
-    "public",
-    "images",
-    "selected-work",
-    category,
-    filename,
-  );
+  const item =
+    await getSelectedWorkItem(
+      category,
+      filename,
+    );
 
-  const sourceImage = await readFile(imageFile);
+  if (!item) {
+    throw new Error(
+      "The Selected Work image could not be found.",
+    );
+  }
+
+  const sourceImage =
+    await getSelectedWorkObject(
+      item.storageKey,
+    );
 
   return {
     sourceImage,

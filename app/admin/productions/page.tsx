@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 
-import { productions } from "../../../content/productions";
+import {
+  getProductions,
+} from "../../../lib/productions-repository";
 
 import ProductionManager from "./ProductionManager";
 
@@ -12,7 +14,10 @@ export const metadata: Metadata = {
   },
 };
 
-export default function ProductionsAdminPage() {
+export default async function ProductionsAdminPage() {
+  const productions =
+    await getProductions();
+
   const productionSummaries = productions.map(
     (production) => ({
       slug: production.slug,

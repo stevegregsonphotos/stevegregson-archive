@@ -1,4 +1,5 @@
 import {
+  CopyObjectCommand,
   DeleteObjectCommand,
   GetObjectCommand,
   HeadObjectCommand,
@@ -213,6 +214,73 @@ export async function deleteProductionImages(
   }
 
   return keys.length;
+}
+
+export async function copyProductionImage(
+  productionSlug: string,
+  sourceFilename: string,
+  destinationFilename: string,
+) {
+  const bucket = getBucket();
+  const sourceKey = getProductionImageObjectKey(
+    productionSlug,
+    sourceFilename,
+  );
+  const destinationKey = getProductionImageObjectKey(
+    productionSlug,
+    destinationFilename,
+  );
+  const encodedSource = sourceKey
+    .split("/")
+    .map((part) => encodeURIComponent(part))
+    .join("/");
+
+  await getClient().send(
+    new CopyObjectCommand({
+      Bucket: bucket,
+      Key: destinationKey,
+      CopySource: `${bucket}/${encodedSource}`,
+      ContentType: "image/webp",
+      MetadataDirective: "REPLACE",
+    }),
+  );
+}
+
+export async function uniqueProductionImageFilename(
+  productionSlug: string,
+  proposedFilename: string,
+  currentFilename?: string,
+  reserved: Set<string> = new Set(),
+) {
+  const parsed = proposedFilename.match(/^(.*?)(\.[A-Za-z0-9]+)?$/);
+  const rawStem = parsed?.[1] ?? proposedFilename;
+  const extension = (parsed?.[2] ?? ".webp").toLowerCase();
+  const stem = rawStem
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/[’']/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "production-image";
+
+  let candidate = `${stem}${extension === ".jpeg" ? ".jpg" : extension}`;
+  let counter = 2;
+
+  while (true) {
+    if (candidate === currentFilename) {
+      return candidate;
+    }
+    const exists = await productionImageExists(
+      productionSlug,
+      candidate,
+    );
+    if (!reserved.has(candidate) && !exists) {
+      return candidate;
+    }
+    candidate = `${stem}-${counter}${extension === ".jpeg" ? ".jpg" : extension}`;
+    counter += 1;
+  }
 }
 
 export async function deleteProductionImage(

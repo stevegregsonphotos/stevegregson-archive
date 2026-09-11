@@ -1,8 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { getDirectoryUrl } from "../../lib/directory";
-import { productions } from "../../lib/productions";
+import {
+  getDirectory,
+  getDirectoryUrlFromData,
+  type DirectoryData,
+} from "../../lib/directory-repository";
+import {
+  getProductions,
+} from "../../lib/productions-repository";
 
 export const metadata: Metadata = {
   title: "People in the Theatre Archive",
@@ -71,7 +77,12 @@ function normaliseRole(role: string) {
   return aliases[role] ?? role;
 }
 
-function createPeopleDirectory() {
+function createPeopleDirectory(
+  directory: DirectoryData,
+  productions: Awaited<
+    ReturnType<typeof getProductions>
+  >,
+) {
   const people = new Map<string, Person>();
 
   productions.forEach((production) => {
@@ -106,7 +117,10 @@ function createPeopleDirectory() {
         role,
         url:
           credit.website ??
-          getDirectoryUrl(credit.name),
+          getDirectoryUrlFromData(
+            directory,
+            credit.name,
+          ),
         productions: [
           {
             slug: production.slug,
@@ -123,8 +137,20 @@ function createPeopleDirectory() {
   );
 }
 
-export default function PeoplePage() {
-  const people = createPeopleDirectory();
+export default async function PeoplePage() {
+  const [
+    directory,
+    productions,
+  ] = await Promise.all([
+    getDirectory(),
+    getProductions(),
+  ]);
+
+  const people =
+    createPeopleDirectory(
+      directory,
+      productions,
+    );
 
   const roles = [...new Set(people.map((person) => person.role))].sort(
     (a, b) => {

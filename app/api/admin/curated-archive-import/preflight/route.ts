@@ -3,7 +3,13 @@ import {
   isBackstageRequestAuthenticated,
 } from "@/lib/backstage-auth";
 
-import { productions } from "@/content/productions";
+import {
+  getProductions,
+} from "@/lib/productions-repository";
+import {
+  getCuratedArchiveAccessOverrides,
+  getCuratedArchiveOverrides,
+} from "@/lib/curated-archive-overrides-repository";
 
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -25,14 +31,6 @@ const CURATION_ROOT = path.join(
 
 const EXCLUSION_PATH = path.resolve(
   "scripts/archive-curator/excluded-productions.txt",
-);
-
-const ACCESS_OVERRIDE_PATH = path.resolve(
-  "scripts/archive-curator/archive-access-overrides.json",
-);
-
-const CURATED_OVERRIDE_PATH = path.resolve(
-  "scripts/archive-curator/archive-curated-overrides.json",
 );
 
 function normaliseProductionName(value: string) {
@@ -100,37 +98,6 @@ async function readExclusions() {
   }
 }
 
-async function readAccessOverrides() {
-  try {
-    const parsed =
-      JSON.parse(
-        await fs.readFile(
-          ACCESS_OVERRIDE_PATH,
-          "utf8",
-        ),
-      ) as Record<
-        string,
-        "public" | "password"
-      >;
-
-    return new Map(
-      Object.entries(parsed).map(
-        ([production, access]) => [
-          normaliseProductionName(
-            production,
-          ),
-          access,
-        ],
-      ),
-    );
-  } catch {
-    return new Map<
-      string,
-      "public" | "password"
-    >();
-  }
-}
-
 type CuratedCredit = {
   role: string;
   name: string;
@@ -151,22 +118,6 @@ type CuratedOverride = {
   credits?: CuratedCredit[];
   images?: CuratedImageOverride;
 };
-
-async function readCuratedOverrides() {
-  try {
-    return JSON.parse(
-      await fs.readFile(
-        CURATED_OVERRIDE_PATH,
-        "utf8",
-      ),
-    ) as Record<
-      string,
-      CuratedOverride
-    >;
-  } catch {
-    return {};
-  }
-}
 
 function metadataCredits(
   metadata: Record<string, string>,
@@ -232,14 +183,33 @@ export async function GET(
     return createUnauthorizedResponse();
   }
 
+  const productions =
+    await getProductions();
+
   const exclusions =
     await readExclusions();
 
-  const accessOverrides =
-    await readAccessOverrides();
+  const [
+    accessOverridesRecord,
+    curatedOverrides,
+  ] = await Promise.all([
+    getCuratedArchiveAccessOverrides(),
+    getCuratedArchiveOverrides(),
+  ]);
 
-  const curatedOverrides =
-    await readCuratedOverrides();
+  const accessOverrides =
+    new Map(
+      Object.entries(
+        accessOverridesRecord,
+      ).map(
+        ([production, access]) => [
+          normaliseProductionName(
+            production,
+          ),
+          access,
+        ],
+      ),
+    );
 
   function findExistingSlug(
     title: string,
