@@ -132,6 +132,11 @@ const nextConfig: NextConfig = {
         hostname: "images.stevegregson.com",
         pathname: "/**",
       },
+      {
+        protocol: "https",
+        hostname: "selected-work-images.stevegregson.com",
+        pathname: "/**",
+      },
     ],
     formats: [
       "image/avif",
