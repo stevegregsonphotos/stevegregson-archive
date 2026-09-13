@@ -16,8 +16,14 @@ import {
 import type {
   PublishPayload,
 } from "@/lib/publishing/production-source";
+import {
+  findCuratedImportStagedImage,
+  getCuratedImportDirectFiles,
+  readCuratedImportDirectFile,
+} from "@/lib/curated-archive/staging";
 
 import fs from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 
 import sharp from "sharp";
@@ -47,6 +53,7 @@ type SourceImage = {
   stagedFile: string;
   sourceName: string;
   absolutePath: string;
+  stagedRelativePath: string | null;
   alt?: string;
 };
 
@@ -153,11 +160,11 @@ function parseMonth(
 }
 
 async function getImageOrientation(
-  imagePath: string,
+  source: string | Buffer,
 ): Promise<GalleryOrientation> {
   const metadata =
     await sharp(
-      imagePath,
+      source,
       {
         failOn: "none",
       },
@@ -371,6 +378,26 @@ export async function prepareCuratedProduction(
         withFileTypes: true,
       },
     );
+
+  const directStagingRoot =
+    path.join(
+      os.tmpdir(),
+      "stevegregson-curated-import",
+    );
+
+  const usingDirectStaging =
+    path.resolve(
+      curationRoot,
+    ).startsWith(
+      path.resolve(
+        directStagingRoot,
+      ),
+    );
+
+  const directFiles =
+    usingDirectStaging
+      ? await getCuratedImportDirectFiles()
+      : null;
 
   const exclusionsText =
     await fs.readFile(
@@ -631,6 +658,14 @@ export async function prepareCuratedProduction(
               sourceName:
                 source.sourceName,
               absolutePath,
+              stagedRelativePath:
+                directFiles
+                  ? findCuratedImportStagedImage(
+                      directFiles,
+                      entry.name,
+                      source.stagedFile,
+                    )
+                  : null,
               alt: source.alt,
             },
           ];
@@ -721,6 +756,18 @@ export async function prepareCuratedProduction(
     }
 
     for (const image of images) {
+      if (directFiles) {
+        if (
+          !image.stagedRelativePath
+        ) {
+          issues.push(
+            `Staged image "${image.stagedFile}" is missing.`,
+          );
+        }
+
+        continue;
+      }
+
       try {
         const stat =
           await fs.stat(
@@ -852,35 +899,45 @@ export async function prepareCuratedProduction(
       hero?.alt?.trim() ||
       `${title} at ${venue} — production hero photograph`;
 
-    const preparedGallery =
-      await Promise.all(
-        gallery.map(
-          async (
-            image,
-            index,
-          ) => {
-            const orientation =
-              await getImageOrientation(
+    const preparedGallery: PublishPayload["images"] =
+      [];
+
+    if (status === "ready") {
+      for (
+        let index = 0;
+        index < gallery.length;
+        index += 1
+      ) {
+        const image =
+          gallery[index];
+
+        const orientation =
+          image.stagedRelativePath
+            ? await getImageOrientation(
+                await readCuratedImportDirectFile(
+                  image.stagedRelativePath,
+                ),
+              )
+            : await getImageOrientation(
                 image.absolutePath,
               );
 
-            return {
-              filepath:
-                image.stagedFile,
-              filename:
-                image.sourceName,
-              alt:
-                image.alt?.trim() ||
-                `${title} at ${venue} — production photograph ${index + 2} of ${totalPublishedImages}`,
-              layout:
-                getDeterministicGalleryLayout(
-                  orientation,
-                  index,
-                ),
-            };
-          },
-        ),
-      );
+        preparedGallery.push({
+          filepath:
+            image.stagedFile,
+          filename:
+            image.sourceName,
+          alt:
+            image.alt?.trim() ||
+            `${title} at ${venue} — production photograph ${index + 2} of ${totalPublishedImages}`,
+          layout:
+            getDeterministicGalleryLayout(
+              orientation,
+              index,
+            ),
+        });
+      }
+    }
 
     const payload:
       PublishPayload | null =

@@ -2,6 +2,9 @@ import {
   prepareCuratedProduction,
 } from "@/lib/curated-archive/prepare-production";
 import {
+  readCuratedImportDirectFile,
+} from "@/lib/curated-archive/staging";
+import {
   publishImageBuffer,
 } from "@/lib/publishing/publish-image";
 import {
@@ -85,30 +88,41 @@ export async function publishCuratedProduction(
           );
         }
 
-        const resolvedStagingRoot =
-          path.resolve(
-            prepared.stagedDirectory,
-          );
-
-        const resolvedImagePath =
-          path.resolve(
-            image.absolutePath,
-          );
+        let sourceBuffer: Buffer;
 
         if (
-          !resolvedImagePath.startsWith(
-            `${resolvedStagingRoot}${path.sep}`,
-          )
+          image.stagedRelativePath
         ) {
-          throw new Error(
-            `Curated image "${sourceFilepath}" falls outside the staging directory.`,
-          );
-        }
+          sourceBuffer =
+            await readCuratedImportDirectFile(
+              image.stagedRelativePath,
+            );
+        } else {
+          const resolvedStagingRoot =
+            path.resolve(
+              prepared.stagedDirectory,
+            );
 
-        const sourceBuffer =
-          await fs.readFile(
-            resolvedImagePath,
-          );
+          const resolvedImagePath =
+            path.resolve(
+              image.absolutePath,
+            );
+
+          if (
+            !resolvedImagePath.startsWith(
+              `${resolvedStagingRoot}${path.sep}`,
+            )
+          ) {
+            throw new Error(
+              `Curated image "${sourceFilepath}" falls outside the staging directory.`,
+            );
+          }
+
+          sourceBuffer =
+            await fs.readFile(
+              resolvedImagePath,
+            );
+        }
 
         return publishImageBuffer(
           sourceBuffer,

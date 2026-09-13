@@ -12,6 +12,8 @@ import {
 } from "@/lib/curated-archive-overrides-repository";
 
 import {
+  findCuratedImportStagedImage,
+  getCuratedImportDirectFiles,
   materializeCuratedImport,
 } from "@/lib/curated-archive/staging";
 
@@ -213,6 +215,9 @@ export async function GET(
       productions: [],
     });
   }
+
+  const directFiles =
+    await getCuratedImportDirectFiles();
 
   let productions:
     Awaited<
@@ -651,20 +656,6 @@ export async function GET(
           image.hero === true,
       );
 
-    let stagingFiles:
-      Set<string> = new Set();
-
-    try {
-      stagingFiles =
-        new Set(
-          (
-            await fs.readdir(
-              stagingDirectory,
-            )
-          ),
-        );
-    } catch {}
-
     const expectedFiles =
       effectiveImages
         .map(
@@ -679,13 +670,41 @@ export async function GET(
             Boolean(value),
         );
 
-    const missingFiles =
-      expectedFiles.filter(
-        (filename) =>
-          !stagingFiles.has(
-            filename,
-          ),
-      );
+    let missingFiles: string[];
+
+    if (directFiles) {
+      missingFiles =
+        expectedFiles.filter(
+          (filename) =>
+            !findCuratedImportStagedImage(
+              directFiles,
+              entry.name,
+              filename,
+            ),
+        );
+    } else {
+      let stagingFiles:
+        Set<string> = new Set();
+
+      try {
+        stagingFiles =
+          new Set(
+            (
+              await fs.readdir(
+                stagingDirectory,
+              )
+            ),
+          );
+      } catch {}
+
+      missingFiles =
+        expectedFiles.filter(
+          (filename) =>
+            !stagingFiles.has(
+              filename,
+            ),
+        );
+    }
 
     const issues: string[] = [];
 

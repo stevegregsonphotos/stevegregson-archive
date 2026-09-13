@@ -576,6 +576,75 @@ async function readDirectManifest() {
   return files;
 }
 
+export async function getCuratedImportDirectFiles() {
+  const etag =
+    await getDirectManifestEtag();
+
+  if (!etag) {
+    return null;
+  }
+
+  return readDirectManifest();
+}
+
+export function findCuratedImportStagedImage(
+  files: string[],
+  folder: string,
+  stagedFile: string,
+) {
+  const safeFolder =
+    safeCuratedRelativePath(
+      folder,
+    );
+
+  const safeFile =
+    safeCuratedRelativePath(
+      stagedFile,
+    );
+
+  const suffix =
+    `${safeFolder}/selected-web-staging/${safeFile}`;
+
+  return (
+    files.find(
+      (relativePath) =>
+        relativePath === suffix ||
+        relativePath.endsWith(
+          `/${suffix}`,
+        ),
+    ) ?? null
+  );
+}
+
+export async function readCuratedImportDirectFile(
+  relativePath: string,
+) {
+  const safePath =
+    safeCuratedRelativePath(
+      relativePath,
+    );
+
+  const response =
+    await getClient().send(
+      new GetObjectCommand({
+        Bucket:
+          getBucket(),
+        Key:
+          `${DIRECT_STAGING_PREFIX}${safePath}`,
+      }),
+    );
+
+  if (!response.Body) {
+    throw new Error(
+      `Curated staged file "${safePath}" has no body.`,
+    );
+  }
+
+  return Buffer.from(
+    await response.Body.transformToByteArray(),
+  );
+}
+
 async function materializeDirectFiles(
   etag: string,
 ) {
@@ -592,6 +661,19 @@ async function materializeDirectFiles(
     await readDirectManifest();
 
   for (const relativePath of files) {
+    /*
+     * Production photographs remain in R2.
+     * Only the small metadata/control files are
+     * materialised onto the temporary filesystem.
+     */
+    if (
+      /(^|\/)selected-web-staging\/[^/]+$/i.test(
+        relativePath,
+      )
+    ) {
+      continue;
+    }
+
     const parts =
       safeZipPath(
         relativePath,
