@@ -430,41 +430,44 @@ export default function CuratedArchiveImportClient({
                   `${folderName}/${file.name}`
                 ).replace(/\\/g, "/");
 
-              let response: Response;
+              const contentType =
+                file.type ||
+                "application/octet-stream";
+
+              let signingResponse: Response;
 
               try {
-                const uploadUrl =
+                const signingUrl =
                   new URL(
                     "/api/admin/curated-archive-import/upload",
                     window.location.origin,
                   );
 
-                uploadUrl.searchParams.set(
+                signingUrl.searchParams.set(
                   "action",
-                  "file",
+                  "presign",
                 );
 
-                uploadUrl.searchParams.set(
+                signingUrl.searchParams.set(
                   "relativePath",
                   relativePath,
                 );
 
-                response =
+                signingUrl.searchParams.set(
+                  "contentType",
+                  contentType,
+                );
+
+                signingResponse =
                   await fetch(
-                    uploadUrl.toString(),
+                    signingUrl.toString(),
                     {
                       method: "POST",
-                      headers: {
-                        "Content-Type":
-                          file.type ||
-                          "application/octet-stream",
-                      },
-                      body: file,
                     },
                   );
               } catch (error) {
                 throw new Error(
-                  `Upload request failed for "${relativePath}": ${
+                  `Could not prepare R2 upload for "${relativePath}": ${
                     error instanceof Error
                       ? error.message
                       : String(error)
@@ -472,10 +475,54 @@ export default function CuratedArchiveImportClient({
                 );
               }
 
-              await readUploadResponse(
-                response,
-                `Uploading "${relativePath}"`,
-              );
+              const signed =
+                await readUploadResponse(
+                  signingResponse,
+                  `Preparing R2 upload for "${relativePath}"`,
+                ) as {
+                  ok: boolean;
+                  url?: string;
+                  path?: string;
+                };
+
+              if (!signed.url) {
+                throw new Error(
+                  `No R2 upload URL was returned for "${relativePath}".`,
+                );
+              }
+
+              let r2Response: Response;
+
+              try {
+                r2Response =
+                  await fetch(
+                    signed.url,
+                    {
+                      method: "PUT",
+                      headers: {
+                        "Content-Type":
+                          contentType,
+                        "Cache-Control":
+                          "no-store",
+                      },
+                      body: file,
+                    },
+                  );
+              } catch (error) {
+                throw new Error(
+                  `Direct R2 upload failed for "${relativePath}": ${
+                    error instanceof Error
+                      ? error.message
+                      : String(error)
+                  }`,
+                );
+              }
+
+              if (!r2Response.ok) {
+                throw new Error(
+                  `Direct R2 upload failed for "${relativePath}" (${r2Response.status}).`,
+                );
+              }
             },
           ),
         );

@@ -4,10 +4,10 @@ import {
 } from "@/lib/backstage-auth";
 import {
   beginCuratedImportFileStaging,
+  createCuratedImportUploadUrl,
   deleteCuratedImportArchive,
   finalizeCuratedImportFiles,
   putCuratedImportArchive,
-  putCuratedImportFile,
 } from "@/lib/curated-archive/staging";
 
 import JSZip from "jszip";
@@ -50,11 +50,11 @@ export async function POST(
         ?.trim();
 
     /*
-     * File uploads use a raw request body rather than
-     * multipart FormData. This avoids multipart parsing
-     * failures during large curated-folder uploads.
+     * Browser uploads never pass file bodies through
+     * Vercel. Vercel performs authentication and signs
+     * a short-lived R2 PUT URL only.
      */
-    if (directAction === "file") {
+    if (directAction === "presign") {
       const relativePath =
         String(
           url.searchParams.get(
@@ -63,6 +63,14 @@ export async function POST(
         )
           .replace(/\\/g, "/")
           .trim();
+
+      const contentType =
+        String(
+          url.searchParams.get(
+            "contentType",
+          ) ??
+            "application/octet-stream",
+        ).trim();
 
       if (!relativePath) {
         return Response.json(
@@ -107,37 +115,16 @@ export async function POST(
         );
       }
 
-      const body =
-        Buffer.from(
-          await request.arrayBuffer(),
-        );
-
-      if (body.length === 0) {
-        return Response.json(
-          {
-            ok: false,
-            message:
-              "The curated file is empty.",
-          },
-          {
-            status: 400,
-          },
-        );
-      }
-
-      const storedPath =
-        await putCuratedImportFile(
+      const signed =
+        await createCuratedImportUploadUrl(
           relativePath,
-          body,
-          request.headers.get(
-            "content-type",
-          ) ||
-            undefined,
+          contentType ||
+            "application/octet-stream",
         );
 
       return Response.json({
         ok: true,
-        path: storedPath,
+        ...signed,
       });
     }
 

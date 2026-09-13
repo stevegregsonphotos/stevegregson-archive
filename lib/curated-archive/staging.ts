@@ -9,6 +9,9 @@ import {
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
+import {
+  getSignedUrl,
+} from "@aws-sdk/s3-request-presigner";
 
 import fs from "node:fs/promises";
 import os from "node:os";
@@ -246,6 +249,45 @@ export async function beginCuratedImportFileStaging() {
   );
 
   await clearLocalCache();
+}
+
+export async function createCuratedImportUploadUrl(
+  relativePath: string,
+  contentType:
+    | string
+    | undefined,
+) {
+  const safePath =
+    safeCuratedRelativePath(
+      relativePath,
+    );
+
+  const command =
+    new PutObjectCommand({
+      Bucket:
+        getBucket(),
+      Key:
+        `${DIRECT_STAGING_PREFIX}${safePath}`,
+      ContentType:
+        contentType ||
+        "application/octet-stream",
+      CacheControl:
+        "no-store",
+    });
+
+  const url =
+    await getSignedUrl(
+      getClient(),
+      command,
+      {
+        expiresIn: 15 * 60,
+      },
+    );
+
+  return {
+    url,
+    path: safePath,
+  };
 }
 
 export async function putCuratedImportFile(
