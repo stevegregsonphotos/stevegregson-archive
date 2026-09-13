@@ -4,7 +4,10 @@ import {
 } from "@/lib/backstage-auth";
 
 import {
+  findCuratedImportStagedImage,
+  getCuratedImportDirectFiles,
   materializeCuratedImport,
+  readCuratedImportDirectFile,
 } from "@/lib/curated-archive/staging";
 
 import fs from "node:fs/promises";
@@ -24,11 +27,17 @@ type FinalSelection = {
   images?: FinalSelectionImage[];
 };
 
+type CuratedImageLocation = {
+  imagePath: string | null;
+  stagedRelativePath: string | null;
+};
+
 async function findCuratedImage(
   production: string,
   requestedFile: string,
   curationRoot: string,
-) {
+  directFiles: string[] | null,
+): Promise<CuratedImageLocation | null> {
   const entries =
     await fs.readdir(
       curationRoot,
@@ -98,6 +107,24 @@ async function findCuratedImage(
       return null;
     }
 
+    if (directFiles) {
+      const stagedRelativePath =
+        findCuratedImportStagedImage(
+          directFiles,
+          entry.name,
+          requestedFile,
+        );
+
+      if (!stagedRelativePath) {
+        return null;
+      }
+
+      return {
+        imagePath: null,
+        stagedRelativePath,
+      };
+    }
+
     const stagingRoot =
       path.resolve(
         directory,
@@ -129,7 +156,10 @@ async function findCuratedImage(
       return null;
     }
 
-    return imagePath;
+    return {
+      imagePath,
+      stagedRelativePath: null,
+    };
   }
 
   return null;
@@ -182,14 +212,18 @@ export async function GET(
     );
   }
 
-  const imagePath =
+  const directFiles =
+    await getCuratedImportDirectFiles();
+
+  const location =
     await findCuratedImage(
       production,
       file,
       curationRoot,
+      directFiles,
     );
 
-  if (!imagePath) {
+  if (!location) {
     return NextResponse.json(
       {
         ok: false,
@@ -204,7 +238,7 @@ export async function GET(
 
   const extension =
     path.extname(
-      imagePath,
+      file,
     ).toLowerCase();
 
   const contentTypes:
@@ -232,9 +266,13 @@ export async function GET(
   }
 
   const image =
-    await fs.readFile(
-      imagePath,
-    );
+    location.stagedRelativePath
+      ? await readCuratedImportDirectFile(
+          location.stagedRelativePath,
+        )
+      : await fs.readFile(
+          location.imagePath as string,
+        );
 
   return new Response(image, {
     headers: {
