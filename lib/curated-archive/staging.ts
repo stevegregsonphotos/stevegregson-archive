@@ -739,14 +739,24 @@ async function materializeDirectFiles(
     }
 
     const response =
-      await getClient().send(
-        new GetObjectCommand({
-          Bucket:
-            getBucket(),
-          Key:
-            `${DIRECT_STAGING_PREFIX}${relativePath}`,
-        }),
-      );
+      await getClient()
+        .send(
+          new GetObjectCommand({
+            Bucket:
+              getBucket(),
+            Key:
+              `${DIRECT_STAGING_PREFIX}${relativePath}`,
+          }),
+        )
+        .catch((error: unknown) => {
+          throw new Error(
+            `Could not read curated staged file "${relativePath}" from R2: ${
+              error instanceof Error
+                ? `${error.name}: ${error.message}`
+                : String(error)
+            }`,
+          );
+        });
 
     if (!response.Body) {
       throw new Error(
