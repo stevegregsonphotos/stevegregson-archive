@@ -6,6 +6,8 @@ import {
 
 import ArchiveExplorer from "./ArchiveExplorer";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Theatre Photography Archive",
   description:
