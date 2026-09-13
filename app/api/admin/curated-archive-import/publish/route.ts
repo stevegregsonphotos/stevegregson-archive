@@ -10,6 +10,9 @@ import {
 import {
   ProductionConflictError,
 } from "@/lib/publishing/publish-production";
+import {
+  materializeCuratedImport,
+} from "@/lib/curated-archive/staging";
 
 import { NextResponse } from "next/server";
 
@@ -64,12 +67,27 @@ export async function POST(
   }
 
   try {
+    const curationRoot =
+      await materializeCuratedImport();
+
+    if (!curationRoot) {
+      return NextResponse.json(
+        {
+          ok: false,
+          message:
+            "Choose a curated folder before publishing.",
+        },
+        { status: 409 },
+      );
+    }
+
     const {
       prepared,
       result,
     } =
       await publishCuratedProduction(
         folder,
+        curationRoot,
       );
 
     return NextResponse.json({

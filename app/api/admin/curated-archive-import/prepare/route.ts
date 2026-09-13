@@ -5,6 +5,9 @@ import {
 import {
   prepareCuratedProduction,
 } from "@/lib/curated-archive/prepare-production";
+import {
+  materializeCuratedImport,
+} from "@/lib/curated-archive/staging";
 
 import { NextResponse } from "next/server";
 
@@ -39,9 +42,24 @@ export async function GET(
     );
   }
 
+  const curationRoot =
+    await materializeCuratedImport();
+
+  if (!curationRoot) {
+    return NextResponse.json(
+      {
+        ok: false,
+        message:
+          "Choose a curated folder before preparing a production.",
+      },
+      { status: 409 },
+    );
+  }
+
   const prepared =
     await prepareCuratedProduction(
       folder,
+      curationRoot,
     );
 
   if (!prepared) {

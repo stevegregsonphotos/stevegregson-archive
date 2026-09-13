@@ -107,10 +107,13 @@ export default function CuratedArchiveImportClient({
     );
 
   const [loading, setLoading] =
-    useState(true);
+    useState(false);
 
   const [error, setError] =
     useState("");
+
+  const [uploading, setUploading] =
+    useState(false);
 
   const [statusFilter, setStatusFilter] =
     useState<StatusFilter>("all");
@@ -153,7 +156,7 @@ export default function CuratedArchiveImportClient({
   useEffect(() => {
     let cancelled = false;
 
-    async function loadPreflight() {
+    async function loadExistingPreflight() {
       setLoading(true);
       setError("");
 
@@ -195,8 +198,8 @@ export default function CuratedArchiveImportClient({
         if (!cancelled) {
           setError(
             loadError instanceof Error
-              ? loadError.message
-              : "Curated archive preflight failed.",
+              ? `Preflight failed: ${loadError.message}`
+              : "Preflight failed: Curated archive preflight failed.",
           );
         }
       } finally {
@@ -206,12 +209,368 @@ export default function CuratedArchiveImportClient({
       }
     }
 
-    void loadPreflight();
+    void loadExistingPreflight();
 
     return () => {
       cancelled = true;
     };
   }, []);
+
+  async function uploadCuratedFolder(
+    files: FileList | null,
+  ) {
+    if (!files || files.length === 0) {
+      return;
+    }
+
+    setUploading(true);
+    setError("");
+    setBatchResult(null);
+
+    try {
+      const selectedFiles =
+        Array.from(files);
+
+      const firstRelativePath =
+        selectedFiles[0]
+          .webkitRelativePath;
+
+      const folderName =
+        firstRelativePath
+          ? firstRelativePath.split("/")[0]
+          : "curated-production";
+
+      const packageFiles =
+        selectedFiles.filter((file) => {
+          const relativePath =
+            (
+              file.webkitRelativePath ||
+              `${folderName}/${file.name}`
+            ).replace(/\\/g, "/");
+
+          const parts =
+            relativePath
+              .split("/")
+              .filter(Boolean);
+
+          if (parts.length < 2) {
+            return false;
+          }
+
+          const pathInsideChosenRoot =
+            parts.slice(1);
+
+          const fileName =
+            pathInsideChosenRoot.at(-1) ?? "";
+
+          const selectedWebStagingIndex =
+            pathInsideChosenRoot.indexOf(
+              "selected-web-staging",
+            );
+
+          if (
+            selectedWebStagingIndex >= 0 &&
+            selectedWebStagingIndex <
+              pathInsideChosenRoot.length - 1
+          ) {
+            return true;
+          }
+
+          return (
+            fileName === "final-selection.json" ||
+            fileName === "metadata-research.json" ||
+            fileName === "metadata-proposed.txt" ||
+            fileName === "thumbnail-catalogue.json"
+          );
+        });
+
+      const packagedPaths =
+        packageFiles.map((file) =>
+          (
+            file.webkitRelativePath ||
+            `${folderName}/${file.name}`
+          ).replace(/\\/g, "/"),
+        );
+
+      const finalSelections =
+        packagedPaths.filter(
+          (relativePath) =>
+            relativePath.endsWith(
+              "/final-selection.json",
+            ),
+        );
+
+      const stagedImages =
+        packagedPaths.filter(
+          (relativePath) =>
+            relativePath.includes(
+              "/selected-web-staging/",
+            ),
+        );
+
+      const metadataFiles =
+        packagedPaths.filter(
+          (relativePath) =>
+            relativePath.endsWith(
+              "/metadata-research.json",
+            ) ||
+            relativePath.endsWith(
+              "/metadata-proposed.txt",
+            ),
+        );
+
+      if (
+        finalSelections.length === 0 &&
+        metadataFiles.length === 0
+      ) {
+        throw new Error(
+          "Choose the main curated output folder, or an individual production folder containing curated selection or production metadata.",
+        );
+      }
+
+      if (
+        finalSelections.length > 0 &&
+        stagedImages.length === 0
+      ) {
+        throw new Error(
+          "A final selection was found, but no final curated images were found inside selected-web-staging.",
+        );
+      }
+
+      async function readUploadResponse(
+        response: Response,
+        context: string,
+      ) {
+        let result: {
+          ok?: boolean;
+          message?: string;
+          path?: string;
+        };
+
+        try {
+          result =
+            (await response.json()) as {
+              ok?: boolean;
+              message?: string;
+              path?: string;
+            };
+        } catch (error) {
+          throw new Error(
+            `${context} response could not be read (${response.status}): ${
+              error instanceof Error
+                ? error.message
+                : String(error)
+            }`,
+          );
+        }
+
+        if (!response.ok || !result.ok) {
+          throw new Error(
+            `${context} failed (${response.status}): ${
+              result.message ||
+              "Unknown staging error."
+            }`,
+          );
+        }
+
+        return result;
+      }
+
+      /*
+       * Start with a clean temporary staging area.
+       */
+      const beginForm =
+        new FormData();
+
+      beginForm.set(
+        "action",
+        "begin",
+      );
+
+      const beginResponse =
+        await fetch(
+          "/api/admin/curated-archive-import/upload",
+          {
+            method: "POST",
+            body: beginForm,
+          },
+        );
+
+      await readUploadResponse(
+        beginResponse,
+        "Starting curated folder upload",
+      );
+
+      /*
+       * Upload only the authoritative files.
+       *
+       * Four requests at a time keeps the transfer
+       * reasonably quick without creating one enormous
+       * request or browser-generated ZIP.
+       */
+      const concurrency = 4;
+
+      for (
+        let index = 0;
+        index < packageFiles.length;
+        index += concurrency
+      ) {
+        const batch =
+          packageFiles.slice(
+            index,
+            index + concurrency,
+          );
+
+        await Promise.all(
+          batch.map(
+            async (file) => {
+              const relativePath =
+                (
+                  file.webkitRelativePath ||
+                  `${folderName}/${file.name}`
+                ).replace(/\\/g, "/");
+
+              let response: Response;
+
+              try {
+                const uploadUrl =
+                  new URL(
+                    "/api/admin/curated-archive-import/upload",
+                    window.location.origin,
+                  );
+
+                uploadUrl.searchParams.set(
+                  "action",
+                  "file",
+                );
+
+                uploadUrl.searchParams.set(
+                  "relativePath",
+                  relativePath,
+                );
+
+                response =
+                  await fetch(
+                    uploadUrl.toString(),
+                    {
+                      method: "POST",
+                      headers: {
+                        "Content-Type":
+                          file.type ||
+                          "application/octet-stream",
+                      },
+                      body: file,
+                    },
+                  );
+              } catch (error) {
+                throw new Error(
+                  `Upload request failed for "${relativePath}": ${
+                    error instanceof Error
+                      ? error.message
+                      : String(error)
+                  }`,
+                );
+              }
+
+              await readUploadResponse(
+                response,
+                `Uploading "${relativePath}"`,
+              );
+            },
+          ),
+        );
+      }
+
+      /*
+       * Commit the completed set only after every file
+       * has arrived successfully.
+       */
+      const finalizeForm =
+        new FormData();
+
+      finalizeForm.set(
+        "action",
+        "finalize",
+      );
+
+      finalizeForm.set(
+        "relativePaths",
+        JSON.stringify(
+          packagedPaths,
+        ),
+      );
+
+      const finalizeResponse =
+        await fetch(
+          "/api/admin/curated-archive-import/upload",
+          {
+            method: "POST",
+            body: finalizeForm,
+          },
+        );
+
+      await readUploadResponse(
+        finalizeResponse,
+        "Finalizing curated folder upload",
+      );
+
+      setLoading(true);
+
+      try {
+        const preflightResponse =
+          await fetch(
+            "/api/admin/curated-archive-import/preflight",
+            {
+              cache: "no-store",
+            },
+          );
+
+        const preflightResult =
+          (await preflightResponse.json()) as
+            | PreflightResponse
+            | {
+                ok?: boolean;
+                message?: string;
+              };
+
+        if (
+          !preflightResponse.ok ||
+          !preflightResult.ok ||
+          !("summary" in preflightResult) ||
+          !("productions" in preflightResult)
+        ) {
+          throw new Error(
+            "message" in preflightResult &&
+              preflightResult.message
+              ? preflightResult.message
+              : "Curated archive preflight failed.",
+          );
+        }
+
+        setData(
+          preflightResult,
+        );
+      } catch (preflightError) {
+        throw new Error(
+          `Preflight failed after upload: ${
+            preflightError instanceof Error
+              ? preflightError.message
+              : String(preflightError)
+          }`,
+        );
+      } finally {
+        setLoading(false);
+      }
+    } catch (uploadError) {
+      setError(
+        uploadError instanceof Error
+          ? uploadError.message
+          : "The curated folder could not be staged.",
+      );
+    } finally {
+      setUploading(false);
+    }
+  }
 
   async function changeAccess(
     production: PreflightProduction,
@@ -631,9 +990,82 @@ export default function CuratedArchiveImportClient({
       >
         This is a read-only scan of the
         completed curated Archive output.
-        No OpenAI or Dropbox requests are
+        No OpenAI, Dropbox or Google Drive requests are
         made by this preflight.
       </p>
+
+      <div
+        style={{
+          marginTop: "2rem",
+          padding: "1.25rem 1.35rem",
+          border:
+            "1px solid rgba(199, 163, 105, 0.28)",
+          background:
+            "rgba(199, 163, 105, 0.045)",
+        }}
+      >
+        <p
+          style={{
+            margin: 0,
+            color: "#c7a369",
+            fontSize: "0.58rem",
+            fontWeight: 700,
+            letterSpacing: "0.14em",
+            textTransform: "uppercase",
+          }}
+        >
+          Choose curated folder
+        </p>
+        <p
+          style={{
+            margin: "0.55rem 0 1rem",
+            color:
+              "rgba(242, 238, 230, 0.62)",
+            fontSize: "0.75rem",
+            lineHeight: 1.55,
+          }}
+        >
+          Choose the main completed curator output folder containing all
+          production folders, or choose one individual production folder.
+          Backstage will automatically find each final-selection.json and its
+          selected-web-staging images, and ignore all other curator files.
+        </p>
+        <input
+          type="file"
+          // @ts-expect-error - supported by Chromium/WebKit browsers
+          webkitdirectory=""
+          multiple
+          disabled={uploading}
+          onChange={(event) =>
+            void uploadCuratedFolder(
+              event.currentTarget.files,
+            )
+          }
+          style={{
+            display: "block",
+            width: "100%",
+            border:
+              "1px solid rgba(242, 238, 230, 0.25)",
+            padding: "1rem",
+            background:
+              "rgba(255, 255, 255, 0.03)",
+            color: "inherit",
+            opacity: uploading ? 0.55 : 1,
+          }}
+        />
+        {uploading ? (
+          <p
+            style={{
+              margin: "0.75rem 0 0",
+              color:
+                "rgba(242, 238, 230, 0.55)",
+              fontSize: "0.7rem",
+            }}
+          >
+            Preparing and staging selected folder…
+          </p>
+        ) : null}
+      </div>
 
       {loading ? (
         <p

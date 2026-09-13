@@ -6,8 +6,11 @@ import {
   rememberDirectoryCredits,
 } from "@/lib/directory-writer";
 
+import {
+  materializeCuratedImport,
+} from "@/lib/curated-archive/staging";
+
 import fs from "node:fs/promises";
-import os from "node:os";
 import path from "node:path";
 import {
   getCuratedArchiveOverrides,
@@ -19,13 +22,6 @@ import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-const CURATION_ROOT = path.join(
-  os.homedir(),
-  "Downloads",
-  "Archive Download",
-  "Automated Curation",
-);
 
 type CuratedCredit = {
   role: string;
@@ -73,6 +69,7 @@ async function loadMetadataForProduction(
   entries: Array<
     import("node:fs").Dirent
   >,
+  curationRoot: string,
 ) {
   const key =
     normaliseProductionName(
@@ -86,7 +83,7 @@ async function loadMetadataForProduction(
 
     const directory =
       path.join(
-        CURATION_ROOT,
+        curationRoot,
         entry.name,
       );
 
@@ -214,10 +211,11 @@ function metadataCredits(
 
 async function loadCuratedProduction(
   production: string,
+  curationRoot: string,
 ) {
   const entries =
     await fs.readdir(
-      CURATION_ROOT,
+      curationRoot,
       {
         withFileTypes: true,
       },
@@ -230,7 +228,7 @@ async function loadCuratedProduction(
 
     const directory =
       path.join(
-        CURATION_ROOT,
+        curationRoot,
         entry.name,
       );
 
@@ -269,6 +267,7 @@ async function loadCuratedProduction(
         await loadMetadataForProduction(
           production,
           entries,
+          curationRoot,
         );
 
       const overrides =
@@ -465,10 +464,11 @@ async function loadCuratedProduction(
 
 async function curatedProductionExists(
   production: string,
+  curationRoot: string,
 ) {
   const entries =
     await fs.readdir(
-      CURATION_ROOT,
+      curationRoot,
       {
         withFileTypes: true,
       },
@@ -484,7 +484,7 @@ async function curatedProductionExists(
         JSON.parse(
           await fs.readFile(
             path.join(
-              CURATION_ROOT,
+              curationRoot,
               entry.name,
               "final-selection.json",
             ),
@@ -517,6 +517,20 @@ export async function GET(
     return createUnauthorizedResponse();
   }
 
+  const curationRoot =
+    await materializeCuratedImport();
+
+  if (!curationRoot) {
+    return NextResponse.json(
+      {
+        ok: false,
+        message:
+          "Choose a curated folder before using Curated Archive Import.",
+      },
+      { status: 409 },
+    );
+  }
+
   const url =
     new URL(request.url);
 
@@ -541,6 +555,7 @@ export async function GET(
   const curated =
     await loadCuratedProduction(
       production,
+      curationRoot,
     );
 
   if (!curated) {
@@ -569,6 +584,20 @@ export async function DELETE(
     return createUnauthorizedResponse();
   }
 
+  const curationRoot =
+    await materializeCuratedImport();
+
+  if (!curationRoot) {
+    return NextResponse.json(
+      {
+        ok: false,
+        message:
+          "Choose a curated folder before using Curated Archive Import.",
+      },
+      { status: 409 },
+    );
+  }
+
   const url =
     new URL(request.url);
 
@@ -593,6 +622,7 @@ export async function DELETE(
   if (
     !(await curatedProductionExists(
       production,
+      curationRoot,
     ))
   ) {
     return NextResponse.json(
@@ -677,6 +707,20 @@ export async function PATCH(
     return createUnauthorizedResponse();
   }
 
+  const curationRoot =
+    await materializeCuratedImport();
+
+  if (!curationRoot) {
+    return NextResponse.json(
+      {
+        ok: false,
+        message:
+          "Choose a curated folder before using Curated Archive Import.",
+      },
+      { status: 409 },
+    );
+  }
+
   let body: {
     production?: unknown;
     reset?: unknown;
@@ -721,6 +765,7 @@ export async function PATCH(
   if (
     !(await curatedProductionExists(
       production,
+      curationRoot,
     ))
   ) {
     return NextResponse.json(
@@ -784,6 +829,20 @@ export async function PUT(
 ) {
   if (!isBackstageRequestAuthenticated(request)) {
     return createUnauthorizedResponse();
+  }
+
+  const curationRoot =
+    await materializeCuratedImport();
+
+  if (!curationRoot) {
+    return NextResponse.json(
+      {
+        ok: false,
+        message:
+          "Choose a curated folder before using Curated Archive Import.",
+      },
+      { status: 409 },
+    );
   }
 
   let body: {
@@ -900,7 +959,7 @@ export async function PUT(
 
   const entries =
     await fs.readdir(
-      CURATION_ROOT,
+      curationRoot,
       {
         withFileTypes: true,
       },
@@ -919,7 +978,7 @@ export async function PUT(
         JSON.parse(
           await fs.readFile(
             path.join(
-              CURATION_ROOT,
+              curationRoot,
               entry.name,
               "final-selection.json",
             ),
@@ -1033,6 +1092,20 @@ export async function POST(
 ) {
   if (!isBackstageRequestAuthenticated(request)) {
     return createUnauthorizedResponse();
+  }
+
+  const curationRoot =
+    await materializeCuratedImport();
+
+  if (!curationRoot) {
+    return NextResponse.json(
+      {
+        ok: false,
+        message:
+          "Choose a curated folder before using Curated Archive Import.",
+      },
+      { status: 409 },
+    );
   }
 
   let body: EditPayload;
@@ -1216,6 +1289,7 @@ export async function POST(
   if (
     !(await curatedProductionExists(
       production,
+      curationRoot,
     ))
   ) {
     return NextResponse.json(

@@ -11,23 +11,15 @@ import {
   getCuratedArchiveOverrides,
 } from "@/lib/curated-archive-overrides-repository";
 
+import {
+  materializeCuratedImport,
+} from "@/lib/curated-archive/staging";
+
 import fs from "node:fs/promises";
 import path from "node:path";
-import os from "node:os";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-const ARCHIVE_ROOT = path.join(
-  os.homedir(),
-  "Downloads",
-  "Archive Download",
-);
-
-const CURATION_ROOT = path.join(
-  ARCHIVE_ROOT,
-  "Automated Curation",
-);
 
 const EXCLUSION_PATH = path.resolve(
   "scripts/archive-curator/excluded-productions.txt",
@@ -183,19 +175,138 @@ export async function GET(
     return createUnauthorizedResponse();
   }
 
-  const productions =
-    await getProductions();
+  let CURATION_ROOT: string | null;
 
-  const exclusions =
-    await readExclusions();
+  try {
+    CURATION_ROOT =
+      await materializeCuratedImport();
+  } catch (error) {
+    console.error(
+      "[curated-preflight] materializeCuratedImport failed:",
+      error,
+    );
 
-  const [
-    accessOverridesRecord,
-    curatedOverrides,
-  ] = await Promise.all([
-    getCuratedArchiveAccessOverrides(),
-    getCuratedArchiveOverrides(),
-  ]);
+    return Response.json(
+      {
+        ok: false,
+        message: `STAGE 1 — staging materialisation failed: ${
+          error instanceof Error
+            ? `${error.name}: ${error.message}`
+            : String(error)
+        }`,
+      },
+      { status: 500 },
+    );
+  }
+
+  if (!CURATION_ROOT) {
+    return Response.json({
+      ok: true,
+      summary: {
+        total: 0,
+        ready: 0,
+        excluded: 0,
+        existing: 0,
+        attention: 0,
+        locked: 0,
+      },
+      productions: [],
+    });
+  }
+
+  let productions:
+    Awaited<
+      ReturnType<
+        typeof getProductions
+      >
+    >;
+
+  try {
+    productions =
+      await getProductions();
+  } catch (error) {
+    console.error(
+      "[curated-preflight] getProductions failed:",
+      error,
+    );
+
+    return Response.json(
+      {
+        ok: false,
+        message: `STAGE 2 — production database read failed: ${
+          error instanceof Error
+            ? `${error.name}: ${error.message}`
+            : String(error)
+        }`,
+      },
+      { status: 500 },
+    );
+  }
+
+  let exclusions;
+
+  try {
+    exclusions =
+      await readExclusions();
+  } catch (error) {
+    console.error(
+      "[curated-preflight] readExclusions failed:",
+      error,
+    );
+
+    return Response.json(
+      {
+        ok: false,
+        message: `STAGE 3 — exclusions read failed: ${
+          error instanceof Error
+            ? `${error.name}: ${error.message}`
+            : String(error)
+        }`,
+      },
+      { status: 500 },
+    );
+  }
+
+  let accessOverridesRecord:
+    Awaited<
+      ReturnType<
+        typeof getCuratedArchiveAccessOverrides
+      >
+    >;
+
+  let curatedOverrides:
+    Awaited<
+      ReturnType<
+        typeof getCuratedArchiveOverrides
+      >
+    >;
+
+  try {
+    [
+      accessOverridesRecord,
+      curatedOverrides,
+    ] = await Promise.all([
+      getCuratedArchiveAccessOverrides(),
+      getCuratedArchiveOverrides(),
+    ]);
+  } catch (error) {
+    console.error(
+      "[curated-preflight] override database read failed:",
+      error,
+    );
+
+    return Response.json(
+      {
+        ok: false,
+        message: `STAGE 4 — curated override database read failed: ${
+          error instanceof Error
+            ? `${error.name}: ${error.message}`
+            : String(error)
+        }`,
+      },
+      { status: 500 },
+    );
+  }
 
   const accessOverrides =
     new Map(

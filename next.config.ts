@@ -121,10 +121,6 @@ const nextConfig: NextConfig = {
     ];
   },
 
-  experimental: {
-    proxyClientMaxBodySize: "500mb",
-  },
-
   images: {
     unoptimized: true,
     remotePatterns: [

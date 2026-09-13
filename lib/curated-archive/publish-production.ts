@@ -31,10 +31,12 @@ export class CuratedProductionNotReadyError
 
 export async function publishCuratedProduction(
   folder: string,
+  curationRoot: string,
 ) {
   const prepared =
     await prepareCuratedProduction(
       folder,
+      curationRoot,
     );
 
   if (!prepared) {

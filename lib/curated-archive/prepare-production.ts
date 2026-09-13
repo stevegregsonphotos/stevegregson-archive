@@ -18,17 +18,9 @@ import type {
 } from "@/lib/publishing/production-source";
 
 import fs from "node:fs/promises";
-import os from "node:os";
 import path from "node:path";
 
 import sharp from "sharp";
-
-const CURATION_ROOT = path.join(
-  os.homedir(),
-  "Downloads",
-  "Archive Download",
-  "Automated Curation",
-);
 
 const EXCLUSION_PATH = path.resolve(
   "scripts/archive-curator/excluded-productions.txt",
@@ -277,6 +269,7 @@ async function loadMetadata(
     Array<
       import("node:fs").Dirent
     >,
+  curationRoot: string,
 ) {
   const wanted =
     normaliseProductionName(
@@ -290,7 +283,7 @@ async function loadMetadata(
 
     const directory =
       path.join(
-        CURATION_ROOT,
+        curationRoot,
         entry.name,
       );
 
@@ -360,6 +353,7 @@ async function findExistingSlug(
 
 export async function prepareCuratedProduction(
   requestedFolder: string,
+  curationRoot: string,
 ): Promise<
   PreparedCuratedProduction | null
 > {
@@ -372,7 +366,7 @@ export async function prepareCuratedProduction(
 
   const entries =
     await fs.readdir(
-      CURATION_ROOT,
+      curationRoot,
       {
         withFileTypes: true,
       },
@@ -411,7 +405,7 @@ export async function prepareCuratedProduction(
 
     const directory =
       path.join(
-        CURATION_ROOT,
+        curationRoot,
         entry.name,
       );
 
@@ -461,6 +455,7 @@ export async function prepareCuratedProduction(
       await loadMetadata(
         production,
         entries,
+        curationRoot,
       );
 
     const override =

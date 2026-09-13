@@ -3,21 +3,17 @@ import {
   isBackstageRequestAuthenticated,
 } from "@/lib/backstage-auth";
 
+import {
+  materializeCuratedImport,
+} from "@/lib/curated-archive/staging";
+
 import fs from "node:fs/promises";
-import os from "node:os";
 import path from "node:path";
 
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-const CURATION_ROOT = path.join(
-  os.homedir(),
-  "Downloads",
-  "Archive Download",
-  "Automated Curation",
-);
 
 type FinalSelectionImage = {
   stagedFile?: unknown;
@@ -31,10 +27,11 @@ type FinalSelection = {
 async function findCuratedImage(
   production: string,
   requestedFile: string,
+  curationRoot: string,
 ) {
   const entries =
     await fs.readdir(
-      CURATION_ROOT,
+      curationRoot,
       {
         withFileTypes: true,
       },
@@ -47,7 +44,7 @@ async function findCuratedImage(
 
     const directory =
       path.join(
-        CURATION_ROOT,
+        curationRoot,
         entry.name,
       );
 
@@ -145,6 +142,20 @@ export async function GET(
     return createUnauthorizedResponse();
   }
 
+  const curationRoot =
+    await materializeCuratedImport();
+
+  if (!curationRoot) {
+    return NextResponse.json(
+      {
+        ok: false,
+        message:
+          "Choose a curated folder before viewing curated images.",
+      },
+      { status: 409 },
+    );
+  }
+
   const url =
     new URL(request.url);
 
@@ -175,6 +186,7 @@ export async function GET(
     await findCuratedImage(
       production,
       file,
+      curationRoot,
     );
 
   if (!imagePath) {
