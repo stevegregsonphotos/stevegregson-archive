@@ -80,6 +80,7 @@ async function main() {
     const prepared =
       await prepareCuratedProduction(
         folder,
+        CURATION_ROOT,
       );
 
     if (!prepared) {
@@ -166,6 +167,7 @@ async function main() {
       } =
         await publishCuratedProduction(
           item.folder,
+          CURATION_ROOT,
         );
 
       imported += 1;
