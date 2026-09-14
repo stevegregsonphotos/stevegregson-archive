@@ -342,6 +342,22 @@ export async function finalizeCuratedImportFiles(
     );
   }
 
+  const stagedKeys =
+    new Set(
+      await listDirectStagingKeys(),
+    );
+
+  for (const relativePath of files) {
+    const expectedKey =
+      `${DIRECT_STAGING_PREFIX}${relativePath}`;
+
+    if (!stagedKeys.has(expectedKey)) {
+      throw new Error(
+        `Curated staged file "${relativePath}" is missing from R2.`,
+      );
+    }
+  }
+
   const hasFinalSelection =
     files.some(
       (value) =>
