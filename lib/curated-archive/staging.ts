@@ -347,19 +347,32 @@ export async function finalizeCuratedImportFiles(
       await listDirectStagingKeys(),
     );
 
-  for (const relativePath of files) {
-    const expectedKey =
-      `${DIRECT_STAGING_PREFIX}${relativePath}`;
+  const manifestFiles =
+    files.filter(
+      (relativePath) => {
+        const expectedKey =
+          `${DIRECT_STAGING_PREFIX}${relativePath}`;
 
-    if (!stagedKeys.has(expectedKey)) {
-      throw new Error(
-        `Curated staged file "${relativePath}" is missing from R2.`,
-      );
-    }
-  }
+        if (stagedKeys.has(expectedKey)) {
+          return true;
+        }
+
+        if (
+          /(^|\/)thumbnail-catalogue\.json$/i.test(
+            relativePath,
+          )
+        ) {
+          return false;
+        }
+
+        throw new Error(
+          `Curated staged file "${relativePath}" is missing from R2.`,
+        );
+      },
+    );
 
   const hasFinalSelection =
-    files.some(
+    manifestFiles.some(
       (value) =>
         /(^|\/)final-selection\.json$/i.test(
           value,
@@ -367,7 +380,7 @@ export async function finalizeCuratedImportFiles(
     );
 
   const hasSelectedImage =
-    files.some(
+    manifestFiles.some(
       (value) =>
         /(^|\/)selected-web-staging\/[^/]+$/i.test(
           value,
@@ -375,7 +388,7 @@ export async function finalizeCuratedImportFiles(
     );
 
   const hasMetadata =
-    files.some(
+    manifestFiles.some(
       (value) =>
         /(^|\/)metadata-research\.json$/i.test(
           value,
@@ -407,7 +420,7 @@ export async function finalizeCuratedImportFiles(
     version: 1,
     generatedAt:
       new Date().toISOString(),
-    files,
+    files: manifestFiles,
   };
 
   await getClient().send(
