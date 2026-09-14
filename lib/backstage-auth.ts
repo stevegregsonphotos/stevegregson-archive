@@ -6,7 +6,7 @@ import {
 export const BACKSTAGE_COOKIE_NAME =
   "stevegregson_backstage";
 
-const SESSION_DURATION_SECONDS = 60 * 60 * 12;
+const SESSION_DURATION_SECONDS = 60 * 60 * 24 * 30;
 
 type BackstageSession = {
   authenticated: true;
