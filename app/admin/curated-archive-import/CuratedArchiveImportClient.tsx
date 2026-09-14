@@ -549,36 +549,64 @@ export default function CuratedArchiveImportClient({
                 );
               }
 
-              let r2Response: Response;
+              let r2Response:
+                | Response
+                | null = null;
 
-              try {
-                r2Response =
-                  await fetch(
-                    signed.url,
-                    {
-                      method: "PUT",
-                      headers: {
-                        "Content-Type":
-                          contentType,
-                        "Cache-Control":
-                          "no-store",
+              let lastError:
+                unknown = null;
+
+              for (
+                let attempt = 1;
+                attempt <= 4;
+                attempt += 1
+              ) {
+                try {
+                  r2Response =
+                    await fetch(
+                      signed.url,
+                      {
+                        method: "PUT",
+                        headers: {
+                          "Content-Type":
+                            contentType,
+                          "Cache-Control":
+                            "no-store",
+                        },
+                        body: file,
                       },
-                      body: file,
-                    },
+                    );
+
+                  if (r2Response.ok) {
+                    break;
+                  }
+
+                  lastError =
+                    new Error(
+                      `HTTP ${r2Response.status}`,
+                    );
+                } catch (error) {
+                  lastError = error;
+                }
+
+                if (attempt < 4) {
+                  await new Promise(
+                    (resolve) =>
+                      setTimeout(
+                        resolve,
+                        attempt * 1000,
+                      ),
                   );
-              } catch (error) {
-                throw new Error(
-                  `Direct R2 upload failed for "${relativePath}": ${
-                    error instanceof Error
-                      ? error.message
-                      : String(error)
-                  }`,
-                );
+                }
               }
 
-              if (!r2Response.ok) {
+              if (!r2Response?.ok) {
                 throw new Error(
-                  `Direct R2 upload failed for "${relativePath}" (${r2Response.status}).`,
+                  `Direct R2 upload failed for "${relativePath}" after 4 attempts: ${
+                    lastError instanceof Error
+                      ? lastError.message
+                      : String(lastError)
+                  }`,
                 );
               }
             },
