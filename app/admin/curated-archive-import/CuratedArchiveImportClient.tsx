@@ -80,6 +80,9 @@ const MONTHS = [
   "December",
 ];
 
+const CURATED_IMPORT_SESSION_KEY =
+  "stevegregson_curated_import_preflight";
+
 function statusLabel(
   status: PreflightProduction["status"],
 ) {
@@ -155,6 +158,33 @@ export default function CuratedArchiveImportClient({
 
   useEffect(() => {
     let cancelled = false;
+    let restoredData:
+      PreflightResponse | null = null;
+
+    try {
+      const saved =
+        window.sessionStorage.getItem(
+          CURATED_IMPORT_SESSION_KEY,
+        );
+
+      if (saved) {
+        const parsed =
+          JSON.parse(
+            saved,
+          ) as PreflightResponse;
+
+        if (
+          parsed?.ok &&
+          parsed.summary &&
+          Array.isArray(
+            parsed.productions,
+          )
+        ) {
+          restoredData = parsed;
+          setData(parsed);
+        }
+      }
+    } catch {}
 
     async function loadExistingPreflight() {
       setLoading(true);
@@ -192,7 +222,15 @@ export default function CuratedArchiveImportClient({
         }
 
         if (!cancelled) {
-          setData(result);
+          if (
+            result.summary.total === 0 &&
+            restoredData &&
+            restoredData.summary.total > 0
+          ) {
+            setData(restoredData);
+          } else {
+            setData(result);
+          }
         }
       } catch (loadError) {
         if (!cancelled) {
@@ -216,6 +254,19 @@ export default function CuratedArchiveImportClient({
     };
   }, []);
 
+  useEffect(() => {
+    if (!data) {
+      return;
+    }
+
+    try {
+      window.sessionStorage.setItem(
+        CURATED_IMPORT_SESSION_KEY,
+        JSON.stringify(data),
+      );
+    } catch {}
+  }, [data]);
+
   async function uploadCuratedFolder(
     files: FileList | null,
   ) {
@@ -226,6 +277,13 @@ export default function CuratedArchiveImportClient({
     setUploading(true);
     setError("");
     setBatchResult(null);
+    setData(null);
+
+    try {
+      window.sessionStorage.removeItem(
+        CURATED_IMPORT_SESSION_KEY,
+      );
+    } catch {}
 
     try {
       const selectedFiles =
