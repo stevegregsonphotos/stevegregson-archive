@@ -16,6 +16,9 @@ import {
   getCuratedImportDirectFiles,
   materializeCuratedImport,
 } from "@/lib/curated-archive/staging";
+import {
+  validateCuratedSourceBoundary,
+} from "@/lib/curated-archive/source-boundary";
 
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -461,6 +464,8 @@ export async function GET(
 
     let finalSelection:
       | {
+          source?: unknown;
+          sourceBoundary?: unknown;
           production?: string;
           hero?: number;
           selectedCount?: number;
@@ -470,6 +475,10 @@ export async function GET(
             hero?: boolean;
             stagedFile?: string;
             sourceName?: string;
+            sourcePath?: string;
+            sourceFolder?: string;
+            sourceRootId?: string;
+            sourceRootPath?: string;
           }>;
         }
       | null = null;
@@ -706,7 +715,9 @@ export async function GET(
         );
     }
 
-    const issues: string[] = [];
+    const issues: string[] = [
+      ...validateCuratedSourceBoundary(finalSelection),
+    ];
 
     if (!title) {
       issues.push(

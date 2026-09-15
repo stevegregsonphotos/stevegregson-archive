@@ -3,6 +3,9 @@ import path from "node:path";
 import os from "node:os";
 import { spawn } from "node:child_process";
 
+const STATUS_ONLY =
+  process.argv.includes("--status");
+
 
 const WORK_ROOT = path.join(
   os.homedir(),
@@ -88,8 +91,9 @@ async function validateCompletedProduction(production) {
   return { ok: false, reason: "valid final-selection.json not found" };
 }
 
-async function readExistingFinalSelections() {
+async function readExistingFinalSelections(validProductions) {
   const complete = new Map();
+  const stale = [];
 
   let entries = [];
 
@@ -102,7 +106,7 @@ async function readExistingFinalSelections() {
         },
       );
   } catch {
-    return complete;
+    return { complete, stale };
   }
 
   for (const entry of entries) {
@@ -126,23 +130,34 @@ async function readExistingFinalSelections() {
           ),
         );
 
-      if (
-        typeof data.production ===
-          "string" &&
-        data.production.trim()
-      ) {
-        complete.set(
-          data.production.trim(),
-          data.generatedAt ??
-            new Date().toISOString(),
-        );
+      const production =
+        typeof data.production === "string"
+          ? data.production.trim()
+          : "";
+
+      if (!production) {
+        continue;
       }
+
+      if (!validProductions.has(production)) {
+        stale.push({
+          folder: entry.name,
+          production,
+        });
+        continue;
+      }
+
+      complete.set(
+        production,
+        data.generatedAt ??
+          new Date().toISOString(),
+      );
     } catch {
       // No completed final selection here.
     }
   }
 
-  return complete;
+  return { complete, stale };
 }
 
 function runProduction(
@@ -222,6 +237,15 @@ function runProduction(
           ) ||
           lower.includes(
             "insufficient_quota",
+          ) ||
+          lower.includes(
+            "openai_phase_a_budget_stop",
+          ) ||
+          lower.includes(
+            "budget stop",
+          ) ||
+          lower.includes(
+            "invalid or missing phase a budget",
           );
 
         resolve({
@@ -282,8 +306,14 @@ const productions =
 const log =
   await readLog();
 
-const existingFinals =
-  await readExistingFinalSelections();
+const validProductions = new Set(productions);
+
+const {
+  complete: existingFinals,
+  stale: staleFinalSelections,
+} = await readExistingFinalSelections(
+  validProductions,
+);
 
 /*
  * Reconcile genuine completed output into the
@@ -299,7 +329,9 @@ for (
   };
 }
 
-await writeLog(log);
+if (!STATUS_ONLY) {
+  await writeLog(log);
+}
 
 const completed =
   new Set(
@@ -324,7 +356,9 @@ for (const production of productions) {
   }
 }
 
-await writeLog(log);
+if (!STATUS_ONLY) {
+  await writeLog(log);
+}
 
 console.log();
 console.log(
@@ -360,6 +394,70 @@ console.log(
   WORK_ROOT,
 );
 console.log();
+if (staleFinalSelections.length) {
+  console.log(
+    "STALE FINAL SELECTIONS IGNORED:",
+    staleFinalSelections.length,
+  );
+
+  for (const item of staleFinalSelections) {
+    console.log(
+      `- ${item.production} [${item.folder}]`,
+    );
+  }
+
+  console.log();
+}
+
+if (STATUS_ONLY) {
+  let validComplete = 0;
+  const invalidComplete = [];
+  const notComplete = [];
+
+  for (const production of productions) {
+    if (!completed.has(production)) {
+      notComplete.push(production);
+      continue;
+    }
+
+    const validation =
+      await validateCompletedProduction(
+        production,
+      );
+
+    if (validation.ok) {
+      validComplete += 1;
+    } else {
+      invalidComplete.push({
+        production,
+        reason: validation.reason,
+      });
+    }
+  }
+
+  console.log("STATUS ONLY - NO CURATION STARTED");
+  console.log("Validated complete:", validComplete);
+  console.log("Invalid completion:", invalidComplete.length);
+  console.log("Not complete:", notComplete.length);
+
+  if (invalidComplete.length) {
+    console.log();
+    console.log("INVALID COMPLETIONS:");
+    for (const item of invalidComplete) {
+      console.log(`- ${item.production} - ${item.reason}`);
+    }
+  }
+
+  if (notComplete.length) {
+    console.log();
+    console.log("NOT COMPLETE:");
+    for (const production of notComplete) {
+      console.log(`- ${production}`);
+    }
+  }
+
+  process.exit(0);
+}
 
 let successes = 0;
 let failures = 0;
@@ -403,7 +501,7 @@ for (
       pausedAt:
         new Date().toISOString(),
       error:
-        result.ok ? completionValidation.reason : result.error,
+        result.error,
     };
 
     await writeLog(log);

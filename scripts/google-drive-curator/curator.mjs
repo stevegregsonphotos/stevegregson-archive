@@ -2185,12 +2185,72 @@ function deriveProductionDate(
   };
 }
 
+function normaliseDriveFolderPath(value) {
+  return String(value ?? "")
+    .replace(/\\/g, "/")
+    .split("/")
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join("/");
+}
+
+function commonDrivePathAncestor(paths) {
+  const split = paths
+    .map(normaliseDriveFolderPath)
+    .filter(Boolean)
+    .map((value) => value.split("/"));
+
+  if (!split.length) {
+    return "";
+  }
+
+  const common = [];
+  const shortest = Math.min(...split.map((parts) => parts.length));
+
+  for (let index = 0; index < shortest; index += 1) {
+    const part = split[0][index];
+
+    if (split.every((parts) => parts[index] === part)) {
+      common.push(part);
+    } else {
+      break;
+    }
+  }
+
+  return common.join("/");
+}
+
+function candidateMatchesSourceBoundary(candidate, sourceBoundary) {
+  const sourceRootId = String(candidate?.sourceRootId ?? "").trim();
+  const sourceRootPath = normaliseDriveFolderPath(candidate?.sourceRootPath);
+  const sourceFolder = normaliseDriveFolderPath(candidate?.sourceFolder);
+
+  const root = sourceBoundary.sourceRoots.find(
+    (item) => item.id === sourceRootId,
+  );
+
+  if (!root) {
+    return false;
+  }
+
+  const allowedPath = normaliseDriveFolderPath(root.path);
+
+  return (
+    sourceRootPath === allowedPath &&
+    (
+      sourceFolder === allowedPath ||
+      sourceFolder.startsWith(`${allowedPath}/`)
+    )
+  );
+}
+
 async function stageFinalSelection(
   drive,
   production,
   candidates,
   passTwo,
   outputDir,
+  sourceBoundary,
 ) {
   const byIndex =
     new Map(
@@ -2237,6 +2297,12 @@ async function stageFinalSelection(
     if (!candidate) {
       throw new Error(
         `Selected image #${imageIndex} is missing from discovery.`,
+      );
+    }
+
+    if (!candidateMatchesSourceBoundary(candidate, sourceBoundary)) {
+      throw new Error(
+        `GOOGLE_DRIVE_SOURCE_BOUNDARY_STOP: selected image #${imageIndex} falls outside the verified production source boundary.`,
       );
     }
 
@@ -2300,6 +2366,10 @@ async function stageFinalSelection(
         candidate.path,
       sourceFolder:
         candidate.sourceFolder,
+      sourceRootId:
+        candidate.sourceRootId,
+      sourceRootPath:
+        candidate.sourceRootPath,
       modified:
         candidate.modified,
       stagedFile:
@@ -2322,6 +2392,8 @@ async function stageFinalSelection(
 
   const manifest = {
     version: 1,
+    source: "google-drive",
+    sourceBoundary,
     production,
     generatedAt:
       new Date().toISOString(),
@@ -2456,6 +2528,12 @@ async function main() {
   const production =
     matchedGallery.path;
 
+  if (matchedGallery.reviewNeeded === true) {
+    throw new Error(
+      `GOOGLE_DRIVE_SOURCE_BOUNDARY_STOP: ${production} is marked for manual source-boundary review.`,
+    );
+  }
+
   const sourceFolders = [];
 
   for (
@@ -2477,6 +2555,10 @@ async function main() {
           id: webFolder.id,
           name:
             `${source.path}/${webFolder.name}`,
+          boundaryId:
+            source.id,
+          boundaryPath:
+            source.path,
         });
       }
 
@@ -2490,6 +2572,12 @@ async function main() {
           source.path ??
           source.name ??
           production,
+        boundaryId:
+          source.id,
+        boundaryPath:
+          source.path ??
+          source.name ??
+          production,
       });
     }
   }
@@ -2499,6 +2587,28 @@ async function main() {
       "Normalised gallery contains no usable Google Drive source folders.",
     );
   }
+
+  const boundaryPath =
+    commonDrivePathAncestor(
+      (matchedGallery.sources ?? [])
+        .map((source) => source?.path)
+        .filter(Boolean),
+    ) || production;
+
+  const sourceBoundary = {
+    version: 1,
+    galleryPath: production,
+    galleryManifestGeneratedAt:
+      typeof galleryManifest.generatedAt === "string"
+        ? galleryManifest.generatedAt
+        : null,
+    sourceRoots: [
+      {
+        id: `path:${boundaryPath}`,
+        path: boundaryPath,
+      },
+    ],
+  };
 
   const sourceFiles =
     sourceFolders.map(
@@ -2556,6 +2666,10 @@ async function main() {
         sourceFolder:
           entry.driveFolderPath ??
           folder.name,
+        sourceRootId:
+          sourceBoundary.sourceRoots[0].id,
+        sourceRootPath:
+          sourceBoundary.sourceRoots[0].path,
         modified:
           entry.modifiedTime ??
           null,
@@ -2592,6 +2706,34 @@ async function main() {
     safeName(production),
   );
 
+  const existingDiscoveryPath = path.join(
+    outputDir,
+    "discovery.json",
+  );
+
+  try {
+    const existingDiscovery = JSON.parse(
+      await fs.readFile(
+        existingDiscoveryPath,
+        "utf8",
+      ),
+    );
+
+    if (
+      typeof existingDiscovery.production === "string" &&
+      existingDiscovery.production.trim() &&
+      existingDiscovery.production.trim() !== production
+    ) {
+      throw new Error(
+        `Output folder collision: ${outputDir} belongs to ${existingDiscovery.production}, not ${production}.`,
+      );
+    }
+  } catch (error) {
+    if (error?.code !== "ENOENT") {
+      throw error;
+    }
+  }
+
   await fs.mkdir(
     outputDir,
     {
@@ -2601,6 +2743,8 @@ async function main() {
 
   const discovery = {
     version: 1,
+    source: "google-drive",
+    sourceBoundary,
     production,
     generatedAt:
       new Date().toISOString(),
@@ -2794,6 +2938,7 @@ async function main() {
             uniqueCandidates,
             passTwo,
             outputDir,
+            sourceBoundary,
           );
 
         console.log();

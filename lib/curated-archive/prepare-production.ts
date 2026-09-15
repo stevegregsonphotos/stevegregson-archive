@@ -21,6 +21,9 @@ import {
   getCuratedImportDirectFiles,
   readCuratedImportDirectFile,
 } from "@/lib/curated-archive/staging";
+import {
+  validateCuratedSourceBoundary,
+} from "@/lib/curated-archive/source-boundary";
 
 import fs from "node:fs/promises";
 import os from "node:os";
@@ -432,6 +435,8 @@ export async function prepareCuratedProduction(
 
     let finalSelection:
       | {
+          source?: unknown;
+          sourceBoundary?: unknown;
           production?: unknown;
           hero?: unknown;
           images?: Array<{
@@ -440,6 +445,10 @@ export async function prepareCuratedProduction(
             hero?: unknown;
             stagedFile?: unknown;
             sourceName?: unknown;
+            sourcePath?: unknown;
+            sourceFolder?: unknown;
+            sourceRootId?: unknown;
+            sourceRootPath?: unknown;
             alt?: unknown;
           }>;
         }
@@ -675,7 +684,9 @@ export async function prepareCuratedProduction(
       );
 
     const issues:
-      string[] = [];
+      string[] = [
+        ...validateCuratedSourceBoundary(finalSelection),
+      ];
 
     if (unsafeImages.length > 0) {
       issues.push(

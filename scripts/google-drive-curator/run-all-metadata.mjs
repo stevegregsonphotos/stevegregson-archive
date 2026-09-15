@@ -67,6 +67,30 @@ const LOG_PATH = path.join(
   "bulk-metadata-log.json",
 );
 
+const NORMALISED_GALLERIES_PATH = path.join(
+  WORK_ROOT,
+  "normalised-galleries.json",
+);
+
+async function readValidProductions() {
+  const manifest = JSON.parse(
+    await fs.readFile(
+      NORMALISED_GALLERIES_PATH,
+      "utf8",
+    ),
+  );
+
+  return new Set(
+    (Array.isArray(manifest.galleries)
+      ? manifest.galleries
+      : [])
+      .map((gallery) =>
+        String(gallery.path ?? "").trim(),
+      )
+      .filter(Boolean),
+  );
+}
+
 async function readLog() {
   try {
     return JSON.parse(
@@ -206,16 +230,57 @@ await fs.mkdir(
   { recursive: true },
 );
 
-const entries = await fs.readdir(WORK_ROOT, { withFileTypes: true });
+const validProductions =
+  await readValidProductions();
+
+const entries = await fs.readdir(
+  WORK_ROOT,
+  { withFileTypes: true },
+);
 const allProductions = [];
+const staleFinalSelections = [];
+
 for (const entry of entries) {
-  if (!entry.isDirectory()) continue;
+  if (!entry.isDirectory()) {
+    continue;
+  }
+
   try {
-    const finalSelection = JSON.parse(await fs.readFile(path.join(WORK_ROOT, entry.name, "final-selection.json"), "utf8"));
-    if (typeof finalSelection.production === "string" && finalSelection.production.trim()) allProductions.push(finalSelection.production.trim());
+    const finalSelection = JSON.parse(
+      await fs.readFile(
+        path.join(
+          WORK_ROOT,
+          entry.name,
+          "final-selection.json",
+        ),
+        "utf8",
+      ),
+    );
+
+    const production =
+      typeof finalSelection.production === "string"
+        ? finalSelection.production.trim()
+        : "";
+
+    if (!production) {
+      continue;
+    }
+
+    if (!validProductions.has(production)) {
+      staleFinalSelections.push({
+        folder: entry.name,
+        production,
+      });
+      continue;
+    }
+
+    allProductions.push(production);
   } catch {}
 }
-allProductions.sort((a, b) => a.localeCompare(b));
+
+allProductions.sort((a, b) =>
+  a.localeCompare(b),
+);
 
 const exclusions =
   await readExclusions();
@@ -248,6 +313,19 @@ console.log(
   "Research output:",
   WORK_ROOT,
 );
+
+if (staleFinalSelections.length) {
+  console.log(
+    "Stale final selections ignored:",
+    staleFinalSelections.length,
+  );
+
+  for (const item of staleFinalSelections) {
+    console.log(
+      `- ${item.production} [${item.folder}]`,
+    );
+  }
+}
 
 let completed = 0;
 let failed = 0;
