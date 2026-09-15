@@ -7,7 +7,7 @@ import {
   type DirectoryData,
 } from "../../lib/directory-repository";
 import {
-  getProductions,
+  getPeopleProductions,
 } from "../../lib/productions-repository";
 
 export const metadata: Metadata = {
@@ -80,7 +80,7 @@ function normaliseRole(role: string) {
 function createPeopleDirectory(
   directory: DirectoryData,
   productions: Awaited<
-    ReturnType<typeof getProductions>
+    ReturnType<typeof getPeopleProductions>
   >,
 ) {
   const people = new Map<string, Person>();
@@ -143,7 +143,7 @@ export default async function PeoplePage() {
     productions,
   ] = await Promise.all([
     getDirectory(),
-    getProductions(),
+    getPeopleProductions(),
   ]);
 
   const people =

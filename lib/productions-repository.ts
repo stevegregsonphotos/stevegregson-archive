@@ -58,9 +58,337 @@ type ImageRow = {
 };
 
 function productionMonth(
-  production: Production,
+  production: { month?: number | null },
 ) {
   return production.month ?? 0;
+}
+
+function sortProductions<
+  T extends {
+    year: number;
+    month?: number | null;
+    title: string;
+  },
+>(productions: T[]) {
+  return productions.sort(
+    (first, second) =>
+      second.year - first.year ||
+      productionMonth(second) -
+        productionMonth(first) ||
+      first.title.localeCompare(
+        second.title,
+      ),
+  );
+}
+
+function mapCreditRow(
+  row: CreditRow,
+): ProductionCredit {
+  return {
+    role: row.role,
+    name: row.name,
+    ...(row.website
+      ? { website: row.website }
+      : {}),
+  };
+}
+
+function mapImageRow(
+  row: ImageRow,
+): ProductionImage {
+  return {
+    src: row.display_filename,
+    alt: row.alt,
+    layout: row.layout,
+    ...(row.blur_data_url
+      ? {
+          blurDataURL:
+            row.blur_data_url,
+        }
+      : {}),
+    ...(row.suggested_filename
+      ? {
+          suggestedFilename:
+            row.suggested_filename,
+        }
+      : {}),
+  };
+}
+
+export type ProductionIndexEntry = {
+  slug: string;
+  title: string;
+  month: number | null;
+  year: number;
+  access: "public" | "password" | null;
+};
+
+export async function getProductionIndex():
+  Promise<ProductionIndexEntry[]> {
+  const sql = getSql();
+
+  const rows = await sql`
+    SELECT
+      slug,
+      title,
+      month,
+      year,
+      access
+    FROM productions
+    WHERE deleted_at IS NULL
+  `;
+
+  return sortProductions(
+    (rows as ProductionIndexEntry[])
+      .map((row) => ({ ...row })),
+  );
+}
+
+export type ArchiveProduction = {
+  slug: string;
+  title: string;
+  venue: string;
+  year: number;
+  description: string;
+  hero: string;
+  heroAlt: string;
+  access?: "public" | "password";
+  showHeroWhenLocked?: boolean;
+  credits: ProductionCredit[];
+};
+
+export async function getArchiveProductions():
+  Promise<ArchiveProduction[]> {
+  const sql = getSql();
+
+  const [productionRows, creditRows] =
+    await Promise.all([
+      sql`
+        SELECT
+          id,
+          slug,
+          title,
+          venue,
+          year,
+          description,
+          access,
+          show_hero_when_locked,
+          hero_display_filename,
+          hero_alt
+        FROM productions
+        WHERE deleted_at IS NULL
+      `,
+      sql`
+        SELECT
+          production_id,
+          role,
+          name,
+          website,
+          position
+        FROM production_credits
+        WHERE deleted_at IS NULL
+        ORDER BY production_id, position
+      `,
+    ]);
+
+  const creditsByProduction =
+    new Map<string, ProductionCredit[]>();
+
+  for (const row of creditRows as CreditRow[]) {
+    const credits =
+      creditsByProduction.get(
+        row.production_id,
+      ) ?? [];
+    credits.push(mapCreditRow(row));
+    creditsByProduction.set(
+      row.production_id,
+      credits,
+    );
+  }
+
+  return (productionRows as Array<{
+    id: string;
+    slug: string;
+    title: string;
+    venue: string;
+    year: number;
+    description: string;
+    access: "public" | "password" | null;
+    show_hero_when_locked: boolean | null;
+    hero_display_filename: string;
+    hero_alt: string;
+  }>).map((row) => ({
+    slug: row.slug,
+    title: row.title,
+    venue: row.venue,
+    year: row.year,
+    description: row.description,
+    hero: row.hero_display_filename,
+    heroAlt: row.hero_alt,
+    ...(row.access !== null
+      ? { access: row.access }
+      : {}),
+    ...(row.show_hero_when_locked !== null
+      ? {
+          showHeroWhenLocked:
+            row.show_hero_when_locked,
+        }
+      : {}),
+    credits:
+      creditsByProduction.get(row.id) ?? [],
+  })).sort(
+    (a, b) =>
+      b.year - a.year ||
+      a.title.localeCompare(b.title),
+  );
+}
+
+export type PeopleProduction = {
+  slug: string;
+  title: string;
+  year: number;
+  credits: ProductionCredit[];
+};
+
+export async function getPeopleProductions():
+  Promise<PeopleProduction[]> {
+  const sql = getSql();
+  const [productionRows, creditRows] =
+    await Promise.all([
+      sql`
+        SELECT id, slug, title, year
+        FROM productions
+        WHERE deleted_at IS NULL
+      `,
+      sql`
+        SELECT
+          production_id,
+          role,
+          name,
+          website,
+          position
+        FROM production_credits
+        WHERE deleted_at IS NULL
+        ORDER BY production_id, position
+      `,
+    ]);
+
+  const creditsByProduction =
+    new Map<string, ProductionCredit[]>();
+
+  for (const row of creditRows as CreditRow[]) {
+    const credits =
+      creditsByProduction.get(
+        row.production_id,
+      ) ?? [];
+    credits.push(mapCreditRow(row));
+    creditsByProduction.set(
+      row.production_id,
+      credits,
+    );
+  }
+
+  return (productionRows as Array<{
+    id: string;
+    slug: string;
+    title: string;
+    year: number;
+  }>).map((row) => ({
+    slug: row.slug,
+    title: row.title,
+    year: row.year,
+    credits:
+      creditsByProduction.get(row.id) ?? [],
+  }));
+}
+
+export type AdminProductionSummary = {
+  slug: string;
+  title: string;
+  venue: string;
+  month: number | null;
+  year: number;
+  hero: string;
+  imageCount: number;
+};
+
+export async function getAdminProductionSummaries():
+  Promise<AdminProductionSummary[]> {
+  const sql = getSql();
+  const rows = await sql`
+    SELECT
+      p.slug,
+      p.title,
+      p.venue,
+      p.month,
+      p.year,
+      p.hero_display_filename AS hero,
+      COUNT(i.production_id)::int AS image_count
+    FROM productions p
+    LEFT JOIN production_images i
+      ON i.production_id = p.id
+      AND i.deleted_at IS NULL
+    WHERE p.deleted_at IS NULL
+    GROUP BY
+      p.id,
+      p.slug,
+      p.title,
+      p.venue,
+      p.month,
+      p.year,
+      p.hero_display_filename
+  `;
+
+  return sortProductions(
+    (rows as Array<{
+      slug: string;
+      title: string;
+      venue: string;
+      month: number | null;
+      year: number;
+      hero: string;
+      image_count: number;
+    }>).map((row) => ({
+      slug: row.slug,
+      title: row.title,
+      venue: row.venue,
+      month: row.month,
+      year: row.year,
+      hero: row.hero,
+      imageCount: Number(row.image_count),
+    })),
+  );
+}
+
+export type ProductionNavigationEntry = {
+  slug: string;
+  title: string;
+  venue: string;
+  month: number | null;
+  year: number;
+  hero: string;
+};
+
+export async function getPublicProductionNavigation():
+  Promise<ProductionNavigationEntry[]> {
+  const sql = getSql();
+  const rows = await sql`
+    SELECT
+      slug,
+      title,
+      venue,
+      month,
+      year,
+      hero_display_filename AS hero
+    FROM productions
+    WHERE deleted_at IS NULL
+      AND COALESCE(access, 'public') <> 'password'
+  `;
+
+  return sortProductions(
+    (rows as ProductionNavigationEntry[])
+      .map((row) => ({ ...row })),
+  );
 }
 
 export async function getProductions():
@@ -117,31 +445,14 @@ export async function getProductions():
   ]);
 
   const creditsByProduction =
-    new Map<
-      string,
-      ProductionCredit[]
-    >();
+    new Map<string, ProductionCredit[]>();
 
-  for (
-    const row of
-    creditRows as CreditRow[]
-  ) {
+  for (const row of creditRows as CreditRow[]) {
     const credits =
       creditsByProduction.get(
         row.production_id,
       ) ?? [];
-
-    credits.push({
-      role: row.role,
-      name: row.name,
-      ...(row.website
-        ? {
-            website:
-              row.website,
-          }
-        : {}),
-    });
-
+    credits.push(mapCreditRow(row));
     creditsByProduction.set(
       row.production_id,
       credits,
@@ -149,41 +460,14 @@ export async function getProductions():
   }
 
   const imagesByProduction =
-    new Map<
-      string,
-      ProductionImage[]
-    >();
+    new Map<string, ProductionImage[]>();
 
-  for (
-    const row of
-    imageRows as ImageRow[]
-  ) {
+  for (const row of imageRows as ImageRow[]) {
     const images =
       imagesByProduction.get(
         row.production_id,
       ) ?? [];
-
-    images.push({
-      src:
-        row.display_filename,
-      alt:
-        row.alt,
-      layout:
-        row.layout,
-      ...(row.blur_data_url
-        ? {
-            blurDataURL:
-              row.blur_data_url,
-          }
-        : {}),
-      ...(row.suggested_filename
-        ? {
-            suggestedFilename:
-              row.suggested_filename,
-          }
-        : {}),
-    });
-
+    images.push(mapImageRow(row));
     imagesByProduction.set(
       row.production_id,
       images,
@@ -192,72 +476,45 @@ export async function getProductions():
 
   const productions =
     (productionRows as ProductionRow[])
-      .map(
-        (row): Production => ({
-          slug:
-            row.slug,
-          title:
-            row.title,
-          venue:
-            row.venue,
-          ...(row.month !== null
-            ? {
-                month:
-                  row.month,
-              }
-            : {}),
-          year:
-            row.year,
-          description:
-            row.description,
-          hero:
-            row.hero_display_filename,
-          heroAlt:
-            row.hero_alt,
-          ...(row.hero_blur_data_url
-            ? {
-                heroBlurDataURL:
-                  row.hero_blur_data_url,
-              }
-            : {}),
-          ...(row.access !== null
-            ? {
-                access:
-                  row.access,
-              }
-            : {}),
-          ...(row.show_hero_when_locked !== null
-            ? {
-                showHeroWhenLocked:
-                  row.show_hero_when_locked,
-              }
-            : {}),
-          ...(row.access_password_encrypted
-            ? {
-                accessPasswordEncrypted:
-                  row.access_password_encrypted,
-              }
-            : {}),
-          credits:
-            creditsByProduction.get(
-              row.id,
-            ) ?? [],
-          images:
-            imagesByProduction.get(
-              row.id,
-            ) ?? [],
-        }),
-      );
+      .map((row): Production => ({
+        slug: row.slug,
+        title: row.title,
+        venue: row.venue,
+        ...(row.month !== null
+          ? { month: row.month }
+          : {}),
+        year: row.year,
+        description: row.description,
+        hero: row.hero_display_filename,
+        heroAlt: row.hero_alt,
+        ...(row.hero_blur_data_url
+          ? {
+              heroBlurDataURL:
+                row.hero_blur_data_url,
+            }
+          : {}),
+        ...(row.access !== null
+          ? { access: row.access }
+          : {}),
+        ...(row.show_hero_when_locked !== null
+          ? {
+              showHeroWhenLocked:
+                row.show_hero_when_locked,
+            }
+          : {}),
+        ...(row.access_password_encrypted
+          ? {
+              accessPasswordEncrypted:
+                row.access_password_encrypted,
+            }
+          : {}),
+        credits:
+          creditsByProduction.get(row.id) ?? [],
+        images:
+          imagesByProduction.get(row.id) ?? [],
+      }));
 
-  return productions.sort(
-    (first, second) =>
-      second.year - first.year ||
-      productionMonth(second) -
-        productionMonth(first) ||
-      first.title.localeCompare(
-        second.title,
-      ),
-  );
+  return sortProductions(productions);
 }
 
 export function getProductionFromData(
@@ -281,17 +538,122 @@ export function getProductionFromData(
 export async function getProduction(
   slug: string,
 ) {
-  const productions =
-    await getProductions();
+  const normalisedSlug =
+    decodeURIComponent(slug)
+      .trim()
+      .toLowerCase();
 
-  return getProductionFromData(
-    productions,
-    slug,
-  );
+  if (!normalisedSlug) {
+    return undefined;
+  }
+
+  const sql = getSql();
+  const productionRows = await sql`
+    SELECT
+      id,
+      slug,
+      title,
+      venue,
+      month,
+      year,
+      description,
+      access,
+      show_hero_when_locked,
+      access_password_encrypted,
+      hero_display_filename,
+      hero_alt,
+      hero_blur_data_url
+    FROM productions
+    WHERE deleted_at IS NULL
+      AND lower(slug) = ${normalisedSlug}
+    LIMIT 1
+  `;
+
+  const row =
+    (productionRows as ProductionRow[])[0];
+
+  if (!row) {
+    return undefined;
+  }
+
+  const [creditRows, imageRows] =
+    await Promise.all([
+      sql`
+        SELECT
+          production_id,
+          role,
+          name,
+          website,
+          position
+        FROM production_credits
+        WHERE deleted_at IS NULL
+          AND production_id = ${row.id}
+        ORDER BY position
+      `,
+      sql`
+        SELECT
+          production_id,
+          display_filename,
+          alt,
+          layout,
+          blur_data_url,
+          suggested_filename,
+          position
+        FROM production_images
+        WHERE deleted_at IS NULL
+          AND production_id = ${row.id}
+        ORDER BY position
+      `,
+    ]);
+
+  return {
+    slug: row.slug,
+    title: row.title,
+    venue: row.venue,
+    ...(row.month !== null
+      ? { month: row.month }
+      : {}),
+    year: row.year,
+    description: row.description,
+    hero: row.hero_display_filename,
+    heroAlt: row.hero_alt,
+    ...(row.hero_blur_data_url
+      ? {
+          heroBlurDataURL:
+            row.hero_blur_data_url,
+        }
+      : {}),
+    ...(row.access !== null
+      ? { access: row.access }
+      : {}),
+    ...(row.show_hero_when_locked !== null
+      ? {
+          showHeroWhenLocked:
+            row.show_hero_when_locked,
+        }
+      : {}),
+    ...(row.access_password_encrypted
+      ? {
+          accessPasswordEncrypted:
+            row.access_password_encrypted,
+        }
+      : {}),
+    credits:
+      (creditRows as CreditRow[])
+        .map(mapCreditRow),
+    images:
+      (imageRows as ImageRow[])
+        .map(mapImageRow),
+  } satisfies Production;
 }
 
-export function getNextProductionFromData(
-  productions: Production[],
+export function getNextProductionFromData<
+  T extends {
+    slug: string;
+    access?: "public" | "password" | null;
+  },
+>(
+  productions: T[],
   slug: string,
 ) {
   const normalisedSlug =
@@ -328,8 +690,7 @@ export function getNextProductionFromData(
       productions[nextIndex];
 
     if (
-      candidate.access !==
-      "password"
+      candidate.access !== "password"
     ) {
       return candidate;
     }
@@ -337,7 +698,6 @@ export function getNextProductionFromData(
 
   return undefined;
 }
-
 
 export type ProductionWriteData = {
   slug: string;

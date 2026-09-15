@@ -156,6 +156,33 @@ async function writeLog(log) {
   );
 }
 
+async function validateCompletedProduction(production) {
+  let entries = [];
+  try { entries = await fs.readdir(WORK_ROOT, { withFileTypes: true }); } catch { return { ok: false, reason: "work root unavailable" }; }
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    const folder = path.join(WORK_ROOT, entry.name);
+    try {
+      const final = JSON.parse(await fs.readFile(path.join(folder, "final-selection.json"), "utf8"));
+      if (String(final.production ?? "").trim() !== production) continue;
+      const images = Array.isArray(final.images) ? final.images : [];
+      if (!images.length) return { ok: false, reason: "final selection has no images" };
+      const missingAlt = images.filter((image) => typeof image?.alt !== "string" || !image.alt.trim());
+      if (missingAlt.length) return { ok: false, reason: `${missingAlt.length} selected image(s) missing alt text` };
+      const staging = path.join(folder, "selected-web-staging");
+      const staged = (await fs.readdir(staging, { withFileTypes: true })).filter((item) => item.isFile() && !item.name.startsWith("."));
+      if (staged.length !== images.length) return { ok: false, reason: `staging count ${staged.length} does not match ${images.length}` };
+      for (const image of images) {
+        if (typeof image.stagedFile !== "string" || !image.stagedFile) return { ok: false, reason: "selected image missing stagedFile" };
+        const stat = await fs.stat(path.join(staging, image.stagedFile));
+        if (!stat.size) return { ok: false, reason: `empty staged file ${image.stagedFile}` };
+      }
+      return { ok: true, completedAt: final.generatedAt ?? new Date().toISOString() };
+    } catch {}
+  }
+  return { ok: false, reason: "valid final-selection.json not found" };
+}
+
 async function runProduction(
   production,
   position,
@@ -370,11 +397,13 @@ for (
     productions[index];
 
   if (completed.has(production)) {
-    console.log();
-    console.log(
-      `[${index + 1}/${productions.length}] SKIP complete: ${production}`,
-    );
-    continue;
+    const validation = await validateCompletedProduction(production);
+    if (validation.ok) {
+      console.log(`[${index + 1}/${productions.length}] SKIP validated complete: ${production}`);
+      continue;
+    }
+    completed.delete(production);
+    console.warn(`REOPENING INVALID COMPLETION: ${production} — ${validation.reason}`);
   }
 
   log.productions[production] = {
@@ -434,7 +463,7 @@ for (
       pausedAt:
         new Date().toISOString(),
       error:
-        result.error,
+        result.ok ? completionValidation.reason : result.error,
     };
 
     await writeLog(log);
@@ -453,7 +482,11 @@ for (
     process.exit(2);
   }
 
-  if (result.ok) {
+  const completionValidation = result.ok
+    ? await validateCompletedProduction(production)
+    : { ok: false, reason: result.error };
+
+  if (result.ok && completionValidation.ok) {
     successes += 1;
 
     log.productions[production] = {

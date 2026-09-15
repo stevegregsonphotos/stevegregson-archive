@@ -1,14 +1,14 @@
 import type { MetadataRoute } from "next";
 
 import {
-  getProductions,
+  getProductionIndex,
 } from "../lib/productions-repository";
 
 const siteUrl = "https://www.stevegregson.com";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const productions =
-    await getProductions();
+    await getProductionIndex();
 
   const staticRoutes: MetadataRoute.Sitemap = [
     {

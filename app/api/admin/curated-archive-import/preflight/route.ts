@@ -4,7 +4,7 @@ import {
 } from "@/lib/backstage-auth";
 
 import {
-  getProductions,
+  getProductionIndex,
 } from "@/lib/productions-repository";
 import {
   getCuratedArchiveAccessOverrides,
@@ -222,16 +222,16 @@ export async function GET(
   let productions:
     Awaited<
       ReturnType<
-        typeof getProductions
+        typeof getProductionIndex
       >
     >;
 
   try {
     productions =
-      await getProductions();
+      await getProductionIndex();
   } catch (error) {
     console.error(
-      "[curated-preflight] getProductions failed:",
+      "[curated-preflight] getProductionIndex failed:",
       error,
     );
 

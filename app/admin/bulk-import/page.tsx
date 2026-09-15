@@ -4,7 +4,7 @@ import {
   getDirectory,
 } from "../../../lib/directory-repository";
 import {
-  getProductions,
+  getProductionIndex,
 } from "../../../lib/productions-repository";
 
 import BulkImportClient from "./BulkImportClient";
@@ -22,7 +22,7 @@ export default async function BulkImportPage() {
     productions,
     directory,
   ] = await Promise.all([
-    getProductions(),
+    getProductionIndex(),
     getDirectory(),
   ]);
 

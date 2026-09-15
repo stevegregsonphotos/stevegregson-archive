@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import {
-  getProductions,
+  getProductionIndex,
 } from "../../../lib/productions-repository";
 
 import CuratedArchiveImportClient from "./CuratedArchiveImportClient";
@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 
 export default async function CuratedArchiveImportPage() {
   const productions =
-    await getProductions();
+    await getProductionIndex();
 
   return (
     <main

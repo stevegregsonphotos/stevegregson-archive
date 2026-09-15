@@ -16,7 +16,7 @@ const SELECTS_ROOT = path.join(
 
 const CURATION_ROOT = path.join(
   ARCHIVE_ROOT,
-  "Automated Curation",
+  "Automated Curation - Google Drive",
 );
 
 const ENV_PATH = path.resolve(".env.local");
@@ -313,35 +313,45 @@ const productionDir =
     production,
   );
 
-const files =
-  await fs.readdir(
-    productionDir,
-  );
+let originalText = "";
+let txtPath = null;
 
-const txtName =
-  files.find((name) =>
-    name
-      .toLowerCase()
-      .endsWith(".txt"),
-  );
+try {
+  const files =
+    await fs.readdir(
+      productionDir,
+    );
 
-if (!txtName) {
-  throw new Error(
-    `No TXT found for ${production}`,
-  );
+  const txtName =
+    files.find((name) =>
+      name
+        .toLowerCase()
+        .endsWith(".txt"),
+    );
+
+  if (txtName) {
+    txtPath =
+      path.join(
+        productionDir,
+        txtName,
+      );
+
+    originalText =
+      await fs.readFile(
+        txtPath,
+        "utf8",
+      );
+  }
+} catch (error) {
+  if (error?.code !== "ENOENT") {
+    throw error;
+  }
 }
 
-const txtPath =
-  path.join(
-    productionDir,
-    txtName,
-  );
-
-const originalText =
-  await fs.readFile(
-    txtPath,
-    "utf8",
-  );
+if (!originalText.trim()) {
+  originalText =
+    `Production: ${production}\n`;
+}
 
 const source =
   parseTxt(originalText);

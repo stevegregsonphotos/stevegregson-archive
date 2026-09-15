@@ -19,8 +19,8 @@ import {
 import {
   getNextProductionFromData,
   getProduction,
-  getProductionFromData,
-  getProductions,
+  getProductionIndex,
+  getPublicProductionNavigation,
 } from "../../../lib/productions-repository";
 
 export const dynamic = "force-dynamic";
@@ -33,7 +33,7 @@ type ProductionPageProps = {
 
 export async function generateStaticParams() {
   const productions =
-    await getProductions();
+    await getProductionIndex();
 
   return productions.map((production) => ({
     slug: production.slug,
@@ -118,18 +118,14 @@ export default async function ProductionPage({
   const { slug } = await params;
 
   const [
-    productions,
+    production,
+    navigation,
     directory,
   ] = await Promise.all([
-    getProductions(),
+    getProduction(slug),
+    getPublicProductionNavigation(),
     getDirectory(),
   ]);
-
-  const production =
-    getProductionFromData(
-      productions,
-      slug,
-    );
 
   if (!production) {
     notFound();
@@ -190,7 +186,7 @@ export default async function ProductionPage({
 
   const nextProduction =
     getNextProductionFromData(
-      productions,
+      navigation,
       slug,
     );
 

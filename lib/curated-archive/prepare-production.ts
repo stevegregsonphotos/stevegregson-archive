@@ -2,7 +2,7 @@ import {
   createProductionSlug,
 } from "@/lib/publishing/production-slug";
 import {
-  getProductions,
+  productionExists,
 } from "@/lib/productions-repository";
 import {
   getCuratedArchiveAccessOverrides,
@@ -347,13 +347,7 @@ async function findExistingSlug(
       title,
     );
 
-  const productions =
-    await getProductions();
-
-  return productions.some(
-    (production) =>
-      production.slug === slug,
-  )
+  return await productionExists(slug)
     ? slug
     : null;
 }

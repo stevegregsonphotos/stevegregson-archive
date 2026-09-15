@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import {
-  getProductions,
+  getAdminProductionSummaries,
 } from "../../../lib/productions-repository";
 
 import ProductionManager from "./ProductionManager";
@@ -18,20 +18,10 @@ export const metadata: Metadata = {
 };
 
 export default async function ProductionsAdminPage() {
-  const productions =
-    await getProductions();
+  const productionSummaries =
+    await getAdminProductionSummaries();
 
-  const productionSummaries = productions.map(
-    (production) => ({
-      slug: production.slug,
-      title: production.title,
-      venue: production.venue,
-      month: production.month ?? null,
-      year: production.year,
-      hero: production.hero,
-      imageCount: production.images.length,
-    }),
-  );
+  const productions = productionSummaries;
 
   const years = productions.map(
     (production) => production.year,
@@ -47,7 +37,7 @@ export default async function ProductionsAdminPage() {
     productionCount: productions.length,
     photographCount: productions.reduce(
       (total, production) =>
-        total + production.images.length,
+        total + production.imageCount,
       0,
     ),
     earliestYear:

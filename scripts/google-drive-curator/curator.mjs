@@ -1,7 +1,13 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
-import sharp from "sharp";
+
+import {
+  createDriveClient,
+  listDriveFolder,
+  listDriveFolderRecursive,
+  downloadDriveFile,
+} from "./drive-source.mjs";
 
 const PROJECT_ROOT = process.cwd();
 
@@ -18,7 +24,7 @@ const MANIFEST_PATH = path.join(
 
 const WORK_ROOT = path.join(
   ARCHIVE_ROOT,
-  "Automated Curation",
+  "Automated Curation - Google Drive",
 );
 
 const ENV_PATH = path.join(
@@ -26,34 +32,11 @@ const ENV_PATH = path.join(
   ".env.local",
 );
 
+const NORMALISED_GALLERIES_PATH = path.join(
+  WORK_ROOT,
+  "normalised-galleries.json",
+);
 
-const NETWORK_TIMEOUT_MS = 120000;
-const NETWORK_MAX_ATTEMPTS = 4;
-
-function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function fetchWithRetry(url, options = {}, label = "request") {
-  let lastError = null;
-  for (let attempt = 1; attempt <= NETWORK_MAX_ATTEMPTS; attempt += 1) {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), NETWORK_TIMEOUT_MS);
-    try {
-      const response = await fetch(url, { ...options, signal: controller.signal });
-      if (response.ok || ![408, 429, 500, 502, 503, 504].includes(response.status)) {
-        return response;
-      }
-      lastError = new Error(`${label} returned HTTP ${response.status}`);
-    } catch (error) {
-      lastError = error;
-    } finally {
-      clearTimeout(timer);
-    }
-    if (attempt < NETWORK_MAX_ATTEMPTS) await sleep(Math.min(8000, 750 * 2 ** (attempt - 1)));
-  }
-  throw new Error(`${label} failed after ${NETWORK_MAX_ATTEMPTS} attempts: ${lastError instanceof Error ? lastError.message : String(lastError)}`);
-}
 
 function readEnvValue(text, key) {
   for (const rawLine of text.split(/\r?\n/)) {
@@ -278,7 +261,7 @@ async function dropboxRequest(
   endpoint,
   body,
 ) {
-  const response = await fetchWithRetry(
+  const response = await fetch(
     `https://api.dropboxapi.com/2/${endpoint}`,
     {
       method: "POST",
@@ -337,12 +320,9 @@ async function listDropboxFolder(
 
 async function downloadDropboxThumbnail(
   token,
-  candidate,
+  dropboxPath,
 ) {
-  const dropboxReference =
-    candidate.id ??
-    candidate.path;
-  const response = await fetchWithRetry(
+  const response = await fetch(
     "https://content.dropboxapi.com/2/files/get_thumbnail_v2",
     {
       method: "POST",
@@ -351,7 +331,7 @@ async function downloadDropboxThumbnail(
         "Dropbox-API-Arg": JSON.stringify({
           resource: {
             ".tag": "path",
-            path: dropboxReference,
+            path: dropboxPath,
           },
           format: {
             ".tag": "jpeg",
@@ -369,22 +349,19 @@ async function downloadDropboxThumbnail(
 
   if (!response.ok) {
     const message = await response.text();
-    if (response.status === 409 && message.includes("unsupported_image")) {
-      const original = await downloadDropboxFile(token, dropboxReference);
-      return sharp(original, { failOn: "none" })
-        .rotate()
-        .resize({ width: 640, height: 480, fit: "inside", withoutEnlargement: true })
-        .jpeg({ quality: 82 })
-        .toBuffer();
-    }
-    throw new Error(`Thumbnail failed (${response.status}): ${message.slice(0, 300)}`);
+
+    throw new Error(
+      `Thumbnail failed (${response.status}): ${message.slice(0, 300)}`,
+    );
   }
 
-  return Buffer.from(await response.arrayBuffer());
+  return Buffer.from(
+    await response.arrayBuffer(),
+  );
 }
 
 async function ensureThumbnails(
-  token,
+  drive,
   candidates,
   outputDir,
 ) {
@@ -450,7 +427,7 @@ async function ensureThumbnails(
       let cached = destinationExists && identityMatches;
       if (!cached) {
         if (destinationExists && !identityMatches) staleCacheDetected = true;
-        const buffer = await downloadDropboxThumbnail(token, candidate);
+        const buffer = await downloadDriveFile(drive, candidate.path);
         await fs.writeFile(destination, buffer);
       }
 
@@ -2114,9 +2091,9 @@ Requirements:
 
 async function downloadDropboxFile(
   token,
-  dropboxReference,
+  dropboxPath,
 ) {
-  const response = await fetchWithRetry(
+  const response = await fetch(
     "https://content.dropboxapi.com/2/files/download",
     {
       method: "POST",
@@ -2124,7 +2101,7 @@ async function downloadDropboxFile(
         Authorization: `Bearer ${token}`,
         "Dropbox-API-Arg":
           JSON.stringify({
-            path: dropboxReference,
+            path: dropboxPath,
           }),
       },
     },
@@ -2144,7 +2121,7 @@ async function downloadDropboxFile(
   );
 }
 
-function deriveDropboxProductionDate(
+function deriveProductionDate(
   candidates,
 ) {
   const counts = new Map();
@@ -2209,7 +2186,7 @@ function deriveDropboxProductionDate(
 }
 
 async function stageFinalSelection(
-  token,
+  drive,
   production,
   candidates,
   passTwo,
@@ -2235,7 +2212,7 @@ async function stageFinalSelection(
   await fs.mkdir(stagingDir, { recursive: true });
 
   const dateEvidence =
-    deriveDropboxProductionDate(
+    deriveProductionDate(
       candidates,
     );
 
@@ -2298,10 +2275,9 @@ async function stageFinalSelection(
       cached = false;
 
       const buffer =
-        await downloadDropboxFile(
-          token,
-          candidate.id ??
-            candidate.path,
+        await downloadDriveFile(
+          drive,
+          candidate.path,
         );
 
       await fs.writeFile(
@@ -2410,29 +2386,23 @@ async function main() {
   const envText =
     await fs.readFile(ENV_PATH, "utf8");
 
-  const token =
-    await getDropboxAccessToken(
-      envText,
-    );
+  const drive =
+    await createDriveClient();
 
-  const manifest =
+  const galleryManifest =
     JSON.parse(
       await fs.readFile(
-        MANIFEST_PATH,
+        NORMALISED_GALLERIES_PATH,
         "utf8",
       ),
     );
 
-  const items =
-    getManifestItems(manifest);
-
-  const productionNames = [
-    ...new Set(
-      items
-        .map(getProductionName)
-        .filter(Boolean),
-    ),
-  ];
+  const galleries =
+    Array.isArray(
+      galleryManifest.galleries,
+    )
+      ? galleryManifest.galleries
+      : [];
 
   const requestedNormalised =
     normaliseProductionName(
@@ -2440,72 +2410,107 @@ async function main() {
     );
 
   const exact =
-    productionNames.find(
-      (name) =>
-        normaliseProductionName(name) ===
-        requestedNormalised,
+    galleries.find(
+      (gallery) =>
+        normaliseProductionName(
+          gallery.path ?? "",
+        ) === requestedNormalised,
     );
 
   const partial =
-    productionNames.filter((name) =>
-      normaliseProductionName(name)
-        .includes(requestedNormalised),
+    galleries.filter(
+      (gallery) =>
+        normaliseProductionName(
+          gallery.path ?? "",
+        ).includes(
+          requestedNormalised,
+        ),
     );
 
-  const production =
+  const matchedGallery =
     exact ??
     (partial.length === 1
       ? partial[0]
       : null);
 
-  if (!production) {
+  if (!matchedGallery) {
     console.log(
-      "Matching productions:",
+      "Matching normalised galleries:",
       partial.length,
     );
 
-    for (const name of partial.slice(0, 20)) {
-      console.log(`- ${name}`);
+    for (
+      const gallery
+      of partial.slice(0, 20)
+    ) {
+      console.log(
+        `- ${gallery.path}`,
+      );
     }
 
     throw new Error(
-      "Production could not be resolved uniquely.",
+      "Google Drive gallery could not be resolved uniquely.",
     );
   }
 
-  const productionItems =
-    items.filter(
-      (item) =>
-        getProductionName(item) ===
-        production,
+  const production =
+    matchedGallery.path;
+
+  const sourceFolders = [];
+
+  for (
+    const source
+    of matchedGallery.sources ?? []
+  ) {
+    if (
+      source.webFolders?.length
+    ) {
+      for (
+        const webFolder
+        of source.webFolders
+      ) {
+        if (!webFolder.id) {
+          continue;
+        }
+
+        sourceFolders.push({
+          id: webFolder.id,
+          name:
+            `${source.path}/${webFolder.name}`,
+        });
+      }
+
+      continue;
+    }
+
+    if (source.id) {
+      sourceFolders.push({
+        id: source.id,
+        name:
+          source.path ??
+          source.name ??
+          production,
+      });
+    }
+  }
+
+  if (!sourceFolders.length) {
+    throw new Error(
+      "Normalised gallery contains no usable Google Drive source folders.",
     );
+  }
 
   const sourceFiles =
-    productionItems
-      .map(getDropboxPath)
-      .filter(Boolean)
-      .map(normaliseDropboxPath);
-
-  if (!sourceFiles.length) {
-    throw new Error(
-      "No Dropbox source paths found for production.",
+    sourceFolders.map(
+      (folder) => folder.id,
     );
-  }
-
-  const sourceFolders = [
-    ...new Set(
-      sourceFiles
-        .map(parentDropboxPath)
-        .filter(Boolean),
-    ),
-  ];
 
   console.log();
   console.log("PRODUCTION");
   console.log(production);
   console.log();
   console.log(
-    "Claude selections:",
+    "Drive source roots:",
     sourceFiles.length,
   );
   console.log(
@@ -2518,32 +2523,27 @@ async function main() {
   for (const folder of sourceFolders) {
     console.log();
     console.log(
-      `Listing Dropbox: ${folder}`,
+      `Listing Google Drive: ${folder.name}`,
     );
 
     const entries =
-      await listDropboxFolder(
-        token,
-        folder,
+      await listDriveFolderRecursive(
+        drive,
+        folder.id,
+        folder.name,
       );
 
     const images =
-      entries.filter((entry) => {
-        if (entry[".tag"] !== "file") {
-          return false;
-        }
-
-        if (
-          typeof entry.size === "number" &&
-          entry.size <= 0
-        ) {
-          return false;
-        }
-
-        return /\.(?:jpe?g|png|webp)$/i.test(
-          entry.name,
-        );
-      });
+      entries.filter(
+        (entry) =>
+          [
+            "image/jpeg",
+            "image/png",
+            "image/webp",
+          ].includes(
+            entry.mimeType,
+          ),
+      );
 
     console.log(
       `Images found: ${images.length}`,
@@ -2551,22 +2551,17 @@ async function main() {
 
     for (const entry of images) {
       candidates.push({
-        name: entry.name,
-        id:
-          typeof entry.id === "string"
-            ? entry.id
-            : null,
-        path:
-          entry.path_display ??
-          entry.path_lower,
-        sourceFolder: folder,
+        name: entry.name ?? "",
+        path: entry.id ?? "",
+        sourceFolder:
+          entry.driveFolderPath ??
+          folder.name,
         modified:
-          entry.client_modified ??
-          entry.server_modified ??
+          entry.modifiedTime ??
           null,
         size:
-          typeof entry.size === "number"
-            ? entry.size
+          entry.size
+            ? Number(entry.size)
             : null,
       });
     }
@@ -2655,7 +2650,7 @@ async function main() {
   if (shouldPrepare) {
     const thumbnailDir =
       await ensureThumbnails(
-        token,
+        drive,
         uniqueCandidates,
         outputDir,
       );
@@ -2794,7 +2789,7 @@ async function main() {
       if (shouldStage) {
         const staged =
           await stageFinalSelection(
-            token,
+            drive,
             production,
             uniqueCandidates,
             passTwo,
