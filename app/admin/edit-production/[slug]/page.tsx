@@ -38,6 +38,7 @@ type Production = {
   slug: string;
   title: string;
   venue: string;
+  month?: number | null;
   year: number;
   description: string;
   hero: string;
@@ -71,6 +72,7 @@ export default function EditProductionPage() {
     useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [venue, setVenue] = useState("");
+  const [month, setMonth] = useState("");
   const [year, setYear] = useState("");
   const [description, setDescription] = useState("");
   const [access, setAccess] =
@@ -118,6 +120,11 @@ const [accessPassword, setAccessPassword] =
         setSelectedHero(data.production.hero);
         setTitle(data.production.title);
         setVenue(data.production.venue);
+        setMonth(
+          data.production.month == null
+            ? ""
+            : String(data.production.month),
+        );
         setYear(String(data.production.year));
         setDescription(data.production.description);
         setAccess(data.production.access ?? "public");
@@ -152,6 +159,11 @@ const [accessPassword, setAccessPassword] =
     };
   }, [slug]);
 
+  const parsedMonth =
+    month === ""
+      ? null
+      : Number.parseInt(month, 10);
+
   const parsedYear = Number.parseInt(year, 10);
 
   const hasHeroChanges = Boolean(
@@ -164,6 +176,7 @@ const [accessPassword, setAccessPassword] =
   production &&
   (title.trim() !== production.title ||
   venue.trim() !== production.venue ||
+  parsedMonth !== (production.month ?? null) ||
   parsedYear !== production.year ||
   description.trim() !== production.description ||
   access !== (production.access ?? "public") ||
@@ -204,6 +217,19 @@ const [accessPassword, setAccessPassword] =
       return;
     }
 
+    if (
+      parsedMonth !== null &&
+      (
+        !Number.isInteger(parsedMonth) ||
+        parsedMonth < 1 ||
+        parsedMonth > 12
+      )
+    ) {
+      setMessage("Select a valid production month.");
+      setMessageType("error");
+      return;
+    }
+
     if (!Number.isInteger(parsedYear)) {
       setMessage("A valid production year is required.");
       setMessageType("error");
@@ -226,6 +252,7 @@ const [accessPassword, setAccessPassword] =
             hero: selectedHero,
             title: title.trim(),
             venue: venue.trim(),
+            month: parsedMonth,
             year: parsedYear,
             description: description.trim(),
             access,
@@ -252,6 +279,11 @@ accessPassword:
       setSelectedHero(data.production.hero);
       setTitle(data.production.title);
       setVenue(data.production.venue);
+      setMonth(
+        data.production.month == null
+          ? ""
+          : String(data.production.month),
+      );
       setYear(String(data.production.year));
       setDescription(data.production.description);
       setAccess(data.production.access ?? "public");
@@ -359,6 +391,7 @@ setAccessPassword("");
       <ProductionDetailsEditor
         title={title}
         venue={venue}
+        month={month}
         year={year}
         description={description}
         onTitleChange={(value) => {
@@ -367,6 +400,10 @@ setAccessPassword("");
         }}
         onVenueChange={(value) => {
           setVenue(value);
+          clearMessage();
+        }}
+        onMonthChange={(value) => {
+          setMonth(value);
           clearMessage();
         }}
         onYearChange={(value) => {

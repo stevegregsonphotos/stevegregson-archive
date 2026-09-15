@@ -1,10 +1,12 @@
 type ProductionDetailsEditorProps = {
   title: string;
   venue: string;
+  month: string;
   year: string;
   description: string;
   onTitleChange: (value: string) => void;
   onVenueChange: (value: string) => void;
+  onMonthChange: (value: string) => void;
   onYearChange: (value: string) => void;
   onDescriptionChange: (value: string) => void;
 };
@@ -12,10 +14,12 @@ type ProductionDetailsEditorProps = {
 export default function ProductionDetailsEditor({
   title,
   venue,
+  month,
   year,
   description,
   onTitleChange,
   onVenueChange,
+  onMonthChange,
   onYearChange,
   onDescriptionChange,
 }: ProductionDetailsEditorProps) {
@@ -76,6 +80,34 @@ export default function ProductionDetailsEditor({
               onVenueChange(event.target.value)
             }
           />
+        </label>
+
+        <label className="backstage-field">
+          <span className="backstage-field-label">
+            Month
+          </span>
+
+          <select
+            className="backstage-input"
+            value={month}
+            onChange={(event) =>
+              onMonthChange(event.target.value)
+            }
+          >
+            <option value="">Unknown</option>
+            <option value="1">January</option>
+            <option value="2">February</option>
+            <option value="3">March</option>
+            <option value="4">April</option>
+            <option value="5">May</option>
+            <option value="6">June</option>
+            <option value="7">July</option>
+            <option value="8">August</option>
+            <option value="9">September</option>
+            <option value="10">October</option>
+            <option value="11">November</option>
+            <option value="12">December</option>
+          </select>
         </label>
 
         <label className="backstage-field">

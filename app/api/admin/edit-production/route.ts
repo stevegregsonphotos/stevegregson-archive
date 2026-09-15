@@ -48,6 +48,7 @@ type UpdateRequest = {
   hero?: unknown;
   title?: unknown;
   venue?: unknown;
+  month?: unknown;
   year?: unknown;
   description?: unknown;
   access?: unknown;
@@ -272,6 +273,38 @@ export async function POST(request: Request) {
       }
       production.venue = body.venue.trim();
     }
+    if (body.month !== undefined) {
+      if (body.month === null || body.month === "") {
+        production.month = undefined;
+      } else {
+        const month =
+          typeof body.month === "number"
+            ? body.month
+            : typeof body.month === "string"
+              ? Number.parseInt(body.month, 10)
+              : Number.NaN;
+
+        if (
+          !Number.isInteger(month) ||
+          month < 1 ||
+          month > 12
+        ) {
+          return Response.json(
+            {
+              ok: false,
+              message:
+                "A valid production month is required.",
+            },
+            {
+              status: 400,
+            },
+          );
+        }
+
+        production.month = month;
+      }
+    }
+
     if (body.year !== undefined) {
       const year = typeof body.year === "number"
         ? body.year
