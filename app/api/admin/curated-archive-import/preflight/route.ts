@@ -550,26 +550,12 @@ export async function GET(
     // Prefer metadata beside this final selection so an older/stale folder
     // with the same normalised name can never override the aligned output.
     try {
-      const localResearch =
-        JSON.parse(
-          await fs.readFile(
-            path.join(directory, "metadata-research.json"),
-            "utf8",
-          ),
-        ) as { production?: unknown };
-
-      if (
-        typeof localResearch.production === "string" &&
-        normaliseProductionName(localResearch.production) ===
-          normalisedProduction
-      ) {
-        metadata = parseMetadata(
-          await fs.readFile(
-            path.join(directory, "metadata-proposed.txt"),
-            "utf8",
-          ),
-        );
-      }
+      metadata = parseMetadata(
+        await fs.readFile(
+          path.join(directory, "metadata-proposed.txt"),
+          "utf8",
+        ),
+      );
     } catch {
       // Legacy output may still rely on the global exact-name lookup above.
     }
