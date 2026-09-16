@@ -263,12 +263,57 @@ async function loadCuratedProduction(
         continue;
       }
 
-      const metadata =
-        await loadMetadataForProduction(
-          production,
-          entries,
-          curationRoot,
-        );
+      let metadata: MetadataMap = {};
+
+      // The authoritative metadata for a curated production lives beside
+      // its final-selection.json. Read that first so the editor cannot
+      // borrow metadata from another folder with a similar/duplicate title.
+      try {
+        const localResearch =
+          JSON.parse(
+            await fs.readFile(
+              path.join(
+                directory,
+                "metadata-research.json",
+              ),
+              "utf8",
+            ),
+          ) as {
+            production?: unknown;
+          };
+
+        if (
+          typeof localResearch.production ===
+            "string" &&
+          normaliseProductionName(
+            localResearch.production,
+          ) ===
+            normaliseProductionName(
+              production,
+            )
+        ) {
+          metadata = parseMetadata(
+            await fs.readFile(
+              path.join(
+                directory,
+                "metadata-proposed.txt",
+              ),
+              "utf8",
+            ),
+          );
+        }
+      } catch {
+        // Legacy output falls back to the exact-name scan below.
+      }
+
+      if (Object.keys(metadata).length === 0) {
+        metadata =
+          await loadMetadataForProduction(
+            production,
+            entries,
+            curationRoot,
+          );
+      }
 
       const overrides =
         await getCuratedArchiveOverrides();

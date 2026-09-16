@@ -32,6 +32,114 @@ type CuratedImageLocation = {
   stagedRelativePath: string | null;
 };
 
+async function findCuratedImageInFolder(
+  production: string,
+  folder: string,
+  requestedFile: string,
+  curationRoot: string,
+  directFiles: string[] | null,
+): Promise<CuratedImageLocation | null> {
+  const safeFolder = path.basename(folder);
+
+  if (safeFolder !== folder) {
+    return null;
+  }
+
+  const directory = path.join(
+    curationRoot,
+    safeFolder,
+  );
+
+  let finalSelection: FinalSelection;
+
+  try {
+    finalSelection =
+      JSON.parse(
+        await fs.readFile(
+          path.join(
+            directory,
+            "final-selection.json",
+          ),
+          "utf8",
+        ),
+      ) as FinalSelection;
+  } catch {
+    return null;
+  }
+
+  if (
+    typeof finalSelection.production !==
+      "string" ||
+    finalSelection.production.trim() !==
+      production
+  ) {
+    return null;
+  }
+
+  const allowedFiles = new Set(
+    (
+      Array.isArray(finalSelection.images)
+        ? finalSelection.images
+        : []
+    ).flatMap((image) =>
+      typeof image.stagedFile === "string"
+        ? [image.stagedFile]
+        : [],
+    ),
+  );
+
+  if (!allowedFiles.has(requestedFile)) {
+    return null;
+  }
+
+  if (directFiles) {
+    const stagedRelativePath =
+      findCuratedImportStagedImage(
+        directFiles,
+        safeFolder,
+        requestedFile,
+      );
+
+    return stagedRelativePath
+      ? {
+          imagePath: null,
+          stagedRelativePath,
+        }
+      : null;
+  }
+
+  const stagingRoot = path.resolve(
+    directory,
+    "selected-web-staging",
+  );
+  const imagePath = path.resolve(
+    stagingRoot,
+    requestedFile,
+  );
+
+  if (
+    !imagePath.startsWith(
+      `${stagingRoot}${path.sep}`,
+    )
+  ) {
+    return null;
+  }
+
+  try {
+    const stat = await fs.stat(imagePath);
+    if (!stat.isFile()) {
+      return null;
+    }
+  } catch {
+    return null;
+  }
+
+  return {
+    imagePath,
+    stagedRelativePath: null,
+  };
+}
+
 async function findCuratedImage(
   production: string,
   requestedFile: string,
@@ -104,7 +212,9 @@ async function findCuratedImage(
         requestedFile,
       )
     ) {
-      return null;
+      // Another folder may legitimately share the same production label.
+      // Keep looking instead of failing on the first matching title.
+      continue;
     }
 
     if (directFiles) {
@@ -199,6 +309,11 @@ export async function GET(
       .get("file")
       ?.trim() ?? "";
 
+  const folder =
+    url.searchParams
+      .get("folder")
+      ?.trim() ?? "";
+
   if (!production || !file) {
     return NextResponse.json(
       {
@@ -216,12 +331,20 @@ export async function GET(
     await getCuratedImportDirectFiles();
 
   const location =
-    await findCuratedImage(
-      production,
-      file,
-      curationRoot,
-      directFiles,
-    );
+    folder
+      ? await findCuratedImageInFolder(
+          production,
+          folder,
+          file,
+          curationRoot,
+          directFiles,
+        )
+      : await findCuratedImage(
+          production,
+          file,
+          curationRoot,
+          directFiles,
+        );
 
   if (!location) {
     return NextResponse.json(

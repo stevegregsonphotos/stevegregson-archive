@@ -1241,11 +1241,17 @@ export default function CuratedProductionEditPage() {
                   <img
                     src={`/api/admin/curated-archive-import/image?production=${encodeURIComponent(
                       original.production,
+                    )}&folder=${encodeURIComponent(
+                      original.folder,
                     )}&file=${encodeURIComponent(
                       image.stagedFile,
                     )}`}
                     alt=""
-                    loading="lazy"
+                    loading={
+                      imagePosition < 6
+                        ? "eager"
+                        : "lazy"
+                    }
                     style={{
                       display: "block",
                       width: "100%",
