@@ -79,47 +79,63 @@ export async function publishProduction(
     );
   }
 
-  const heroAsset = await publishSourceImage(
-    payload.hero.filepath,
-    createWebFilename(payload.hero.filename, "hero"),
-    "",
-  );
+  const uploaded: string[] = [];
 
-  const galleryAssets: PublishedImageAsset[] = [];
-  for (const [index, image] of payload.images.entries()) {
-    const prefix = String(index + 1).padStart(2, "0");
-    galleryAssets.push(
-      await publishSourceImage(
-        image.filepath,
-        createWebFilename(image.filename, prefix),
-        "",
-      ),
-    );
-  }
+  type PublishedImageMetadata = Omit<
+    PublishedImageAsset,
+    "buffer"
+  >;
 
-  const assets = [heroAsset, ...galleryAssets];
-  for (const asset of assets) {
+  const publishAndUpload = async (
+    sourceFilepath: string,
+    outputFilename: string,
+  ): Promise<PublishedImageMetadata> => {
     if (
       await productionImageExists(
         payload.slug,
-        asset.filename,
+        outputFilename,
       )
     ) {
       throw new ProductionConflictError(
-        `A production image already exists in R2 for "${payload.slug}/${asset.filename}".`,
+        `A production image already exists in R2 for "${payload.slug}/${outputFilename}".`,
       );
     }
-  }
 
-  const uploaded: string[] = [];
+    const asset = await publishSourceImage(
+      sourceFilepath,
+      outputFilename,
+      "",
+    );
+
+    await putProductionImage(
+      payload.slug,
+      asset.filename,
+      asset.buffer,
+    );
+    uploaded.push(asset.filename);
+
+    return {
+      sourceFilepath: asset.sourceFilepath,
+      filename: asset.filename,
+      blurDataURL: asset.blurDataURL,
+    };
+  };
+
   try {
-    for (const asset of assets) {
-      await putProductionImage(
-        payload.slug,
-        asset.filename,
-        asset.buffer,
+    const heroAsset = await publishAndUpload(
+      payload.hero.filepath,
+      createWebFilename(payload.hero.filename, "hero"),
+    );
+
+    const galleryAssets: PublishedImageMetadata[] = [];
+    for (const [index, image] of payload.images.entries()) {
+      const prefix = String(index + 1).padStart(2, "0");
+      galleryAssets.push(
+        await publishAndUpload(
+          image.filepath,
+          createWebFilename(image.filename, prefix),
+        ),
       );
-      uploaded.push(asset.filename);
     }
 
     const galleryAssetByPath = new Map(
@@ -222,7 +238,10 @@ export async function publishProduction(
       year: payload.year,
       url: `/productions/${payload.slug}`,
       imageCount: payload.images.length,
-      hero: heroAsset.filename,
+      hero: createWebFilename(
+        payload.hero.filename,
+        "hero",
+      ),
       productionFile: "Neon/Postgres",
       imageDirectory: `${baseUrl}/${payload.slug}`,
       registryFile: "Neon/Postgres",
