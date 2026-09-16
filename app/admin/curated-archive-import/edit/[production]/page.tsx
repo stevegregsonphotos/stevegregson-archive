@@ -71,7 +71,7 @@ export default function CuratedProductionEditPage() {
 
   const router = useRouter();
 
-  const productionName =
+  const folderName =
     decodeURIComponent(
       params.production,
     );
@@ -130,8 +130,8 @@ export default function CuratedProductionEditPage() {
       try {
         const response =
           await fetch(
-            `/api/admin/curated-archive-import/edit?production=${encodeURIComponent(
-              productionName,
+            `/api/admin/curated-archive-import/edit?folder=${encodeURIComponent(
+              folderName,
             )}`,
             {
               cache: "no-store",
@@ -212,7 +212,7 @@ export default function CuratedProductionEditPage() {
     return () => {
       cancelled = true;
     };
-  }, [productionName]);
+  }, [folderName]);
 
   const parsedMonth =
     Number.parseInt(
@@ -1239,19 +1239,13 @@ export default function CuratedProductionEditPage() {
                   }}
                 >
                   <img
-                    src={`/api/admin/curated-archive-import/image?production=${encodeURIComponent(
-                      original.production,
-                    )}&folder=${encodeURIComponent(
+                    src={`/api/admin/curated-archive-import/image?folder=${encodeURIComponent(
                       original.folder,
                     )}&file=${encodeURIComponent(
                       image.stagedFile,
                     )}`}
                     alt=""
-                    loading={
-                      imagePosition < 6
-                        ? "eager"
-                        : "lazy"
-                    }
+                    loading="lazy"
                     style={{
                       display: "block",
                       width: "100%",
