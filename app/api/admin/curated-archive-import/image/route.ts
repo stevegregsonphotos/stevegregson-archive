@@ -223,29 +223,33 @@ export async function GET(
    * two curator folders have the same production title.
    */
   if (folder) {
-    const directFiles = await getCuratedImportDirectFiles();
+    const stagedRelativePath =
+      `${folder}/selected-web-staging/${file}`;
 
-    if (directFiles) {
-      const stagedRelativePath =
-        findCuratedImportStagedImage(directFiles, folder, file);
-
-      if (!stagedRelativePath) {
-        return NextResponse.json(
-          { ok: false, message: "Curated image was not found." },
-          { status: 404 },
-        );
-      }
-
+    try {
       const image =
-        await readCuratedImportDirectFile(stagedRelativePath);
+        await readCuratedImportDirectFile(
+          stagedRelativePath,
+        );
 
       return new Response(image, {
         headers: {
           "Content-Type": contentType,
-          "Cache-Control": "private, max-age=300",
+          "Cache-Control": "private, max-age=3600",
           "X-Content-Type-Options": "nosniff",
         },
       });
+    } catch {
+      return NextResponse.json(
+        {
+          ok: false,
+          message:
+            "Curated image was not found.",
+        },
+        {
+          status: 404,
+        },
+      );
     }
   }
 
