@@ -137,6 +137,11 @@ export default function CuratedArchiveImportClient({
   ] = useState(false);
 
   const [
+    selectedReadyFolders,
+    setSelectedReadyFolders,
+  ] = useState<string[]>([]);
+
+  const [
     batchProgress,
     setBatchProgress,
   ] = useState<{
@@ -265,6 +270,33 @@ export default function CuratedArchiveImportClient({
         JSON.stringify(data),
       );
     } catch {}
+  }, [data]);
+
+  useEffect(() => {
+    if (!data) {
+      setSelectedReadyFolders([]);
+      return;
+    }
+
+    const readyFolders = new Set(
+      data.productions
+        .filter(
+          (production) =>
+            production.status === "ready",
+        )
+        .map(
+          (production) =>
+            production.folder,
+        ),
+    );
+
+    setSelectedReadyFolders(
+      (current) =>
+        current.filter(
+          (folder) =>
+            readyFolders.has(folder),
+        ),
+    );
   }, [data]);
 
   async function uploadCuratedFolder(
@@ -904,12 +936,24 @@ export default function CuratedArchiveImportClient({
     }
   }
 
-  async function importAllReady() {
-    const readyProductions =
-      data?.productions.filter(
-        (production) =>
-          production.status === "ready",
-      ) ?? [];
+  function toggleReadySelection(
+    folder: string,
+  ) {
+    setSelectedReadyFolders(
+      (current) =>
+        current.includes(folder)
+          ? current.filter(
+              (value) =>
+                value !== folder,
+            )
+          : [...current, folder],
+    );
+  }
+
+  async function importReadyProductions(
+    readyProductions: PreflightProduction[],
+    confirmation: string,
+  ) {
 
     if (readyProductions.length === 0) {
       return;
@@ -917,7 +961,7 @@ export default function CuratedArchiveImportClient({
 
     if (
       !window.confirm(
-        `Import all ${readyProductions.length} Ready productions into the website archive? They will be processed one at a time.`,
+        confirmation,
       )
     ) {
       return;
@@ -1053,6 +1097,35 @@ export default function CuratedArchiveImportClient({
     }
   }
 
+  async function importSelectedReady() {
+    const selected =
+      data?.productions.filter(
+        (production) =>
+          production.status === "ready" &&
+          selectedReadyFolders.includes(
+            production.folder,
+          ),
+      ) ?? [];
+
+    await importReadyProductions(
+      selected,
+      `Import the ${selected.length} selected Ready production${selected.length === 1 ? "" : "s"} into the website archive? They will be processed one at a time.`,
+    );
+  }
+
+  async function importAllReady() {
+    const ready =
+      data?.productions.filter(
+        (production) =>
+          production.status === "ready",
+      ) ?? [];
+
+    await importReadyProductions(
+      ready,
+      `Import all ${ready.length} Ready productions into the website archive? They will be processed one at a time.`,
+    );
+  }
+
   const rows =
     useMemo(() => {
       const productions =
@@ -1075,6 +1148,28 @@ export default function CuratedArchiveImportClient({
           statusFilter,
       );
     }, [data, statusFilter]);
+
+  function selectVisibleReady() {
+    const visibleReady =
+      rows
+        .filter(
+          (production) =>
+            production.status === "ready",
+        )
+        .map(
+          (production) =>
+            production.folder,
+        );
+
+    setSelectedReadyFolders(
+      (current) => [
+        ...new Set([
+          ...current,
+          ...visibleReady,
+        ]),
+      ],
+    );
+  }
 
   return (
     <section
@@ -1426,33 +1521,75 @@ export default function CuratedArchiveImportClient({
               ) : null}
             </div>
 
-            <button
-              type="button"
-              className="backstage-button"
-              disabled={
-                batchImporting ||
-                data.summary.ready === 0
-              }
-              onClick={() =>
-                void importAllReady()
-              }
+            <div
               style={{
-                cursor:
-                  batchImporting ||
-                  data.summary.ready === 0
-                    ? "wait"
-                    : "pointer",
-                opacity:
-                  batchImporting ||
-                  data.summary.ready === 0
-                    ? 0.5
-                    : 1,
+                display: "flex",
+                gap: "0.6rem",
+                flexWrap: "wrap",
+                justifyContent: "flex-end",
               }}
             >
-              {batchImporting
-                ? "Importing…"
-                : `Import All Ready (${data.summary.ready})`}
-            </button>
+              <button
+                type="button"
+                className="backstage-button"
+                disabled={
+                  batchImporting ||
+                  rows.every(
+                    (production) =>
+                      production.status !== "ready",
+                  )
+                }
+                onClick={selectVisibleReady}
+              >
+                Select visible Ready
+              </button>
+
+              <button
+                type="button"
+                className="backstage-button"
+                disabled={
+                  batchImporting ||
+                  selectedReadyFolders.length === 0
+                }
+                onClick={() =>
+                  setSelectedReadyFolders([])
+                }
+              >
+                Clear selection
+              </button>
+
+              <button
+                type="button"
+                className="backstage-button"
+                disabled={
+                  batchImporting ||
+                  selectedReadyFolders.length === 0
+                }
+                onClick={() =>
+                  void importSelectedReady()
+                }
+              >
+                {batchImporting
+                  ? "Importing…"
+                  : `Import Selected (${selectedReadyFolders.length})`}
+              </button>
+
+              <button
+                type="button"
+                className="backstage-button"
+                disabled={
+                  batchImporting ||
+                  data.summary.ready === 0
+                }
+                onClick={() =>
+                  void importAllReady()
+                }
+              >
+                {batchImporting
+                  ? "Importing…"
+                  : `Import All Ready (${data.summary.ready})`}
+              </button>
+            </div>
           </div>
 
           <div
@@ -1663,6 +1800,33 @@ export default function CuratedArchiveImportClient({
                             "0.45rem",
                         }}
                       >
+                        {production.status ===
+                        "ready" ? (
+                          <label
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "0.35rem",
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={
+                                selectedReadyFolders.includes(
+                                  production.folder,
+                                )
+                              }
+                              disabled={batchImporting}
+                              onChange={() =>
+                                toggleReadySelection(
+                                  production.folder,
+                                )
+                              }
+                            />
+                            Select
+                          </label>
+                        ) : null}
+
                         {production.status ===
                         "ready" ? (
                           <button
