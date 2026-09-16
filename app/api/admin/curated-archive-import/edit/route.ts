@@ -8,6 +8,7 @@ import {
 
 import {
   materializeCuratedImport,
+  readCuratedImportDirectFile,
 } from "@/lib/curated-archive/staging";
 
 import fs from "node:fs/promises";
@@ -547,25 +548,198 @@ async function curatedProductionExists(
   return false;
 }
 
+async function loadDirectCuratedProduction(
+  folder: string,
+) {
+  try {
+    const finalSelection =
+      JSON.parse(
+        (
+          await readCuratedImportDirectFile(
+            `${folder}/final-selection.json`,
+          )
+        ).toString("utf8"),
+      ) as {
+        production?: unknown;
+        hero?: unknown;
+        images?: Array<{
+          sequence?: unknown;
+          index?: unknown;
+          hero?: unknown;
+          stagedFile?: unknown;
+          sourceName?: unknown;
+        }>;
+      };
+
+    if (
+      typeof finalSelection.production !==
+      "string"
+    ) {
+      return null;
+    }
+
+    const resolvedProduction =
+      finalSelection.production.trim();
+
+    let metadata: MetadataMap = {};
+
+    try {
+      metadata = parseMetadata(
+        (
+          await readCuratedImportDirectFile(
+            `${folder}/metadata-proposed.txt`,
+          )
+        ).toString("utf8"),
+      );
+    } catch {}
+
+    const overrides =
+      await getCuratedArchiveOverrides();
+
+    const override =
+      overrides[resolvedProduction];
+
+    const metadataYear =
+      Number.parseInt(
+        metadata.Year || "",
+        10,
+      );
+
+    const validSourceImages =
+      (
+        Array.isArray(finalSelection.images)
+          ? finalSelection.images
+          : []
+      ).flatMap((image) => {
+        if (
+          typeof image.stagedFile !== "string" ||
+          typeof image.index !== "number"
+        ) {
+          return [];
+        }
+
+        return [{
+          sequence:
+            typeof image.sequence === "number"
+              ? image.sequence
+              : null,
+          index: image.index,
+          hero: image.hero === true,
+          stagedFile: image.stagedFile,
+          sourceName:
+            typeof image.sourceName === "string"
+              ? image.sourceName
+              : image.stagedFile,
+        }];
+      });
+
+    const imageOverride =
+      override?.images;
+
+    const sourceImageByIndex =
+      new Map(
+        validSourceImages.map(
+          (image) => [image.index, image],
+        ),
+      );
+
+    const selectedIndexes =
+      imageOverride?.selectedIndexes ??
+      validSourceImages.map(
+        (image) => image.index,
+      );
+
+    const heroIndex =
+      imageOverride?.heroIndex ??
+      (
+        validSourceImages.find(
+          (image) => image.hero,
+        )?.index ??
+        (
+          typeof finalSelection.hero === "number"
+            ? finalSelection.hero
+            : null
+        )
+      );
+
+    const effectiveImages =
+      selectedIndexes.flatMap(
+        (index, position) => {
+          const image =
+            sourceImageByIndex.get(index);
+
+          if (!image) {
+            return [];
+          }
+
+          return [{
+            ...image,
+            sequence: position + 1,
+            hero: image.index === heroIndex,
+          }];
+        },
+      );
+
+    const effectiveHeroIndex =
+      effectiveImages.find(
+        (image) => image.hero,
+      )?.index ?? null;
+
+    return {
+      production: resolvedProduction,
+      folder,
+      title:
+        override?.title ??
+        metadata.Production?.trim() ??
+        "",
+      venue:
+        override?.venue ??
+        metadata.Venue?.trim() ??
+        "",
+      month:
+        override?.month ??
+        parseMonth(metadata.Month),
+      year:
+        override?.year ??
+        (
+          Number.isInteger(metadataYear)
+            ? metadataYear
+            : null
+        ),
+      description:
+        override?.description ??
+        metadata.Description?.trim() ??
+        "",
+      credits:
+        override?.credits ??
+        metadataCredits(metadata),
+      edited: Boolean(override),
+      metadataEdited: Boolean(
+        override &&
+          (
+            override.title !== undefined ||
+            override.venue !== undefined ||
+            override.month !== undefined ||
+            override.year !== undefined ||
+            override.description !== undefined ||
+            override.credits !== undefined
+          )
+      ),
+      imageEdited:
+        Boolean(override?.images),
+      heroIndex: effectiveHeroIndex,
+      images: effectiveImages,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function GET(
   request: Request,
 ) {
   if (!isBackstageRequestAuthenticated(request)) {
     return createUnauthorizedResponse();
-  }
-
-  const curationRoot =
-    await materializeCuratedImport();
-
-  if (!curationRoot) {
-    return NextResponse.json(
-      {
-        ok: false,
-        message:
-          "Choose a curated folder before using Curated Archive Import.",
-      },
-      { status: 409 },
-    );
   }
 
   const url =
@@ -594,12 +768,35 @@ export async function GET(
     );
   }
 
-  const curated =
-    await loadCuratedProduction(
-      production,
-      curationRoot,
-      folder || undefined,
-    );
+  let curated =
+    folder
+      ? await loadDirectCuratedProduction(
+          folder,
+        )
+      : null;
+
+  if (!curated) {
+    const curationRoot =
+      await materializeCuratedImport();
+
+    if (!curationRoot) {
+      return NextResponse.json(
+        {
+          ok: false,
+          message:
+            "Choose a curated folder before using Curated Archive Import.",
+        },
+        { status: 409 },
+      );
+    }
+
+    curated =
+      await loadCuratedProduction(
+        production,
+        curationRoot,
+        folder || undefined,
+      );
+  }
 
   if (!curated) {
     return NextResponse.json(
