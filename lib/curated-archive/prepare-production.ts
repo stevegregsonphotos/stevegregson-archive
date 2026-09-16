@@ -770,6 +770,28 @@ export async function prepareCuratedProduction(
       );
     }
 
+    if (directFiles) {
+      const folderPrefix =
+        `${entry.name.replace(/\\/g, "/")}/selected-web-staging/`;
+      const stagedImageCount =
+        directFiles.filter((relativePath) =>
+          relativePath.startsWith(folderPrefix) &&
+          relativePath.length > folderPrefix.length &&
+          /\.(?:jpe?g|png|webp|tiff?|heic|avif)$/i.test(
+            relativePath,
+          ),
+        ).length;
+
+      if (
+        stagedImageCount !==
+        validSourceImages.length
+      ) {
+        issues.push(
+          `Publication blocked: selected-web-staging contains ${stagedImageCount} image${stagedImageCount === 1 ? "" : "s"}, but final-selection.json declares ${validSourceImages.length}. These counts must match before publishing.`,
+        );
+      }
+    }
+
     if (
       invalidIndexes.length > 0
     ) {

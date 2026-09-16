@@ -212,6 +212,7 @@ function metadataCredits(
 async function loadCuratedProduction(
   production: string,
   curationRoot: string,
+  requestedFolder?: string,
 ) {
   const entries =
     await fs.readdir(
@@ -223,6 +224,13 @@ async function loadCuratedProduction(
 
   for (const entry of entries) {
     if (!entry.isDirectory()) {
+      continue;
+    }
+
+    if (
+      requestedFolder &&
+      entry.name !== requestedFolder
+    ) {
       continue;
     }
 
@@ -257,69 +265,53 @@ async function loadCuratedProduction(
       if (
         typeof finalSelection.production !==
           "string" ||
-        finalSelection.production.trim() !==
-          production
+        (production &&
+          finalSelection.production.trim() !==
+            production)
       ) {
         continue;
       }
 
+      const resolvedProduction =
+        finalSelection.production.trim();
+
       let metadata: MetadataMap = {};
 
-      // The authoritative metadata for a curated production lives beside
-      // its final-selection.json. Read that first so the editor cannot
-      // borrow metadata from another folder with a similar/duplicate title.
       try {
-        const localResearch =
-          JSON.parse(
-            await fs.readFile(
-              path.join(
-                directory,
-                "metadata-research.json",
-              ),
-              "utf8",
-            ),
-          ) as {
-            production?: unknown;
-          };
+        const localResearch = JSON.parse(
+          await fs.readFile(
+            path.join(directory, "metadata-research.json"),
+            "utf8",
+          ),
+        ) as { production?: unknown };
 
         if (
-          typeof localResearch.production ===
-            "string" &&
-          normaliseProductionName(
-            localResearch.production,
-          ) ===
-            normaliseProductionName(
-              production,
-            )
+          typeof localResearch.production === "string" &&
+          normaliseProductionName(localResearch.production) ===
+            normaliseProductionName(resolvedProduction)
         ) {
           metadata = parseMetadata(
             await fs.readFile(
-              path.join(
-                directory,
-                "metadata-proposed.txt",
-              ),
+              path.join(directory, "metadata-proposed.txt"),
               "utf8",
             ),
           );
         }
-      } catch {
-        // Legacy output falls back to the exact-name scan below.
-      }
+      } catch {}
 
       if (Object.keys(metadata).length === 0) {
-        metadata =
-          await loadMetadataForProduction(
-            production,
-            entries,
-            curationRoot,
-          );
+        metadata = await loadMetadataForProduction(
+          resolvedProduction,
+          entries,
+          curationRoot,
+        );
       }
 
       const overrides =
         await getCuratedArchiveOverrides();
 
       const override =
-        overrides[production];
+        overrides[resolvedProduction];
 
       const metadataYear =
         Number.parseInt(
@@ -435,7 +427,7 @@ async function loadCuratedProduction(
         )?.index ?? null;
 
       return {
-        production,
+        production: resolvedProduction,
         folder: entry.name,
         title:
           override?.title ??
@@ -584,12 +576,17 @@ export async function GET(
       .get("production")
       ?.trim() ?? "";
 
-  if (!production) {
+  const folder =
+    url.searchParams
+      .get("folder")
+      ?.trim() ?? "";
+
+  if (!production && !folder) {
     return NextResponse.json(
       {
         ok: false,
         message:
-          "Production is required.",
+          "Curated folder or production is required.",
       },
       {
         status: 400,
@@ -601,6 +598,7 @@ export async function GET(
     await loadCuratedProduction(
       production,
       curationRoot,
+      folder || undefined,
     );
 
   if (!curated) {
@@ -1039,8 +1037,9 @@ export async function PUT(
       if (
         typeof finalSelection.production !==
           "string" ||
-        finalSelection.production.trim() !==
-          production
+        (production &&
+          finalSelection.production.trim() !==
+            production)
       ) {
         continue;
       }

@@ -332,7 +332,14 @@ export async function finalizeCuratedImportFiles(
           ),
       ),
     ),
-  ].sort();
+  ]
+    .filter(
+      (relativePath) =>
+        !/(^|\/)thumbnail-catalogue\.json$/i.test(
+          relativePath,
+        ),
+    )
+    .sort();
 
   if (
     files.length === 0
@@ -342,39 +349,73 @@ export async function finalizeCuratedImportFiles(
     );
   }
 
-  const stagedKeys =
-    new Set(
-      await listDirectStagingKeys(),
-    );
+  async function verifyUploadedFile(
+    relativePath: string,
+  ) {
+    const key =
+      `${DIRECT_STAGING_PREFIX}${relativePath}`;
+    let lastError: unknown = null;
 
-  const manifestFiles =
-    files.filter(
-      (relativePath) => {
-        /*
-         * thumbnail-catalogue.json is curator support data, not part of
-         * the publication contract. Never persist it in the manifest,
-         * even if an older client happened to upload it successfully.
-         */
-        if (
-          /(^|\/)thumbnail-catalogue\.json$/i.test(
-            relativePath,
-          )
-        ) {
-          return false;
-        }
-
-        const expectedKey =
-          `${DIRECT_STAGING_PREFIX}${relativePath}`;
-
-        if (stagedKeys.has(expectedKey)) {
-          return true;
-        }
-
-        throw new Error(
-          `Curated staged file "${relativePath}" is missing from R2.`,
+    for (
+      let attempt = 1;
+      attempt <= 4;
+      attempt += 1
+    ) {
+      try {
+        await getClient().send(
+          new HeadObjectCommand({
+            Bucket: getBucket(),
+            Key: key,
+          }),
         );
-      },
+
+        return relativePath;
+      } catch (error) {
+        lastError = error;
+
+        if (attempt < 4) {
+          await new Promise(
+            (resolve) =>
+              setTimeout(
+                resolve,
+                attempt * 500,
+              ),
+          );
+        }
+      }
+    }
+
+    throw new Error(
+      `Curated staged file "${relativePath}" was not verified in R2 and the upload was not committed: ${
+        lastError instanceof Error
+          ? `${lastError.name}: ${lastError.message}`
+          : String(lastError)
+      }`,
     );
+  }
+
+  const manifestFiles: string[] = [];
+  const VERIFY_BATCH_SIZE = 20;
+
+  for (
+    let offset = 0;
+    offset < files.length;
+    offset += VERIFY_BATCH_SIZE
+  ) {
+    const batch =
+      files.slice(
+        offset,
+        offset + VERIFY_BATCH_SIZE,
+      );
+
+    manifestFiles.push(
+      ...await Promise.all(
+        batch.map(
+          verifyUploadedFile,
+        ),
+      ),
+    );
+  }
 
   const hasFinalSelection =
     manifestFiles.some(
@@ -638,12 +679,6 @@ async function readDirectManifest() {
         (value) =>
           safeCuratedRelativePath(
             value,
-          ),
-      )
-      .filter(
-        (relativePath) =>
-          !/(^|\/)thumbnail-catalogue\.json$/i.test(
-            relativePath,
           ),
       );
 
