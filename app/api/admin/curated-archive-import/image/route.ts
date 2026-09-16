@@ -1,3 +1,4 @@
+import sharp from "sharp";
 import {
   createUnauthorizedResponse,
   isBackstageRequestAuthenticated,
@@ -227,18 +228,37 @@ export async function GET(
       `${folder}/selected-web-staging/${file}`;
 
     try {
-      const image =
+      const sourceImage =
         await readCuratedImportDirectFile(
           stagedRelativePath,
         );
 
-      return new Response(image, {
-        headers: {
-          "Content-Type": contentType,
+      const image =
+        await sharp(sourceImage, {
+          failOn: "none",
+        })
+          .rotate()
+          .resize({
+            width: 800,
+            height: 800,
+            fit: "inside",
+            withoutEnlargement: true,
+          })
+          .webp({
+            quality: 78,
+          })
+          .toBuffer();
+
+      return new Response(
+        new Uint8Array(image),
+        {
+          headers: {
+            "Content-Type": "image/webp",
           "Cache-Control": "private, max-age=3600",
-          "X-Content-Type-Options": "nosniff",
+            "X-Content-Type-Options": "nosniff",
+          },
         },
-      });
+      );
     } catch {
       return NextResponse.json(
         {
