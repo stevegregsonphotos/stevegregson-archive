@@ -365,7 +365,7 @@ export async function finalizeCuratedImportFiles(
 
     for (
       let attempt = 1;
-      attempt <= 4;
+      attempt <= 8;
       attempt += 1
     ) {
       try {
@@ -380,12 +380,16 @@ export async function finalizeCuratedImportFiles(
       } catch (error) {
         lastError = error;
 
-        if (attempt < 4) {
+        if (attempt < 8) {
           await new Promise(
             (resolve) =>
               setTimeout(
                 resolve,
-                attempt * 500,
+                Math.min(
+                  5000,
+                  500 *
+                    2 ** (attempt - 1),
+                ),
               ),
           );
         }
@@ -402,7 +406,7 @@ export async function finalizeCuratedImportFiles(
   }
 
   const manifestFiles: string[] = [];
-  const VERIFY_BATCH_SIZE = 20;
+  const VERIFY_BATCH_SIZE = 5;
 
   for (
     let offset = 0;

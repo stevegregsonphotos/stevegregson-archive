@@ -19,6 +19,8 @@ type CuratedArchiveImportClientProps = {
 
 type PreflightProduction = {
   folder: string;
+  folders?: string[];
+  sourceProductions?: string[];
   production: string;
   title: string;
   venue: string;
@@ -117,6 +119,11 @@ export default function CuratedArchiveImportClient({
 
   const [uploading, setUploading] =
     useState(false);
+
+  const [
+    uploadProgressText,
+    setUploadProgressText,
+  ] = useState("");
 
   const [statusFilter, setStatusFilter] =
     useState<StatusFilter>("all");
@@ -278,17 +285,18 @@ export default function CuratedArchiveImportClient({
       return;
     }
 
-    const readyFolders = new Set(
-      data.productions
-        .filter(
-          (production) =>
-            production.status === "ready",
-        )
-        .map(
-          (production) =>
-            production.folder,
-        ),
-    );
+    const readyFolders =
+      new Set(
+        data.productions
+          .filter(
+            (production) =>
+              production.status === "ready",
+          )
+          .map(
+            (production) =>
+              production.folder,
+          ),
+      );
 
     setSelectedReadyFolders(
       (current) =>
@@ -372,6 +380,10 @@ export default function CuratedArchiveImportClient({
             fileName === "metadata-proposed.txt"
           );
         });
+
+      setUploadProgressText(
+        `Preparing ${packageFiles.length.toLocaleString()} authoritative files from ${selectedFiles.length.toLocaleString()} selected files…`,
+      );
 
       const packagedPaths =
         packageFiles.map((file) =>
@@ -497,7 +509,7 @@ export default function CuratedArchiveImportClient({
        * reasonably quick without creating one enormous
        * request or browser-generated ZIP.
        */
-      const concurrency = 4;
+      const concurrency = 10;
 
       for (
         let index = 0;
@@ -642,6 +654,10 @@ export default function CuratedArchiveImportClient({
               }
             },
           ),
+        );
+
+        setUploadProgressText(
+          `Uploaded ${Math.min(index + batch.length, packageFiles.length).toLocaleString()} of ${packageFiles.length.toLocaleString()} authoritative files…`,
         );
       }
 
@@ -1162,12 +1178,13 @@ export default function CuratedArchiveImportClient({
         );
 
     setSelectedReadyFolders(
-      (current) => [
-        ...new Set([
-          ...current,
-          ...visibleReady,
-        ]),
-      ],
+      (current) =>
+        [
+          ...new Set([
+            ...current,
+            ...visibleReady,
+          ]),
+        ],
     );
   }
 
@@ -1289,7 +1306,8 @@ export default function CuratedArchiveImportClient({
               fontSize: "0.7rem",
             }}
           >
-            Preparing and staging selected folder…
+            {uploadProgressText ||
+              "Preparing and staging selected folder…"}
           </p>
         ) : null}
       </div>
@@ -1568,6 +1586,13 @@ export default function CuratedArchiveImportClient({
                 onClick={() =>
                   void importSelectedReady()
                 }
+                style={{
+                  opacity:
+                    batchImporting ||
+                    selectedReadyFolders.length === 0
+                      ? 0.5
+                      : 1,
+                }}
               >
                 {batchImporting
                   ? "Importing…"
@@ -1691,6 +1716,12 @@ export default function CuratedArchiveImportClient({
                         : ""}
                     </p>
 
+                    {(production.folders?.length ?? 1) > 1 ? (
+                      <p style={{ margin: "0.35rem 0 0", color: "rgba(199, 163, 105, 0.72)", fontSize: "0.62rem" }}>
+                        Duplicate curator entries collapsed: {production.folders?.length} source folders
+                      </p>
+                    ) : null}
+
                     {production.issues
                       .length > 0 ? (
                       <div
@@ -1807,6 +1838,14 @@ export default function CuratedArchiveImportClient({
                               display: "inline-flex",
                               alignItems: "center",
                               gap: "0.35rem",
+                              padding: "0.35rem 0.45rem",
+                              border: "1px solid rgba(242, 238, 230, 0.16)",
+                              color: "rgba(242, 238, 230, 0.72)",
+                              fontSize: "0.5rem",
+                              fontWeight: 700,
+                              letterSpacing: "0.08em",
+                              textTransform: "uppercase",
+                              cursor: "pointer",
                             }}
                           >
                             <input
@@ -1864,7 +1903,7 @@ export default function CuratedArchiveImportClient({
                         <a
                           className="backstage-button"
                           href={`/admin/curated-archive-import/edit/${encodeURIComponent(
-                            production.production,
+                            production.folder,
                           )}`}
                           style={{
                             textDecoration:
