@@ -232,10 +232,17 @@ async function deleteDirectStagingFiles() {
 }
 
 export async function beginCuratedImportFileStaging() {
-  await deleteDirectStagingFiles();
+  /*
+   * Direct-file staging is intentionally additive.
+   * Beginning a new folder upload must preserve every
+   * production already waiting in the curator pipeline.
+   * Exact object keys from the new upload may be replaced,
+   * but unrelated staged folders and the current manifest
+   * remain intact until finalize merges the new file set.
+   */
 
   /*
-   * Remove the old ZIP marker too. Once a direct-file
+   * Remove only the legacy ZIP marker. Once a direct-file
    * import starts, preflight must not accidentally read
    * an older ZIP package.
    */
@@ -462,11 +469,122 @@ export async function finalizeCuratedImportFiles(
     );
   }
 
+  /*
+   * Additive staging contract:
+   *
+   * - unrelated production folders already waiting remain untouched;
+   * - every top-level folder included in this upload becomes authoritative;
+   * - stale objects from an older version of one of those exact folders are
+   *   deleted from R2;
+   * - the new manifest replaces those exact folders while preserving all
+   *   other staged productions.
+   */
+  const uploadedFolderNames =
+    new Set(
+      manifestFiles.map(
+        (relativePath) =>
+          relativePath.split("/")[0],
+      ),
+    );
+
+  const existingManifestFiles =
+    (
+      await getCuratedImportDirectFiles()
+    )
+      ?.filter(
+        (relativePath) =>
+          !/(^|\/)thumbnail-catalogue\.json$/i.test(
+            relativePath,
+          ),
+      ) ?? [];
+
+  const preservedManifestFiles =
+    existingManifestFiles.filter(
+      (relativePath) =>
+        !uploadedFolderNames.has(
+          relativePath.split("/")[0],
+        ),
+    );
+
+  const currentUploadSet =
+    new Set(manifestFiles);
+
+  const staleKeys =
+    (
+      await listDirectStagingKeys()
+    )
+      .filter((key) => {
+        if (
+          !key.startsWith(
+            DIRECT_STAGING_PREFIX,
+          )
+        ) {
+          return false;
+        }
+
+        const relativePath =
+          key.slice(
+            DIRECT_STAGING_PREFIX.length,
+          );
+
+        const folderName =
+          relativePath.split("/")[0];
+
+        return (
+          uploadedFolderNames.has(
+            folderName,
+          ) &&
+          !currentUploadSet.has(
+            relativePath,
+          )
+        );
+      });
+
+  if (staleKeys.length > 0) {
+    const client = getClient();
+    const bucket = getBucket();
+
+    for (
+      let index = 0;
+      index < staleKeys.length;
+      index += 1000
+    ) {
+      const batch =
+        staleKeys.slice(
+          index,
+          index + 1000,
+        );
+
+      await client.send(
+        new DeleteObjectsCommand({
+          Bucket: bucket,
+          Delete: {
+            Objects:
+              batch.map(
+                (Key) => ({
+                  Key,
+                }),
+              ),
+            Quiet: true,
+          },
+        }),
+      );
+    }
+  }
+
+  const combinedManifestFiles =
+    [
+      ...new Set([
+        ...preservedManifestFiles,
+        ...manifestFiles,
+      ]),
+    ].sort();
+
   const manifest = {
     version: 1,
     generatedAt:
       new Date().toISOString(),
-    files: manifestFiles,
+    files: combinedManifestFiles,
   };
 
   await getClient().send(
