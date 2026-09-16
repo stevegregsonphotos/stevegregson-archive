@@ -350,19 +350,24 @@ export async function finalizeCuratedImportFiles(
   const manifestFiles =
     files.filter(
       (relativePath) => {
-        const expectedKey =
-          `${DIRECT_STAGING_PREFIX}${relativePath}`;
-
-        if (stagedKeys.has(expectedKey)) {
-          return true;
-        }
-
+        /*
+         * thumbnail-catalogue.json is curator support data, not part of
+         * the publication contract. Never persist it in the manifest,
+         * even if an older client happened to upload it successfully.
+         */
         if (
           /(^|\/)thumbnail-catalogue\.json$/i.test(
             relativePath,
           )
         ) {
           return false;
+        }
+
+        const expectedKey =
+          `${DIRECT_STAGING_PREFIX}${relativePath}`;
+
+        if (stagedKeys.has(expectedKey)) {
+          return true;
         }
 
         throw new Error(
@@ -633,6 +638,12 @@ async function readDirectManifest() {
         (value) =>
           safeCuratedRelativePath(
             value,
+          ),
+      )
+      .filter(
+        (relativePath) =>
+          !/(^|\/)thumbnail-catalogue\.json$/i.test(
+            relativePath,
           ),
       );
 

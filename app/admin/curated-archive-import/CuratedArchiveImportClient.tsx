@@ -337,8 +337,7 @@ export default function CuratedArchiveImportClient({
           return (
             fileName === "final-selection.json" ||
             fileName === "metadata-research.json" ||
-            fileName === "metadata-proposed.txt" ||
-            fileName === "thumbnail-catalogue.json"
+            fileName === "metadata-proposed.txt"
           );
         });
 

@@ -280,11 +280,39 @@ async function loadMetadata(
       import("node:fs").Dirent
     >,
   curationRoot: string,
+  preferredDirectory?: string,
 ) {
   const wanted =
     normaliseProductionName(
       production,
     );
+
+  // New curator contract: metadata belongs in the same production folder
+  // as final-selection.json and selected-web-staging. Always prefer it.
+  if (preferredDirectory) {
+    try {
+      const research = JSON.parse(
+        await fs.readFile(
+          path.join(preferredDirectory, "metadata-research.json"),
+          "utf8",
+        ),
+      ) as { production?: unknown };
+
+      if (
+        typeof research.production === "string" &&
+        normaliseProductionName(research.production) === wanted
+      ) {
+        return parseMetadata(
+          await fs.readFile(
+            path.join(preferredDirectory, "metadata-proposed.txt"),
+            "utf8",
+          ),
+        );
+      }
+    } catch {
+      // Fall through for legacy curator output.
+    }
+  }
 
   for (const entry of entries) {
     if (!entry.isDirectory()) {
@@ -486,6 +514,7 @@ export async function prepareCuratedProduction(
         production,
         entries,
         curationRoot,
+        directory,
       );
 
     const override =
