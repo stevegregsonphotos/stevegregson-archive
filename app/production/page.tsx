@@ -1,10 +1,20 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 
 import SelectedProductionGallery from "../../components/SelectedProductionGallery";
 import {
   getSelectedWork,
 } from "../../lib/selected-work-repository";
+
+import {
+  getArchiveProductions,
+  getProductionIndex,
+} from "../../lib/productions-repository";
+
+import {
+  getProductionImageUrl,
+} from "../../lib/production-image-url";
 
 import styles from "../selected-work/selected-work.module.css";
 
@@ -79,11 +89,49 @@ const workNavigation: WorkNavigationItem[] = [
 ];
 
 export default async function ProductionPage() {
-  const portfolio =
-    await getSelectedWork() as SelectedWorkData;
+  const [
+    portfolio,
+    productionIndex,
+    archiveProductions,
+  ] = await Promise.all([
+    getSelectedWork() as Promise<SelectedWorkData>,
+    getProductionIndex(),
+    getArchiveProductions(),
+  ]);
 
   const productionImages =
     portfolio.production ?? [];
+
+  const archiveBySlug =
+    new Map(
+      archiveProductions.map(
+        (production) => [
+          production.slug,
+          production,
+        ],
+      ),
+    );
+
+  const recentProductions =
+    productionIndex
+      .filter(
+        (production) =>
+          production.access !== "password",
+      )
+      .slice(0, 3)
+      .map(
+        (production) =>
+          archiveBySlug.get(
+            production.slug,
+          ),
+      )
+      .filter(
+        (
+          production,
+        ): production is NonNullable<
+          typeof production
+        > => Boolean(production),
+      );
   return (
     <main className={styles.page}>
       <nav
@@ -154,6 +202,104 @@ export default async function ProductionPage() {
 
 
       </section>
+
+      {recentProductions.length > 0 ? (
+        <section
+          className={styles.recentProductions}
+          aria-labelledby="recent-productions-title"
+        >
+          <div
+            className={
+              styles.recentProductionsHeader
+            }
+          >
+            <div>
+              <p className={styles.eyebrow}>
+                Recent productions
+              </p>
+
+              <h2 id="recent-productions-title">
+                From the archive.
+              </h2>
+            </div>
+
+            <p>
+              Explore recent theatre productions
+              photographed in performance.
+            </p>
+          </div>
+
+          <div
+            className={
+              styles.recentProductionsGrid
+            }
+          >
+            {recentProductions.map(
+              (production, index) => (
+                <article
+                  key={production.slug}
+                  className={
+                    styles.recentProductionCard
+                  }
+                >
+                  <Link
+                    href={`/productions/${production.slug}`}
+                    className={
+                      styles.recentProductionLink
+                    }
+                  >
+                    <div
+                      className={
+                        styles.recentProductionImage
+                      }
+                    >
+                      <Image
+                        src={getProductionImageUrl(
+                          production.slug,
+                          production.hero,
+                        )}
+                        alt={production.heroAlt}
+                        fill
+                        sizes="(max-width: 760px) calc(100vw - 2.8rem), 30vw"
+                        priority={index === 0}
+                      />
+                    </div>
+
+                    <div
+                      className={
+                        styles.recentProductionCopy
+                      }
+                    >
+                      <p>
+                        {production.venue}
+                        <span aria-hidden="true">
+                          {" · "}
+                        </span>
+                        {production.year}
+                      </p>
+
+                      <h3>
+                        {production.title}
+                      </h3>
+
+                      <span
+                        className={
+                          styles.recentProductionAction
+                        }
+                      >
+                        View production
+                        <span aria-hidden="true">
+                          →
+                        </span>
+                      </span>
+                    </div>
+                  </Link>
+                </article>
+              ),
+            )}
+          </div>
+        </section>
+      ) : null}
 
       <section
         className={`${styles.archiveCta} ${styles.compactArchiveCta}`}
