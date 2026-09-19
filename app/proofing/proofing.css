@@ -2037,3 +2037,15 @@
     justify-content: center;
   }
 }
+
+/* True full-width centring for proofing navigation */
+
+.proofing-client-toolbar-primary {
+  grid-area: auto;
+  left: 50%;
+}
+
+.proofing-client-toolbar-secondary {
+  grid-area: auto;
+  right: 1rem;
+}
