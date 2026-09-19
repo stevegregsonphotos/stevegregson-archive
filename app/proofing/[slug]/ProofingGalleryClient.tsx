@@ -1406,13 +1406,19 @@ export default function ProofingGalleryClient({
               </div>
 
               <div className="proofing-viewer-actions">
-                {showFilenames ? (
-                  <span className="proofing-viewer-filename">
-                    {viewerImage.originalFilename}
+                <div className="proofing-viewer-meta">
+                  {showFilenames ? (
+                    <span className="proofing-viewer-filename">
+                      {viewerImage.originalFilename}
+                    </span>
+                  ) : null}
+
+                  <span className="proofing-viewer-position">
+                    {viewerImageIndex + 1}
+                    {" / "}
+                    {visibleImages.length}
                   </span>
-                ) : (
-                  <span />
-                )}
+                </div>
 
                 <div className="proofing-viewer-action-buttons">
                   <button

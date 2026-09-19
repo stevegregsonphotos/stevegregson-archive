@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { usePathname } from "next/navigation";
 
+import BackToTop from "./BackToTop";
 import Footer from "./footer";
 import Header from "./Header";
 
@@ -39,6 +40,8 @@ export default function PublicChrome({
       >
         {children}
       </div>
+
+      <BackToTop />
 
       <Footer />
     </>

@@ -1715,3 +1715,64 @@ a {
 .production-service-link a:focus-visible {
   color: #c7a369;
 }
+
+
+/* Site-wide back to top */
+
+.site-back-to-top {
+  position: fixed;
+  right: 1.5rem;
+  bottom: 1.5rem;
+  z-index: 80;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 2.65rem;
+  padding: 0 0.9rem;
+  border: 1px solid rgba(199, 163, 105, 0.48);
+  background: rgba(17, 16, 15, 0.88);
+  color: rgba(242, 238, 230, 0.76);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.52rem;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition:
+    border-color 160ms ease,
+    color 160ms ease,
+    background 160ms ease;
+}
+
+.site-back-to-top > span:first-child {
+  color: #c7a369;
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+.site-back-to-top:hover {
+  border-color: #c7a369;
+  background: rgba(17, 16, 15, 0.98);
+  color: #f2eee6;
+}
+
+@media (max-width: 650px) {
+  .site-back-to-top {
+    right: 1rem;
+    bottom: 1rem;
+    width: 2.65rem;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .site-back-to-top > span:last-child {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+}

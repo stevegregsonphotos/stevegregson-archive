@@ -2049,3 +2049,35 @@
   grid-area: auto;
   right: 1rem;
 }
+
+
+/* Fullscreen proofing metadata */
+
+.proofing-viewer-meta {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 1rem;
+}
+
+.proofing-viewer-position {
+  flex: 0 0 auto;
+  color: rgba(242, 238, 230, 0.42);
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .proofing-viewer-meta {
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.45rem 0.8rem;
+  }
+
+  .proofing-viewer-position {
+    text-align: center;
+  }
+}
