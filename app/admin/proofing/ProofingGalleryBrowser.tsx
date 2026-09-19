@@ -325,6 +325,74 @@ export default function ProofingGalleryBrowser({
     }
   }
 
+  async function toggleGalleryStatus(
+    gallery: GalleryBrowserItem,
+    button: HTMLButtonElement,
+  ) {
+    closeMenu(button);
+
+    const nextStatus =
+      gallery.status === "live"
+        ? "archived"
+        : "live";
+
+    const actionLabel =
+      nextStatus === "archived"
+        ? "Deactivate"
+        : "Reactivate";
+
+    const confirmed =
+      window.confirm(
+        `${actionLabel} "${gallery.title}"?`,
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      const response =
+        await fetch(
+          "/api/admin/proofing/status",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify({
+              galleryId: gallery.id,
+              status: nextStatus,
+            }),
+          },
+        );
+
+      const result =
+        (await response.json()) as {
+          ok?: boolean;
+          message?: string;
+        };
+
+      if (
+        !response.ok ||
+        !result.ok
+      ) {
+        throw new Error(
+          result.message ||
+            "Gallery status could not be updated.",
+        );
+      }
+
+      router.refresh();
+    } catch (error) {
+      window.alert(
+        error instanceof Error
+          ? error.message
+          : "Gallery status could not be updated.",
+      );
+    }
+  }
+
   async function deleteGallery(
     gallery: GalleryBrowserItem,
     button: HTMLButtonElement,
@@ -642,6 +710,21 @@ export default function ProofingGalleryBrowser({
                     >
                       Settings
                     </Link>
+
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={(event) =>
+                        void toggleGalleryStatus(
+                          gallery,
+                          event.currentTarget,
+                        )
+                      }
+                    >
+                      {gallery.status === "live"
+                        ? "Deactivate Gallery"
+                        : "Reactivate Gallery"}
+                    </button>
 
                     <div
                       className="sp-gallery-card-actions-divider"
