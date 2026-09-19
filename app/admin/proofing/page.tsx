@@ -322,6 +322,7 @@ export default async function ProofingPage() {
 
       return {
         id: gallery.id,
+        slug: gallery.slug,
         title: gallery.title,
         clientName: gallery.clientName,
         venue: gallery.venue,
@@ -331,6 +332,8 @@ export default async function ProofingPage() {
         imageCount: gallery.images.length,
         visitorCount,
         favouriteCount,
+        recipientCount:
+          gallery.recipients?.length ?? 0,
         coverImageUrl,
       };
     },

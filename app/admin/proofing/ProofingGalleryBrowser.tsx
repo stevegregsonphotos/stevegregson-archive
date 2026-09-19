@@ -5,6 +5,9 @@ import {
   useMemo,
   useState,
 } from "react";
+import {
+  useRouter,
+} from "next/navigation";
 
 type GalleryStatus =
   | "draft"
@@ -14,6 +17,7 @@ type GalleryStatus =
 
 type GalleryBrowserItem = {
   id: string;
+  slug: string;
   title: string;
   clientName?: string;
   venue?: string;
@@ -23,6 +27,7 @@ type GalleryBrowserItem = {
   imageCount: number;
   visitorCount: number;
   favouriteCount: number;
+  recipientCount: number;
   coverImageUrl: string | null;
 };
 
@@ -119,6 +124,8 @@ function statusLabel(
 export default function ProofingGalleryBrowser({
   galleries,
 }: Props) {
+  const router = useRouter();
+
   const [search, setSearch] = useState("");
   const [filter, setFilter] =
     useState<GalleryFilter>("all");
@@ -207,6 +214,173 @@ export default function ProofingGalleryBrowser({
       count: counts.archived,
     },
   ];
+
+  function closeMenu(
+    element: HTMLElement,
+  ) {
+    element
+      .closest("details")
+      ?.removeAttribute("open");
+  }
+
+  async function shareGallery(
+    gallery: GalleryBrowserItem,
+    button: HTMLButtonElement,
+  ) {
+    closeMenu(button);
+
+    if (gallery.recipientCount === 0) {
+      window.alert(
+        "This gallery has no recipients assigned.",
+      );
+      return;
+    }
+
+    const confirmed =
+      window.confirm(
+        `Send "${gallery.title}" to ${gallery.recipientCount} recipient${
+          gallery.recipientCount === 1
+            ? ""
+            : "s"
+        } now?`,
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      const response =
+        await fetch(
+          "/api/admin/proofing/share",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify({
+              galleryId: gallery.id,
+            }),
+          },
+        );
+
+      const result =
+        (await response.json()) as {
+          ok?: boolean;
+          message?: string;
+          sent?: number;
+        };
+
+      if (
+        !response.ok ||
+        !result.ok
+      ) {
+        throw new Error(
+          result.message ||
+            "Gallery could not be shared.",
+        );
+      }
+
+      window.alert(
+        result.message ||
+          `Gallery sent to ${result.sent ?? gallery.recipientCount} recipient${
+            (result.sent ??
+              gallery.recipientCount) === 1
+              ? ""
+              : "s"
+          }.`,
+      );
+    } catch (error) {
+      window.alert(
+        error instanceof Error
+          ? error.message
+          : "Gallery could not be shared.",
+      );
+    }
+  }
+
+  async function copyGalleryUrl(
+    gallery: GalleryBrowserItem,
+    button: HTMLButtonElement,
+  ) {
+    closeMenu(button);
+
+    const url =
+      `${window.location.origin}/proofing/${gallery.slug}`;
+
+    try {
+      await navigator.clipboard.writeText(
+        url,
+      );
+
+      window.alert(
+        "Gallery URL copied.",
+      );
+    } catch {
+      window.prompt(
+        "Copy gallery URL:",
+        url,
+      );
+    }
+  }
+
+  async function deleteGallery(
+    gallery: GalleryBrowserItem,
+    button: HTMLButtonElement,
+  ) {
+    closeMenu(button);
+
+    const confirmed =
+      window.confirm(
+        `Permanently delete "${gallery.title}"?\n\nThis will delete the gallery, its client selections and its proofing photographs from storage. This cannot be undone.`,
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      const response =
+        await fetch(
+          "/api/admin/proofing/delete-gallery",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify({
+              galleryId: gallery.id,
+            }),
+          },
+        );
+
+      const result =
+        (await response.json()) as {
+          ok?: boolean;
+          message?: string;
+        };
+
+      if (
+        !response.ok ||
+        !result.ok
+      ) {
+        throw new Error(
+          result.message ||
+            "Gallery could not be deleted.",
+        );
+      }
+
+      router.refresh();
+    } catch (error) {
+      window.alert(
+        error instanceof Error
+          ? error.message
+          : "Gallery could not be deleted.",
+      );
+    }
+  }
 
   return (
     <div className="sp-gallery-browser">
@@ -349,12 +523,6 @@ export default function ProofingGalleryBrowser({
                         {gallery.title}
                       </h2>
 
-                      <span
-                        className="sp-gallery-card-menu"
-                        aria-hidden="true"
-                      >
-                        ⋮
-                      </span>
                     </div>
 
                     <div className="sp-gallery-card-details">
@@ -414,6 +582,87 @@ export default function ProofingGalleryBrowser({
                     </div>
                   </div>
                 </Link>
+
+                <details className="sp-gallery-card-actions">
+                  <summary
+                    aria-label={`Actions for ${gallery.title}`}
+                    title="Gallery actions"
+                  >
+                    ⋮
+                  </summary>
+
+                  <div
+                    className="sp-gallery-card-actions-menu"
+                    role="menu"
+                  >
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={(event) =>
+                        void shareGallery(
+                          gallery,
+                          event.currentTarget,
+                        )
+                      }
+                    >
+                      Share Gallery
+                    </button>
+
+                    <Link
+                      role="menuitem"
+                      href={`/admin/proofing/${gallery.id}?tab=selections`}
+                    >
+                      View Visitors &amp; Selections
+                    </Link>
+
+                    <Link
+                      role="menuitem"
+                      href={`/proofing/${gallery.slug}`}
+                      target="_blank"
+                    >
+                      Preview Gallery
+                    </Link>
+
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={(event) =>
+                        void copyGalleryUrl(
+                          gallery,
+                          event.currentTarget,
+                        )
+                      }
+                    >
+                      Copy Gallery URL
+                    </button>
+
+                    <Link
+                      role="menuitem"
+                      href={`/admin/proofing/${gallery.id}?tab=settings`}
+                    >
+                      Settings
+                    </Link>
+
+                    <div
+                      className="sp-gallery-card-actions-divider"
+                      aria-hidden="true"
+                    />
+
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="is-destructive"
+                      onClick={(event) =>
+                        void deleteGallery(
+                          gallery,
+                          event.currentTarget,
+                        )
+                      }
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </details>
               </article>
             ),
           )}

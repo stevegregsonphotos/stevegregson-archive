@@ -5385,3 +5385,93 @@ input[type="email"],
   .sp-gallery-activity-list-body {
   display: none;
 }
+
+
+/* Gallery card actions menu */
+
+.sp-gallery-card {
+  position: relative;
+}
+
+.sp-gallery-card-actions {
+  position: absolute;
+  top: 0.85rem;
+  right: 0.75rem;
+  z-index: 8;
+}
+
+.sp-gallery-card-actions > summary {
+  width: 2rem;
+  height: 2rem;
+  display: grid;
+  place-items: center;
+  list-style: none;
+  cursor: pointer;
+  border-radius: 999px;
+  font-size: 1.15rem;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.72);
+  background: rgba(10, 10, 9, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(8px);
+}
+
+.sp-gallery-card-actions > summary::-webkit-details-marker {
+  display: none;
+}
+
+.sp-gallery-card-actions > summary:hover,
+.sp-gallery-card-actions[open] > summary {
+  color: #fff;
+  border-color: rgba(207, 166, 104, 0.55);
+}
+
+.sp-gallery-card-actions-menu {
+  position: absolute;
+  top: calc(100% + 0.45rem);
+  right: 0;
+  width: 230px;
+  padding: 0.4rem;
+  background: #171614;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.38);
+  border-radius: 10px;
+}
+
+.sp-gallery-card-actions-menu a,
+.sp-gallery-card-actions-menu button {
+  appearance: none;
+  width: 100%;
+  display: block;
+  padding: 0.7rem 0.8rem;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.82);
+  text-align: left;
+  text-decoration: none;
+  font: inherit;
+  font-size: 0.76rem;
+  cursor: pointer;
+}
+
+.sp-gallery-card-actions-menu a:hover,
+.sp-gallery-card-actions-menu button:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+
+.sp-gallery-card-actions-divider {
+  height: 1px;
+  margin: 0.35rem 0;
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.sp-gallery-card-actions-menu .is-destructive {
+  color: #d89486;
+}
+
+.sp-gallery-card-actions-menu .is-destructive:hover {
+  color: #f2a18f;
+  background: rgba(217, 90, 68, 0.08);
+}
