@@ -5217,3 +5217,68 @@ input[type="email"],
     gap: 0.25rem;
   }
 }
+
+/* Simplified ShootProof-style gallery activity */
+
+.sp-gallery-activity-table {
+  width: 100%;
+}
+
+.sp-gallery-activity-row {
+  display: grid;
+  grid-template-columns:
+    minmax(180px, 1.2fr)
+    minmax(220px, 1.4fr)
+    minmax(90px, 0.45fr)
+    minmax(180px, 0.8fr);
+  gap: 1.5rem;
+  align-items: center;
+  padding: 0.95rem 1.25rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.82rem;
+}
+
+.sp-gallery-activity-row:first-child {
+  border-top: 0;
+}
+
+.sp-gallery-activity-header {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.5;
+}
+
+.sp-gallery-activity-row a {
+  color: inherit;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.sp-gallery-activity-row a:hover {
+  text-decoration: underline;
+}
+
+.sp-gallery-activity-favourites {
+  font-variant-numeric: tabular-nums;
+}
+
+.sp-gallery-activity-row time {
+  opacity: 0.68;
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .sp-gallery-activity-row {
+    grid-template-columns: 1fr;
+    gap: 0.3rem;
+  }
+
+  .sp-gallery-activity-header {
+    display: none;
+  }
+
+  .sp-gallery-activity-row time {
+    font-size: 0.75rem;
+  }
+}
