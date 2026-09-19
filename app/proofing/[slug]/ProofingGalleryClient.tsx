@@ -530,6 +530,34 @@ export default function ProofingGalleryClient({
       return;
     }
 
+    const previousFavourites =
+      favourites;
+
+    const wasFavourite =
+      previousFavourites.includes(
+        imageId,
+      );
+
+    const optimisticFavourites =
+      wasFavourite
+        ? previousFavourites.filter(
+            (id) => id !== imageId,
+          )
+        : [
+            ...previousFavourites,
+            imageId,
+          ];
+
+    setFavourites(
+      optimisticFavourites,
+    );
+
+    setSelectionStatus(
+      optimisticFavourites.length > 0
+        ? "in-progress"
+        : "not-started",
+    );
+
     setUpdatingImageId(imageId);
 
     try {
@@ -585,6 +613,10 @@ export default function ProofingGalleryClient({
 
       setSubmitError(null);
     } catch (error) {
+      setFavourites(
+        previousFavourites,
+      );
+
       console.error(error);
 
       alert(
@@ -1101,9 +1133,6 @@ export default function ProofingGalleryClient({
             const isFavourite =
               favouriteSet.has(image.id);
 
-            const isUpdating =
-              updatingImageId === image.id;
-
             return (
               <figure
                 key={image.id}
@@ -1153,7 +1182,6 @@ export default function ProofingGalleryClient({
                         : `Add ${image.originalFilename} to favourites`
                     }
                     disabled={
-                      isUpdating ||
                       isSubmitting
                     }
                     onClick={() =>
@@ -1257,7 +1285,6 @@ export default function ProofingGalleryClient({
                       viewerImage.id,
                     )}
                     disabled={
-                      updatingImageId === viewerImage.id ||
                       isSubmitting
                     }
                     onClick={() =>
