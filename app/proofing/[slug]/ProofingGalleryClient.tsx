@@ -13,7 +13,14 @@ type ProofingClientImage = {
   id: string;
   originalFilename: string;
   alt: string;
+  width: number;
+  height: number;
 };
+
+type OrientationFilter =
+  | "all"
+  | "landscape"
+  | "portrait";
 
 type ProofingGalleryClientProps = {
   gallerySlug: string;
@@ -106,6 +113,11 @@ export default function ProofingGalleryClient({
 
   const [view, setView] =
     useState<"all" | "favourites">("all");
+
+  const [
+    orientationFilter,
+    setOrientationFilter,
+  ] = useState<OrientationFilter>("all");
 
   useEffect(() => {
     const params = new URLSearchParams(
@@ -404,10 +416,36 @@ export default function ProofingGalleryClient({
     [images, favouriteSet],
   );
 
+  const orientationMatches = (
+    image: ProofingClientImage,
+  ) => {
+    if (orientationFilter === "all") {
+      return true;
+    }
+
+    const isPortrait =
+      image.height > image.width;
+
+    return orientationFilter === "portrait"
+      ? isPortrait
+      : !isPortrait;
+  };
+
   const visibleImages =
-    view === "favourites"
-      ? favouriteImages
-      : images;
+    (
+      view === "favourites"
+        ? favouriteImages
+        : images
+    ).filter(orientationMatches);
+
+  const landscapeCount =
+    images.filter(
+      (image) =>
+        image.width >= image.height,
+    ).length;
+
+  const portraitCount =
+    images.length - landscapeCount;
 
   const viewerImageIndex = viewerImageId
     ? visibleImages.findIndex(
@@ -922,6 +960,69 @@ export default function ProofingGalleryClient({
     </button>
   </div>
 
+  <div
+    className="proofing-client-orientation-controls"
+    aria-label="Filter photographs by orientation"
+  >
+    <button
+      type="button"
+      className={
+        orientationFilter === "all"
+          ? "is-active"
+          : ""
+      }
+      aria-pressed={
+        orientationFilter === "all"
+      }
+      onClick={() =>
+        setOrientationFilter("all")
+      }
+    >
+      All
+      <span>{images.length}</span>
+    </button>
+
+    <button
+      type="button"
+      className={
+        orientationFilter === "landscape"
+          ? "is-active"
+          : ""
+      }
+      aria-pressed={
+        orientationFilter === "landscape"
+      }
+      onClick={() =>
+        setOrientationFilter(
+          "landscape",
+        )
+      }
+    >
+      Landscape
+      <span>{landscapeCount}</span>
+    </button>
+
+    <button
+      type="button"
+      className={
+        orientationFilter === "portrait"
+          ? "is-active"
+          : ""
+      }
+      aria-pressed={
+        orientationFilter === "portrait"
+      }
+      onClick={() =>
+        setOrientationFilter(
+          "portrait",
+        )
+      }
+    >
+      Portrait
+      <span>{portraitCount}</span>
+    </button>
+  </div>
+
   {downloadPermission === "web" && view === "all" ? (
       <button
         type="button"
@@ -1141,8 +1242,11 @@ export default function ProofingGalleryClient({
             favouriteSet.has(image.id);
 
           const hiddenFromView =
-            view === "favourites" &&
-            !isFavourite;
+            (
+              view === "favourites" &&
+              !isFavourite
+            ) ||
+            !orientationMatches(image);
 
           return (
             <figure
@@ -1288,7 +1392,15 @@ export default function ProofingGalleryClient({
               </div>
 
               <div className="proofing-viewer-actions">
-                <div className="proofing-viewer-actions">
+                {showFilenames ? (
+                  <span className="proofing-viewer-filename">
+                    {viewerImage.originalFilename}
+                  </span>
+                ) : (
+                  <span />
+                )}
+
+                <div className="proofing-viewer-action-buttons">
                   <button
                     type="button"
                     className={
@@ -1334,7 +1446,6 @@ export default function ProofingGalleryClient({
                     </a>
                   ) : null}
                 </div>
-
               </div>
             </div>
 

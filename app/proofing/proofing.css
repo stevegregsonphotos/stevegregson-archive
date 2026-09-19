@@ -82,7 +82,8 @@
 .proofing-client-image {
   display: block;
   width: 100%;
-  height: auto;
+  height: 100%;
+  object-fit: cover;
 }
 
 .proofing-client-filename {
@@ -160,6 +161,8 @@
 
 .proofing-client-image-wrap {
   position: relative;
+  aspect-ratio: 3 / 2;
+  overflow: hidden;
 }
 
 .proofing-favourite-button {
@@ -898,6 +901,7 @@
 .proofing-client-image-open {
   display: block;
   width: 100%;
+  height: 100%;
   border: 0;
   background: transparent;
   padding: 0;
@@ -1456,4 +1460,119 @@
   display: inline-flex;
   max-width: 100%;
   max-height: calc(100vh - 9rem);
+}
+
+
+/* Fullscreen proofing filename */
+
+.proofing-viewer-actions {
+  justify-content: space-between;
+}
+
+.proofing-viewer-filename {
+  min-width: 0;
+  overflow: hidden;
+  color: rgba(242, 238, 230, 0.68);
+  font-size: 0.68rem;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.proofing-viewer-action-buttons {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+@media (max-width: 600px) {
+  .proofing-viewer-actions {
+    align-items: center;
+    flex-direction: column;
+  }
+
+  .proofing-viewer-filename {
+    width: 100%;
+    text-align: center;
+  }
+
+  .proofing-viewer-action-buttons {
+    justify-content: center;
+  }
+}
+
+
+/* Client orientation filters */
+
+.proofing-client-orientation-controls {
+  display: flex;
+  align-items: center;
+  gap: 1.15rem;
+  padding-left: 1.5rem;
+  border-left: 1px solid
+    rgba(242, 238, 230, 0.12);
+}
+
+.proofing-client-orientation-controls button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  background: transparent;
+  padding: 0.65rem 0;
+  color: rgba(242, 238, 230, 0.42);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.proofing-client-orientation-controls button:hover {
+  color: #f2eee6;
+}
+
+.proofing-client-orientation-controls button.is-active {
+  border-bottom-color: #c7a369;
+  color: #c7a369;
+}
+
+.proofing-client-orientation-controls button span {
+  color: rgba(242, 238, 230, 0.32);
+  font-size: 0.46rem;
+  letter-spacing: 0;
+}
+
+.proofing-client-orientation-controls
+  button.is-active
+  span {
+  color: #c7a369;
+}
+
+@media (max-width: 800px) {
+  .proofing-client-orientation-controls {
+    width: 100%;
+    box-sizing: border-box;
+    justify-content: space-between;
+    padding-top: 0.5rem;
+    padding-left: 0;
+    border-top: 1px solid
+      rgba(242, 238, 230, 0.08);
+    border-left: 0;
+  }
+}
+
+@media (max-width: 520px) {
+  .proofing-client-orientation-controls {
+    gap: 0.65rem;
+  }
+
+  .proofing-client-orientation-controls button {
+    flex: 1;
+    justify-content: center;
+    font-size: 0.46rem;
+  }
 }

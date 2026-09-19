@@ -244,6 +244,8 @@ export default async function ProofingClientPage({
     originalFilename:
       image.originalFilename,
     alt: image.alt,
+    width: image.width,
+    height: image.height,
   }),
 )}
             initialFavourites={
