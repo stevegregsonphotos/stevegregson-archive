@@ -358,3 +358,142 @@ export async function sendProofingSubmissionEmails({
     );
   }
 }
+type ProofingGalleryShareRecipient = {
+  email: string;
+  name?: string;
+};
+
+type ProofingGalleryShareEmailOptions = {
+  galleryTitle: string;
+  galleryUrl: string;
+  recipients: ProofingGalleryShareRecipient[];
+};
+
+export async function sendProofingGalleryShareEmails({
+  galleryTitle,
+  galleryUrl,
+  recipients,
+}: ProofingGalleryShareEmailOptions) {
+  const {
+    apiKey,
+    from,
+    photographerEmail,
+  } = getEmailConfig();
+
+  const resend = new Resend(apiKey);
+
+  const safeGalleryTitle =
+    escapeHtml(galleryTitle);
+
+  const safeGalleryUrl =
+    escapeHtml(galleryUrl);
+
+  let sent = 0;
+
+  for (const recipient of recipients) {
+    const email =
+      recipient.email
+        .trim()
+        .toLowerCase();
+
+    if (!email) {
+      continue;
+    }
+
+    const safeName =
+      recipient.name
+        ? escapeHtml(recipient.name)
+        : "";
+
+    const result =
+      await resend.emails.send({
+        from:
+          `Steve Gregson Photography - Proofing <${from}>`,
+
+        to: email,
+
+        subject:
+          `Your private photography gallery — ${galleryTitle}`,
+
+        replyTo:
+          photographerEmail,
+
+        text: [
+          recipient.name
+            ? `Hello ${recipient.name},`
+            : "Hello,",
+          "",
+          `Your private photography gallery "${galleryTitle}" is ready to view.`,
+          "",
+          galleryUrl,
+          "",
+          "Use your email address to enter the gallery. Your favourites will be saved so you can return to them later.",
+          "",
+          "Steve Gregson Photography",
+        ].join("\n"),
+
+        html: `
+          <div style="font-family:Arial,sans-serif;color:#1a1a1a;line-height:1.7;">
+            <p style="font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:#8b7656;">
+              Steve Gregson Photography
+            </p>
+
+            <h1 style="font-size:30px;font-weight:400;margin:0 0 24px;">
+              Your private gallery
+            </h1>
+
+            <p>
+              ${
+                safeName
+                  ? `Hello ${safeName},`
+                  : "Hello,"
+              }
+            </p>
+
+            <p>
+              Your private photography gallery
+              <strong>${safeGalleryTitle}</strong>
+              is ready to view.
+            </p>
+
+            <p style="margin:32px 0;">
+              <a
+                href="${safeGalleryUrl}"
+                style="
+                  display:inline-block;
+                  padding:13px 20px;
+                  background:#1a1a1a;
+                  color:#ffffff;
+                  text-decoration:none;
+                "
+              >
+                View gallery
+              </a>
+            </p>
+
+            <p>
+              Use your email address to enter the gallery.
+              Your favourites will be saved so you can
+              return to them later.
+            </p>
+
+            <p style="margin-top:32px;">
+              Steve Gregson Photography
+            </p>
+          </div>
+        `,
+      });
+
+    if (result.error) {
+      throw new Error(
+        `Gallery email to ${email} failed: ${result.error.message}`,
+      );
+    }
+
+    sent += 1;
+  }
+
+  return {
+    sent,
+  };
+}

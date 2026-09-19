@@ -28,6 +28,7 @@ import ProofingSelectionCopy from "./ProofingSelectionCopy";
 import ProofingSettingsEditor from "./ProofingSettingsEditor";
 import ProofingUrlEditor from "./ProofingUrlEditor";
 import ProofingWorkspace from "./ProofingWorkspace";
+import ShareGalleryButton from "./ShareGalleryButton";
 
 export const dynamic = "force-dynamic";
 
@@ -490,13 +491,12 @@ export default async function ProofingGalleryPage({
             Preview
           </Link>
 
-          <Link
-            href={`/proofing/${gallery.slug}`}
-            target="_blank"
-            className="sp-gallery-share-link"
-          >
-            Share Gallery
-          </Link>
+          <ShareGalleryButton
+            galleryId={gallery.id}
+            recipientCount={
+              gallery.recipients?.length ?? 0
+            }
+          />
         </div>
       </header>
 
