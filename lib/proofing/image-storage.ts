@@ -5,6 +5,9 @@ import {
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
+import {
+  getSignedUrl,
+} from "@aws-sdk/s3-request-presigner";
 
 function requiredEnv(name: string) {
   const value = process.env[name]?.trim();
@@ -50,6 +53,30 @@ export function getProofingImageObjectKey(
   webFilename: string,
 ) {
   return `${safeSegment(galleryId)}/${safeSegment(webFilename)}`;
+}
+
+export async function createProofingImageUploadUrl(
+  galleryId: string,
+  webFilename: string,
+) {
+  const command =
+    new PutObjectCommand({
+      Bucket: getBucket(),
+      Key: getProofingImageObjectKey(
+        galleryId,
+        webFilename,
+      ),
+      ContentType: "image/webp",
+      CacheControl: "private, max-age=31536000",
+    });
+
+  return getSignedUrl(
+    getClient(),
+    command,
+    {
+      expiresIn: 15 * 60,
+    },
+  );
 }
 
 export async function putProofingImage(

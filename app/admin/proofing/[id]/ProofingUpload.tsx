@@ -19,9 +19,15 @@ type UploadFailure = {
 const MAX_PROOF_DIMENSION = 2400;
 const MAX_UPLOAD_BYTES = 3.75 * 1024 * 1024;
 
+type PreparedProofUpload = {
+  file: File;
+  width: number;
+  height: number;
+};
+
 async function prepareProofUpload(
   file: File,
-): Promise<File> {
+): Promise<PreparedProofUpload> {
   const objectUrl = URL.createObjectURL(file);
 
   try {
@@ -114,14 +120,18 @@ async function prepareProofUpload(
         blob.size <= MAX_UPLOAD_BYTES ||
         (width <= 1200 && height <= 1200)
       ) {
-        return new File(
-          [blob],
-          file.name,
-          {
-            type: "image/webp",
-            lastModified: file.lastModified,
-          },
-        );
+        return {
+          file: new File(
+            [blob],
+            file.name,
+            {
+              type: "image/webp",
+              lastModified: file.lastModified,
+            },
+          ),
+          width,
+          height,
+        };
       }
 
       if (quality > 0.58) {
@@ -178,8 +188,126 @@ export default function ProofingUpload({
     setFailures([]);
   }
 
+  async function uploadOne(
+    file: File,
+  ) {
+    const prepared =
+      await prepareProofUpload(
+        file,
+      );
+
+    const signingResponse =
+      await fetch(
+        "/api/admin/proofing/upload",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            action: "presign",
+            galleryId,
+            originalFilename:
+              file.name,
+          }),
+        },
+      );
+
+    const signingResult =
+      (await signingResponse.json()) as {
+        ok?: boolean;
+        message?: string;
+        imageId?: string;
+        webFilename?: string;
+        uploadUrl?: string;
+      };
+
+    if (
+      !signingResponse.ok ||
+      !signingResult.ok ||
+      !signingResult.imageId ||
+      !signingResult.webFilename ||
+      !signingResult.uploadUrl
+    ) {
+      throw new Error(
+        signingResult.message ||
+          "Could not prepare direct R2 upload.",
+      );
+    }
+
+    const r2Response =
+      await fetch(
+        signingResult.uploadUrl,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type":
+              "image/webp",
+          },
+          body: prepared.file,
+        },
+      );
+
+    if (!r2Response.ok) {
+      throw new Error(
+        `Direct R2 upload failed (HTTP ${r2Response.status}).`,
+      );
+    }
+
+    const commitResponse =
+      await fetch(
+        "/api/admin/proofing/upload",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            action: "commit",
+            galleryId,
+            imageId:
+              signingResult.imageId,
+            originalFilename:
+              file.name,
+            webFilename:
+              signingResult.webFilename,
+            width:
+              prepared.width,
+            height:
+              prepared.height,
+            createdAt:
+              new Date(
+                file.lastModified ||
+                  Date.now(),
+              ).toISOString(),
+          }),
+        },
+      );
+
+    const commitResult =
+      (await commitResponse.json()) as {
+        ok?: boolean;
+        message?: string;
+      };
+
+    if (
+      !commitResponse.ok ||
+      !commitResult.ok
+    ) {
+      throw new Error(
+        commitResult.message ||
+          "Proofing image metadata could not be saved.",
+      );
+    }
+  }
+
   async function uploadFiles() {
-    if (files.length === 0 || isUploading) {
+    if (
+      files.length === 0 ||
+      isUploading
+    ) {
       return;
     }
 
@@ -187,78 +315,69 @@ export default function ProofingUpload({
     setCompleted(0);
     setFailures([]);
 
-    const uploadFailures: UploadFailure[] = [];
+    const uploadFailures:
+      UploadFailure[] = [];
 
-    for (const file of files) {
-      try {
-        const preparedFile =
-          await prepareProofUpload(file);
+    /*
+     * Four parallel workers gives substantially
+     * better throughput without loading hundreds
+     * of full-resolution photographs into browser
+     * memory at once.
+     */
+    const concurrency = 4;
 
-        const formData = new FormData();
-
-        formData.set("galleryId", galleryId);
-        formData.set("image", preparedFile);
-
-        const response = await fetch(
-          "/api/admin/proofing/upload",
-          {
-            method: "POST",
-            body: formData,
-          },
+    for (
+      let index = 0;
+      index < files.length;
+      index += concurrency
+    ) {
+      const batch =
+        files.slice(
+          index,
+          index + concurrency,
         );
 
-        const responseText =
-          await response.text();
-
-        let result: {
-          ok?: boolean;
-          message?: string;
-        };
-
-        try {
-          result = JSON.parse(responseText) as {
-            ok?: boolean;
-            message?: string;
-          };
-        } catch {
-          throw new Error(
-            `Upload returned HTTP ${response.status}: ${responseText
-              .replace(/\s+/g, " ")
-              .slice(0, 160)}`,
-          );
-        }
-
-        if (!response.ok || !result.ok) {
-          uploadFailures.push({
-            filename: file.name,
-            message:
-              result.message ??
-              `Upload failed (HTTP ${response.status}).`,
-          });
-        }
-      } catch (error) {
-        uploadFailures.push({
-          filename: file.name,
-          message:
-            error instanceof Error
-              ? error.message
-              : "Upload request failed.",
-        });
-      }
-
-      setCompleted(
-        (current) => current + 1,
+      await Promise.all(
+        batch.map(
+          async (file) => {
+            try {
+              await uploadOne(
+                file,
+              );
+            } catch (error) {
+              uploadFailures.push({
+                filename:
+                  file.name,
+                message:
+                  error instanceof Error
+                    ? error.message
+                    : "Upload request failed.",
+              });
+            } finally {
+              setCompleted(
+                (current) =>
+                  current + 1,
+              );
+            }
+          },
+        ),
       );
     }
 
-    setFailures(uploadFailures);
+    setFailures(
+      uploadFailures,
+    );
+
     setIsUploading(false);
 
-    if (uploadFailures.length === 0) {
+    if (
+      uploadFailures.length === 0
+    ) {
       setFiles([]);
 
       if (inputRef.current) {
-        inputRef.current.value = "";
+        inputRef.current.value =
+          "";
       }
     }
 
