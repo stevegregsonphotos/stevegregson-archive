@@ -54,7 +54,7 @@ export class ProductionConflictError extends Error {
   }
 }
 
-function createWebFilename(
+export function createWebFilename(
   filename: string,
   prefix: string,
 ) {
@@ -67,6 +67,144 @@ function createWebFilename(
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
   return `${prefix}-${stem || "photograph"}.webp`;
+}
+
+export type PublishedImageMetadata = Omit<
+  PublishedImageAsset,
+  "buffer"
+>;
+
+export async function finalizePublishedProduction(
+  payload: PublishPayload,
+  heroAsset: PublishedImageMetadata,
+  galleryAssets: PublishedImageMetadata[],
+): Promise<PublishProductionResult> {
+  if (await productionExists(payload.slug)) {
+    throw new ProductionConflictError(
+      `A production already exists for "${payload.slug}".`,
+    );
+  }
+
+  for (const asset of [heroAsset, ...galleryAssets]) {
+    if (
+      !(await productionImageExists(
+        payload.slug,
+        asset.filename,
+      ))
+    ) {
+      throw new Error(
+        `Published production image "${payload.slug}/${asset.filename}" is missing from R2.`,
+      );
+    }
+  }
+
+  const galleryAssetByPath = new Map(
+    galleryAssets.map((asset) => [
+      asset.sourceFilepath,
+      asset,
+    ]),
+  );
+
+  const access = payload.access ?? "public";
+  const defaultLockedPassword =
+    process.env.BULK_IMPORT_SCHOOL_DEFAULT_PASSWORD?.trim();
+
+  if (access === "password" && !defaultLockedPassword) {
+    throw new Error(
+      "BULK_IMPORT_SCHOOL_DEFAULT_PASSWORD is not configured.",
+    );
+  }
+
+  await createProduction({
+    slug: payload.slug,
+    title: payload.title.trim(),
+    venue: payload.venue.trim(),
+    month: payload.month,
+    year: payload.year,
+    description: payload.description.trim(),
+    access,
+    ...(access === "password"
+      ? {
+          accessPasswordEncrypted:
+            encryptProductionPassword(
+              defaultLockedPassword as string,
+            ),
+        }
+      : {}),
+    hero: heroAsset.filename,
+    heroAlt: payload.hero.alt.trim(),
+    heroBlurDataURL: heroAsset.blurDataURL,
+    credits: payload.credits.map((credit) => ({
+      role: credit.role.trim(),
+      name: credit.name.trim(),
+      ...(credit.website?.trim()
+        ? { website: credit.website.trim() }
+        : {}),
+    })),
+    images: payload.images.map((image) => {
+      const asset =
+        galleryAssetByPath.get(image.filepath);
+
+      if (!asset) {
+        throw new Error(
+          `No published asset was created for "${image.filepath}".`,
+        );
+      }
+
+      return {
+        src: asset.filename,
+        alt: image.alt.trim(),
+        layout: image.layout,
+        blurDataURL: asset.blurDataURL,
+      };
+    }),
+  });
+
+  let directorySync:
+    Awaited<
+      ReturnType<typeof rememberDirectoryCredits>
+    > | null = null;
+  let directoryWarning: string | null = null;
+
+  try {
+    directorySync =
+      await rememberDirectoryCredits(
+        payload.credits,
+      );
+  } catch (directoryError) {
+    console.error(
+      "Directory sync failed:",
+      directoryError,
+    );
+    directoryWarning =
+      directoryError instanceof Error
+        ? directoryError.message
+        : "The global website directory could not be updated.";
+  }
+
+  const baseUrl =
+    process.env.NEXT_PUBLIC_PRODUCTION_IMAGE_BASE_URL
+      ?.trim()
+      .replace(/\/+$/, "") ||
+    "https://images.stevegregson.com";
+
+  return {
+    directorySync,
+    directoryWarning,
+    production: {
+      slug: payload.slug,
+      title: payload.title.trim(),
+      month: payload.month,
+      year: payload.year,
+      url: `/productions/${payload.slug}`,
+      imageCount: payload.images.length,
+      hero: heroAsset.filename,
+      productionFile: "Neon/Postgres",
+      imageDirectory: `${baseUrl}/${payload.slug}`,
+      registryFile: "Neon/Postgres",
+      registration: "automatic",
+    },
+  };
 }
 
 export async function publishProduction(

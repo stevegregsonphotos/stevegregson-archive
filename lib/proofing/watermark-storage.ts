@@ -1,9 +1,13 @@
 import {
   DeleteObjectCommand,
   GetObjectCommand,
+  HeadObjectCommand,
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
+import {
+  getSignedUrl,
+} from "@aws-sdk/s3-request-presigner";
 
 function requiredEnv(name: string) {
   const value = process.env[name]?.trim();
@@ -50,6 +54,63 @@ export function getProofingWatermarkObjectKey(
   filename: string,
 ) {
   return `watermarks/${safeSegment(filename)}`;
+}
+
+export async function createProofingWatermarkUploadUrl(
+  filename: string,
+) {
+  return getSignedUrl(
+    getClient(),
+    new PutObjectCommand({
+      Bucket: getBucket(),
+      Key: getProofingWatermarkObjectKey(filename),
+      ContentType: "image/png",
+      CacheControl: "private, max-age=31536000",
+    }),
+    { expiresIn: 15 * 60 },
+  );
+}
+
+export async function createProofingWatermarkDownloadUrl(
+  filename: string,
+) {
+  return getSignedUrl(
+    getClient(),
+    new GetObjectCommand({
+      Bucket: getBucket(),
+      Key: getProofingWatermarkObjectKey(filename),
+      ResponseContentType: "image/png",
+    }),
+    { expiresIn: 15 * 60 },
+  );
+}
+
+export async function proofingWatermarkExists(
+  filename: string,
+) {
+  try {
+    await getClient().send(
+      new HeadObjectCommand({
+        Bucket: getBucket(),
+        Key: getProofingWatermarkObjectKey(filename),
+      }),
+    );
+    return true;
+  } catch (error) {
+    const status =
+      typeof error === "object" &&
+      error !== null &&
+      "$metadata" in error
+        ? (error as {
+            $metadata?: { httpStatusCode?: number };
+          }).$metadata?.httpStatusCode
+        : undefined;
+
+    if (status === 404) {
+      return false;
+    }
+    throw error;
+  }
 }
 
 export async function putProofingWatermark(

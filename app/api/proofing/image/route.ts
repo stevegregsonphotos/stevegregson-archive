@@ -1,25 +1,15 @@
-import { createHash } from "node:crypto";
-
-import sharp from "sharp";
 import { cookies } from "next/headers";
-import { NextRequest, NextResponse } from "next/server";
+import {
+  NextRequest,
+  NextResponse,
+} from "next/server";
 
 import {
   getProofingGalleryBySlug,
 } from "../../../../lib/proofing/repository";
-
 import {
-  getProofingImage,
-  getRenderedProof,
-  putRenderedProof,
+  createProofingImageDownloadUrl,
 } from "../../../../lib/proofing/image-storage";
-import {
-  getProofingWatermark,
-} from "../../../../lib/proofing/watermarks";
-
-import {
-  getProofingWatermarkFile,
-} from "../../../../lib/proofing/watermark-storage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -34,110 +24,9 @@ function isSafeSegment(value: string) {
   );
 }
 
-function watermarkPlacement(
-  position:
-    | "top-left"
-    | "top-center"
-    | "top-right"
-    | "center-left"
-    | "center"
-    | "center-right"
-    | "bottom-left"
-    | "bottom-center"
-    | "bottom-right",
-  imageWidth: number,
-  imageHeight: number,
-  watermarkWidth: number,
-  watermarkHeight: number,
+export async function GET(
+  request: NextRequest,
 ) {
-  const margin = Math.max(
-    20,
-    Math.round(
-      Math.min(imageWidth, imageHeight) * 0.04,
-    ),
-  );
-
-  const left = {
-    left: margin,
-    center: Math.round(
-      (imageWidth - watermarkWidth) / 2,
-    ),
-    right:
-      imageWidth -
-      watermarkWidth -
-      margin,
-  };
-
-  const top = {
-    top: margin,
-    center: Math.round(
-      (imageHeight - watermarkHeight) / 2,
-    ),
-    bottom:
-      imageHeight -
-      watermarkHeight -
-      margin,
-  };
-
-  switch (position) {
-    case "top-left":
-      return {
-        left: left.left,
-        top: top.top,
-      };
-
-    case "top-center":
-      return {
-        left: left.center,
-        top: top.top,
-      };
-
-    case "top-right":
-      return {
-        left: left.right,
-        top: top.top,
-      };
-
-    case "center-left":
-      return {
-        left: left.left,
-        top: top.center,
-      };
-
-    case "center":
-      return {
-        left: left.center,
-        top: top.center,
-      };
-
-    case "center-right":
-      return {
-        left: left.right,
-        top: top.center,
-      };
-
-    case "bottom-left":
-      return {
-        left: left.left,
-        top: top.bottom,
-      };
-
-    case "bottom-center":
-      return {
-        left: left.center,
-        top: top.bottom,
-      };
-
-    case "bottom-right":
-    default:
-      return {
-        left: left.right,
-        top: top.bottom,
-      };
-  }
-}
-
-export async function GET(request: NextRequest) {
   const gallerySlug =
     request.nextUrl.searchParams
       .get("gallery")
@@ -157,14 +46,14 @@ export async function GET(request: NextRequest) {
         ok: false,
         message: "Invalid image request.",
       },
-      {
-        status: 400,
-      },
+      { status: 400 },
     );
   }
 
   const gallery =
-    await getProofingGalleryBySlug(gallerySlug);
+    await getProofingGalleryBySlug(
+      gallerySlug,
+    );
 
   if (!gallery) {
     return NextResponse.json(
@@ -172,16 +61,10 @@ export async function GET(request: NextRequest) {
         ok: false,
         message: "Gallery not found.",
       },
-      {
-        status: 404,
-      },
+      { status: 404 },
     );
   }
 
-  /*
-   * Proof photographs must not bypass gallery
-   * availability rules.
-   */
   const hasExpiredByDate =
     Boolean(gallery.expiresAt) &&
     new Date(
@@ -202,16 +85,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  /*
-   * A valid visitor session is required for
-   * photographs inside the gallery.
-   *
-   * The one exception is the designated cover
-   * photograph, which must be visible on the
-   * email-entry screen before a session exists.
-   */
   const cookieStore = await cookies();
-
   const visitorId =
     cookieStore.get(
       `proofing_${gallery.id}`,
@@ -238,9 +112,11 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const image = gallery.images.find(
-    (candidate) => candidate.id === imageId,
-  );
+  const image =
+    gallery.images.find(
+      (candidate) =>
+        candidate.id === imageId,
+    );
 
   if (!image) {
     return NextResponse.json(
@@ -248,9 +124,7 @@ export async function GET(request: NextRequest) {
         ok: false,
         message: "Image not found.",
       },
-      {
-        status: 404,
-      },
+      { status: 404 },
     );
   }
 
@@ -258,253 +132,27 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         ok: false,
-        message: "Invalid image filename.",
+        message:
+          "Invalid image filename.",
       },
-      {
-        status: 400,
-      },
+      { status: 400 },
     );
   }
 
-    try {
-      const file = await getProofingImage(
+  try {
+    /*
+     * Vercel performs only the gallery/session check.
+     * The photograph bytes move directly from R2 to the
+     * browser. Watermarks are a presentation overlay in
+     * the proofing UI, so image delivery never invokes
+     * Sharp or proxies image bodies through Vercel.
+     */
+    return NextResponse.redirect(
+      await createProofingImageDownloadUrl(
         gallery.id,
         image.webFilename,
-      );
-
-    /*
-     * No watermark selected:
-     * return the stored web proof unchanged.
-     */
-    if (
-      !gallery.watermarkEnabled ||
-      !gallery.watermarkId
-    ) {
-      return new NextResponse(file, {
-        headers: {
-          "Content-Type": "image/webp",
-          "Cache-Control":
-            "private, no-store",
-        },
-      });
-    }
-
-    const watermark =
-      await getProofingWatermark(
-        gallery.watermarkId,
-      );
-
-    if (!watermark) {
-      return new NextResponse(file, {
-        headers: {
-          "Content-Type": "image/webp",
-          "Cache-Control":
-            "private, no-store",
-        },
-      });
-    }
-
-    const sizePercent =
-      gallery.watermarkSize ?? 30;
-
-    const opacityPercent =
-      gallery.watermarkOpacity ?? 65;
-
-    const position =
-      gallery.watermarkPosition ??
-      "bottom-right";
-
-    const renderCacheKey = createHash(
-      "sha256",
-    )
-      .update(
-        JSON.stringify({
-          image: image.webFilename,
-          watermarkId: watermark.id,
-          watermarkUpdatedAt:
-            watermark.updatedAt,
-          sizePercent,
-          opacityPercent,
-          position,
-        }),
-      )
-      .digest("hex")
-      .slice(0, 32);
-
-    const cachedOutput =
-      await getRenderedProof(
-        gallery.id,
-        image.id,
-        renderCacheKey,
-      );
-
-    if (cachedOutput) {
-      return new NextResponse(
-        new Uint8Array(cachedOutput),
-        {
-          headers: {
-            "Content-Type": "image/webp",
-            "Cache-Control":
-              "private, no-store",
-          },
-        },
-      );
-    }
-
-    const watermarkFile =
-      await getProofingWatermarkFile(
-        watermark.filename,
-      );
-
-    const baseImage = sharp(file);
-
-    const baseMetadata =
-      await baseImage.metadata();
-
-    if (
-      !baseMetadata.width ||
-      !baseMetadata.height
-    ) {
-      throw new Error(
-        "Could not read proof dimensions.",
-      );
-    }
-
-    /*
-     * Width is relative to the photograph.
-     * Keep the watermark within sensible bounds.
-     */
-    const targetWidth = Math.max(
-      40,
-      Math.round(
-        baseMetadata.width *
-          (sizePercent / 100),
       ),
-    );
-
-    const resizedWatermark =
-      await sharp(watermarkFile)
-        .resize({
-          width: targetWidth,
-          withoutEnlargement: false,
-        })
-        .ensureAlpha()
-        .linear(
-          1,
-          0,
-        )
-        .toBuffer();
-
-    const watermarkMetadata =
-      await sharp(
-        resizedWatermark,
-      ).metadata();
-
-    if (
-      !watermarkMetadata.width ||
-      !watermarkMetadata.height
-    ) {
-      throw new Error(
-        "Could not read watermark dimensions.",
-      );
-    }
-
-    /*
-     * Preserve the PNG's original transparency and
-     * adjust only its existing alpha values.
-     *
-     * Flattening/removing alpha here would create a
-     * black rectangle around transparent watermarks.
-     */
-    const {
-      data: watermarkPixels,
-      info: watermarkPixelInfo,
-    } = await sharp(resizedWatermark)
-      .ensureAlpha()
-      .raw()
-      .toBuffer({
-        resolveWithObject: true,
-      });
-
-    const opacity =
-      opacityPercent / 100;
-
-    for (
-      let index = 3;
-      index < watermarkPixels.length;
-      index += 4
-    ) {
-      watermarkPixels[index] =
-        Math.round(
-          watermarkPixels[index] * opacity,
-        );
-    }
-
-    const colour =
-      await sharp(
-        watermarkPixels,
-        {
-          raw: {
-            width: watermarkPixelInfo.width,
-            height: watermarkPixelInfo.height,
-            channels: 4,
-          },
-        },
-      )
-        .png()
-        .toBuffer();
-
-    const placement =
-      watermarkPlacement(
-        position,
-        baseMetadata.width,
-        baseMetadata.height,
-        watermarkMetadata.width,
-        watermarkMetadata.height,
-      );
-
-    const output =
-      await sharp(file)
-        .composite([
-          {
-            input: colour,
-            left: Math.max(
-              0,
-              placement.left,
-            ),
-            top: Math.max(
-              0,
-              placement.top,
-            ),
-          },
-        ])
-        .webp({
-          quality: 82,
-          effort: 4,
-        })
-        .toBuffer();
-
-    await putRenderedProof(
-      gallery.id,
-      image.id,
-      renderCacheKey,
-      output,
-    );
-
-    return new NextResponse(
-      new Uint8Array(output),
-      {
-        headers: {
-          "Content-Type": "image/webp",
-          /*
-           * Watermark settings can change at any time,
-           * so don't let an old clean/watermarked image
-           * remain cached in the browser.
-           */
-          "Cache-Control":
-            "private, no-store",
-        },
-      },
+      302,
     );
   } catch (error) {
     console.error(
@@ -518,9 +166,7 @@ export async function GET(request: NextRequest) {
         message:
           "Image file could not be read.",
       },
-      {
-        status: 404,
-      },
+      { status: 404 },
     );
   }
 }

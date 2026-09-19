@@ -7,6 +7,9 @@ import {
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
+import {
+  getSignedUrl,
+} from "@aws-sdk/s3-request-presigner";
 
 function requiredEnv(name: string) {
   const value = process.env[name]?.trim();
@@ -74,6 +77,26 @@ export function getProductionImageObjectKey(
       "filename",
     ),
   ].join("/");
+}
+
+export async function createProductionImageUploadUrl(
+  productionSlug: string,
+  filename: string,
+) {
+  return getSignedUrl(
+    getClient(),
+    new PutObjectCommand({
+      Bucket: getBucket(),
+      Key: getProductionImageObjectKey(
+        productionSlug,
+        filename,
+      ),
+      ContentType: "image/webp",
+      CacheControl:
+        "public, max-age=31536000, immutable",
+    }),
+    { expiresIn: 15 * 60 },
+  );
 }
 
 export async function putProductionImage(

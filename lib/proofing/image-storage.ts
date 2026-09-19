@@ -55,27 +55,86 @@ export function getProofingImageObjectKey(
   return `${safeSegment(galleryId)}/${safeSegment(webFilename)}`;
 }
 
+function getRenderedProofObjectKey(
+  galleryId: string,
+  imageId: string,
+  cacheKey: string,
+) {
+  return [
+    "rendered",
+    safeSegment(galleryId),
+    safeSegment(imageId),
+    `${safeSegment(cacheKey)}.webp`,
+  ].join("/");
+}
+
 export async function createProofingImageUploadUrl(
   galleryId: string,
   webFilename: string,
 ) {
-  const command =
-    new PutObjectCommand({
-      Bucket: getBucket(),
-      Key: getProofingImageObjectKey(
-        galleryId,
-        webFilename,
-      ),
-      ContentType: "image/webp",
-      CacheControl: "private, max-age=31536000",
-    });
+  const command = new PutObjectCommand({
+    Bucket: getBucket(),
+    Key: getProofingImageObjectKey(
+      galleryId,
+      webFilename,
+    ),
+    ContentType: "image/webp",
+    CacheControl: "private, max-age=31536000",
+  });
 
   return getSignedUrl(
     getClient(),
     command,
-    {
-      expiresIn: 15 * 60,
-    },
+    { expiresIn: 15 * 60 },
+  );
+}
+
+export async function createProofingImageDownloadUrl(
+  galleryId: string,
+  webFilename: string,
+  downloadFilename?: string,
+) {
+  const command = new GetObjectCommand({
+    Bucket: getBucket(),
+    Key: getProofingImageObjectKey(
+      galleryId,
+      webFilename,
+    ),
+    ResponseContentType: "image/webp",
+    ...(downloadFilename
+      ? {
+          ResponseContentDisposition:
+            `attachment; filename="${downloadFilename.replace(/[\r\n"]/g, "")}"`,
+        }
+      : {}),
+  });
+
+  return getSignedUrl(
+    getClient(),
+    command,
+    { expiresIn: 15 * 60 },
+  );
+}
+
+export async function createRenderedProofDownloadUrl(
+  galleryId: string,
+  imageId: string,
+  cacheKey: string,
+) {
+  const command = new GetObjectCommand({
+    Bucket: getBucket(),
+    Key: getRenderedProofObjectKey(
+      galleryId,
+      imageId,
+      cacheKey,
+    ),
+    ResponseContentType: "image/webp",
+  });
+
+  return getSignedUrl(
+    getClient(),
+    command,
+    { expiresIn: 15 * 60 },
   );
 }
 
@@ -157,17 +216,39 @@ export async function deleteProofingImage(
   );
 }
 
-function getRenderedProofObjectKey(
+export async function renderedProofExists(
   galleryId: string,
   imageId: string,
   cacheKey: string,
 ) {
-  return [
-    "rendered",
-    safeSegment(galleryId),
-    safeSegment(imageId),
-    `${safeSegment(cacheKey)}.webp`,
-  ].join("/");
+  try {
+    await getClient().send(
+      new HeadObjectCommand({
+        Bucket: getBucket(),
+        Key: getRenderedProofObjectKey(
+          galleryId,
+          imageId,
+          cacheKey,
+        ),
+      }),
+    );
+    return true;
+  } catch (error) {
+    const status =
+      typeof error === "object" &&
+      error !== null &&
+      "$metadata" in error
+        ? (error as {
+            $metadata?: { httpStatusCode?: number };
+          }).$metadata?.httpStatusCode
+        : undefined;
+
+    if (status === 404) {
+      return false;
+    }
+
+    throw error;
+  }
 }
 
 export async function getRenderedProof(
@@ -231,6 +312,7 @@ export async function putRenderedProof(
       ),
       Body: body,
       ContentType: "image/webp",
+      CacheControl: "private, max-age=31536000",
     }),
   );
 }

@@ -1435,3 +1435,25 @@
     font-size: 0.52rem;
   }
 }
+
+/*
+ * Proofing watermarks are presentation overlays. The
+ * underlying proof image is delivered directly from R2 so
+ * Vercel never composites or proxies gallery photographs.
+ */
+.proofing-watermark-overlay {
+  display: block;
+  max-width: none;
+  object-fit: contain;
+}
+
+.proofing-entry > .proofing-watermark-overlay {
+  z-index: -1 !important;
+}
+
+.proofing-viewer-image-wrap {
+  position: relative;
+  display: inline-flex;
+  max-width: 100%;
+  max-height: calc(100vh - 9rem);
+}

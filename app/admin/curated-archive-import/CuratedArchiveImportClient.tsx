@@ -85,6 +85,275 @@ const MONTHS = [
 const CURATED_IMPORT_SESSION_KEY =
   "stevegregson_curated_import_preflight";
 
+const CURATED_EDITOR_THUMBNAIL_SIZE = 800;
+
+async function createCuratedEditorThumbnail(
+  file: File,
+) {
+  const objectUrl = URL.createObjectURL(file);
+
+  try {
+    const image = new Image();
+
+    await new Promise<void>((resolve, reject) => {
+      image.onload = () => resolve();
+      image.onerror = () =>
+        reject(
+          new Error(
+            `Could not prepare editor thumbnail for ${file.name}.`,
+          ),
+        );
+      image.src = objectUrl;
+    });
+
+    const scale = Math.min(
+      1,
+      CURATED_EDITOR_THUMBNAIL_SIZE /
+        Math.max(
+          image.naturalWidth,
+          image.naturalHeight,
+        ),
+    );
+
+    const width = Math.max(
+      1,
+      Math.round(
+        image.naturalWidth * scale,
+      ),
+    );
+    const height = Math.max(
+      1,
+      Math.round(
+        image.naturalHeight * scale,
+      ),
+    );
+
+    const canvas =
+      document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+
+    const context =
+      canvas.getContext("2d");
+
+    if (!context) {
+      throw new Error(
+        `Could not prepare editor thumbnail for ${file.name}.`,
+      );
+    }
+
+    context.drawImage(
+      image,
+      0,
+      0,
+      width,
+      height,
+    );
+
+    return new Promise<Blob>(
+      (resolve, reject) => {
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              resolve(blob);
+            } else {
+              reject(
+                new Error(
+                  `Could not prepare editor thumbnail for ${file.name}.`,
+                ),
+              );
+            }
+          },
+          "image/webp",
+          0.78,
+        );
+      },
+    );
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
+function curatedEditorThumbnailPath(
+  relativePath: string,
+) {
+  const marker =
+    "/selected-web-staging/";
+  const markerIndex =
+    relativePath.indexOf(marker);
+
+  if (markerIndex === -1) {
+    return null;
+  }
+
+  const folderPath =
+    relativePath.slice(0, markerIndex);
+  const filename =
+    relativePath.slice(
+      markerIndex + marker.length,
+    );
+
+  if (!folderPath || !filename) {
+    return null;
+  }
+
+  return `${folderPath}/.editor-thumbnails/${filename}.webp`;
+}
+
+type CuratedPublishJob = {
+  kind: "hero" | "gallery";
+  sourceFilepath: string;
+  sourceRelativePath: string;
+  outputFilename: string;
+};
+
+type CuratedPublishedAsset = {
+  sourceFilepath: string;
+  filename: string;
+  blurDataURL: string;
+};
+
+async function preparePublishedImage(
+  sourceBlob: Blob,
+  sourceFilepath: string,
+  outputFilename: string,
+): Promise<{
+  blob: Blob;
+  asset: CuratedPublishedAsset;
+}> {
+  const objectUrl =
+    URL.createObjectURL(sourceBlob);
+
+  try {
+    const image = new Image();
+
+    await new Promise<void>(
+      (resolve, reject) => {
+        image.onload = () => resolve();
+        image.onerror = () =>
+          reject(
+            new Error(
+              `Could not prepare ${sourceFilepath} for publishing.`,
+            ),
+          );
+        image.src = objectUrl;
+      },
+    );
+
+    const scale = Math.min(
+      1,
+      2560 /
+        Math.max(
+          image.naturalWidth,
+          image.naturalHeight,
+        ),
+    );
+
+    const width = Math.max(
+      1,
+      Math.round(
+        image.naturalWidth * scale,
+      ),
+    );
+    const height = Math.max(
+      1,
+      Math.round(
+        image.naturalHeight * scale,
+      ),
+    );
+
+    const canvas =
+      document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+
+    const context =
+      canvas.getContext("2d");
+
+    if (!context) {
+      throw new Error(
+        `Could not prepare ${sourceFilepath} for publishing.`,
+      );
+    }
+
+    context.drawImage(
+      image,
+      0,
+      0,
+      width,
+      height,
+    );
+
+    const blob =
+      await new Promise<Blob>(
+        (resolve, reject) => {
+          canvas.toBlob(
+            (result) => {
+              if (result) {
+                resolve(result);
+              } else {
+                reject(
+                  new Error(
+                    `Could not create ${outputFilename}.`,
+                  ),
+                );
+              }
+            },
+            "image/webp",
+            0.82,
+          );
+        },
+      );
+
+    const blurCanvas =
+      document.createElement("canvas");
+    const blurWidth = 24;
+    const blurScale =
+      blurWidth / width;
+    blurCanvas.width = blurWidth;
+    blurCanvas.height = Math.max(
+      1,
+      Math.round(
+        height * blurScale,
+      ),
+    );
+
+    const blurContext =
+      blurCanvas.getContext("2d");
+
+    if (!blurContext) {
+      throw new Error(
+        `Could not prepare blur placeholder for ${sourceFilepath}.`,
+      );
+    }
+
+    blurContext.drawImage(
+      canvas,
+      0,
+      0,
+      blurCanvas.width,
+      blurCanvas.height,
+    );
+
+    const blurDataURL =
+      blurCanvas.toDataURL(
+        "image/webp",
+        0.38,
+      );
+
+    return {
+      blob,
+      asset: {
+        sourceFilepath,
+        filename: outputFilename,
+        blurDataURL,
+      },
+    };
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
 function statusLabel(
   status: PreflightProduction["status"],
 ) {
@@ -137,6 +406,11 @@ export default function CuratedArchiveImportClient({
     importingProduction,
     setImportingProduction,
   ] = useState<string | null>(null);
+
+  const [
+    importProgressText,
+    setImportProgressText,
+  ] = useState("");
 
   const [
     batchImporting,
@@ -409,6 +683,20 @@ export default function CuratedArchiveImportClient({
             ),
         );
 
+      const editorThumbnailPaths =
+        stagedImages.flatMap(
+          (relativePath) => {
+            const thumbnailPath =
+              curatedEditorThumbnailPath(
+                relativePath,
+              );
+
+            return thumbnailPath
+              ? [thumbnailPath]
+              : [];
+          },
+        );
+
       const metadataFiles =
         packagedPaths.filter(
           (relativePath) =>
@@ -477,6 +765,116 @@ export default function CuratedArchiveImportClient({
         return result;
       }
 
+      async function uploadDirectToR2(
+        relativePath: string,
+        contentType: string,
+        body: BodyInit,
+        cacheControl = "no-store",
+      ) {
+        const signingUrl =
+          new URL(
+            "/api/admin/curated-archive-import/upload",
+            window.location.origin,
+          );
+
+        signingUrl.searchParams.set(
+          "action",
+          "presign",
+        );
+        signingUrl.searchParams.set(
+          "relativePath",
+          relativePath,
+        );
+        signingUrl.searchParams.set(
+          "contentType",
+          contentType,
+        );
+
+        const signingResponse =
+          await fetch(
+            signingUrl.toString(),
+            {
+              method: "POST",
+            },
+          );
+
+        const signed =
+          await readUploadResponse(
+            signingResponse,
+            `Preparing R2 upload for "${relativePath}"`,
+          ) as {
+            ok: boolean;
+            url?: string;
+            path?: string;
+          };
+
+        if (!signed.url) {
+          throw new Error(
+            `No R2 upload URL was returned for "${relativePath}".`,
+          );
+        }
+
+        let r2Response:
+          | Response
+          | null = null;
+        let lastError:
+          unknown = null;
+
+        for (
+          let attempt = 1;
+          attempt <= 4;
+          attempt += 1
+        ) {
+          try {
+            r2Response =
+              await fetch(
+                signed.url,
+                {
+                  method: "PUT",
+                  headers: {
+                    "Content-Type":
+                      contentType,
+                    "Cache-Control":
+                      cacheControl,
+                  },
+                  body,
+                },
+              );
+
+            if (r2Response.ok) {
+              break;
+            }
+
+            lastError =
+              new Error(
+                `HTTP ${r2Response.status}`,
+              );
+          } catch (error) {
+            lastError = error;
+          }
+
+          if (attempt < 4) {
+            await new Promise(
+              (resolve) =>
+                setTimeout(
+                  resolve,
+                  attempt * 1000,
+                ),
+            );
+          }
+        }
+
+        if (!r2Response?.ok) {
+          throw new Error(
+            `Direct R2 upload failed for "${relativePath}" after 4 attempts: ${
+              lastError instanceof Error
+                ? lastError.message
+                : String(lastError)
+            }`,
+          );
+        }
+      }
+
       /*
        * Start with a clean temporary staging area.
        */
@@ -535,121 +933,28 @@ export default function CuratedArchiveImportClient({
                 file.type ||
                 "application/octet-stream";
 
-              let signingResponse: Response;
+              await uploadDirectToR2(
+                relativePath,
+                contentType,
+                file,
+              );
 
-              try {
-                const signingUrl =
-                  new URL(
-                    "/api/admin/curated-archive-import/upload",
-                    window.location.origin,
-                  );
-
-                signingUrl.searchParams.set(
-                  "action",
-                  "presign",
-                );
-
-                signingUrl.searchParams.set(
-                  "relativePath",
+              const thumbnailPath =
+                curatedEditorThumbnailPath(
                   relativePath,
                 );
 
-                signingUrl.searchParams.set(
-                  "contentType",
-                  contentType,
-                );
-
-                signingResponse =
-                  await fetch(
-                    signingUrl.toString(),
-                    {
-                      method: "POST",
-                    },
+              if (thumbnailPath) {
+                const thumbnail =
+                  await createCuratedEditorThumbnail(
+                    file,
                   );
-              } catch (error) {
-                throw new Error(
-                  `Could not prepare R2 upload for "${relativePath}": ${
-                    error instanceof Error
-                      ? error.message
-                      : String(error)
-                  }`,
-                );
-              }
 
-              const signed =
-                await readUploadResponse(
-                  signingResponse,
-                  `Preparing R2 upload for "${relativePath}"`,
-                ) as {
-                  ok: boolean;
-                  url?: string;
-                  path?: string;
-                };
-
-              if (!signed.url) {
-                throw new Error(
-                  `No R2 upload URL was returned for "${relativePath}".`,
-                );
-              }
-
-              let r2Response:
-                | Response
-                | null = null;
-
-              let lastError:
-                unknown = null;
-
-              for (
-                let attempt = 1;
-                attempt <= 4;
-                attempt += 1
-              ) {
-                try {
-                  r2Response =
-                    await fetch(
-                      signed.url,
-                      {
-                        method: "PUT",
-                        headers: {
-                          "Content-Type":
-                            contentType,
-                          "Cache-Control":
-                            "no-store",
-                        },
-                        body: file,
-                      },
-                    );
-
-                  if (r2Response.ok) {
-                    break;
-                  }
-
-                  lastError =
-                    new Error(
-                      `HTTP ${r2Response.status}`,
-                    );
-                } catch (error) {
-                  lastError = error;
-                }
-
-                if (attempt < 4) {
-                  await new Promise(
-                    (resolve) =>
-                      setTimeout(
-                        resolve,
-                        attempt * 1000,
-                      ),
-                  );
-                }
-              }
-
-              if (!r2Response?.ok) {
-                throw new Error(
-                  `Direct R2 upload failed for "${relativePath}" after 4 attempts: ${
-                    lastError instanceof Error
-                      ? lastError.message
-                      : String(lastError)
-                  }`,
+                await uploadDirectToR2(
+                  thumbnailPath,
+                  "image/webp",
+                  thumbnail,
+                  "private, max-age=31536000",
                 );
               }
             },
@@ -676,7 +981,10 @@ export default function CuratedArchiveImportClient({
       finalizeForm.set(
         "relativePaths",
         JSON.stringify(
-          packagedPaths,
+          [
+            ...packagedPaths,
+            ...editorThumbnailPaths,
+          ],
         ),
       );
 
@@ -855,6 +1163,239 @@ export default function CuratedArchiveImportClient({
     }
   }
 
+  async function publishCuratedProductionDirect(
+    production: PreflightProduction,
+    onProgress?: (
+      current: number,
+      total: number,
+    ) => void,
+  ) {
+    const prepareResponse =
+      await fetch(
+        "/api/admin/curated-archive-import/publish",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            action: "prepare",
+            folder:
+              production.folder,
+          }),
+        },
+      );
+
+    const prepared =
+      (await prepareResponse.json()) as {
+        ok?: boolean;
+        message?: string;
+        slug?: string;
+        title?: string;
+        totalImages?: number;
+        jobs?: CuratedPublishJob[];
+      };
+
+    if (
+      !prepareResponse.ok ||
+      !prepared.ok ||
+      !prepared.slug ||
+      !Array.isArray(prepared.jobs) ||
+      prepared.jobs.length === 0
+    ) {
+      throw new Error(
+        prepared.message ||
+          "The curated production could not be prepared for publishing.",
+      );
+    }
+
+    const jobs =
+      prepared.jobs;
+
+    const assets:
+      CuratedPublishedAsset[] = [];
+    const concurrency = 2;
+    let completed = 0;
+
+    onProgress?.(
+      completed,
+      jobs.length,
+    );
+
+    for (
+      let index = 0;
+      index < jobs.length;
+      index += concurrency
+    ) {
+      const batch =
+        jobs.slice(
+          index,
+          index + concurrency,
+        );
+
+      const batchAssets =
+        await Promise.all(
+          batch.map(
+            async (job) => {
+              const signingResponse =
+                await fetch(
+                  "/api/admin/curated-archive-import/publish",
+                  {
+                    method: "POST",
+                    headers: {
+                      "Content-Type":
+                        "application/json",
+                    },
+                    body: JSON.stringify({
+                      action:
+                        "sign-image",
+                      folder:
+                        production.folder,
+                      slug:
+                        prepared.slug,
+                      sourceRelativePath:
+                        job.sourceRelativePath,
+                      outputFilename:
+                        job.outputFilename,
+                    }),
+                  },
+                );
+
+              const signed =
+                (await signingResponse.json()) as {
+                  ok?: boolean;
+                  message?: string;
+                  sourceUrl?: string;
+                  uploadUrl?: string;
+                };
+
+              if (
+                !signingResponse.ok ||
+                !signed.ok ||
+                !signed.sourceUrl ||
+                !signed.uploadUrl
+              ) {
+                throw new Error(
+                  signed.message ||
+                    `Could not prepare ${job.sourceFilepath} for direct publishing.`,
+                );
+              }
+
+              const sourceResponse =
+                await fetch(
+                  signed.sourceUrl,
+                );
+
+              if (!sourceResponse.ok) {
+                throw new Error(
+                  `Could not download ${job.sourceFilepath} from R2 (HTTP ${sourceResponse.status}).`,
+                );
+              }
+
+              const processed =
+                await preparePublishedImage(
+                  await sourceResponse.blob(),
+                  job.sourceFilepath,
+                  job.outputFilename,
+                );
+
+              const uploadResponse =
+                await fetch(
+                  signed.uploadUrl,
+                  {
+                    method: "PUT",
+                    headers: {
+                      "Content-Type":
+                        "image/webp",
+                      "Cache-Control":
+                        "public, max-age=31536000, immutable",
+                    },
+                    body:
+                      processed.blob,
+                  },
+                );
+
+              if (!uploadResponse.ok) {
+                throw new Error(
+                  `Could not upload ${job.outputFilename} directly to production R2 (HTTP ${uploadResponse.status}).`,
+                );
+              }
+
+              return processed.asset;
+            },
+          ),
+        );
+
+      assets.push(
+        ...batchAssets,
+      );
+      completed += batch.length;
+      onProgress?.(
+        completed,
+        jobs.length,
+      );
+    }
+
+    const heroIndex =
+      jobs.findIndex(
+        (job) =>
+          job.kind === "hero",
+      );
+
+    if (heroIndex < 0) {
+      throw new Error(
+        "The curated production has no hero image job.",
+      );
+    }
+
+    const heroAsset =
+      assets[heroIndex];
+    const galleryAssets =
+      assets.filter(
+        (_asset, index) =>
+          jobs[index]
+            .kind === "gallery",
+      );
+
+    const finalizeResponse =
+      await fetch(
+        "/api/admin/curated-archive-import/publish",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            action: "finalize",
+            folder:
+              production.folder,
+            heroAsset,
+            galleryAssets,
+          }),
+        },
+      );
+
+    const finalized =
+      (await finalizeResponse.json()) as {
+        ok?: boolean;
+        message?: string;
+      };
+
+    if (
+      !finalizeResponse.ok ||
+      !finalized.ok
+    ) {
+      throw new Error(
+        finalized.message ||
+          "The curated production could not be finalized.",
+      );
+    }
+
+    return finalized;
+  }
+
   async function importProduction(
     production: PreflightProduction,
   ) {
@@ -878,37 +1419,24 @@ export default function CuratedArchiveImportClient({
     setError("");
 
     try {
-      const response =
-        await fetch(
-          "/api/admin/curated-archive-import/publish",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
-            body: JSON.stringify({
-              folder:
-                production.folder,
-            }),
-          },
-        );
+      setImportProgressText(
+        "Preparing production…",
+      );
 
-      const result =
-        (await response.json()) as {
-          ok?: boolean;
-          message?: string;
-        };
+      await publishCuratedProductionDirect(
+        production,
+        (current, total) => {
+          setImportProgressText(
+            current === 0
+              ? `Preparing ${total} image${total === 1 ? "" : "s"}…`
+              : `Publishing ${current} of ${total} images…`,
+          );
+        },
+      );
 
-      if (
-        !response.ok ||
-        !result.ok
-      ) {
-        throw new Error(
-          result.message ||
-            "The curated production could not be imported.",
-        );
-      }
+      setImportProgressText(
+        "Refreshing archive status…",
+      );
 
       const preflightResponse =
         await fetch(
@@ -949,6 +1477,7 @@ export default function CuratedArchiveImportClient({
       );
     } finally {
       setImportingProduction(null);
+      setImportProgressText("");
     }
   }
 
@@ -1015,37 +1544,20 @@ export default function CuratedArchiveImportClient({
         });
 
         try {
-          const response =
-            await fetch(
-              "/api/admin/curated-archive-import/publish",
-              {
-                method: "POST",
-                headers: {
-                  "Content-Type":
-                    "application/json",
-                },
-                body: JSON.stringify({
-                  folder:
-                    production.folder,
-                }),
-              },
-            );
-
-          const result =
-            (await response.json()) as {
-              ok?: boolean;
-              message?: string;
-            };
-
-          if (
-            !response.ok ||
-            !result.ok
-          ) {
-            throw new Error(
-              result.message ||
-                "Import failed.",
-            );
-          }
+          await publishCuratedProductionDirect(
+            production,
+            (current, total) => {
+              setBatchProgress({
+                current: index + 1,
+                total:
+                  readyProductions.length,
+                title:
+                  current === 0
+                    ? `${title} — preparing ${total} images`
+                    : `${title} — image ${current} of ${total}`,
+              });
+            },
+          );
 
           imported += 1;
         } catch (productionError) {
@@ -1895,7 +2407,8 @@ export default function CuratedArchiveImportClient({
                           >
                             {importingProduction ===
                             production.folder
-                              ? "Importing…"
+                              ? importProgressText ||
+                                "Importing…"
                               : "Import"}
                           </button>
                         ) : null}

@@ -5,12 +5,27 @@ import {
   useState,
 } from "react";
 
+import ProofingWatermarkOverlay from "./ProofingWatermarkOverlay";
+
 type ProofingGalleryEntryProps = {
   gallerySlug: string;
   title: string;
   clientName?: string;
   venue?: string;
   coverImageUrl?: string;
+  watermarkUrl?: string;
+  watermarkPosition?:
+    | "top-left"
+    | "top-center"
+    | "top-right"
+    | "center-left"
+    | "center"
+    | "center-right"
+    | "bottom-left"
+    | "bottom-center"
+    | "bottom-right";
+  watermarkSize?: number;
+  watermarkOpacity?: number;
 };
 
 type EntryResponse = {
@@ -24,6 +39,10 @@ export default function ProofingGalleryEntry({
   clientName,
   venue,
   coverImageUrl,
+  watermarkUrl,
+  watermarkPosition,
+  watermarkSize,
+  watermarkOpacity,
 }: ProofingGalleryEntryProps) {
   const [email, setEmail] =
     useState("");
@@ -89,11 +108,19 @@ export default function ProofingGalleryEntry({
   return (
     <section className="proofing-entry">
       {coverImageUrl ? (
-        <img
-          src={coverImageUrl}
-          alt=""
-          className="proofing-entry-cover"
-        />
+        <>
+          <img
+            src={coverImageUrl}
+            alt=""
+            className="proofing-entry-cover"
+          />
+          <ProofingWatermarkOverlay
+            url={watermarkUrl}
+            position={watermarkPosition}
+            size={watermarkSize}
+            opacity={watermarkOpacity}
+          />
+        </>
       ) : null}
 
       <div className="proofing-entry-overlay" />

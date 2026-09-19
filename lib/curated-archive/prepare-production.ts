@@ -19,7 +19,7 @@ import type {
 import {
   findCuratedImportStagedImage,
   getCuratedImportDirectFiles,
-  readCuratedImportDirectFile,
+  readCuratedImportDirectFileRange,
 } from "@/lib/curated-archive/staging";
 import {
   validateCuratedSourceBoundary,
@@ -29,7 +29,6 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import sharp from "sharp";
 
 const EXCLUSION_PATH = path.resolve(
   "scripts/archive-curator/excluded-productions.txt",
@@ -162,29 +161,163 @@ function parseMonth(
     : null;
 }
 
-async function getImageOrientation(
-  source: string | Buffer,
-): Promise<GalleryOrientation> {
-  const metadata =
-    await sharp(
-      source,
-      {
-        failOn: "none",
-      },
-    ).metadata();
+function imageDimensionsFromHeader(
+  bytes: Buffer,
+) {
+  if (
+    bytes.length >= 24 &&
+    bytes.subarray(0, 8).equals(
+      Buffer.from([
+        0x89, 0x50, 0x4e, 0x47,
+        0x0d, 0x0a, 0x1a, 0x0a,
+      ]),
+    )
+  ) {
+    return {
+      width: bytes.readUInt32BE(16),
+      height: bytes.readUInt32BE(20),
+    };
+  }
 
-  const width =
-    metadata.width ?? 0;
+  if (
+    bytes.length >= 12 &&
+    bytes.toString("ascii", 0, 4) === "RIFF" &&
+    bytes.toString("ascii", 8, 12) === "WEBP"
+  ) {
+    const chunk =
+      bytes.toString("ascii", 12, 16);
 
-  const height =
-    metadata.height ?? 0;
+    if (
+      chunk === "VP8X" &&
+      bytes.length >= 30
+    ) {
+      return {
+        width:
+          1 +
+          bytes.readUIntLE(24, 3),
+        height:
+          1 +
+          bytes.readUIntLE(27, 3),
+      };
+    }
 
+    if (
+      chunk === "VP8L" &&
+      bytes.length >= 25
+    ) {
+      const bits =
+        bytes.readUInt32LE(21);
+
+      return {
+        width:
+          (bits & 0x3fff) + 1,
+        height:
+          ((bits >> 14) & 0x3fff) + 1,
+      };
+    }
+
+    if (
+      chunk === "VP8 " &&
+      bytes.length >= 30
+    ) {
+      return {
+        width:
+          bytes.readUInt16LE(26) &
+          0x3fff,
+        height:
+          bytes.readUInt16LE(28) &
+          0x3fff,
+      };
+    }
+  }
+
+  if (
+    bytes.length >= 4 &&
+    bytes[0] === 0xff &&
+    bytes[1] === 0xd8
+  ) {
+    const frameMarkers = new Set([
+      0xc0, 0xc1, 0xc2, 0xc3,
+      0xc5, 0xc6, 0xc7,
+      0xc9, 0xca, 0xcb,
+      0xcd, 0xce, 0xcf,
+    ]);
+
+    let offset = 2;
+
+    while (offset + 8 < bytes.length) {
+      while (
+        offset < bytes.length &&
+        bytes[offset] !== 0xff
+      ) {
+        offset += 1;
+      }
+
+      while (
+        offset < bytes.length &&
+        bytes[offset] === 0xff
+      ) {
+        offset += 1;
+      }
+
+      if (offset >= bytes.length) {
+        break;
+      }
+
+      const marker = bytes[offset];
+      offset += 1;
+
+      if (
+        marker === 0xd8 ||
+        marker === 0xd9 ||
+        marker === 0x01 ||
+        (marker >= 0xd0 && marker <= 0xd7)
+      ) {
+        continue;
+      }
+
+      if (offset + 1 >= bytes.length) {
+        break;
+      }
+
+      const length =
+        bytes.readUInt16BE(offset);
+
+      if (
+        length < 2 ||
+        offset + length > bytes.length
+      ) {
+        break;
+      }
+
+      if (
+        frameMarkers.has(marker) &&
+        length >= 7
+      ) {
+        return {
+          height:
+            bytes.readUInt16BE(offset + 3),
+          width:
+            bytes.readUInt16BE(offset + 5),
+        };
+      }
+
+      offset += length;
+    }
+  }
+
+  return null;
+}
+
+function orientationFromDimensions(
+  width: number,
+  height: number,
+): GalleryOrientation {
   if (!width || !height) {
     return "landscape";
   }
 
-  const ratio =
-    width / height;
+  const ratio = width / height;
 
   if (ratio > 1.08) {
     return "landscape";
@@ -195,6 +328,47 @@ async function getImageOrientation(
   }
 
   return "square";
+}
+
+async function getImageOrientation(
+  source: string | Buffer,
+): Promise<GalleryOrientation> {
+  let bytes: Buffer;
+
+  if (Buffer.isBuffer(source)) {
+    bytes = source.subarray(0, 65536);
+  } else {
+    const handle = await fs.open(
+      source,
+      "r",
+    );
+
+    try {
+      const buffer =
+        Buffer.alloc(65536);
+      const { bytesRead } =
+        await handle.read(
+          buffer,
+          0,
+          buffer.length,
+          0,
+        );
+      bytes =
+        buffer.subarray(0, bytesRead);
+    } finally {
+      await handle.close();
+    }
+  }
+
+  const dimensions =
+    imageDimensionsFromHeader(bytes);
+
+  return dimensions
+    ? orientationFromDimensions(
+        dimensions.width,
+        dimensions.height,
+      )
+    : "landscape";
 }
 
 function metadataCredits(
@@ -970,7 +1144,7 @@ export async function prepareCuratedProduction(
         const orientation =
           image.stagedRelativePath
             ? await getImageOrientation(
-                await readCuratedImportDirectFile(
+                await readCuratedImportDirectFileRange(
                   image.stagedRelativePath,
                 ),
               )

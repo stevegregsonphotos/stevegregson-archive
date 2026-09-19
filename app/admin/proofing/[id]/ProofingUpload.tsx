@@ -188,9 +188,18 @@ export default function ProofingUpload({
     setFailures([]);
   }
 
+  type UploadedProofMetadata = {
+    imageId: string;
+    originalFilename: string;
+    webFilename: string;
+    width: number;
+    height: number;
+    createdAt: string;
+  };
+
   async function uploadOne(
     file: File,
-  ) {
+  ): Promise<UploadedProofMetadata> {
     const prepared =
       await prepareProofUpload(
         file,
@@ -255,7 +264,33 @@ export default function ProofingUpload({
       );
     }
 
-    const commitResponse =
+    return {
+      imageId:
+        signingResult.imageId,
+      originalFilename:
+        file.name,
+      webFilename:
+        signingResult.webFilename,
+      width:
+        prepared.width,
+      height:
+        prepared.height,
+      createdAt:
+        new Date(
+          file.lastModified ||
+            Date.now(),
+        ).toISOString(),
+    };
+  }
+
+  async function commitBatch(
+    images: UploadedProofMetadata[],
+  ) {
+    if (images.length === 0) {
+      return;
+    }
+
+    const response =
       await fetch(
         "/api/admin/proofing/upload",
         {
@@ -265,39 +300,25 @@ export default function ProofingUpload({
               "application/json",
           },
           body: JSON.stringify({
-            action: "commit",
+            action: "commit-batch",
             galleryId,
-            imageId:
-              signingResult.imageId,
-            originalFilename:
-              file.name,
-            webFilename:
-              signingResult.webFilename,
-            width:
-              prepared.width,
-            height:
-              prepared.height,
-            createdAt:
-              new Date(
-                file.lastModified ||
-                  Date.now(),
-              ).toISOString(),
+            images,
           }),
         },
       );
 
-    const commitResult =
-      (await commitResponse.json()) as {
+    const result =
+      (await response.json()) as {
         ok?: boolean;
         message?: string;
       };
 
     if (
-      !commitResponse.ok ||
-      !commitResult.ok
+      !response.ok ||
+      !result.ok
     ) {
       throw new Error(
-        commitResult.message ||
+        result.message ||
           "Proofing image metadata could not be saved.",
       );
     }
@@ -319,10 +340,10 @@ export default function ProofingUpload({
       UploadFailure[] = [];
 
     /*
-     * Four parallel workers gives substantially
-     * better throughput without loading hundreds
-     * of full-resolution photographs into browser
-     * memory at once.
+     * Four parallel browser -> R2 transfers provide
+     * good throughput while bounding browser memory.
+     * Metadata is committed once per batch to avoid
+     * concurrent gallery read/modify/write races.
      */
     const concurrency = 4;
 
@@ -337,30 +358,82 @@ export default function ProofingUpload({
           index + concurrency,
         );
 
-      await Promise.all(
-        batch.map(
-          async (file) => {
-            try {
-              await uploadOne(
-                file,
+      const results =
+        await Promise.all(
+          batch.map(
+            async (file) => {
+              try {
+                return {
+                  file,
+                  uploaded:
+                    await uploadOne(file),
+                  error:
+                    null as Error | null,
+                };
+              } catch (error) {
+                return {
+                  file,
+                  uploaded: null,
+                  error:
+                    error instanceof Error
+                      ? error
+                      : new Error(
+                          "Upload request failed.",
+                        ),
+                };
+              }
+            },
+          ),
+        );
+
+      const successful =
+        results.flatMap(
+          (result) =>
+            result.uploaded
+              ? [result.uploaded]
+              : [],
+        );
+
+      let commitError:
+        Error | null = null;
+
+      try {
+        await commitBatch(
+          successful,
+        );
+      } catch (error) {
+        commitError =
+          error instanceof Error
+            ? error
+            : new Error(
+                "Proofing image metadata could not be saved.",
               );
-            } catch (error) {
-              uploadFailures.push({
-                filename:
-                  file.name,
-                message:
-                  error instanceof Error
-                    ? error.message
-                    : "Upload request failed.",
-              });
-            } finally {
-              setCompleted(
-                (current) =>
-                  current + 1,
-              );
-            }
-          },
-        ),
+      }
+
+      for (const result of results) {
+        if (result.error) {
+          uploadFailures.push({
+            filename:
+              result.file.name,
+            message:
+              result.error.message,
+          });
+        } else if (
+          result.uploaded &&
+          commitError
+        ) {
+          uploadFailures.push({
+            filename:
+              result.file.name,
+            message:
+              commitError.message,
+          });
+        }
+      }
+
+      setCompleted(
+        (current) =>
+          current + batch.length,
       );
     }
 

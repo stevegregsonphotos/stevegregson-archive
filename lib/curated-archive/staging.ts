@@ -17,7 +17,6 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import JSZip from "jszip";
 
 const STAGING_KEY =
   "__curated-import-staging/current.zip";
@@ -36,6 +35,17 @@ const DIRECT_STAGING_PREFIX =
 
 const DIRECT_MANIFEST_KEY =
   "__curated-import-staging/current.json";
+
+let directManifestCache:
+  | {
+      etag: string;
+      files: string[];
+      expiresAt: number;
+    }
+  | null = null;
+
+const DIRECT_MANIFEST_CACHE_MS =
+  60 * 1000;
 
 const LOCAL_ROOT = path.join(
   os.tmpdir(),
@@ -295,6 +305,65 @@ export async function createCuratedImportUploadUrl(
     url,
     path: safePath,
   };
+}
+
+export async function curatedImportFileExists(
+  relativePath: string,
+) {
+  const safePath =
+    safeCuratedRelativePath(
+      relativePath,
+    );
+
+  try {
+    await getClient().send(
+      new HeadObjectCommand({
+        Bucket: getBucket(),
+        Key:
+          `${DIRECT_STAGING_PREFIX}${safePath}`,
+      }),
+    );
+    return true;
+  } catch (error) {
+    const status =
+      typeof error === "object" &&
+      error !== null &&
+      "$metadata" in error
+        ? (error as {
+            $metadata?: {
+              httpStatusCode?: number;
+            };
+          }).$metadata?.httpStatusCode
+        : undefined;
+
+    if (status === 404) {
+      return false;
+    }
+
+    throw error;
+  }
+}
+
+export async function createCuratedImportDownloadUrl(
+  relativePath: string,
+  contentType = "application/octet-stream",
+) {
+  const safePath =
+    safeCuratedRelativePath(
+      relativePath,
+    );
+
+  return getSignedUrl(
+    getClient(),
+    new GetObjectCommand({
+      Bucket: getBucket(),
+      Key:
+        `${DIRECT_STAGING_PREFIX}${safePath}`,
+      ResponseContentType:
+        contentType,
+    }),
+    { expiresIn: 15 * 60 },
+  );
 }
 
 export async function putCuratedImportFile(
@@ -610,63 +679,10 @@ export async function finalizeCuratedImportFiles(
     }),
   );
 
+  directManifestCache = null;
   await clearLocalCache();
 
   return manifest;
-}
-
-export async function putCuratedImportArchive(
-  archive: Buffer,
-) {
-  let client: S3Client;
-
-  try {
-    client = getClient();
-  } catch (error) {
-    throw new Error(
-      `Could not initialise curated-import R2 client: ${
-        error instanceof Error
-          ? error.message
-          : String(error)
-      }`,
-    );
-  }
-
-  let bucket: string;
-
-  try {
-    bucket = getBucket();
-  } catch (error) {
-    throw new Error(
-      `Could not resolve curated-import R2 bucket: ${
-        error instanceof Error
-          ? error.message
-          : String(error)
-      }`,
-    );
-  }
-
-  try {
-    await client.send(
-      new PutObjectCommand({
-        Bucket: bucket,
-        Key: STAGING_KEY,
-        Body: archive,
-        ContentType: "application/zip",
-        CacheControl: "no-store",
-      }),
-    );
-  } catch (error) {
-    throw new Error(
-      `Could not upload curated package to R2: ${
-        error instanceof Error
-          ? `${error.name}: ${error.message}`
-          : String(error)
-      }`,
-    );
-  }
-
-  await clearLocalCache();
 }
 
 export async function deleteCuratedImportArchive() {
@@ -675,6 +691,7 @@ export async function deleteCuratedImportArchive() {
    * fallback still exists.
    */
   await deleteDirectStagingFiles();
+  directManifestCache = null;
 
   await getClient().send(
     new DeleteObjectCommand({
@@ -684,37 +701,6 @@ export async function deleteCuratedImportArchive() {
   );
 
   await clearLocalCache();
-}
-
-async function getCurrentEtag() {
-  try {
-    const response =
-      await getClient().send(
-        new HeadObjectCommand({
-          Bucket: getBucket(),
-          Key: STAGING_KEY,
-        }),
-      );
-
-    return response.ETag ?? "present";
-  } catch (error) {
-    const status =
-      typeof error === "object" &&
-      error !== null &&
-      "$metadata" in error
-        ? (error as {
-            $metadata?: {
-              httpStatusCode?: number;
-            };
-          }).$metadata?.httpStatusCode
-        : undefined;
-
-    if (status === 404) {
-      return null;
-    }
-
-    throw error;
-  }
 }
 
 async function getDirectManifestEtag() {
@@ -820,10 +806,49 @@ export async function getCuratedImportDirectFiles() {
     await getDirectManifestEtag();
 
   if (!etag) {
+    directManifestCache = null;
     return null;
   }
 
-  return readDirectManifest();
+  if (
+    directManifestCache &&
+    directManifestCache.etag === etag &&
+    directManifestCache.expiresAt > Date.now()
+  ) {
+    return directManifestCache.files;
+  }
+
+  const files =
+    await readDirectManifest();
+
+  directManifestCache = {
+    etag,
+    files,
+    expiresAt:
+      Date.now() + DIRECT_MANIFEST_CACHE_MS,
+  };
+
+  return files;
+}
+
+export function findCuratedImportFileBySuffix(
+  files: string[],
+  suffix: string,
+) {
+  const safeSuffix =
+    safeCuratedRelativePath(
+      suffix,
+    );
+
+  return (
+    files.find(
+      (relativePath) =>
+        relativePath === safeSuffix ||
+        relativePath.endsWith(
+          `/${safeSuffix}`,
+        ),
+    ) ?? null
+  );
 }
 
 export function findCuratedImportStagedImage(
@@ -852,6 +877,50 @@ export function findCuratedImportStagedImage(
           `/${suffix}`,
         ),
     ) ?? null
+  );
+}
+
+export async function readCuratedImportDirectFileRange(
+  relativePath: string,
+  start = 0,
+  end = 65535,
+) {
+  const safePath =
+    safeCuratedRelativePath(
+      relativePath,
+    );
+
+  if (
+    !Number.isInteger(start) ||
+    !Number.isInteger(end) ||
+    start < 0 ||
+    end < start
+  ) {
+    throw new Error(
+      "Invalid curated staged file range.",
+    );
+  }
+
+  const response =
+    await getClient().send(
+      new GetObjectCommand({
+        Bucket:
+          getBucket(),
+        Key:
+          `${DIRECT_STAGING_PREFIX}${safePath}`,
+        Range:
+          `bytes=${start}-${end}`,
+      }),
+    );
+
+  if (!response.Body) {
+    throw new Error(
+      `Curated staged file "${safePath}" has no body.`,
+    );
+  }
+
+  return Buffer.from(
+    await response.Body.transformToByteArray(),
   );
 }
 
@@ -907,6 +976,9 @@ async function materializeDirectFiles(
      */
     if (
       /(^|\/)selected-web-staging\/[^/]+$/i.test(
+        relativePath,
+      ) ||
+      /(^|\/)\.editor-thumbnails\/[^/]+\.webp$/i.test(
         relativePath,
       )
     ) {
@@ -1001,100 +1073,6 @@ async function cachedEtag() {
   }
 }
 
-async function downloadArchive() {
-  const response =
-    await getClient().send(
-      new GetObjectCommand({
-        Bucket: getBucket(),
-        Key: STAGING_KEY,
-      }),
-    );
-
-  if (!response.Body) {
-    throw new Error(
-      "The staged curated archive has no body.",
-    );
-  }
-
-  return Buffer.from(
-    await response.Body.transformToByteArray(),
-  );
-}
-
-async function extractArchive(
-  archive: Buffer,
-  etag: string,
-) {
-  await clearLocalCache();
-  await fs.mkdir(
-    LOCAL_ROOT,
-    {
-      recursive: true,
-    },
-  );
-
-  const zip =
-    await JSZip.loadAsync(archive);
-
-  for (const entry of Object.values(zip.files)) {
-    if (
-      entry.name.startsWith("__MACOSX/") ||
-      entry.name
-        .split("/")
-        .some((part) => part.startsWith("."))
-    ) {
-      continue;
-    }
-
-    const parts = safeZipPath(entry.name);
-    const destination = path.resolve(
-      LOCAL_ROOT,
-      ...parts,
-    );
-
-    if (
-      destination !== LOCAL_ROOT &&
-      !destination.startsWith(
-        `${LOCAL_ROOT}${path.sep}`,
-      )
-    ) {
-      throw new Error(
-        "Curated archive contains a path outside its staging root.",
-      );
-    }
-
-    if (entry.dir) {
-      await fs.mkdir(
-        destination,
-        {
-          recursive: true,
-        },
-      );
-      continue;
-    }
-
-    await fs.mkdir(
-      path.dirname(destination),
-      {
-        recursive: true,
-      },
-    );
-
-    await fs.writeFile(
-      destination,
-      await entry.async("nodebuffer"),
-    );
-  }
-
-  await fs.writeFile(
-    ETAG_FILE,
-    `${etag}\n`,
-    "utf8",
-  );
-
-  return LOCAL_ROOT;
-}
-
 async function resolveCuratedImportRoot() {
   let entries:
     import("node:fs").Dirent[];
@@ -1182,53 +1160,25 @@ async function resolveCuratedImportRoot() {
 }
 
 export async function materializeCuratedImport() {
-  /*
-   * Prefer the new direct-file staging format.
-   */
   const directEtag =
     await getDirectManifestEtag();
 
-  if (directEtag) {
-    const cacheTag =
-      `direct:${directEtag}`;
-
-    if (
-      (await cachedEtag()) !==
-      cacheTag
-    ) {
-      await materializeDirectFiles(
-        cacheTag,
-      );
-    }
-
-    return resolveCuratedImportRoot();
-  }
-
-  /*
-   * Temporary backward-compatible ZIP fallback.
-   */
-  const etag =
-    await getCurrentEtag();
-
-  if (!etag) {
+  if (!directEtag) {
     await clearLocalCache();
     return null;
   }
 
   const cacheTag =
-    `zip:${etag}`;
+    `direct:${directEtag}`;
 
   if (
-    (await cachedEtag()) ===
+    (await cachedEtag()) !==
     cacheTag
   ) {
-    return resolveCuratedImportRoot();
+    await materializeDirectFiles(
+      cacheTag,
+    );
   }
-
-  await extractArchive(
-    await downloadArchive(),
-    cacheTag,
-  );
 
   return resolveCuratedImportRoot();
 }

@@ -7,7 +7,6 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 
 import { NextResponse } from "next/server";
-import sharp from "sharp";
 
 import {
   getProofingWatermarks,
@@ -15,14 +14,12 @@ import {
 } from "../../../../../../lib/proofing/watermarks";
 
 import {
-  deleteProofingWatermark,
-  putProofingWatermark,
+  createProofingWatermarkUploadUrl,
+  proofingWatermarkExists,
 } from "../../../../../../lib/proofing/watermark-storage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 function safeName(value: string) {
   return value
@@ -31,139 +28,161 @@ function safeName(value: string) {
     .slice(0, 100);
 }
 
+function stringValue(value: unknown) {
+  return typeof value === "string"
+    ? value.trim()
+    : "";
+}
+
 export async function POST(request: Request) {
   if (!isBackstageRequestAuthenticated(request)) {
     return createUnauthorizedResponse();
   }
 
   try {
-    const formData = await request.formData();
+    const body =
+      (await request.json()) as {
+        action?: unknown;
+        name?: unknown;
+        originalFilename?: unknown;
+        id?: unknown;
+        filename?: unknown;
+      };
 
-    const file = formData.get("file");
-    const requestedName = safeName(
-      String(formData.get("name") ?? ""),
-    );
+    const action = stringValue(body.action);
 
-    if (!(file instanceof File)) {
-      return NextResponse.json(
-        {
-          ok: false,
-          message: "Choose a PNG watermark file.",
-        },
-        { status: 400 },
-      );
+    if (action === "presign") {
+      const originalFilename =
+        stringValue(body.originalFilename);
+
+      if (
+        !originalFilename ||
+        !/\.png$/i.test(originalFilename)
+      ) {
+        return NextResponse.json(
+          {
+            ok: false,
+            message:
+              "Choose a transparent PNG watermark file.",
+          },
+          { status: 400 },
+        );
+      }
+
+      const id = randomUUID();
+      const filename = `${id}.png`;
+      const uploadUrl =
+        await createProofingWatermarkUploadUrl(
+          filename,
+        );
+
+      return NextResponse.json({
+        ok: true,
+        id,
+        filename,
+        uploadUrl,
+      });
     }
 
-    if (file.size === 0) {
-      return NextResponse.json(
-        {
-          ok: false,
-          message: "The watermark file is empty.",
-        },
-        { status: 400 },
+    if (action === "commit") {
+      const id = stringValue(body.id);
+      const filename = stringValue(body.filename);
+      const originalFilename =
+        stringValue(body.originalFilename);
+      const requestedName = safeName(
+        stringValue(body.name),
       );
-    }
 
-    if (file.size > MAX_FILE_SIZE) {
-      return NextResponse.json(
-        {
-          ok: false,
-          message:
-            "Watermark files must be smaller than 10 MB.",
-        },
-        { status: 400 },
-      );
-    }
+      if (
+        !id ||
+        filename !== `${id}.png` ||
+        !originalFilename
+      ) {
+        return NextResponse.json(
+          {
+            ok: false,
+            message:
+              "Watermark metadata is invalid.",
+          },
+          { status: 400 },
+        );
+      }
 
-    const input = Buffer.from(
-      await file.arrayBuffer(),
-    );
+      if (
+        !(await proofingWatermarkExists(
+          filename,
+        ))
+      ) {
+        return NextResponse.json(
+          {
+            ok: false,
+            message:
+              "The watermark was not verified in R2.",
+          },
+          { status: 409 },
+        );
+      }
 
-    let metadata;
+      const originalBaseName = path
+        .basename(
+          originalFilename,
+          path.extname(originalFilename),
+        )
+        .trim();
 
-    try {
-      metadata = await sharp(input).metadata();
-    } catch {
-      return NextResponse.json(
-        {
-          ok: false,
-          message:
-            "The selected file is not a valid image.",
-        },
-        { status: 400 },
-      );
-    }
+      const now = new Date().toISOString();
+      const watermark = {
+        id,
+        name:
+          requestedName ||
+          originalBaseName ||
+          "Watermark",
+        filename,
+        createdAt: now,
+        updatedAt: now,
+      };
 
-    if (metadata.format !== "png") {
-      return NextResponse.json(
-        {
-          ok: false,
-          message:
-            "Watermarks must be uploaded as PNG files.",
-        },
-        { status: 400 },
-      );
-    }
+      const watermarks =
+        await getProofingWatermarks();
 
-    if (!metadata.hasAlpha) {
-      return NextResponse.json(
-        {
-          ok: false,
-          message:
-            "The PNG must contain transparency.",
-        },
-        { status: 400 },
-      );
-    }
+      if (
+        watermarks.some(
+          (item) => item.id === id,
+        )
+      ) {
+        return NextResponse.json({
+          ok: true,
+          watermark:
+            watermarks.find(
+              (item) => item.id === id,
+            ),
+        });
+      }
 
-    const id = randomUUID();
-    const filename = `${id}.png`;
-
-    const originalBaseName = path
-      .basename(file.name, path.extname(file.name))
-      .trim();
-
-    const name =
-      requestedName ||
-      originalBaseName ||
-      "Watermark";
-
-    await putProofingWatermark(
-      filename,
-      input,
-    );
-
-    const now = new Date().toISOString();
-
-    const watermark = {
-      id,
-      name,
-      filename,
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    const watermarks =
-      await getProofingWatermarks();
-
-    try {
       await saveProofingWatermarks([
         ...watermarks,
         watermark,
       ]);
-    } catch (error) {
-      await deleteProofingWatermark(
-        filename,
-      ).catch(() => undefined);
 
-      throw error;
+      return NextResponse.json({
+        ok: true,
+        watermark,
+      });
     }
 
-    return NextResponse.json({
-      ok: true,
-      watermark,
-    });
-  } catch {
+    return NextResponse.json(
+      {
+        ok: false,
+        message: "Unknown watermark upload action.",
+      },
+      { status: 400 },
+    );
+  } catch (error) {
+    console.error(
+      "Proofing watermark upload failed:",
+      error,
+    );
+
     return NextResponse.json(
       {
         ok: false,

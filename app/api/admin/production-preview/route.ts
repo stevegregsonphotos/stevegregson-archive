@@ -841,6 +841,17 @@ export async function POST(request: Request) {
     return createUnauthorizedResponse();
   }
 
+  if (process.env.VERCEL === "1") {
+    return Response.json(
+      {
+        ok: false,
+        message:
+          "The legacy ZIP production workflow is disabled on Vercel. Use Curated Import so image bytes move directly between the browser and R2.",
+      },
+      { status: 410 },
+    );
+  }
+
   try {
     const formData = await request.formData();
     const upload = formData.get(

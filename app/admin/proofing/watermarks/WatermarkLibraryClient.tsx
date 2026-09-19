@@ -17,6 +17,92 @@ type WatermarkLibraryClientProps = {
   initialWatermarks: Watermark[];
 };
 
+const MAX_WATERMARK_BYTES = 10 * 1024 * 1024;
+
+async function validateWatermarkFile(
+  file: File,
+) {
+  if (
+    file.type !== "image/png" ||
+    !/\.png$/i.test(file.name)
+  ) {
+    throw new Error(
+      "Watermarks must be uploaded as PNG files.",
+    );
+  }
+
+  if (
+    file.size === 0 ||
+    file.size > MAX_WATERMARK_BYTES
+  ) {
+    throw new Error(
+      file.size > MAX_WATERMARK_BYTES
+        ? "Watermark files must be smaller than 10 MB."
+        : "The watermark file is empty.",
+    );
+  }
+
+  const objectUrl = URL.createObjectURL(file);
+
+  try {
+    const image = new Image();
+
+    await new Promise<void>((resolve, reject) => {
+      image.onload = () => resolve();
+      image.onerror = () =>
+        reject(
+          new Error(
+            "The selected file is not a valid PNG image.",
+          ),
+        );
+      image.src = objectUrl;
+    });
+
+    const canvas = document.createElement("canvas");
+    canvas.width = image.naturalWidth;
+    canvas.height = image.naturalHeight;
+
+    const context = canvas.getContext("2d", {
+      willReadFrequently: true,
+    });
+
+    if (!context) {
+      throw new Error(
+        "The watermark could not be validated.",
+      );
+    }
+
+    context.drawImage(image, 0, 0);
+    const pixels = context.getImageData(
+      0,
+      0,
+      canvas.width,
+      canvas.height,
+    ).data;
+
+    let hasTransparency = false;
+
+    for (
+      let index = 3;
+      index < pixels.length;
+      index += 4
+    ) {
+      if (pixels[index] < 255) {
+        hasTransparency = true;
+        break;
+      }
+    }
+
+    if (!hasTransparency) {
+      throw new Error(
+        "The PNG must contain transparency.",
+      );
+    }
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
 export default function WatermarkLibraryClient({
   initialWatermarks,
 }: WatermarkLibraryClientProps) {
@@ -46,31 +132,88 @@ export default function WatermarkLibraryClient({
     setMessage(null);
 
     try {
-      const formData = new FormData();
+      await validateWatermarkFile(file);
 
-      formData.set("file", file);
-
-      if (name.trim()) {
-        formData.set(
-          "name",
-          name.trim(),
-        );
-      }
-
-      const response = await fetch(
+      const signingResponse = await fetch(
         "/api/admin/proofing/watermarks/upload",
         {
           method: "POST",
-          body: formData,
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            action: "presign",
+            originalFilename: file.name,
+          }),
         },
       );
 
-      const result = await response.json();
+      const signed =
+        (await signingResponse.json()) as {
+          ok?: boolean;
+          message?: string;
+          id?: string;
+          filename?: string;
+          uploadUrl?: string;
+        };
 
-      if (!response.ok || !result.ok) {
+      if (
+        !signingResponse.ok ||
+        !signed.ok ||
+        !signed.id ||
+        !signed.filename ||
+        !signed.uploadUrl
+      ) {
+        throw new Error(
+          signed.message ??
+            "Watermark upload could not be prepared.",
+        );
+      }
+
+      const r2Response = await fetch(
+        signed.uploadUrl,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "image/png",
+          },
+          body: file,
+        },
+      );
+
+      if (!r2Response.ok) {
+        throw new Error(
+          `Direct R2 upload failed (HTTP ${r2Response.status}).`,
+        );
+      }
+
+      const commitResponse = await fetch(
+        "/api/admin/proofing/watermarks/upload",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            action: "commit",
+            id: signed.id,
+            filename: signed.filename,
+            originalFilename: file.name,
+            name: name.trim(),
+          }),
+        },
+      );
+
+      const result =
+        await commitResponse.json();
+
+      if (
+        !commitResponse.ok ||
+        !result.ok
+      ) {
         throw new Error(
           result.message ??
-            "Watermark could not be uploaded.",
+            "Watermark could not be saved.",
         );
       }
 

@@ -7,31 +7,10 @@ import {
   createCuratedImportUploadUrl,
   deleteCuratedImportArchive,
   finalizeCuratedImportFiles,
-  putCuratedImportArchive,
 } from "@/lib/curated-archive/staging";
-
-import JSZip from "jszip";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-const MAX_UPLOAD_SIZE =
-  500 * 1024 * 1024;
-
-function meaningfulFiles(zip: JSZip) {
-  return Object.values(zip.files)
-    .filter((entry) => !entry.dir)
-    .map((entry) =>
-      entry.name.replace(/\\/g, "/"),
-    )
-    .filter(
-      (name) =>
-        !name.startsWith("__MACOSX/") &&
-        !name
-          .split("/")
-          .some((part) => part.startsWith(".")),
-    );
-}
 
 export async function POST(
   request: Request,
@@ -99,6 +78,9 @@ export async function POST(
           relativePath,
         ) ||
         /(^|\/)selected-web-staging\/[^/]+$/i.test(
+          relativePath,
+        ) ||
+        /(^|\/)\.editor-thumbnails\/[^/]+\.webp$/i.test(
           relativePath,
         );
 
@@ -199,118 +181,18 @@ export async function POST(
     }
 
     /*
-     * Legacy ZIP staging remains temporarily available
-     * until the browser client has been migrated.
+     * Large curated ZIP bodies are deliberately forbidden in
+     * production architecture. Authoritative files must use
+     * the presigned browser -> R2 flow above.
      */
-    const upload =
-      formData.get("curatedArchive");
-
-    if (!(upload instanceof File)) {
-      return Response.json(
-        {
-          ok: false,
-          message:
-            "Choose a curated folder first.",
-        },
-        { status: 400 },
-      );
-    }
-
-    if (
-      !upload.name
-        .toLowerCase()
-        .endsWith(".zip")
-    ) {
-      return Response.json(
-        {
-          ok: false,
-          message:
-            "The curated folder package must be a ZIP archive.",
-        },
-        { status: 400 },
-      );
-    }
-
-    if (
-      upload.size === 0 ||
-      upload.size > MAX_UPLOAD_SIZE
-    ) {
-      return Response.json(
-        {
-          ok: false,
-          message:
-            upload.size > MAX_UPLOAD_SIZE
-              ? "The curated folder is larger than 500 MB after packaging. Choose a smaller folder."
-              : "The selected curated folder is empty.",
-        },
-        {
-          status:
-            upload.size > MAX_UPLOAD_SIZE
-              ? 413
-              : 400,
-        },
-      );
-    }
-
-    const archive = Buffer.from(
-      await upload.arrayBuffer(),
+    return Response.json(
+      {
+        ok: false,
+        message:
+          "Legacy ZIP staging is disabled. Upload curated files directly to R2.",
+      },
+      { status: 410 },
     );
-
-    const zip =
-      await JSZip.loadAsync(archive);
-
-    const files = meaningfulFiles(zip);
-
-    const finalSelections =
-      files.filter((name) =>
-        /(^|\/)final-selection\.json$/i.test(
-          name,
-        ),
-      );
-
-    const stagedImages =
-      files.filter((name) =>
-        /(^|\/)selected-web-staging\/[^/]+$/i.test(
-          name,
-        ),
-      );
-
-    if (finalSelections.length === 0) {
-      return Response.json(
-        {
-          ok: false,
-          message:
-            "The selected production folder package does not contain final-selection.json.",
-        },
-        { status: 400 },
-      );
-    }
-
-    if (stagedImages.length === 0) {
-      return Response.json(
-        {
-          ok: false,
-          message:
-            "The selected production folder package does not contain any selected-web-staging images.",
-        },
-        { status: 400 },
-      );
-    }
-
-    await putCuratedImportArchive(
-      archive,
-    );
-
-    return Response.json({
-      ok: true,
-      message:
-        "Curated folder staged successfully.",
-      archiveName: upload.name,
-      productionCount:
-        finalSelections.length,
-      stagedImageCount:
-        stagedImages.length,
-    });
   } catch (error) {
     console.error(
       "Curated folder staging failed:",

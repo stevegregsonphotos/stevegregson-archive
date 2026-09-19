@@ -4,7 +4,7 @@ import {
 } from "@/lib/backstage-auth";
 
 import {
-  getProofingImage,
+  createProofingImageDownloadUrl,
 } from "../../../../../lib/proofing/image-storage";
 
 import { NextRequest, NextResponse } from "next/server";
@@ -92,19 +92,14 @@ export async function GET(request: NextRequest) {
     );
   }
 
-    try {
-      const file = await getProofingImage(
+  try {
+    return NextResponse.redirect(
+      await createProofingImageDownloadUrl(
         gallery.id,
         image.webFilename,
-      );
-
-    return new NextResponse(file, {
-      headers: {
-        "Content-Type": "image/webp",
-        "Cache-Control":
-          "private, max-age=3600, stale-while-revalidate=86400",
-      },
-    });
+      ),
+      302,
+    );
   } catch {
     return NextResponse.json(
       {

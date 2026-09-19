@@ -1,16 +1,12 @@
-import { PassThrough } from "node:stream";
-
-import {
-  getProofingImage,
-} from "../../../../lib/proofing/image-storage";
-
-import { ZipArchive } from "archiver";
 import { cookies } from "next/headers";
 import {
   NextRequest,
   NextResponse,
 } from "next/server";
 
+import {
+  createProofingImageDownloadUrl,
+} from "../../../../lib/proofing/image-storage";
 import {
   getProofingGalleryBySlug,
 } from "../../../../lib/proofing/repository";
@@ -113,13 +109,9 @@ export async function GET(
   }
 
   const cookieStore = await cookies();
-
-  const expectedCookieName =
-    `proofing_${gallery.id}`;
-
   const visitorId =
     cookieStore.get(
-      expectedCookieName,
+      `proofing_${gallery.id}`,
     )?.value;
 
   if (!visitorId) {
@@ -173,7 +165,8 @@ export async function GET(
     );
   }
 
-  const imageFiles = new Map<string, Buffer>();
+  const usedNames = new Map<string, number>();
+  const files = [];
 
   for (const image of imagesToDownload) {
     if (!isSafeSegment(image.webFilename)) {
@@ -187,55 +180,8 @@ export async function GET(
       );
     }
 
-    try {
-      const file = await getProofingImage(
-        gallery.id,
-        image.webFilename,
-      );
-
-      imageFiles.set(image.id, file);
-    } catch {
-      return NextResponse.json(
-        {
-          ok: false,
-          message:
-            "One or more photographs could not be downloaded.",
-        },
-        { status: 404 },
-      );
-    }
-  }
-
-  const output = new PassThrough();
-
-  const archive = new ZipArchive({
-    zlib: {
-      level: 6,
-    },
-  });
-
-  archive.pipe(output);
-
-  const usedNames = new Map<string, number>();
-
-  for (const image of imagesToDownload) {
-    const file = imageFiles.get(image.id);
-
-    if (!file) {
-      return NextResponse.json(
-        {
-          ok: false,
-          message:
-            "One or more photographs could not be downloaded.",
-        },
-        { status: 404 },
-      );
-    }
-
-    const initialName = safeFilename(
-      image.originalFilename,
-    );
-
+    const initialName =
+      safeFilename(image.originalFilename);
     const previousCount =
       usedNames.get(initialName) ?? 0;
 
@@ -244,7 +190,7 @@ export async function GET(
       previousCount + 1,
     );
 
-    const archiveName =
+    const filename =
       previousCount === 0
         ? initialName
         : initialName.replace(
@@ -252,29 +198,15 @@ export async function GET(
             `-${previousCount + 1}.webp`,
           );
 
-    archive.append(file, {
-      name: archiveName,
+    files.push({
+      filename,
+      url:
+        await createProofingImageDownloadUrl(
+          gallery.id,
+          image.webFilename,
+        ),
     });
   }
-
-  const archiveComplete = new Promise<void>(
-    (resolve, reject) => {
-      output.on("end", resolve);
-      output.on("error", reject);
-      archive.on("error", reject);
-    },
-  );
-
-  const chunks: Buffer[] = [];
-
-  output.on("data", (chunk: Buffer) => {
-    chunks.push(chunk);
-  });
-
-  await archive.finalize();
-  await archiveComplete;
-
-  const zipBuffer = Buffer.concat(chunks);
 
   const galleryName =
     "name" in gallery &&
@@ -282,18 +214,13 @@ export async function GET(
       ? gallery.name
       : gallerySlug;
 
-  const filename = safeZipFilename(
-    gallery.downloadPermission === "selected"
-      ? `${galleryName}-selected`
-      : galleryName,
-  );
-
-  return new NextResponse(zipBuffer, {
-    headers: {
-      "Content-Type": "application/zip",
-      "Content-Disposition":
-        `attachment; filename="${filename}"`,
-      "Cache-Control": "private, no-store",
-    },
+  return NextResponse.json({
+    ok: true,
+    archiveFilename: safeZipFilename(
+      gallery.downloadPermission === "selected"
+        ? `${galleryName}-selected`
+        : galleryName,
+    ),
+    files,
   });
 }

@@ -1,3 +1,18 @@
 # Production photographs are served from Cloudflare R2.
-# Keep the local library on this Mac, but never include it in Vercel deployments.
+# Keep local image libraries on this Mac, but never include them in Vercel deployments.
 public/images/productions/
+public/images/selected-work/
+
+# Local development / recovery artefacts must never be deployed.
+**/*.bak
+**/*.backup-*
+tsconfig.tsbuildinfo*
+.vscode/
+
+# Migration and curation tooling is not part of the runtime bundle.
+# The two exceptions below are required by the build/runtime checks.
+scripts/**
+!scripts/check-vercel-architecture.mjs
+!scripts/archive-curator/
+scripts/archive-curator/**
+!scripts/archive-curator/excluded-productions.txt

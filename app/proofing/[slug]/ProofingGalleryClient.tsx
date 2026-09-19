@@ -7,6 +7,8 @@ import {
   useState,
 } from "react";
 
+import ProofingWatermarkOverlay from "./ProofingWatermarkOverlay";
+
 type ProofingClientImage = {
   id: string;
   originalFilename: string;
@@ -21,6 +23,19 @@ type ProofingGalleryClientProps = {
     | "none"
     | "web"
     | "selected";
+  watermarkUrl?: string;
+  watermarkPosition?:
+    | "top-left"
+    | "top-center"
+    | "top-right"
+    | "center-left"
+    | "center"
+    | "center-right"
+    | "bottom-left"
+    | "bottom-center"
+    | "bottom-right";
+  watermarkSize?: number;
+  watermarkOpacity?: number;
   images: ProofingClientImage[];
   initialFavourites: string[];
   initialSelectionStatus?: string;
@@ -64,6 +79,10 @@ export default function ProofingGalleryClient({
   introMessage,
   showIntroOnLoad = false,
   downloadPermission,
+  watermarkUrl,
+  watermarkPosition,
+  watermarkSize,
+  watermarkOpacity,
   images,
   initialFavourites,
   initialSelectionStatus = "not-started",
@@ -128,6 +147,12 @@ export default function ProofingGalleryClient({
     useState(false);
 
   const [submitError, setSubmitError] =
+    useState<string | null>(null);
+
+  const [isDownloadingArchive, setIsDownloadingArchive] =
+    useState(false);
+
+  const [downloadError, setDownloadError] =
     useState<string | null>(null);
 
   const [viewerImageId, setViewerImageId] =
@@ -655,6 +680,121 @@ export default function ProofingGalleryClient({
     }
   }
 
+  async function downloadArchive() {
+    if (isDownloadingArchive) {
+      return;
+    }
+
+    setIsDownloadingArchive(true);
+    setDownloadError(null);
+
+    try {
+      const response = await fetch(
+        `/api/proofing/download-all?gallery=${encodeURIComponent(
+          gallerySlug,
+        )}`,
+        {
+          cache: "no-store",
+        },
+      );
+
+      const result =
+        (await response.json()) as {
+          ok?: boolean;
+          message?: string;
+          archiveFilename?: string;
+          files?: Array<{
+            filename: string;
+            url: string;
+          }>;
+        };
+
+      if (
+        !response.ok ||
+        !result.ok ||
+        !result.archiveFilename ||
+        !Array.isArray(result.files)
+      ) {
+        throw new Error(
+          result.message ||
+            "The photographs could not be prepared for download.",
+        );
+      }
+
+      const { default: JSZip } =
+        await import("jszip");
+
+      const zip = new JSZip();
+      const concurrency = 4;
+
+      for (
+        let index = 0;
+        index < result.files.length;
+        index += concurrency
+      ) {
+        const batch = result.files.slice(
+          index,
+          index + concurrency,
+        );
+
+        const downloaded = await Promise.all(
+          batch.map(async (file) => {
+            const fileResponse =
+              await fetch(file.url);
+
+            if (!fileResponse.ok) {
+              throw new Error(
+                `Could not download ${file.filename}.`,
+              );
+            }
+
+            return {
+              filename: file.filename,
+              blob: await fileResponse.blob(),
+            };
+          }),
+        );
+
+        for (const file of downloaded) {
+          zip.file(
+            file.filename,
+            file.blob,
+          );
+        }
+      }
+
+      const archive =
+        await zip.generateAsync({
+          type: "blob",
+          compression: "STORE",
+        });
+
+      const objectUrl =
+        URL.createObjectURL(archive);
+
+      try {
+        const link =
+          document.createElement("a");
+        link.href = objectUrl;
+        link.download =
+          result.archiveFilename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      } finally {
+        URL.revokeObjectURL(objectUrl);
+      }
+    } catch (error) {
+      setDownloadError(
+        error instanceof Error
+          ? error.message
+          : "The photographs could not be downloaded.",
+      );
+    } finally {
+      setIsDownloadingArchive(false);
+    }
+  }
+
   const toolbarAction =
     favourites.length === 0
       ? null
@@ -749,29 +889,35 @@ export default function ProofingGalleryClient({
   </div>
 
   {downloadPermission === "web" && view === "all" ? (
-      <a
+      <button
+        type="button"
         className="proofing-toolbar-download-button"
-        href={`/api/proofing/download-all?gallery=${encodeURIComponent(
-          gallerySlug,
-        )}`}
+        disabled={isDownloadingArchive}
+        onClick={() => void downloadArchive()}
       >
-        Download all {images.length} photo
-        {images.length === 1 ? "" : "s"}
-      </a>
+        {isDownloadingArchive
+          ? "Preparing download…"
+          : `Download all ${images.length} photo${
+              images.length === 1 ? "" : "s"
+            }`}
+      </button>
     ) : null}
 
     {downloadPermission === "selected" &&
     view === "favourites" &&
     favourites.length > 0 ? (
-      <a
+      <button
+        type="button"
         className="proofing-toolbar-download-button"
-        href={`/api/proofing/download-all?gallery=${encodeURIComponent(
-          gallerySlug,
-        )}`}
+        disabled={isDownloadingArchive}
+        onClick={() => void downloadArchive()}
       >
-        Download {favourites.length} selected photo
-        {favourites.length === 1 ? "" : "s"}
-      </a>
+        {isDownloadingArchive
+          ? "Preparing download…"
+          : `Download ${favourites.length} selected photo${
+              favourites.length === 1 ? "" : "s"
+            }`}
+      </button>
     ) : null}
 
     {toolbarAction && view === "favourites" ? (
@@ -816,6 +962,15 @@ export default function ProofingGalleryClient({
           role="alert"
         >
           {submitError}
+        </p>
+      ) : null}
+
+      {downloadError ? (
+        <p
+          className="proofing-submit-error proofing-toolbar-submit-error"
+          role="alert"
+        >
+          {downloadError}
         </p>
       ) : null}
 
@@ -975,6 +1130,13 @@ export default function ProofingGalleryClient({
                     />
                   </button>
 
+                  <ProofingWatermarkOverlay
+                    url={watermarkUrl}
+                    position={watermarkPosition}
+                    size={watermarkSize}
+                    opacity={watermarkOpacity}
+                  />
+
                   <button
                     type="button"
                     className={
@@ -1063,15 +1225,24 @@ export default function ProofingGalleryClient({
               onTouchEnd={handleViewerTouchEnd}
               onTouchCancel={handleViewerTouchCancel}
             >
-              <img
-                src={`/api/proofing/image?gallery=${encodeURIComponent(
-                  gallerySlug,
-                )}&image=${encodeURIComponent(
-                  viewerImage.id,
-                )}`}
-                alt={viewerImage.alt}
-                className="proofing-viewer-image"
-              />
+              <div className="proofing-viewer-image-wrap">
+                <img
+                  src={`/api/proofing/image?gallery=${encodeURIComponent(
+                    gallerySlug,
+                  )}&image=${encodeURIComponent(
+                    viewerImage.id,
+                  )}`}
+                  alt={viewerImage.alt}
+                  className="proofing-viewer-image"
+                />
+
+                <ProofingWatermarkOverlay
+                  url={watermarkUrl}
+                  position={watermarkPosition}
+                  size={watermarkSize}
+                  opacity={watermarkOpacity}
+                />
+              </div>
 
               <div className="proofing-viewer-actions">
                 <div className="proofing-viewer-actions">

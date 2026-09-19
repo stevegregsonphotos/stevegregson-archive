@@ -8,6 +8,9 @@ import {
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
+import {
+  getSignedUrl,
+} from "@aws-sdk/s3-request-presigner";
 
 function requiredEnv(
   name: string,
@@ -85,6 +88,22 @@ export async function selectedWorkObjectExists(
 
     throw error;
   }
+}
+
+export async function createSelectedWorkUploadUrl(
+  storageKey: string,
+  contentType = "image/jpeg",
+) {
+  return getSignedUrl(
+    getClient(),
+    new PutObjectCommand({
+      Bucket: getBucket(),
+      Key: storageKey,
+      ContentType: contentType,
+      CacheControl: "public, max-age=31536000, immutable",
+    }),
+    { expiresIn: 15 * 60 },
+  );
 }
 
 export async function putSelectedWorkObject(

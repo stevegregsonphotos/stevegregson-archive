@@ -1,5 +1,5 @@
 import {
-  getProofingImage,
+  createProofingImageDownloadUrl,
 } from "../../../../lib/proofing/image-storage";
 
 import { cookies } from "next/headers";
@@ -210,22 +210,16 @@ export async function GET(
   }
 
   try {
-    const file = await getProofingImage(
-      gallery.id,
-      image.webFilename,
+    return NextResponse.redirect(
+      await createProofingImageDownloadUrl(
+        gallery.id,
+        image.webFilename,
+        downloadFilename(
+          image.originalFilename,
+        ),
+      ),
+      302,
     );
-
-    return new NextResponse(file, {
-      headers: {
-        "Content-Type": "image/webp",
-        "Content-Disposition":
-          `attachment; filename="${downloadFilename(
-            image.originalFilename,
-          )}"`,
-        "Cache-Control":
-          "private, no-store",
-      },
-    });
   } catch {
     return NextResponse.json(
       {

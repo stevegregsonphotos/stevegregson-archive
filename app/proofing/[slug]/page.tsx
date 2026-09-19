@@ -107,6 +107,14 @@ export default async function ProofingClientPage({
       )
     : undefined;
 
+  const watermarkUrl =
+    gallery.watermarkEnabled &&
+    gallery.watermarkId
+      ? `/api/proofing/watermark?gallery=${encodeURIComponent(
+          gallery.slug,
+        )}`
+      : undefined;
+
   /*
    * No valid visitor session:
    * show the cover + email entry screen.
@@ -135,6 +143,16 @@ export default async function ProofingClientPage({
           clientName={gallery.clientName}
           venue={gallery.venue}
           coverImageUrl={coverImageUrl}
+          watermarkUrl={watermarkUrl}
+          watermarkPosition={
+            gallery.watermarkPosition
+          }
+          watermarkSize={
+            gallery.watermarkSize
+          }
+          watermarkOpacity={
+            gallery.watermarkOpacity
+          }
         />
       </main>
     );
@@ -206,6 +224,16 @@ export default async function ProofingClientPage({
               gallery.downloadPermission === "full"
                 ? "web"
                 : gallery.downloadPermission
+            }
+            watermarkUrl={watermarkUrl}
+            watermarkPosition={
+              gallery.watermarkPosition
+            }
+            watermarkSize={
+              gallery.watermarkSize
+            }
+            watermarkOpacity={
+              gallery.watermarkOpacity
             }
             images={orderedImages.map(
   (image) => ({

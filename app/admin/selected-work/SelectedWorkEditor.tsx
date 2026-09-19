@@ -145,6 +145,45 @@ function createUploadBatches(
   return batches;
 }
 
+async function readImageDimensions(
+  file: File,
+) {
+  const objectUrl = URL.createObjectURL(file);
+
+  try {
+    const image = new Image();
+
+    await new Promise<void>(
+      (resolve, reject) => {
+        image.onload = () => resolve();
+        image.onerror = () =>
+          reject(
+            new Error(
+              `Could not read ${file.name}.`,
+            ),
+          );
+        image.src = objectUrl;
+      },
+    );
+
+    if (
+      !image.naturalWidth ||
+      !image.naturalHeight
+    ) {
+      throw new Error(
+        `Could not read ${file.name}.`,
+      );
+    }
+
+    return {
+      width: image.naturalWidth,
+      height: image.naturalHeight,
+    };
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
 function normaliseIncomingData(
   data: SelectedWorkData,
 ): SelectedWorkData {
@@ -970,195 +1009,194 @@ setCategorySaveState(
       return;
     }
 
-    const batches =
-      createUploadBatches(files);
-
     const total = files.length;
     let uploadedCount = 0;
 
     setBusyCategory(category);
-
     setUploadProgress({
       category,
       current: 0,
       total,
     });
-
     setError(null);
     setMessage(null);
 
     try {
+      const concurrency = 4;
+
       for (
-        const batch of batches
+        let index = 0;
+        index < files.length;
+        index += concurrency
       ) {
-        const formData =
-          new FormData();
+        const batch =
+          files.slice(
+            index,
+            index + concurrency,
+          );
 
-        formData.set(
-          "category",
-          category,
-        );
+        const uploads =
+          await Promise.all(
+            batch.map(
+              async (file) => {
+                if (
+                  file.type !== "image/jpeg" ||
+                  !/\.(?:jpe?g)$/i.test(
+                    file.name,
+                  )
+                ) {
+                  throw new Error(
+                    `${file.name} is not a JPEG photograph.`,
+                  );
+                }
 
-        batch.forEach(
-          (file) => {
-            formData.append(
-              "images",
-              file,
-            );
-          },
-        );
+                const dimensions =
+                  await readImageDimensions(
+                    file,
+                  );
 
-        const response =
+                const signingResponse =
+                  await fetch(
+                    "/api/admin/selected-work",
+                    {
+                      method: "POST",
+                      headers: {
+                        "Content-Type":
+                          "application/json",
+                      },
+                      body: JSON.stringify({
+                        action: "presign",
+                        category,
+                        originalFilename:
+                          file.name,
+                      }),
+                    },
+                  );
+
+                const signed =
+                  (await signingResponse.json()) as {
+                    ok?: boolean;
+                    message?: string;
+                    filename?: string;
+                    storageKey?: string;
+                    uploadUrl?: string;
+                  };
+
+                if (
+                  !signingResponse.ok ||
+                  !signed.ok ||
+                  !signed.filename ||
+                  !signed.storageKey ||
+                  !signed.uploadUrl
+                ) {
+                  throw new Error(
+                    signed.message ||
+                      `Could not prepare ${file.name} for R2 upload.`,
+                  );
+                }
+
+                const r2Response =
+                  await fetch(
+                    signed.uploadUrl,
+                    {
+                      method: "PUT",
+                      headers: {
+                        "Content-Type":
+                          "image/jpeg",
+                      },
+                      body: file,
+                    },
+                  );
+
+                if (!r2Response.ok) {
+                  throw new Error(
+                    `Direct R2 upload failed for ${file.name} (HTTP ${r2Response.status}).`,
+                  );
+                }
+
+                return {
+                  filename:
+                    signed.filename,
+                  storageKey:
+                    signed.storageKey,
+                  width:
+                    dimensions.width,
+                  height:
+                    dimensions.height,
+                  uploadedAt:
+                    new Date().toISOString(),
+                };
+              },
+            ),
+          );
+
+        const commitResponse =
           await fetch(
             "/api/admin/selected-work",
             {
               method: "POST",
-              body: formData,
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
+              body: JSON.stringify({
+                action: "commit-batch",
+                category,
+                uploads,
+              }),
             },
           );
 
-        let result:
-          | ApiResponse
-          | null = null;
-
-        try {
-          result =
-            (await response.json()) as
-              ApiResponse;
-        } catch {
-          result = null;
-        }
+        const result =
+          (await commitResponse.json()) as
+            ApiResponse;
 
         if (
-          !response.ok ||
-          !result?.ok ||
+          !commitResponse.ok ||
+          !result.ok ||
           !result.data
         ) {
-          if (
-            response.status ===
-            413
-          ) {
-            throw new Error(
-              "An upload batch was too large. The remaining photographs are still selected so you can retry them.",
-            );
-          }
-
           throw new Error(
-            result?.message ??
-              `The upload stopped after ${uploadedCount} of ${total} photographs. The remaining photographs are still selected so you can retry them.`,
+            result.message ??
+              `The upload stopped after ${uploadedCount} of ${total} photographs.`,
           );
         }
 
         uploadedCount +=
           batch.length;
 
-        const serverImages =
-  normaliseIncomingImages(
-    result.data[category],
-  );
-
-const currentImages =
-  dataRef.current[category];
-
-const currentByFilename =
-  new Map(
-    currentImages.map((image) => [
-      image.filename,
-      image,
-    ]),
-  );
-
-const mergedImages =
-  serverImages.map(
-    (serverImage) => {
-      const currentImage =
-        currentByFilename.get(
-          serverImage.filename,
-        );
-
-      return currentImage
-        ? {
-            ...serverImage,
-            alt: currentImage.alt,
-            suggestedFilename:
-              currentImage.suggestedFilename,
-            analysisStatus:
-              currentImage.analysisStatus,
-            analysedAt:
-              currentImage.analysedAt,
-          }
-        : serverImage;
-    },
-  );
-
-replaceCategory(
-  category,
-  mergedImages,
-);
-
-        const remainingFiles =
-          files.slice(
-            uploadedCount,
-          );
-
-        setPendingFiles(
-          (current) => ({
-            ...current,
-            [category]:
-              remainingFiles.length >
-              0
-                ? remainingFiles
-                : undefined,
-          }),
-        );
-
         setUploadProgress({
           category,
-          current:
-            uploadedCount,
+          current: uploadedCount,
           total,
         });
+
+        const normalised =
+          normaliseIncomingData(
+            result.data,
+          );
+        replaceData(normalised);
       }
 
-      const stillHasPendingMetadata =
-  dataRef.current[category].some(
-    (image) =>
-      Boolean(
-        image.suggestedFilename?.trim(),
-      ),
-  );
-
-setCategorySaveState(
-  category,
-  stillHasPendingMetadata
-    ? "dirty"
-    : "saved",
-);
-
-      setMessage(
-        `${total} ${
-          total === 1
-            ? "photograph"
-            : "photographs"
-        } uploaded successfully.`,
+      setPendingFiles(
+        (current) => ({
+          ...current,
+          [category]: [],
+        }),
       );
 
-      const input =
-        document.getElementById(
-          `selected-work-upload-${category}`,
-        ) as
-          | HTMLInputElement
-          | null;
-
-      if (input) {
-        input.value = "";
-      }
+      setMessage(
+        `${uploadedCount} ${
+          uploadedCount === 1
+            ? "photograph"
+            : "photographs"
+        } uploaded directly to R2.`,
+      );
     } catch (caughtError) {
       setError(
-        caughtError instanceof
-          Error
+        caughtError instanceof Error
           ? caughtError.message
-          : `The upload stopped after ${uploadedCount} of ${total} photographs. The remaining photographs are still selected so you can retry them.`,
+          : "The photographs could not be uploaded.",
       );
     } finally {
       setBusyCategory(null);
@@ -1166,14 +1204,6 @@ setCategorySaveState(
     }
   }
 
-  /*
-   * AI analysis now uses the explicit
-   * persisted status rather than guessing
-   * from whether alt text is blank.
-   *
-   * Each successful image is persisted
-   * immediately before moving on.
-   */
   async function analyseNewImages(
     category: CategoryId,
   ) {

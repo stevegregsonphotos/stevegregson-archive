@@ -7,18 +7,17 @@ import OpenAI from "openai";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
-import sharp from "sharp";
 
 import { openai } from "@/lib/vision/client";
 import {
-  getProductionImage,
-} from "@/lib/publishing/production-image-storage";
+  getProductionImageUrl,
+} from "@/lib/production-image-url";
 import {
   getSelectedWorkItem,
 } from "@/lib/selected-work-repository";
 import {
-  getSelectedWorkObject,
-} from "@/lib/selected-work-storage";
+  getSelectedWorkImageUrl,
+} from "@/lib/selected-work-image-url";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -91,12 +90,13 @@ type VisionMetadata = {
 };
 
 type AnalysisContext = {
-  sourceImage: Buffer;
+  imageUrl: string;
   prompt: string;
   originalFilename: string;
 };
 
-const MAX_SOURCE_SIZE = 50 * 1024 * 1024;
+const MAX_PREVIEW_DATA_URL_LENGTH =
+  6 * 1024 * 1024;
 
 function isSafeSlug(value: string) {
   return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value);
@@ -331,14 +331,11 @@ async function loadProductionContext(
     `${slug}.ts`,
   );
 
-  const [productionSource, sourceImage] =
-    await Promise.all([
-      readFile(productionFile, "utf8"),
-      getProductionImage(
-        slug,
-        filename,
-      ),
-    ]);
+  const productionSource =
+    await readFile(
+      productionFile,
+      "utf8",
+    );
 
   const production =
     readProductionFromSource(productionSource);
@@ -367,7 +364,11 @@ async function loadProductionContext(
   }
 
   return {
-    sourceImage,
+    imageUrl:
+      getProductionImageUrl(
+        slug,
+        filename,
+      ),
     prompt: buildProductionPrompt(
       production,
       galleryImage,
@@ -391,13 +392,17 @@ function loadPrePublishProductionContext(
     );
   }
 
-  const sourceImage = Buffer.from(
-    match[1],
-    "base64",
-  );
+  if (
+    previewUrl.length >
+    MAX_PREVIEW_DATA_URL_LENGTH
+  ) {
+    throw new Error(
+      "The production preview image is too large for analysis.",
+    );
+  }
 
   return {
-    sourceImage,
+    imageUrl: previewUrl,
     prompt: buildPrePublishProductionPrompt(
       production,
       filename,
@@ -421,13 +426,12 @@ async function loadSelectedWorkContext(
     );
   }
 
-  const sourceImage =
-    await getSelectedWorkObject(
-      item.storageKey,
-    );
-
   return {
-    sourceImage,
+    imageUrl:
+      getSelectedWorkImageUrl(
+        category,
+        item.image.filename,
+      ),
     prompt: buildSelectedWorkPrompt(
       category,
       filename,
@@ -530,40 +534,8 @@ export async function POST(request: Request) {
               body.image,
             );
 
-    if (
-      context.sourceImage.byteLength >
-      MAX_SOURCE_SIZE
-    ) {
-      return Response.json(
-        {
-          ok: false,
-          message:
-            "The image is larger than the 50 MB analysis limit.",
-        },
-        { status: 413 },
-      );
-    }
-
-    const analysisImage = await sharp(
-      context.sourceImage,
-    )
-      .rotate()
-      .resize({
-        width: 1600,
-        height: 1600,
-        fit: "inside",
-        withoutEnlargement: true,
-      })
-      .jpeg({
-        quality: 82,
-        mozjpeg: true,
-      })
-      .toBuffer();
-
     const imageDataUrl =
-      `data:image/jpeg;base64,${analysisImage.toString(
-        "base64",
-      )}`;
+      context.imageUrl;
 
     const response =
       await openai.responses.create({

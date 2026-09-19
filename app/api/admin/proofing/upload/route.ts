@@ -5,7 +5,6 @@ import {
 
 import {
   createProofingImageUploadUrl,
-  deleteProofingImage,
   proofingImageExists,
 } from "../../../../../lib/proofing/image-storage";
 
@@ -26,12 +25,17 @@ export const dynamic = "force-dynamic";
 type UploadRequest = {
   action?: unknown;
   galleryId?: unknown;
-  imageId?: unknown;
   originalFilename?: unknown;
-  webFilename?: unknown;
-  width?: unknown;
-  height?: unknown;
-  createdAt?: unknown;
+  images?: unknown;
+};
+
+type CommitImage = {
+  imageId: string;
+  originalFilename: string;
+  webFilename: string;
+  width: number;
+  height: number;
+  createdAt: string;
 };
 
 function safeFilename(filename: string) {
@@ -45,6 +49,45 @@ function stringValue(value: unknown) {
   return typeof value === "string"
     ? value.trim()
     : "";
+}
+
+function parseCommitImage(
+  value: unknown,
+): CommitImage | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const image = value as Record<string, unknown>;
+  const imageId = stringValue(image.imageId);
+  const originalFilename =
+    stringValue(image.originalFilename);
+  const webFilename = stringValue(image.webFilename);
+  const width = Number(image.width);
+  const height = Number(image.height);
+  const createdAt = stringValue(image.createdAt);
+
+  if (
+    !imageId ||
+    !originalFilename ||
+    !webFilename ||
+    !Number.isInteger(width) ||
+    width <= 0 ||
+    !Number.isInteger(height) ||
+    height <= 0 ||
+    !createdAt
+  ) {
+    return null;
+  }
+
+  return {
+    imageId,
+    originalFilename,
+    webFilename,
+    width,
+    height,
+    createdAt,
+  };
 }
 
 export async function POST(
@@ -65,17 +108,12 @@ export async function POST(
         ok: false,
         message: "Invalid upload request.",
       },
-      {
-        status: 400,
-      },
+      { status: 400 },
     );
   }
 
-  const action =
-    stringValue(body.action);
-
-  const galleryId =
-    stringValue(body.galleryId);
+  const action = stringValue(body.action);
+  const galleryId = stringValue(body.galleryId);
 
   if (!galleryId) {
     return NextResponse.json(
@@ -83,16 +121,12 @@ export async function POST(
         ok: false,
         message: "Gallery ID is required.",
       },
-      {
-        status: 400,
-      },
+      { status: 400 },
     );
   }
 
   const gallery =
-    await getProofingGallery(
-      galleryId,
-    );
+    await getProofingGallery(galleryId);
 
   if (!gallery) {
     return NextResponse.json(
@@ -100,44 +134,31 @@ export async function POST(
         ok: false,
         message: "Proofing gallery not found.",
       },
-      {
-        status: 404,
-      },
+      { status: 404 },
     );
   }
 
   /*
-   * Stage 1:
-   * Vercel signs a tiny request only.
-   * The photograph itself never passes through Vercel.
+   * Vercel authenticates and signs only. The image body
+   * goes directly from the browser to Cloudflare R2.
    */
   if (action === "presign") {
     const originalFilename =
-      stringValue(
-        body.originalFilename,
-      );
+      stringValue(body.originalFilename);
 
     if (!originalFilename) {
       return NextResponse.json(
         {
           ok: false,
-          message:
-            "Original filename is required.",
+          message: "Original filename is required.",
         },
-        {
-          status: 400,
-        },
+        { status: 400 },
       );
     }
 
-    const imageId =
-      crypto.randomUUID();
-
+    const imageId = crypto.randomUUID();
     const baseFilename =
-      safeFilename(
-        originalFilename,
-      ) || "proof";
-
+      safeFilename(originalFilename) || "proof";
     const webFilename =
       `${baseFilename}-${imageId}.webp`;
 
@@ -156,164 +177,114 @@ export async function POST(
   }
 
   /*
-   * Stage 2:
-   * After the browser has PUT the WebP directly to R2,
-   * record only its small metadata in Neon.
+   * Commit a small metadata batch only after the browser
+   * has PUT those files directly to R2. A batch avoids
+   * concurrent read/modify/write races in the gallery row.
    */
-  if (action === "commit") {
-    const imageId =
-      stringValue(body.imageId);
-
-    const originalFilename =
-      stringValue(
-        body.originalFilename,
+  if (action === "commit-batch") {
+    if (!Array.isArray(body.images)) {
+      return NextResponse.json(
+        {
+          ok: false,
+          message: "Image metadata is required.",
+        },
+        { status: 400 },
       );
+    }
 
-    const webFilename =
-      stringValue(
-        body.webFilename,
-      );
-
-    const width =
-      Number(body.width);
-
-    const height =
-      Number(body.height);
-
-    const createdAt =
-      stringValue(
-        body.createdAt,
-      ) ||
-      new Date().toISOString();
+    const images = body.images.map(parseCommitImage);
 
     if (
-      !imageId ||
-      !originalFilename ||
-      !webFilename ||
-      !Number.isInteger(width) ||
-      width <= 0 ||
-      !Number.isInteger(height) ||
-      height <= 0
+      images.length === 0 ||
+      images.some((image) => image === null)
     ) {
       return NextResponse.json(
         {
           ok: false,
-          message:
-            "Incomplete proofing image metadata.",
+          message: "Incomplete proofing image metadata.",
         },
-        {
-          status: 400,
-        },
+        { status: 400 },
       );
     }
 
-    if (
-      !(await proofingImageExists(
-        galleryId,
-        webFilename,
-      ))
-    ) {
-      return NextResponse.json(
-        {
-          ok: false,
-          message:
-            "The proofing image was not verified in R2.",
-        },
-        {
-          status: 409,
-        },
-      );
+    const validImages = images as CommitImage[];
+
+    for (const image of validImages) {
+      if (
+        !(await proofingImageExists(
+          galleryId,
+          image.webFilename,
+        ))
+      ) {
+        return NextResponse.json(
+          {
+            ok: false,
+            message:
+              `${image.originalFilename} was not verified in R2.`,
+          },
+          { status: 409 },
+        );
+      }
     }
-
-    /*
-     * Safe retry:
-     * if the metadata commit succeeded but the browser
-     * lost the response, do not add a duplicate image.
-     */
-    const existing =
-      gallery.images.find(
-        (image) =>
-          image.id === imageId,
-      );
-
-    if (existing) {
-      return NextResponse.json({
-        ok: true,
-        image: existing,
-        gallery: {
-          id: gallery.id,
-          imageCount:
-            gallery.images.length,
-        },
-      });
-    }
-
-    const proofingImage:
-      ProofingImage = {
-        id: imageId,
-        originalFilename,
-        webFilename,
-        width,
-        height,
-        alt: originalFilename,
-        sortOrder:
-          gallery.images.length,
-        createdAt,
-      };
 
     const updatedGallery =
       await updateProofingGallery(
         galleryId,
         (currentGallery) => {
-          if (
-            currentGallery.images.some(
+          const existingIds = new Set(
+            currentGallery.images.map(
+              (image) => image.id,
+            ),
+          );
+
+          const newImages =
+            validImages.filter(
               (image) =>
-                image.id === imageId,
-            )
-          ) {
-            return currentGallery;
-          }
+                !existingIds.has(image.imageId),
+            );
+
+          const nextImages: ProofingImage[] = [
+            ...currentGallery.images,
+            ...newImages.map(
+              (image, index) => ({
+                id: image.imageId,
+                originalFilename:
+                  image.originalFilename,
+                webFilename: image.webFilename,
+                width: image.width,
+                height: image.height,
+                alt: image.originalFilename,
+                sortOrder:
+                  currentGallery.images.length + index,
+                createdAt: image.createdAt,
+              }),
+            ),
+          ];
 
           return {
             ...currentGallery,
-
-            images: [
-              ...currentGallery.images,
-              {
-                ...proofingImage,
-                sortOrder:
-                  currentGallery.images.length,
-              },
-            ],
+            images: nextImages,
           };
         },
       );
 
     if (!updatedGallery) {
-      await deleteProofingImage(
-        galleryId,
-        webFilename,
-      ).catch(() => undefined);
-
       return NextResponse.json(
         {
           ok: false,
           message:
             "Proofing gallery could not be updated.",
         },
-        {
-          status: 404,
-        },
+        { status: 404 },
       );
     }
 
     return NextResponse.json({
       ok: true,
-      image: proofingImage,
+      committed: validImages.length,
       gallery: {
         id: updatedGallery.id,
-        imageCount:
-          updatedGallery.images.length,
+        imageCount: updatedGallery.images.length,
       },
     });
   }
@@ -323,8 +294,6 @@ export async function POST(
       ok: false,
       message: "Unknown upload action.",
     },
-    {
-      status: 400,
-    },
+    { status: 400 },
   );
 }

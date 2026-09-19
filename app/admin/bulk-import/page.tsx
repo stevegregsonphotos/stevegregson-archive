@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import {
   getDirectory,
@@ -18,6 +19,54 @@ export const metadata: Metadata = {
 };
 
 export default async function BulkImportPage() {
+  if (process.env.VERCEL === "1") {
+    return (
+      <main
+        style={{
+          minHeight: "100vh",
+          padding: "10rem 6vw 6rem",
+          background: "#11100f",
+          color: "#f2eee6",
+        }}
+      >
+        <section
+          style={{
+            width: "min(100%, 52rem)",
+            margin: "0 auto",
+          }}
+        >
+          <p
+            style={{
+              margin: "0 0 1rem",
+              color: "#c7a369",
+              fontSize: "0.56rem",
+              fontWeight: 700,
+              letterSpacing: "0.2em",
+              textTransform: "uppercase",
+            }}
+          >
+            R2-first workflow
+          </p>
+          <h1>Use Curated Import</h1>
+          <p
+            style={{
+              color: "rgba(242, 238, 230, 0.72)",
+              lineHeight: 1.75,
+            }}
+          >
+            The legacy bulk ZIP workflow is disabled on Vercel so large archives and image processing cannot consume function memory or origin transfer.
+          </p>
+          <Link
+            href="/admin/curated-archive-import"
+            className="backstage-button"
+          >
+            Open Curated Import
+          </Link>
+        </section>
+      </main>
+    );
+  }
+
   const [
     productions,
     directory,

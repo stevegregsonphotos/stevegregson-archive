@@ -10,8 +10,8 @@ import {
 } from "@/lib/selected-work-repository";
 import {
   copySelectedWorkObject,
+  createSelectedWorkUploadUrl,
   deleteSelectedWorkObject,
-  putSelectedWorkObject,
   selectedWorkObjectExists,
   selectedWorkStorageKey,
   uniqueSelectedWorkFilename,
@@ -300,235 +300,204 @@ export async function POST(
   }
 
   try {
-    const formData =
-      await request.formData();
+    const body =
+      (await request.json()) as {
+        action?: unknown;
+        category?: unknown;
+        originalFilename?: unknown;
+        uploads?: unknown;
+      };
 
-    const category =
-      formData.get(
-        "category",
-      );
-
-    if (!isCategory(category)) {
+    if (!isCategory(body.category)) {
       return Response.json(
         {
           ok: false,
           message:
             "A valid Selected Work category is required.",
         },
-        {
-          status: 400,
-        },
+        { status: 400 },
       );
     }
 
-    const files = formData
-      .getAll("images")
-      .filter(
-        (value): value is File =>
-          value instanceof File &&
-          value.size > 0,
-      );
+    const category = body.category;
+    const action =
+      typeof body.action === "string"
+        ? body.action.trim()
+        : "";
 
-    if (files.length === 0) {
-      return Response.json(
-        {
-          ok: false,
-          message:
-            "Choose at least one JPEG photograph.",
-        },
-        {
-          status: 400,
-        },
-      );
-    }
+    if (action === "presign") {
+      const originalFilename =
+        typeof body.originalFilename === "string"
+          ? body.originalFilename.trim()
+          : "";
 
-    const invalidFile =
-      files.find(
-        (file) =>
-          file.type !==
-            "image/jpeg" ||
-          !/\.(?:jpe?g)$/i.test(
-            file.name,
-          ),
-      );
-
-    if (invalidFile) {
-      return Response.json(
-        {
-          ok: false,
-          message:
-            `${invalidFile.name} is not a JPEG photograph.`,
-        },
-        {
-          status: 400,
-        },
-      );
-    }
-
-    const currentData =
-      await getSelectedWork();
-
-    const currentImages =
-      currentData[category];
-
-    const nextPosition =
-      currentImages.length > 0
-        ? Math.max(
-            ...currentImages.map(
-              (image) =>
-                image.position,
-            ),
-          ) + 1
-        : 0;
-
-    const reservedFilenames =
-      new Set<string>();
-
-    const uploadPlan:
-      Array<{
-        filename: string;
-        storageKey: string;
-        bytes: Buffer;
-        dimensions: ImageDimensions;
-        uploadedAt: string;
-        position: number;
-      }> = [];
-
-    for (
-      let index = 0;
-      index < files.length;
-      index += 1
-    ) {
-      const file =
-        files[index];
-
-      const bytes =
-        Buffer.from(
-          await file.arrayBuffer(),
-        );
-
-      let dimensions:
-        ImageDimensions;
-
-      try {
-        dimensions =
-          readJpegDimensions(
-            bytes,
-          );
-      } catch {
+      if (
+        !originalFilename ||
+        !/\.(?:jpe?g)$/i.test(originalFilename)
+      ) {
         return Response.json(
           {
             ok: false,
             message:
-              `${file.name} does not contain readable JPEG dimensions.`,
+              "A JPEG filename is required.",
           },
-          {
-            status: 400,
-          },
+          { status: 400 },
         );
       }
 
       const filename =
         await uniqueSelectedWorkFilename(
           category,
-          file.name,
-          undefined,
-          reservedFilenames,
+          originalFilename,
         );
 
-      reservedFilenames.add(
-        filename,
-      );
+      const storageKey =
+        selectedWorkStorageKey(
+          category,
+          filename,
+        );
 
-      uploadPlan.push({
-        filename,
-        storageKey:
-          selectedWorkStorageKey(
-            category,
-            filename,
-          ),
-        bytes,
-        dimensions,
-        uploadedAt:
-          new Date().toISOString(),
-        position:
-          nextPosition + index,
-      });
-    }
-
-    const uploadedKeys:
-      string[] = [];
-
-    let databaseCommitted =
-      false;
-
-    try {
-      for (
-        const item of
-        uploadPlan
-      ) {
-        await putSelectedWorkObject(
-          item.storageKey,
-          item.bytes,
+      const uploadUrl =
+        await createSelectedWorkUploadUrl(
+          storageKey,
           "image/jpeg",
         );
 
-        uploadedKeys.push(
-          item.storageKey,
+      return Response.json({
+        ok: true,
+        filename,
+        storageKey,
+        uploadUrl,
+      });
+    }
+
+    if (action === "commit-batch") {
+      if (!Array.isArray(body.uploads)) {
+        return Response.json(
+          {
+            ok: false,
+            message:
+              "Uploaded image metadata is required.",
+          },
+          { status: 400 },
         );
       }
 
-      await insertSelectedWorkItems(
-        uploadPlan.map(
-          (item) => ({
-            category,
-            storageKey:
-              item.storageKey,
-            displayFilename:
-              item.filename,
-            suggestedFilename:
-              "",
-            alt: "",
-            uploadedAt:
-              item.uploadedAt,
-            width:
-              item.dimensions.width,
-            height:
-              item.dimensions.height,
-            analysisStatus:
-              "pending" as const,
-            position:
-              item.position,
-          }),
-        ),
-      );
-
-      databaseCommitted =
-        true;
-
-      const data =
+      const currentData =
         await getSelectedWork();
+      const currentImages =
+        currentData[category];
+      const nextPosition =
+        currentImages.length > 0
+          ? Math.max(
+              ...currentImages.map(
+                (image) => image.position,
+              ),
+            ) + 1
+          : 0;
+
+      const uploads = [];
+
+      for (
+        let index = 0;
+        index < body.uploads.length;
+        index += 1
+      ) {
+        const value = body.uploads[index];
+
+        if (!value || typeof value !== "object") {
+          return Response.json(
+            {
+              ok: false,
+              message:
+                "Uploaded image metadata is invalid.",
+            },
+            { status: 400 },
+          );
+        }
+
+        const item = value as Record<string, unknown>;
+        const filename =
+          typeof item.filename === "string"
+            ? item.filename.trim()
+            : "";
+        const storageKey =
+          typeof item.storageKey === "string"
+            ? item.storageKey.trim()
+            : "";
+        const width = Number(item.width);
+        const height = Number(item.height);
+        const uploadedAt =
+          typeof item.uploadedAt === "string"
+            ? item.uploadedAt
+            : "";
+
+        if (
+          !isSafeFilename(filename) ||
+          storageKey !==
+            selectedWorkStorageKey(
+              category,
+              filename,
+            ) ||
+          !Number.isInteger(width) ||
+          width <= 0 ||
+          !Number.isInteger(height) ||
+          height <= 0 ||
+          !uploadedAt ||
+          !(await selectedWorkObjectExists(storageKey))
+        ) {
+          return Response.json(
+            {
+              ok: false,
+              message:
+                `${filename || "An uploaded photograph"} was not verified in R2.`,
+            },
+            { status: 409 },
+          );
+        }
+
+        uploads.push({
+          category,
+          storageKey,
+          displayFilename: filename,
+          suggestedFilename: "",
+          alt: "",
+          uploadedAt,
+          width,
+          height,
+          analysisStatus:
+            "pending" as const,
+          position:
+            nextPosition + index,
+        });
+      }
+
+      if (uploads.length === 0) {
+        return Response.json(
+          {
+            ok: false,
+            message:
+              "No uploaded photographs were supplied.",
+          },
+          { status: 400 },
+        );
+      }
+
+      await insertSelectedWorkItems(uploads);
 
       return Response.json({
         ok: true,
-        data,
+        data: await getSelectedWork(),
       });
-    } catch (error) {
-      if (!databaseCommitted) {
-        for (
-          const storageKey of
-          uploadedKeys
-        ) {
-          await deleteSelectedWorkObject(
-            storageKey,
-          ).catch(
-            () => undefined,
-          );
-        }
-      }
-
-      throw error;
     }
+
+    return Response.json(
+      {
+        ok: false,
+        message: "Unknown upload action.",
+      },
+      { status: 400 },
+    );
   } catch (error) {
     console.error(
       "Selected Work upload failed:",
@@ -541,9 +510,7 @@ export async function POST(
         message:
           "The photographs could not be uploaded.",
       },
-      {
-        status: 500,
-      },
+      { status: 500 },
     );
   }
 }

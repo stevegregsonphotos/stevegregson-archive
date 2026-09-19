@@ -13,7 +13,7 @@ import {
 } from "../../../../../../lib/proofing/watermarks";
 
 import {
-  getProofingWatermarkFile,
+  createProofingWatermarkDownloadUrl,
 } from "../../../../../../lib/proofing/watermark-storage";
 
 export const runtime = "nodejs";
@@ -55,18 +55,12 @@ export async function GET(
   }
 
   try {
-    const file =
-      await getProofingWatermarkFile(
+    return NextResponse.redirect(
+      await createProofingWatermarkDownloadUrl(
         watermark.filename,
-      );
-
-    return new NextResponse(file, {
-      headers: {
-        "Content-Type": "image/png",
-        "Cache-Control":
-          "private, max-age=3600",
-      },
-    });
+      ),
+      302,
+    );
   } catch {
     return NextResponse.json(
       {
