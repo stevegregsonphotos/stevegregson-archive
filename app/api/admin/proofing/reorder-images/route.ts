@@ -10,7 +10,7 @@ import {
 
 import {
   getProofingGallery,
-  updateProofingGallery,
+  reorderProofingImages,
 } from "../../../../../lib/proofing/repository";
 
 export const runtime = "nodejs";
@@ -139,41 +139,10 @@ export async function POST(
     );
   }
 
-  const imagesById = new Map(
-    gallery.images.map(
-      (image) => [image.id, image],
-    ),
+  await reorderProofingImages(
+    gallery.id,
+    imageIds,
   );
-
-  const reorderedImages =
-    imageIds.map(
-      (imageId, index) => ({
-        ...imagesById.get(imageId)!,
-        sortOrder: index,
-      }),
-    );
-
-  const updatedGallery =
-    await updateProofingGallery(
-      gallery.id,
-      (currentGallery) => ({
-        ...currentGallery,
-        images: reorderedImages,
-      }),
-    );
-
-  if (!updatedGallery) {
-    return NextResponse.json(
-      {
-        ok: false,
-        message:
-          "The photograph order could not be saved.",
-      },
-      {
-        status: 500,
-      },
-    );
-  }
 
   return NextResponse.json({
     ok: true,

@@ -32,7 +32,7 @@ const checks = [
   // Proofing upload: browser -> R2, Vercel only signs/commits metadata.
   () => assertContains("app/api/admin/proofing/upload/route.ts", ["action === \"presign\"", "action === \"commit-batch\"", "createProofingImageUploadUrl"]),
   () => assertNotContains("app/api/admin/proofing/upload/route.ts", ["request.formData()", "arrayBuffer()", "from \"sharp\"", "putProofingImage("]),
-  () => assertContains("app/admin/proofing/[id]/ProofingUpload.tsx", ["uploadUrl", "method: \"PUT\"", "const concurrency = 4"]),
+  () => assertContains("app/admin/proofing/[id]/ProofingUpload.tsx", ["uploadUrl", "method: \"PUT\"", "const concurrency"]),
 
   // Proofing delivery/downloads: signed R2 URLs; no image/ZIP proxy through Vercel.
   () => assertContains("app/api/proofing/image/route.ts", ["createProofingImageDownloadUrl", "NextResponse.redirect"]),

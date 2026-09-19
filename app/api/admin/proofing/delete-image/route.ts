@@ -13,6 +13,7 @@ import {
 } from "next/server";
 
 import {
+  deleteProofingImageRecord,
   getProofingGallery,
   updateProofingGallery,
 } from "../../../../../lib/proofing/repository";
@@ -104,19 +105,6 @@ export async function POST(
     await updateProofingGallery(
       gallery.id,
       (currentGallery) => {
-        const remainingImages =
-          currentGallery.images
-            .filter(
-              (galleryImage) =>
-                galleryImage.id !== imageId,
-            )
-            .map(
-              (galleryImage, index) => ({
-                ...galleryImage,
-                sortOrder: index,
-              }),
-            );
-
         const visitors =
           currentGallery.visitors.map(
             (visitor) => ({
@@ -170,8 +158,6 @@ export async function POST(
         return {
           ...currentGallery,
 
-          images: remainingImages,
-
           visitors,
 
           selection: legacySelection,
@@ -184,6 +170,11 @@ export async function POST(
         };
       },
     );
+
+  await deleteProofingImageRecord(
+    gallery.id,
+    imageId,
+  );
 
   if (!updatedGallery) {
     return NextResponse.json(

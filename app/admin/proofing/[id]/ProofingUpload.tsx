@@ -48,6 +48,19 @@ async function prepareProofUpload(
     let width = image.naturalWidth;
     let height = image.naturalHeight;
 
+    if (
+      file.type === "image/webp" &&
+      width <= MAX_PROOF_DIMENSION &&
+      height <= MAX_PROOF_DIMENSION &&
+      file.size <= MAX_UPLOAD_BYTES
+    ) {
+      return {
+        file,
+        width,
+        height,
+      };
+    }
+
     const initialScale = Math.min(
       1,
       MAX_PROOF_DIMENSION / width,
@@ -197,57 +210,25 @@ export default function ProofingUpload({
     createdAt: string;
   };
 
+  type SignedUploadJob = {
+    originalFilename: string;
+    imageId: string;
+    webFilename: string;
+    uploadUrl: string;
+  };
+
   async function uploadOne(
     file: File,
+    signed: SignedUploadJob,
   ): Promise<UploadedProofMetadata> {
     const prepared =
       await prepareProofUpload(
         file,
       );
 
-    const signingResponse =
-      await fetch(
-        "/api/admin/proofing/upload",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-          body: JSON.stringify({
-            action: "presign",
-            galleryId,
-            originalFilename:
-              file.name,
-          }),
-        },
-      );
-
-    const signingResult =
-      (await signingResponse.json()) as {
-        ok?: boolean;
-        message?: string;
-        imageId?: string;
-        webFilename?: string;
-        uploadUrl?: string;
-      };
-
-    if (
-      !signingResponse.ok ||
-      !signingResult.ok ||
-      !signingResult.imageId ||
-      !signingResult.webFilename ||
-      !signingResult.uploadUrl
-    ) {
-      throw new Error(
-        signingResult.message ||
-          "Could not prepare direct R2 upload.",
-      );
-    }
-
     const r2Response =
       await fetch(
-        signingResult.uploadUrl,
+        signed.uploadUrl,
         {
           method: "PUT",
           headers: {
@@ -265,12 +246,11 @@ export default function ProofingUpload({
     }
 
     return {
-      imageId:
-        signingResult.imageId,
+      imageId: signed.imageId,
       originalFilename:
         file.name,
       webFilename:
-        signingResult.webFilename,
+        signed.webFilename,
       width:
         prepared.width,
       height:
@@ -281,6 +261,52 @@ export default function ProofingUpload({
             Date.now(),
         ).toISOString(),
     };
+  }
+
+  async function presignBatch(
+    batch: File[],
+  ) {
+    const response =
+      await fetch(
+        "/api/admin/proofing/upload",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            action: "presign-batch",
+            galleryId,
+            originalFilenames:
+              batch.map(
+                (file) => file.name,
+              ),
+          }),
+        },
+      );
+
+    const result =
+      (await response.json()) as {
+        ok?: boolean;
+        message?: string;
+        jobs?: SignedUploadJob[];
+      };
+
+    if (
+      !response.ok ||
+      !result.ok ||
+      !Array.isArray(result.jobs) ||
+      result.jobs.length !==
+        batch.length
+    ) {
+      throw new Error(
+        result.message ||
+          "Could not prepare direct R2 uploads.",
+      );
+    }
+
+    return result.jobs;
   }
 
   async function commitBatch(
@@ -345,7 +371,13 @@ export default function ProofingUpload({
      * Metadata is committed once per batch to avoid
      * concurrent gallery read/modify/write races.
      */
-    const concurrency = 4;
+    const concurrency =
+      files.every(
+        (file) =>
+          file.type === "image/webp",
+      )
+        ? 12
+        : 6;
 
     for (
       let index = 0;
@@ -358,15 +390,45 @@ export default function ProofingUpload({
           index + concurrency,
         );
 
+      let signedJobs:
+        SignedUploadJob[];
+
+      try {
+        signedJobs =
+          await presignBatch(batch);
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Could not prepare direct R2 uploads.";
+
+        for (const file of batch) {
+          uploadFailures.push({
+            filename: file.name,
+            message,
+          });
+        }
+
+        setCompleted(
+          (current) =>
+            current + batch.length,
+        );
+
+        continue;
+      }
+
       const results =
         await Promise.all(
           batch.map(
-            async (file) => {
+            async (file, batchIndex) => {
               try {
                 return {
                   file,
                   uploaded:
-                    await uploadOne(file),
+                    await uploadOne(
+                      file,
+                      signedJobs[batchIndex],
+                    ),
                   error:
                     null as Error | null,
                 };

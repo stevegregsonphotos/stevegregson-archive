@@ -5,14 +5,13 @@ import {
 
 import {
   createProofingImageUploadUrl,
-  proofingImageExists,
 } from "../../../../../lib/proofing/image-storage";
 
 import { NextResponse } from "next/server";
 
 import {
-  getProofingGallery,
-  updateProofingGallery,
+  insertProofingImages,
+  proofingGalleryExists,
 } from "../../../../../lib/proofing/repository";
 
 import type {
@@ -26,6 +25,7 @@ type UploadRequest = {
   action?: unknown;
   galleryId?: unknown;
   originalFilename?: unknown;
+  originalFilenames?: unknown;
   images?: unknown;
 };
 
@@ -125,10 +125,11 @@ export async function POST(
     );
   }
 
-  const gallery =
-    await getProofingGallery(galleryId);
-
-  if (!gallery) {
+  if (
+    !(await proofingGalleryExists(
+      galleryId,
+    ))
+  ) {
     return NextResponse.json(
       {
         ok: false,
@@ -139,8 +140,66 @@ export async function POST(
   }
 
   /*
-   * Vercel authenticates and signs only. The image body
-   * goes directly from the browser to Cloudflare R2.
+   * Sign a whole browser batch in one tiny Vercel request.
+   * The image bodies still travel browser -> R2 directly.
+   */
+  if (action === "presign-batch") {
+    const originalFilenames =
+      Array.isArray(body.originalFilenames)
+        ? body.originalFilenames
+            .map(stringValue)
+            .filter(Boolean)
+        : [];
+
+    if (
+      originalFilenames.length === 0 ||
+      originalFilenames.length > 24
+    ) {
+      return NextResponse.json(
+        {
+          ok: false,
+          message:
+            "Between 1 and 24 filenames are required.",
+        },
+        { status: 400 },
+      );
+    }
+
+    const jobs =
+      await Promise.all(
+        originalFilenames.map(
+          async (originalFilename) => {
+            const imageId =
+              crypto.randomUUID();
+            const baseFilename =
+              safeFilename(
+                originalFilename,
+              ) || "proof";
+            const webFilename =
+              `${baseFilename}-${imageId}.webp`;
+
+            return {
+              originalFilename,
+              imageId,
+              webFilename,
+              uploadUrl:
+                await createProofingImageUploadUrl(
+                  galleryId,
+                  webFilename,
+                ),
+            };
+          },
+        ),
+      );
+
+    return NextResponse.json({
+      ok: true,
+      jobs,
+    });
+  }
+
+  /*
+   * Backwards-compatible single presign.
    */
   if (action === "presign") {
     const originalFilename =
@@ -209,82 +268,35 @@ export async function POST(
 
     const validImages = images as CommitImage[];
 
-    for (const image of validImages) {
-      if (
-        !(await proofingImageExists(
-          galleryId,
-          image.webFilename,
-        ))
-      ) {
-        return NextResponse.json(
-          {
-            ok: false,
-            message:
-              `${image.originalFilename} was not verified in R2.`,
-          },
-          { status: 409 },
-        );
-      }
-    }
+    const proofingImages:
+      ProofingImage[] =
+      validImages.map(
+        (image) => ({
+          id: image.imageId,
+          originalFilename:
+            image.originalFilename,
+          webFilename:
+            image.webFilename,
+          width: image.width,
+          height: image.height,
+          alt: image.originalFilename,
+          sortOrder: 0,
+          createdAt: image.createdAt,
+        }),
+      );
 
-    const updatedGallery =
-      await updateProofingGallery(
+    const result =
+      await insertProofingImages(
         galleryId,
-        (currentGallery) => {
-          const existingIds = new Set(
-            currentGallery.images.map(
-              (image) => image.id,
-            ),
-          );
-
-          const newImages =
-            validImages.filter(
-              (image) =>
-                !existingIds.has(image.imageId),
-            );
-
-          const nextImages: ProofingImage[] = [
-            ...currentGallery.images,
-            ...newImages.map(
-              (image, index) => ({
-                id: image.imageId,
-                originalFilename:
-                  image.originalFilename,
-                webFilename: image.webFilename,
-                width: image.width,
-                height: image.height,
-                alt: image.originalFilename,
-                sortOrder:
-                  currentGallery.images.length + index,
-                createdAt: image.createdAt,
-              }),
-            ),
-          ];
-
-          return {
-            ...currentGallery,
-            images: nextImages,
-          };
-        },
+        proofingImages,
       );
-
-    if (!updatedGallery) {
-      return NextResponse.json(
-        {
-          ok: false,
-          message:
-            "Proofing gallery could not be updated.",
-        },
-        { status: 404 },
-      );
-    }
 
     return NextResponse.json({
       ok: true,
       committed: validImages.length,
       gallery: {
-        id: updatedGallery.id,
-        imageCount: updatedGallery.images.length,
+        id: galleryId,
+        imageCount: result.imageCount,
       },
     });
   }
