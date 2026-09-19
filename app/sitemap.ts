@@ -65,6 +65,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     )
     .map((production) => ({
       url: `${siteUrl}/productions/${production.slug}`,
+      lastModified: new Date(
+        production.updatedAt,
+      ),
       changeFrequency: "yearly" as const,
       priority: 0.8,
     }));

@@ -121,6 +121,7 @@ export type ProductionIndexEntry = {
   month: number | null;
   year: number;
   access: "public" | "password" | null;
+  updatedAt: string;
 };
 
 export async function getProductionIndex():
@@ -133,7 +134,8 @@ export async function getProductionIndex():
       title,
       month,
       year,
-      access
+      access,
+      updated_at AS "updatedAt"
     FROM productions
     WHERE deleted_at IS NULL
   `;
