@@ -1931,3 +1931,109 @@
     font-size: 0.42rem;
   }
 }
+
+/* ==========================================================
+   Correct proofing toolbar centring
+   ========================================================== */
+
+.proofing-client-selection-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  min-height: 3.7rem;
+  padding: 0.35rem 1rem 0.45rem;
+}
+
+/* Primary navigation is centred against the FULL toolbar */
+.proofing-client-toolbar-primary {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(44rem, 58%);
+  transform: translate(-50%, -50%);
+  display: grid;
+  grid-template-columns:
+    minmax(2rem, 1fr)
+    auto
+    minmax(2rem, 1fr);
+  align-items: center;
+  gap: 1.35rem;
+}
+
+.proofing-client-view-controls {
+  justify-content: center;
+  gap: 2.5rem;
+}
+
+.proofing-client-view-controls button {
+  padding: 0.6rem 0 0.65rem;
+  font-size: 0.68rem;
+}
+
+/* Secondary filter sits independently at the right */
+.proofing-client-toolbar-secondary {
+  position: absolute;
+  top: 50%;
+  right: 1rem;
+  width: min(27rem, 32%);
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin: 0;
+}
+
+.proofing-client-orientation-controls {
+  width: 100%;
+  justify-content: flex-end;
+  gap: 1.15rem;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid
+    rgba(242, 238, 230, 0.16);
+}
+
+.proofing-client-orientation-controls button {
+  padding: 0.55rem 0 0.6rem;
+  font-size: 0.44rem;
+}
+
+/* Tablet / smaller desktop */
+@media (max-width: 1000px) {
+  .proofing-client-toolbar-primary {
+    width: min(38rem, 55%);
+  }
+
+  .proofing-client-toolbar-secondary {
+    width: min(22rem, 35%);
+  }
+}
+
+/* Stack cleanly on narrower screens */
+@media (max-width: 760px) {
+  .proofing-client-selection-toolbar {
+    min-height: 6.6rem;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+  }
+
+  .proofing-client-toolbar-primary {
+    top: 0.45rem;
+    left: 50%;
+    width: calc(100% - 2rem);
+    transform: translateX(-50%);
+  }
+
+  .proofing-client-toolbar-secondary {
+    top: auto;
+    right: 1rem;
+    bottom: 0.45rem;
+    width: calc(100% - 2rem);
+    transform: none;
+    justify-content: center;
+  }
+
+  .proofing-client-orientation-controls {
+    justify-content: center;
+  }
+}
