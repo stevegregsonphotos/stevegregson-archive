@@ -498,11 +498,6 @@ export default async function ProofingGalleryPage({
               gallery.recipients?.length ?? 0
             }
           />
-
-          <DeleteGalleryButton
-            galleryId={gallery.id}
-            galleryTitle={gallery.title}
-          />
         </div>
       </header>
 
@@ -664,6 +659,28 @@ export default async function ProofingGalleryPage({
             branding={branding}
             selections={selections}
           />
+
+          <section className="sp-gallery-danger-zone">
+            <div>
+              <span className="sp-gallery-sidebar-label">
+                Danger Zone
+              </span>
+
+              <h2>
+                Delete this gallery
+              </h2>
+
+              <p>
+                Permanently remove this proofing gallery,
+                its selections and its stored proofing images.
+              </p>
+            </div>
+
+            <DeleteGalleryButton
+              galleryId={gallery.id}
+              galleryTitle={gallery.title}
+            />
+          </section>
         </section>
       </div>
     </main>
