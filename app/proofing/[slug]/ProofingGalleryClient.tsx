@@ -925,7 +925,13 @@ export default function ProofingGalleryClient({
         </div>
       ) : null}
       <div className="proofing-client-selection-toolbar">
-  <div className="proofing-client-view-controls">
+  <div className="proofing-client-toolbar-primary">
+    <span
+      className="proofing-client-toolbar-rule"
+      aria-hidden="true"
+    />
+
+    <div className="proofing-client-view-controls">
     <button
       ref={firstGalleryControlRef}
       type="button"
@@ -958,10 +964,17 @@ export default function ProofingGalleryClient({
         ♥ {favourites.length}
       </span>
     </button>
+    </div>
+
+    <span
+      className="proofing-client-toolbar-rule"
+      aria-hidden="true"
+    />
   </div>
 
-  <div
-    className="proofing-client-orientation-controls"
+  <div className="proofing-client-toolbar-secondary">
+    <div
+      className="proofing-client-orientation-controls"
     aria-label="Filter photographs by orientation"
   >
     <button
@@ -1021,6 +1034,7 @@ export default function ProofingGalleryClient({
       Portrait
       <span>{portraitCount}</span>
     </button>
+    </div>
   </div>
 
   {downloadPermission === "web" && view === "all" ? (

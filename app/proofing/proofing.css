@@ -1576,3 +1576,128 @@
     font-size: 0.46rem;
   }
 }
+
+
+/* Proofing toolbar hierarchy */
+
+.proofing-client-selection-toolbar {
+  display: block;
+  padding-top: 0.8rem;
+  padding-bottom: 0.8rem;
+}
+
+.proofing-client-toolbar-primary {
+  display: grid;
+  grid-template-columns:
+    minmax(2rem, 1fr)
+    auto
+    minmax(2rem, 1fr);
+  align-items: center;
+  gap: 2rem;
+  width: 100%;
+}
+
+.proofing-client-toolbar-rule {
+  display: block;
+  height: 1px;
+  background: rgba(242, 238, 230, 0.16);
+}
+
+.proofing-client-view-controls {
+  gap: 3rem;
+}
+
+.proofing-client-view-controls button {
+  padding: 0.85rem 0 0.9rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+}
+
+.proofing-client-view-controls button span {
+  font-size: 0.6rem;
+}
+
+.proofing-client-view-controls button.is-active {
+  border-bottom-width: 2px;
+}
+
+.proofing-client-toolbar-secondary {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+  margin-top: 0.45rem;
+}
+
+.proofing-client-orientation-controls {
+  width: min(33rem, 48%);
+  box-sizing: border-box;
+  justify-content: flex-end;
+  gap: 1.5rem;
+  padding: 0 0 0.15rem;
+  border-left: 0;
+  border-bottom: 1px solid
+    rgba(242, 238, 230, 0.12);
+}
+
+.proofing-client-orientation-controls button {
+  flex: 0 0 auto;
+  padding: 0.55rem 0 0.7rem;
+  font-size: 0.48rem;
+  letter-spacing: 0.1em;
+}
+
+.proofing-client-orientation-controls button span {
+  font-size: 0.43rem;
+}
+
+@media (max-width: 800px) {
+  .proofing-client-toolbar-primary {
+    grid-template-columns:
+      minmax(1rem, 1fr)
+      auto
+      minmax(1rem, 1fr);
+    gap: 1rem;
+  }
+
+  .proofing-client-view-controls {
+    gap: 1.5rem;
+  }
+
+  .proofing-client-view-controls button {
+    font-size: 0.64rem;
+  }
+
+  .proofing-client-toolbar-secondary {
+    margin-top: 0.65rem;
+  }
+
+  .proofing-client-orientation-controls {
+    width: 100%;
+    justify-content: flex-end;
+    padding-top: 0;
+    border-top: 0;
+  }
+}
+
+@media (max-width: 520px) {
+  .proofing-client-toolbar-primary {
+    grid-template-columns: 1fr;
+  }
+
+  .proofing-client-toolbar-rule {
+    display: none;
+  }
+
+  .proofing-client-view-controls {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .proofing-client-view-controls button {
+    flex: 0 1 auto;
+  }
+
+  .proofing-client-orientation-controls {
+    justify-content: center;
+  }
+}
