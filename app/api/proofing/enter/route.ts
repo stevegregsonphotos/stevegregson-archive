@@ -116,31 +116,125 @@ export async function POST(
         const visitors =
           currentGallery.visitors ?? [];
 
-        const existingVisitor =
-          visitors.find(
+        const matchingVisitors =
+          visitors.filter(
             (visitor) =>
-              visitor.email === email,
+              normaliseEmail(
+                visitor.email,
+              ) === email,
           );
 
         const now =
           new Date().toISOString();
 
-        if (existingVisitor) {
+        if (matchingVisitors.length > 0) {
+          const existingVisitor =
+            matchingVisitors[0];
+
           visitorId = existingVisitor.id;
+
+          const favouriteByImageId =
+            new Map(
+              matchingVisitors.flatMap(
+                (visitor) =>
+                  visitor.selection.favourites.map(
+                    (favourite) => [
+                      favourite.imageId,
+                      favourite,
+                    ] as const,
+                  ),
+              ),
+            );
+
+          const latestSubmittedVisitor =
+            matchingVisitors
+              .filter(
+                (visitor) =>
+                  Boolean(
+                    visitor.selection.submittedAt,
+                  ),
+              )
+              .sort(
+                (first, second) =>
+                  new Date(
+                    second.selection.submittedAt as string,
+                  ).getTime() -
+                  new Date(
+                    first.selection.submittedAt as string,
+                  ).getTime(),
+              )[0];
+
+          const mergedFavourites =
+            [...favouriteByImageId.values()];
+
+          const mergedStatus =
+            matchingVisitors.some(
+              (visitor) =>
+                visitor.selection.status ===
+                "in-progress",
+            )
+              ? "in-progress"
+              : latestSubmittedVisitor
+                ? "submitted"
+                : mergedFavourites.length > 0
+                  ? "in-progress"
+                  : "not-started";
+
+          const matchingIds =
+            new Set(
+              matchingVisitors.map(
+                (visitor) =>
+                  visitor.id,
+              ),
+            );
 
           return {
             ...currentGallery,
 
-            visitors: visitors.map(
-              (visitor) =>
-                visitor.id ===
-                existingVisitor.id
-                  ? {
-                      ...visitor,
-                      lastSeenAt: now,
-                    }
-                  : visitor,
-            ),
+            visitors: visitors
+              .filter(
+                (visitor) =>
+                  !matchingIds.has(
+                    visitor.id,
+                  ) ||
+                  visitor.id ===
+                    existingVisitor.id,
+              )
+              .map(
+                (visitor) =>
+                  visitor.id ===
+                  existingVisitor.id
+                    ? {
+                        ...visitor,
+                        email,
+                        lastSeenAt: now,
+
+                        selection: {
+                          ...visitor.selection,
+
+                          favourites:
+                            mergedFavourites,
+
+                          status:
+                            mergedStatus,
+
+                          submittedFavourites:
+                            latestSubmittedVisitor
+                              ?.selection
+                              .submittedFavourites ??
+                            visitor.selection
+                              .submittedFavourites,
+
+                          submittedAt:
+                            latestSubmittedVisitor
+                              ?.selection
+                              .submittedAt ??
+                            visitor.selection
+                              .submittedAt,
+                        },
+                      }
+                    : visitor,
+              ),
           };
         }
 
