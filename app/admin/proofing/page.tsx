@@ -231,6 +231,71 @@ export default async function ProofingPage() {
         ).getTime(),
     );
 
+  const galleryActivity =
+    galleries
+      .flatMap((gallery) => {
+        const visitors =
+          (gallery.visitors ?? [])
+            .slice()
+            .sort(
+              (first, second) =>
+                new Date(
+                  second.lastSeenAt,
+                ).getTime() -
+                new Date(
+                  first.lastSeenAt,
+                ).getTime(),
+            );
+
+        if (visitors.length === 0) {
+          return [];
+        }
+
+        return [
+          {
+            id: gallery.id,
+            title: gallery.title,
+            clientName:
+              gallery.clientName,
+            visitors,
+            latestVisit:
+              visitors[0].lastSeenAt,
+          },
+        ];
+      })
+      .sort(
+        (first, second) =>
+          new Date(
+            second.latestVisit,
+          ).getTime() -
+          new Date(
+            first.latestVisit,
+          ).getTime(),
+      );
+
+  const activityVisitorCount =
+    galleryActivity.reduce(
+      (total, gallery) =>
+        total +
+        gallery.visitors.length,
+      0,
+    );
+
+  function formatActivityDate(
+    value: string,
+  ) {
+    return new Intl.DateTimeFormat(
+      "en-GB",
+      {
+        dateStyle: "medium",
+        timeStyle: "short",
+        timeZone: "Europe/London",
+      },
+    ).format(
+      new Date(value),
+    );
+  }
+
   const galleryItems = galleries.map(
     (gallery) => {
       const visitorCount =
@@ -323,6 +388,96 @@ export default async function ProofingPage() {
             />
           </div>
         </header>
+
+        {galleryActivity.length > 0 ? (
+          <details className="sp-gallery-activity">
+            <summary>
+              <div className="sp-gallery-activity-summary">
+                <div>
+                  <span className="proofing-eyebrow">
+                    Gallery activity
+                  </span>
+
+                  <strong>
+                    {galleryActivity.length}
+                    {" "}
+                    {galleryActivity.length === 1
+                      ? "gallery"
+                      : "galleries"}
+                    {" "}visited
+                  </strong>
+                </div>
+
+                <span className="sp-gallery-activity-count">
+                  {activityVisitorCount}
+                  {" "}
+                  {activityVisitorCount === 1
+                    ? "visitor"
+                    : "visitors"}
+                </span>
+              </div>
+            </summary>
+
+            <div className="sp-gallery-activity-body">
+              {galleryActivity.map(
+                (activityGallery) => (
+                  <section
+                    key={activityGallery.id}
+                    className="sp-gallery-activity-gallery"
+                  >
+                    <div className="sp-gallery-activity-gallery-heading">
+                      <div>
+                        <Link
+                          href={`/admin/proofing/${activityGallery.id}`}
+                        >
+                          {activityGallery.title}
+                        </Link>
+
+                        {activityGallery.clientName ? (
+                          <span>
+                            {activityGallery.clientName}
+                          </span>
+                        ) : null}
+                      </div>
+
+                      <span>
+                        Latest{" "}
+                        {formatActivityDate(
+                          activityGallery.latestVisit,
+                        )}
+                      </span>
+                    </div>
+
+                    <div className="sp-gallery-activity-visitors">
+                      {activityGallery.visitors.map(
+                        (visitor) => (
+                          <div
+                            key={visitor.id}
+                            className="sp-gallery-activity-visitor"
+                          >
+                            <span>
+                              {visitor.email}
+                            </span>
+
+                            <time
+                              dateTime={
+                                visitor.lastSeenAt
+                              }
+                            >
+                              {formatActivityDate(
+                                visitor.lastSeenAt,
+                              )}
+                            </time>
+                          </div>
+                        ),
+                      )}
+                    </div>
+                  </section>
+                ),
+              )}
+            </div>
+          </details>
+        ) : null}
 
         {galleries.length === 0 ? (
           <section className="sp-gallery-first">

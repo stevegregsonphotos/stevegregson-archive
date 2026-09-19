@@ -5103,3 +5103,117 @@ input[type="email"],
     flex-direction: column;
   }
 }
+
+/* Proofing gallery activity */
+
+.sp-gallery-activity {
+  margin: 0 0 2rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.sp-gallery-activity > summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 1.15rem 1.25rem;
+}
+
+.sp-gallery-activity > summary::-webkit-details-marker {
+  display: none;
+}
+
+.sp-gallery-activity-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+}
+
+.sp-gallery-activity-summary > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.sp-gallery-activity-summary strong {
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.sp-gallery-activity-count {
+  font-size: 0.78rem;
+  opacity: 0.65;
+  white-space: nowrap;
+}
+
+.sp-gallery-activity[open] > summary {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sp-gallery-activity-body {
+  padding: 0 1.25rem;
+}
+
+.sp-gallery-activity-gallery {
+  padding: 1.15rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sp-gallery-activity-gallery:last-child {
+  border-bottom: 0;
+}
+
+.sp-gallery-activity-gallery-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1.5rem;
+  margin-bottom: 0.8rem;
+}
+
+.sp-gallery-activity-gallery-heading > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.sp-gallery-activity-gallery-heading a {
+  color: inherit;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.sp-gallery-activity-gallery-heading a:hover {
+  text-decoration: underline;
+}
+
+.sp-gallery-activity-gallery-heading span {
+  font-size: 0.75rem;
+  opacity: 0.6;
+}
+
+.sp-gallery-activity-visitors {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.sp-gallery-activity-visitor {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.8rem;
+}
+
+.sp-gallery-activity-visitor time {
+  opacity: 0.62;
+  white-space: nowrap;
+}
+
+@media (max-width: 700px) {
+  .sp-gallery-activity-gallery-heading,
+  .sp-gallery-activity-visitor {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+}
