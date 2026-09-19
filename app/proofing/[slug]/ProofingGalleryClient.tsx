@@ -1106,7 +1106,7 @@ export default function ProofingGalleryClient({
       ) : null}
 
       {view === "favourites" &&
-      visibleImages.length === 0 ? (
+      favouriteImages.length === 0 ? (
         <div className="proofing-review-empty">
           <p>
             You haven't selected any
@@ -1120,24 +1120,34 @@ export default function ProofingGalleryClient({
             View photographs
           </button>
         </div>
-      ) : (
-        <section
-          className="proofing-client-grid"
-          aria-label={
-            view === "favourites"
-              ? "Favourite photographs"
-              : "Proofing photographs"
-          }
-        >
-          {visibleImages.map((image) => {
-            const isFavourite =
-              favouriteSet.has(image.id);
+      ) : null}
 
-            return (
-              <figure
-                key={image.id}
-                className="proofing-client-card"
-              >
+      <section
+        className="proofing-client-grid"
+        aria-label={
+          view === "favourites"
+            ? "Favourite photographs"
+            : "Proofing photographs"
+        }
+        hidden={
+          view === "favourites" &&
+          favouriteImages.length === 0
+        }
+      >
+        {images.map((image) => {
+          const isFavourite =
+            favouriteSet.has(image.id);
+
+          const hiddenFromView =
+            view === "favourites" &&
+            !isFavourite;
+
+          return (
+            <figure
+              key={image.id}
+              className="proofing-client-card"
+              hidden={hiddenFromView}
+            >
                 <div className="proofing-client-image-wrap">
                   <button
                     type="button"
@@ -1214,9 +1224,8 @@ export default function ProofingGalleryClient({
 
               </figure>
             );
-          })}
-        </section>
-      )}
+        })}
+      </section>
         {viewerImage ? (
           <div
             ref={viewerDialogRef}

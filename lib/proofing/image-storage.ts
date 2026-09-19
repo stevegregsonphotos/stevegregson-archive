@@ -1,7 +1,9 @@
 import {
   DeleteObjectCommand,
+  DeleteObjectsCommand,
   GetObjectCommand,
   HeadObjectCommand,
+  ListObjectsV2Command,
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
@@ -213,6 +215,69 @@ export async function deleteProofingImage(
       Bucket: getBucket(),
       Key: getProofingImageObjectKey(galleryId, webFilename),
     }),
+  );
+}
+
+async function deleteProofingObjectsWithPrefix(
+  prefix: string,
+) {
+  const client = getClient();
+  const bucket = getBucket();
+
+  let continuationToken:
+    | string
+    | undefined;
+
+  do {
+    const response =
+      await client.send(
+        new ListObjectsV2Command({
+          Bucket: bucket,
+          Prefix: prefix,
+          ContinuationToken:
+            continuationToken,
+        }),
+      );
+
+    const objects =
+      (response.Contents ?? [])
+        .flatMap((object) =>
+          object.Key
+            ? [{ Key: object.Key }]
+            : [],
+        );
+
+    if (objects.length > 0) {
+      await client.send(
+        new DeleteObjectsCommand({
+          Bucket: bucket,
+          Delete: {
+            Objects: objects,
+            Quiet: true,
+          },
+        }),
+      );
+    }
+
+    continuationToken =
+      response.IsTruncated
+        ? response.NextContinuationToken
+        : undefined;
+  } while (continuationToken);
+}
+
+export async function deleteProofingGalleryObjects(
+  galleryId: string,
+) {
+  const safeGalleryId =
+    safeSegment(galleryId);
+
+  await deleteProofingObjectsWithPrefix(
+    `${safeGalleryId}/`,
+  );
+
+  await deleteProofingObjectsWithPrefix(
+    `rendered/${safeGalleryId}/`,
   );
 }
 

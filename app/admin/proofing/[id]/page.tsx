@@ -29,6 +29,7 @@ import ProofingSettingsEditor from "./ProofingSettingsEditor";
 import ProofingUrlEditor from "./ProofingUrlEditor";
 import ProofingWorkspace from "./ProofingWorkspace";
 import ShareGalleryButton from "./ShareGalleryButton";
+import DeleteGalleryButton from "./DeleteGalleryButton";
 
 export const dynamic = "force-dynamic";
 
@@ -496,6 +497,11 @@ export default async function ProofingGalleryPage({
             recipientCount={
               gallery.recipients?.length ?? 0
             }
+          />
+
+          <DeleteGalleryButton
+            galleryId={gallery.id}
+            galleryTitle={gallery.title}
           />
         </div>
       </header>

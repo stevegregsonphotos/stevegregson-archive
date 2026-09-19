@@ -5051,3 +5051,27 @@ input[type="email"],
     padding: 1.2rem;
   }
 }
+
+
+/* Proofing gallery destructive action */
+
+.sp-gallery-delete-link {
+  appearance: none;
+  border: 1px solid currentColor;
+  background: transparent;
+  color: inherit;
+  padding: 0.7rem 1rem;
+  border-radius: 999px;
+  font: inherit;
+  cursor: pointer;
+  opacity: 0.72;
+}
+
+.sp-gallery-delete-link:hover {
+  opacity: 1;
+}
+
+.sp-gallery-delete-link:disabled {
+  cursor: wait;
+  opacity: 0.45;
+}

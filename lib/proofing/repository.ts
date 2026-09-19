@@ -420,6 +420,27 @@ export async function deleteProofingImageRecord(
   ]);
 }
 
+export async function deleteProofingGallery(
+  galleryId: string,
+) {
+  const sql = getSql();
+
+  const results =
+    await sql.transaction([
+      sql`
+        DELETE FROM proofing_images
+        WHERE gallery_id = ${galleryId}
+      `,
+      sql`
+        DELETE FROM proofing_galleries
+        WHERE id = ${galleryId}
+        RETURNING id
+      `,
+    ]);
+
+  return results[1].length === 1;
+}
+
 export async function reorderProofingImages(
   galleryId: string,
   imageIds: string[],
