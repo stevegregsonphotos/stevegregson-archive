@@ -380,8 +380,8 @@ export default async function ProofingPage() {
         </header>
 
         {galleryActivity.length > 0 ? (
-          <section className="sp-gallery-activity-list">
-            <div className="sp-gallery-activity-list-heading">
+          <details className="sp-gallery-activity-list">
+            <summary className="sp-gallery-activity-list-heading">
               <span className="proofing-eyebrow">
                 Gallery activity
               </span>
@@ -393,9 +393,10 @@ export default async function ProofingPage() {
                   ? "gallery visited"
                   : "galleries visited"}
               </strong>
-            </div>
+            </summary>
 
-            {galleryActivity.map(
+            <div className="sp-gallery-activity-list-body">
+              {galleryActivity.map(
               (activityGallery) => (
                 <details
                   key={activityGallery.galleryId}
@@ -463,7 +464,8 @@ export default async function ProofingPage() {
                 </details>
               ),
             )}
-          </section>
+            </div>
+          </details>
         ) : null}
 
         {galleries.length === 0 ? (

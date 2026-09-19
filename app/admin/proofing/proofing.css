@@ -5365,3 +5365,23 @@ input[type="email"],
     flex-direction: column;
   }
 }
+
+/* Outer gallery activity disclosure */
+
+.sp-gallery-activity-list > summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+.sp-gallery-activity-list > summary::-webkit-details-marker {
+  display: none;
+}
+
+.sp-gallery-activity-list-body {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sp-gallery-activity-list:not([open])
+  .sp-gallery-activity-list-body {
+  display: none;
+}
