@@ -64,15 +64,17 @@
 }
 
 .proofing-client-grid {
-  column-count: 4;
-  column-gap: 0.35rem;
+  display: grid;
+  grid-template-columns:
+    repeat(4, minmax(0, 1fr));
+  gap: 0.35rem;
+  align-items: start;
   margin-top: 0.35rem;
 }
 
 .proofing-client-card {
   position: relative;
-  break-inside: avoid;
-  margin: 0 0 0.35rem;
+  margin: 0;
   overflow: hidden;
   background: rgba(255, 255, 255, 0.03);
 }
@@ -114,7 +116,8 @@
   }
 
   .proofing-client-grid {
-    column-count: 3;
+    grid-template-columns:
+      repeat(3, minmax(0, 1fr));
   }
 }
 
@@ -127,12 +130,9 @@
   }
 
   .proofing-client-grid {
-    column-count: 2;
-    column-gap: 0.25rem;
-  }
-
-  .proofing-client-card {
-    margin-bottom: 0.25rem;
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+    gap: 0.25rem;
   }
 
   .proofing-client-header h1 {

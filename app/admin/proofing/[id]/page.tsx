@@ -213,6 +213,9 @@ export default async function ProofingGalleryPage({
             ? "web"
             : gallery.downloadPermission
         }
+        initialShowFilenames={
+          gallery.showFilenames === true
+        }
         initialWatermarkEnabled={
           gallery.watermarkEnabled
         }

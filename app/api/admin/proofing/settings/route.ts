@@ -65,6 +65,9 @@ export async function POST(request: Request) {
     body.downloadPermission ?? "",
   ) as ProofingDownloadPermission;
 
+  const showFilenames =
+    body.showFilenames === true;
+
   const watermarkEnabled =
     body.watermarkEnabled === true;
 
@@ -303,6 +306,7 @@ export async function POST(request: Request) {
       ...gallery,
       status,
       downloadPermission,
+      showFilenames,
       watermarkEnabled,
       watermarkId:
         watermarkIdValue || undefined,

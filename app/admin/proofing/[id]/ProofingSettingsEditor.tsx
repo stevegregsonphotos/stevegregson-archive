@@ -55,6 +55,7 @@ type ProofingSettingsEditorProps = {
   galleryId: string;
   initialStatus: GalleryStatus;
   initialDownloadPermission: DownloadPermission;
+  initialShowFilenames?: boolean;
   initialWatermarkEnabled: boolean;
   initialWatermarkId?: string;
   initialWatermarkPosition?: WatermarkPosition;
@@ -95,6 +96,7 @@ export default function ProofingSettingsEditor({
   galleryId,
   initialStatus,
   initialDownloadPermission,
+  initialShowFilenames = false,
   initialWatermarkEnabled,
   initialWatermarkId,
   initialWatermarkPosition = "bottom-right",
@@ -116,6 +118,9 @@ export default function ProofingSettingsEditor({
     useState<DownloadPermission>(
       initialDownloadPermission,
     );
+
+  const [showFilenames, setShowFilenames] =
+    useState(initialShowFilenames);
 
   const [watermarkId, setWatermarkId] = useState(
     initialWatermarkEnabled
@@ -172,6 +177,7 @@ export default function ProofingSettingsEditor({
             recipients,
             status,
             downloadPermission,
+            showFilenames,
             watermarkEnabled,
             watermarkId,
             watermarkPosition,
@@ -419,6 +425,38 @@ export default function ProofingSettingsEditor({
           <p>
             Choose what the client is permitted to
             download.
+          </p>
+        </div>
+
+        <div className="proofing-settings-field">
+          <label htmlFor="proofing-filenames">
+            Filenames
+          </label>
+
+          <select
+            id="proofing-filenames"
+            value={
+              showFilenames ? "show" : "hide"
+            }
+            onChange={(event) => {
+              setShowFilenames(
+                event.target.value === "show",
+              );
+              setMessage("");
+            }}
+          >
+            <option value="hide">
+              Hide filenames
+            </option>
+
+            <option value="show">
+              Show filenames to clients
+            </option>
+          </select>
+
+          <p>
+            Choose whether clients can see the
+            original filename beneath each photograph.
           </p>
         </div>
 

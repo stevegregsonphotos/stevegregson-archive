@@ -225,6 +225,9 @@ export default async function ProofingClientPage({
                 ? "web"
                 : gallery.downloadPermission
             }
+            showFilenames={
+              gallery.showFilenames === true
+            }
             watermarkUrl={watermarkUrl}
             watermarkPosition={
               gallery.watermarkPosition

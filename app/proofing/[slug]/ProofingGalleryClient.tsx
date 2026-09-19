@@ -23,6 +23,7 @@ type ProofingGalleryClientProps = {
     | "none"
     | "web"
     | "selected";
+  showFilenames?: boolean;
   watermarkUrl?: string;
   watermarkPosition?:
     | "top-left"
@@ -79,6 +80,7 @@ export default function ProofingGalleryClient({
   introMessage,
   showIntroOnLoad = false,
   downloadPermission,
+  showFilenames = false,
   watermarkUrl,
   watermarkPosition,
   watermarkSize,
@@ -1221,7 +1223,11 @@ export default function ProofingGalleryClient({
                   </button>
                 </div>
 
-
+                {showFilenames ? (
+                  <figcaption className="proofing-client-filename">
+                    {image.originalFilename}
+                  </figcaption>
+                ) : null}
               </figure>
             );
         })}

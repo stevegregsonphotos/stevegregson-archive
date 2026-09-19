@@ -189,6 +189,12 @@ export type ProofingGallery = {
   downloadPermission:
     ProofingDownloadPermission;
 
+  /*
+   * Whether original filenames are visible
+   * beneath photographs in the client gallery.
+   */
+  showFilenames?: boolean;
+
   watermarkEnabled: boolean;
 
   /*
