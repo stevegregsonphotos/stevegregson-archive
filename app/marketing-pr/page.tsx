@@ -9,14 +9,14 @@ import {
 import styles from "../selected-work/selected-work.module.css";
 
 export const metadata: Metadata = {
-  title: "Marketing & PR Photography",
+  title: "Theatre Marketing & PR Photography",
   alternates: {
     canonical: "/marketing-pr",
   },
   openGraph: {
     type: "website",
     url: "/marketing-pr",
-    title: "Marketing & PR Photography | Steve Gregson",
+    title: "Theatre Marketing & PR Photography | Steve Gregson",
     description: "Marketing, campaign and publicity photography by London theatre photographer Steve Gregson, created for theatres, producers and audiences.",
     images: [
       {
@@ -29,7 +29,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Marketing & PR Photography | Steve Gregson",
+    title: "Theatre Marketing & PR Photography | Steve Gregson",
     description: "Marketing, campaign and publicity photography by London theatre photographer Steve Gregson, created for theatres, producers and audiences.",
     images: ["/images/homepage-hero.jpg"],
   },
@@ -123,9 +123,9 @@ export default async function MarketingPrPage() {
         </h1>
 
         <p className={styles.introText}>
-          Campaign and publicity photography created
-          to introduce productions, build anticipation
-          and connect theatres with their audiences.
+          Campaign and publicity photography for theatre
+          productions, created to build anticipation and
+          connect theatres with their audiences.
         </p>
       </section>
 
