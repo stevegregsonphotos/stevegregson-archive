@@ -335,7 +335,7 @@ async function loadProductionContext(
 
   if (!galleryImage) {
     throw new Error(
-      "The image is not part of this production.",
+      `The image "${filename}" is not part of this production.`,
     );
   }
 
