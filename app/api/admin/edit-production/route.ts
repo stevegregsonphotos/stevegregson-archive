@@ -486,31 +486,96 @@ export async function POST(request: Request) {
       );
     }
 
+    const renamePlan: Array<{
+      sourceFilename: string;
+      destinationFilename: string;
+    }> = [];
+
     for (const image of nextImages) {
       let finalFilename = image.src;
+
       if (image.suggestedFilename) {
-        finalFilename = await uniqueProductionImageFilename(
-          slug,
-          image.suggestedFilename,
-          image.src,
-          reserved,
-        );
+        finalFilename =
+          await uniqueProductionImageFilename(
+            slug,
+            image.suggestedFilename,
+            image.src,
+            reserved,
+          );
       }
+
       reserved.add(finalFilename);
+
       if (finalFilename !== image.src) {
-        await copyProductionImage(
-          slug,
-          image.src,
-          finalFilename,
-        );
-        copiedFilenames.push(finalFilename);
+        renamePlan.push({
+          sourceFilename: image.src,
+          destinationFilename: finalFilename,
+        });
+
         renamedFrom.push(image.src);
       }
+
       finalImages.push({
         ...image,
         src: finalFilename,
         suggestedFilename: undefined,
       });
+    }
+
+    const copyConcurrency = 6;
+
+    for (
+      let index = 0;
+      index < renamePlan.length;
+      index += copyConcurrency
+    ) {
+      const batch =
+        renamePlan.slice(
+          index,
+          index + copyConcurrency,
+        );
+
+      const copyResults =
+        await Promise.allSettled(
+          batch.map(
+            ({
+              sourceFilename,
+              destinationFilename,
+            }) =>
+              copyProductionImage(
+                slug,
+                sourceFilename,
+                destinationFilename,
+              ),
+          ),
+        );
+
+      for (
+        let batchIndex = 0;
+        batchIndex < copyResults.length;
+        batchIndex += 1
+      ) {
+        if (
+          copyResults[batchIndex].status ===
+          "fulfilled"
+        ) {
+          copiedFilenames.push(
+            batch[batchIndex]
+              .destinationFilename,
+          );
+        }
+      }
+
+      const failedCopy =
+        copyResults.find(
+          (result) =>
+            result.status ===
+            "rejected",
+        );
+
+      if (failedCopy?.status === "rejected") {
+        throw failedCopy.reason;
+      }
     }
 
     production.images = finalImages;
@@ -519,13 +584,35 @@ export async function POST(request: Request) {
       throw new Error("The production disappeared before the update could be committed.");
     }
 
-    for (const oldFilename of renamedFrom) {
-      await deleteProductionImage(
-        slug,
-        oldFilename,
-      ).catch((cleanupError) => {
-        console.error("Old production R2 image cleanup failed:", cleanupError);
-      });
+    const deleteConcurrency = 8;
+
+    for (
+      let index = 0;
+      index < renamedFrom.length;
+      index += deleteConcurrency
+    ) {
+      const batch =
+        renamedFrom.slice(
+          index,
+          index + deleteConcurrency,
+        );
+
+      await Promise.all(
+        batch.map(
+          (oldFilename) =>
+            deleteProductionImage(
+              slug,
+              oldFilename,
+            ).catch(
+              (cleanupError) => {
+                console.error(
+                  "Old production R2 image cleanup failed:",
+                  cleanupError,
+                );
+              },
+            ),
+        ),
+      );
     }
 
     let directorySync:
@@ -555,11 +642,30 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     if (activeSlug) {
-      for (const filename of copiedFilenames) {
-        await deleteProductionImage(
-          activeSlug,
-          filename,
-        ).catch(() => undefined);
+      const rollbackConcurrency = 8;
+
+      for (
+        let index = 0;
+        index < copiedFilenames.length;
+        index += rollbackConcurrency
+      ) {
+        const batch =
+          copiedFilenames.slice(
+            index,
+            index + rollbackConcurrency,
+          );
+
+        await Promise.all(
+          batch.map(
+            (filename) =>
+              deleteProductionImage(
+                activeSlug!,
+                filename,
+              ).catch(
+                () => undefined,
+              ),
+          ),
+        );
       }
     }
     console.error("Production update failed:", error);
