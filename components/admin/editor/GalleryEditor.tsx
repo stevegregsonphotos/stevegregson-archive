@@ -17,6 +17,8 @@ export type GalleryEditorImage = {
   alt: string;
   layout: GalleryLayout;
   suggestedFilename?: string;
+  analysisStatus?: "pending" | "complete";
+  analysedAt?: string;
 };
 
 type VisionResult = {
@@ -135,6 +137,10 @@ export default function GalleryEditor({
             result.metadata.filename,
           layout:
             result.metadata.layout,
+          analysisStatus:
+            "complete",
+          analysedAt:
+            new Date().toISOString(),
         },
       );
     } catch (error) {
@@ -227,7 +233,8 @@ export default function GalleryEditor({
                 >
                   {analysingImage === image.src
                     ? "Analysing…"
-                    : image.suggestedFilename
+                    : image.analysisStatus ===
+                        "complete"
                       ? "Reanalyse image"
                       : "Analyse image"}
                 </button>

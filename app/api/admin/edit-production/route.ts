@@ -43,6 +43,8 @@ type ProductionImage = {
   editPanY?: number;
   editBrightness?: number;
   editAutoStrength?: number;
+  analysisStatus?: "pending" | "complete";
+  analysedAt?: string;
 };
 
 type ProductionCredit = {
@@ -168,6 +170,17 @@ function parseImages(value: unknown) {
       editBrightness: image.editBrightness ?? 100,
       editAutoStrength:
         image.editAutoStrength ?? 0,
+      analysisStatus:
+        image.analysisStatus === "complete"
+          ? ("complete" as const)
+          : ("pending" as const),
+      ...(typeof image.analysedAt === "string" &&
+      image.analysedAt
+        ? {
+            analysedAt:
+              image.analysedAt,
+          }
+        : {}),
     };
   });
 }
@@ -347,6 +360,7 @@ export async function POST(request: Request) {
           src: previousHero,
           alt: previousHeroAlt,
           layout: "wide" as const,
+          analysisStatus: "complete" as const,
           ...(previousHeroBlur ? { blurDataURL: previousHeroBlur } : {}),
         },
         ...nextImages.filter((image) => image.src !== chosenImage.src),

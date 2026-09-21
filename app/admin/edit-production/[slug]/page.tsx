@@ -40,6 +40,8 @@ type ProductionImage = {
   editPanY?: number;
   editBrightness?: number;
   editAutoStrength?: number;
+  analysisStatus?: "pending" | "complete";
+  analysedAt?: string;
 };
 
 type ProductionCredit = {
@@ -1060,6 +1062,9 @@ setAccessPassword("");
                     alt: metadata.alt,
                     layout: metadata.layout,
                     suggestedFilename: metadata.filename,
+                    analysisStatus: "complete" as const,
+                    analysedAt:
+                      new Date().toISOString(),
                   }
                 : image,
             ),

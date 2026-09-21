@@ -19,7 +19,12 @@ export default function VisionMetadataPanel({ productionSlug, images, onApplyMet
   const [error, setError] = useState<string | null>(null);
 
   const remainingImages = useMemo(
-    () => images.filter((image) => !image.suggestedFilename),
+    () =>
+      images.filter(
+        (image) =>
+          image.analysisStatus !==
+          "complete",
+      ),
     [images],
   );
 

@@ -61,6 +61,8 @@ type ImageRow = {
   edit_pan_y: number | null;
   edit_brightness: number | null;
   edit_auto_strength: number | null;
+  analysis_status: "pending" | "complete";
+  analysed_at: Date | string | null;
   position: number;
 };
 
@@ -132,6 +134,18 @@ function mapImageRow(
     editBrightness: row.edit_brightness ?? 100,
     editAutoStrength:
       row.edit_auto_strength ?? 0,
+    analysisStatus:
+      row.analysis_status ?? "complete",
+    ...(row.analysed_at
+      ? {
+          analysedAt:
+            row.analysed_at instanceof Date
+              ? row.analysed_at.toISOString()
+              : new Date(
+                  row.analysed_at,
+                ).toISOString(),
+        }
+      : {}),
   };
 }
 
@@ -466,6 +480,8 @@ export async function getProductions():
         edit_pan_y,
         edit_brightness,
         edit_auto_strength,
+        analysis_status,
+        analysed_at,
         position
       FROM production_images
       WHERE deleted_at IS NULL
@@ -864,6 +880,8 @@ function productionInsertQueries(
         edit_pan_y,
         edit_brightness,
         edit_auto_strength,
+        analysis_status,
+        analysed_at,
         created_at,
         updated_at,
         deleted_at
@@ -885,6 +903,8 @@ function productionInsertQueries(
         ${image.editPanY ?? 0},
         ${image.editBrightness ?? 100},
         ${image.editAutoStrength ?? 0},
+        ${image.analysisStatus ?? "complete"},
+        ${image.analysedAt ?? null},
         now(),
         now(),
         null
@@ -975,7 +995,7 @@ export async function replaceProduction(
         position, blur_data_url, suggested_filename,
         original_display_filename, edit_aspect, edit_zoom,
         edit_pan_x, edit_pan_y, edit_brightness,
-        edit_auto_strength,
+        edit_auto_strength, analysis_status, analysed_at,
         created_at, updated_at, deleted_at
       )
       VALUES (
@@ -990,6 +1010,8 @@ export async function replaceProduction(
         ${image.editPanY ?? 0},
         ${image.editBrightness ?? 100},
         ${image.editAutoStrength ?? 0},
+        ${image.analysisStatus ?? "complete"},
+        ${image.analysedAt ?? null},
         now(), now(), null
       )
     `),

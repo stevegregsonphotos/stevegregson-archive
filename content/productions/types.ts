@@ -28,6 +28,8 @@ export type ProductionImage = {
   editPanY?: number;
   editBrightness?: number;
   editAutoStrength?: number;
+  analysisStatus?: "pending" | "complete";
+  analysedAt?: string;
 };
 
 export type Production = {
