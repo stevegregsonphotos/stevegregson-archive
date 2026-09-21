@@ -20,11 +20,17 @@ export default function VisionMetadataPanel({ productionSlug, images, onApplyMet
 
   const remainingImages = useMemo(
     () =>
-      images.filter(
-        (image) =>
-          image.analysisStatus !==
-          "complete",
-      ),
+      images.filter((image) => {
+        const alt =
+          image.alt.trim();
+
+        return (
+          !alt ||
+          /production photograph/i.test(
+            alt,
+          )
+        );
+      }),
     [images],
   );
 

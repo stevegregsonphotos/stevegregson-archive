@@ -233,8 +233,10 @@ export default function GalleryEditor({
                 >
                   {analysingImage === image.src
                     ? "Analysing…"
-                    : image.analysisStatus ===
-                        "complete"
+                    : image.alt.trim() &&
+                      !/production photograph/i.test(
+                        image.alt,
+                      )
                       ? "Reanalyse image"
                       : "Analyse image"}
                 </button>
