@@ -7,6 +7,7 @@ import {
   getSelectedWork,
   insertSelectedWorkItems,
   replaceSelectedWorkCategory,
+  updateSelectedWorkImageEdit,
 } from "@/lib/selected-work-repository";
 import {
   copySelectedWorkObject,
@@ -46,6 +47,13 @@ type SelectedWorkImage = {
   analysisStatus: AnalysisStatus;
 
   analysedAt?: string;
+  originalFilename?: string;
+  editAspect?: "original" | "3:2" | "4:5" | "1:1" | "16:9";
+  editZoom?: number;
+  editPanX?: number;
+  editPanY?: number;
+  editBrightness?: number;
+  editAutoStrength?: number;
 };
 
 type SelectedWorkData = Record<
@@ -78,7 +86,7 @@ function isAnalysisStatus(
 }
 
 function isSafeFilename(value: string) {
-  return /^[A-Za-z0-9][A-Za-z0-9._-]*\.(?:jpe?g)$/i.test(
+  return /^[A-Za-z0-9][A-Za-z0-9._-]*\.(?:jpe?g|webp)$/i.test(
     value,
   );
 }
@@ -305,6 +313,11 @@ export async function POST(
         action?: unknown;
         category?: unknown;
         originalFilename?: unknown;
+        currentFilename?: unknown;
+        nextFilename?: unknown;
+        width?: unknown;
+        height?: unknown;
+        settings?: unknown;
         uploads?: unknown;
       };
 
@@ -324,6 +337,254 @@ export async function POST(
       typeof body.action === "string"
         ? body.action.trim()
         : "";
+
+    if (action === "presign-edit") {
+      const currentFilename =
+        typeof body.currentFilename === "string"
+          ? body.currentFilename.trim()
+          : "";
+
+      if (
+        !currentFilename ||
+        !isSafeFilename(currentFilename)
+      ) {
+        return Response.json(
+          {
+            ok: false,
+            message:
+              "A valid Selected Work image is required.",
+          },
+          { status: 400 },
+        );
+      }
+
+      const current =
+        (await getSelectedWork())[category]
+          .find(
+            (image) =>
+              image.filename ===
+              currentFilename,
+          );
+
+      if (!current) {
+        return Response.json(
+          {
+            ok: false,
+            message:
+              "The Selected Work image could not be found.",
+          },
+          { status: 404 },
+        );
+      }
+
+      const stem =
+        currentFilename.replace(
+          /\.[^.]+$/,
+          "",
+        );
+
+      const filename =
+        await uniqueSelectedWorkFilename(
+          category,
+          `${stem}-edited.webp`,
+        );
+
+      const storageKey =
+        selectedWorkStorageKey(
+          category,
+          filename,
+        );
+
+      const uploadUrl =
+        await createSelectedWorkUploadUrl(
+          storageKey,
+          "image/webp",
+        );
+
+      return Response.json({
+        ok: true,
+        filename,
+        storageKey,
+        uploadUrl,
+      });
+    }
+
+    if (action === "commit-edit") {
+      const currentFilename =
+        typeof body.currentFilename === "string"
+          ? body.currentFilename.trim()
+          : "";
+
+      const nextFilename =
+        typeof body.nextFilename === "string"
+          ? body.nextFilename.trim()
+          : "";
+
+      const width =
+        Number(body.width);
+
+      const height =
+        Number(body.height);
+
+      const settings =
+        body.settings &&
+        typeof body.settings === "object"
+          ? body.settings as Record<string, unknown>
+          : null;
+
+      if (
+        !isSafeFilename(currentFilename) ||
+        !isSafeFilename(nextFilename) ||
+        !Number.isInteger(width) ||
+        width <= 0 ||
+        !Number.isInteger(height) ||
+        height <= 0 ||
+        !settings
+      ) {
+        return Response.json(
+          {
+            ok: false,
+            message:
+              "The edited image metadata is invalid.",
+          },
+          { status: 400 },
+        );
+      }
+
+      const aspect =
+        typeof settings.aspect === "string" &&
+        [
+          "original",
+          "3:2",
+          "4:5",
+          "1:1",
+          "16:9",
+        ].includes(settings.aspect)
+          ? settings.aspect as
+              | "original"
+              | "3:2"
+              | "4:5"
+              | "1:1"
+              | "16:9"
+          : null;
+
+      const zoom =
+        Number(settings.zoom);
+      const panX =
+        Number(settings.panX);
+      const panY =
+        Number(settings.panY);
+      const brightness =
+        Number(settings.brightness);
+      const autoStrength =
+        Number(settings.autoStrength);
+
+      if (
+        !aspect ||
+        !Number.isFinite(zoom) ||
+        !Number.isFinite(panX) ||
+        !Number.isFinite(panY) ||
+        !Number.isFinite(brightness) ||
+        !Number.isFinite(autoStrength)
+      ) {
+        return Response.json(
+          {
+            ok: false,
+            message:
+              "The image edit settings are invalid.",
+          },
+          { status: 400 },
+        );
+      }
+
+      const currentData =
+        await getSelectedWork();
+
+      const currentImage =
+        currentData[category].find(
+          (image) =>
+            image.filename ===
+            currentFilename,
+        );
+
+      if (!currentImage) {
+        return Response.json(
+          {
+            ok: false,
+            message:
+              "The Selected Work image could not be found.",
+          },
+          { status: 404 },
+        );
+      }
+
+      const nextStorageKey =
+        selectedWorkStorageKey(
+          category,
+          nextFilename,
+        );
+
+      if (
+        !(
+          await selectedWorkObjectExists(
+            nextStorageKey,
+          )
+        )
+      ) {
+        return Response.json(
+          {
+            ok: false,
+            message:
+              "The edited image was not verified in R2.",
+          },
+          { status: 409 },
+        );
+      }
+
+      const originalFilename =
+        currentImage.originalFilename ??
+        currentImage.filename;
+
+      await updateSelectedWorkImageEdit({
+        category,
+        currentFilename,
+        nextFilename,
+        nextStorageKey,
+        width,
+        height,
+        aspect,
+        zoom,
+        panX,
+        panY,
+        brightness,
+        autoStrength,
+      });
+
+      /*
+       * Preserve the original forever, but remove the
+       * previous generated derivative after a successful
+       * replacement.
+       */
+      if (
+        currentImage.filename !==
+        originalFilename
+      ) {
+        await deleteSelectedWorkObject(
+          currentImage.storageKey,
+        ).catch((cleanupError) => {
+          console.error(
+            "Old Selected Work derivative cleanup failed:",
+            cleanupError,
+          );
+        });
+      }
+
+      return Response.json({
+        ok: true,
+        data:
+          await getSelectedWork(),
+      });
+    }
 
     if (action === "presign") {
       const originalFilename =
@@ -643,6 +904,61 @@ const applyFilenameChanges =
           ? value.analysedAt
           : undefined;
 
+      const originalFilename =
+        "originalFilename" in value &&
+        typeof value.originalFilename === "string" &&
+        isSafeFilename(value.originalFilename)
+          ? value.originalFilename
+          : undefined;
+
+      const editAspect =
+        "editAspect" in value &&
+        typeof value.editAspect === "string" &&
+        [
+          "original",
+          "3:2",
+          "4:5",
+          "1:1",
+          "16:9",
+        ].includes(value.editAspect)
+          ? value.editAspect as
+              | "original"
+              | "3:2"
+              | "4:5"
+              | "1:1"
+              | "16:9"
+          : "original";
+
+      const editZoom =
+        "editZoom" in value &&
+        typeof value.editZoom === "number"
+          ? value.editZoom
+          : 1;
+
+      const editPanX =
+        "editPanX" in value &&
+        typeof value.editPanX === "number"
+          ? value.editPanX
+          : 0;
+
+      const editPanY =
+        "editPanY" in value &&
+        typeof value.editPanY === "number"
+          ? value.editPanY
+          : 0;
+
+      const editBrightness =
+        "editBrightness" in value &&
+        typeof value.editBrightness === "number"
+          ? value.editBrightness
+          : 100;
+
+      const editAutoStrength =
+        "editAutoStrength" in value &&
+        typeof value.editAutoStrength === "number"
+          ? value.editAutoStrength
+          : 0;
+
       submittedImages.push({
         filename:
           value.filename,
@@ -661,6 +977,20 @@ const applyFilenameChanges =
         analysisStatus,
 
         analysedAt,
+
+        originalFilename,
+
+        editAspect,
+
+        editZoom,
+
+        editPanX,
+
+        editPanY,
+
+        editBrightness,
+
+        editAutoStrength,
       });
     }
 

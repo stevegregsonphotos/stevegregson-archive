@@ -19,6 +19,13 @@ export type SelectedWorkImage = {
     | "pending"
     | "complete";
   analysedAt?: string;
+  originalFilename?: string;
+  editAspect?: "original" | "3:2" | "4:5" | "1:1" | "16:9";
+  editZoom?: number;
+  editPanX?: number;
+  editPanY?: number;
+  editBrightness?: number;
+  editAutoStrength?: number;
   position: number;
 };
 
@@ -40,6 +47,13 @@ type SelectedWorkRow = {
     | "pending"
     | "complete";
   analysed_at: Date | string | null;
+  original_display_filename: string | null;
+  edit_aspect: SelectedWorkImage["editAspect"] | null;
+  edit_zoom: number | null;
+  edit_pan_x: number | null;
+  edit_pan_y: number | null;
+  edit_brightness: number | null;
+  edit_auto_strength: number | null;
   position: number;
 };
 
@@ -100,6 +114,24 @@ function mapRow(
             ),
         }
       : {}),
+    ...(row.original_display_filename
+      ? {
+          originalFilename:
+            row.original_display_filename,
+        }
+      : {}),
+    editAspect:
+      row.edit_aspect ?? "original",
+    editZoom:
+      row.edit_zoom ?? 1,
+    editPanX:
+      row.edit_pan_x ?? 0,
+    editPanY:
+      row.edit_pan_y ?? 0,
+    editBrightness:
+      row.edit_brightness ?? 100,
+    editAutoStrength:
+      row.edit_auto_strength ?? 0,
     position:
       row.position,
   };
@@ -121,6 +153,13 @@ export async function getSelectedWork():
       height,
       analysis_status,
       analysed_at,
+      original_display_filename,
+      edit_aspect,
+      edit_zoom,
+      edit_pan_x,
+      edit_pan_y,
+      edit_brightness,
+      edit_auto_strength,
       position
     FROM selected_work_items
     WHERE deleted_at IS NULL
@@ -185,6 +224,13 @@ export async function insertSelectedWorkItems(
           height,
           analysis_status,
           analysed_at,
+          original_display_filename,
+          edit_aspect,
+          edit_zoom,
+          edit_pan_x,
+          edit_pan_y,
+          edit_brightness,
+          edit_auto_strength,
           position,
           version,
           created_at,
@@ -277,6 +323,20 @@ export async function replaceSelectedWorkCategory(
               ${image.analysisStatus},
             analysed_at =
               ${image.analysedAt ?? null},
+            original_display_filename =
+              ${image.originalFilename ?? null},
+            edit_aspect =
+              ${image.editAspect ?? "original"},
+            edit_zoom =
+              ${image.editZoom ?? 1},
+            edit_pan_x =
+              ${image.editPanX ?? 0},
+            edit_pan_y =
+              ${image.editPanY ?? 0},
+            edit_brightness =
+              ${image.editBrightness ?? 100},
+            edit_auto_strength =
+              ${image.editAutoStrength ?? 0},
             position =
               ${position},
             version =
@@ -413,6 +473,13 @@ export async function getSelectedWorkItem(
       height,
       analysis_status,
       analysed_at,
+      original_display_filename,
+      edit_aspect,
+      edit_zoom,
+      edit_pan_x,
+      edit_pan_y,
+      edit_brightness,
+      edit_auto_strength,
       position
     FROM selected_work_items
     WHERE category = ${category}
@@ -433,4 +500,77 @@ export async function getSelectedWorkItem(
     storageKey:
       rows[0].storage_key as string,
   };
+}
+
+
+export type SelectedWorkImageEdit = {
+  category: SelectedWorkCategory;
+  currentFilename: string;
+  nextFilename: string;
+  nextStorageKey: string;
+  width: number;
+  height: number;
+  aspect: "original" | "3:2" | "4:5" | "1:1" | "16:9";
+  zoom: number;
+  panX: number;
+  panY: number;
+  brightness: number;
+  autoStrength: number;
+};
+
+export async function updateSelectedWorkImageEdit(
+  edit: SelectedWorkImageEdit,
+) {
+  const sql = getSql();
+
+  const rows = await sql`
+    UPDATE selected_work_items
+    SET
+      original_display_filename =
+        COALESCE(
+          original_display_filename,
+          display_filename
+        ),
+      storage_key =
+        ${edit.nextStorageKey},
+      display_filename =
+        ${edit.nextFilename},
+      width =
+        ${edit.width},
+      height =
+        ${edit.height},
+      edit_aspect =
+        ${edit.aspect},
+      edit_zoom =
+        ${edit.zoom},
+      edit_pan_x =
+        ${edit.panX},
+      edit_pan_y =
+        ${edit.panY},
+      edit_brightness =
+        ${edit.brightness},
+      edit_auto_strength =
+        ${edit.autoStrength},
+      version =
+        version + 1,
+      updated_at =
+        now()
+    WHERE category =
+      ${edit.category}
+      AND display_filename =
+        ${edit.currentFilename}
+      AND deleted_at IS NULL
+    RETURNING id
+  `;
+
+  if (rows.length !== 1) {
+    throw new Error(
+      `Selected Work image could not be updated uniquely: ${edit.currentFilename}`,
+    );
+  }
+
+  return getSelectedWorkItem(
+    edit.category,
+    edit.nextFilename,
+  );
 }

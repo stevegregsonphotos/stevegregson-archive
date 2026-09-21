@@ -1,6 +1,7 @@
 "use client";
 
 import { getSelectedWorkImageUrl } from "@/lib/selected-work-image-url";
+import ImageEditor from "@/components/admin/image-editor/ImageEditor";
 import {
   ChangeEvent,
   useEffect,
@@ -27,6 +28,13 @@ type SelectedWorkImage = {
   height?: number;
   analysisStatus: AnalysisStatus;
   analysedAt?: string;
+  originalFilename?: string;
+  editAspect?: "original" | "3:2" | "4:5" | "1:1" | "16:9";
+  editZoom?: number;
+  editPanX?: number;
+  editPanY?: number;
+  editBrightness?: number;
+  editAutoStrength?: number;
 };
 
 type SelectedWorkData = Record<
@@ -215,6 +223,18 @@ function normaliseIncomingImages(
       (image.alt.trim()
         ? "complete"
         : "pending"),
+    editAspect:
+      image.editAspect ?? "original",
+    editZoom:
+      image.editZoom ?? 1,
+    editPanX:
+      image.editPanX ?? 0,
+    editPanY:
+      image.editPanY ?? 0,
+    editBrightness:
+      image.editBrightness ?? 100,
+    editAutoStrength:
+      image.editAutoStrength ?? 0,
   }));
 }
 
@@ -238,6 +258,15 @@ export default function SelectedWorkEditor() {
     useState<SelectedWorkData>(
       EMPTY_DATA,
     );
+  const [editingImage, setEditingImage] =
+    useState<{
+      category: CategoryId;
+      image: SelectedWorkImage;
+    } | null>(null);
+
+  const [isApplyingImageEdit, setIsApplyingImageEdit] =
+    useState(false);
+
 
   /*
    * Keep a synchronous copy of the
@@ -992,6 +1021,175 @@ setCategorySaveState(
       category,
       images,
     );
+  }
+
+  async function applySelectedWorkImageEdit(
+    result: {
+      blob: Blob;
+      width: number;
+      height: number;
+      filename: string;
+      settings: {
+        aspect:
+          | "original"
+          | "3:2"
+          | "4:5"
+          | "1:1"
+          | "16:9";
+        zoom: number;
+        panX: number;
+        panY: number;
+        brightness: number;
+        autoStrength: number;
+      };
+    },
+  ) {
+    if (
+      !editingImage ||
+      isApplyingImageEdit
+    ) {
+      return;
+    }
+
+    const {
+      category,
+      image,
+    } = editingImage;
+
+    setIsApplyingImageEdit(true);
+    setError(null);
+    setMessage(null);
+
+    try {
+      const signingResponse =
+        await fetch(
+          "/api/admin/selected-work",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify({
+              action:
+                "presign-edit",
+              category,
+              currentFilename:
+                image.filename,
+            }),
+          },
+        );
+
+      const signed =
+        (await signingResponse.json()) as {
+          ok?: boolean;
+          message?: string;
+          filename?: string;
+          storageKey?: string;
+          uploadUrl?: string;
+        };
+
+      if (
+        !signingResponse.ok ||
+        !signed.ok ||
+        !signed.filename ||
+        !signed.storageKey ||
+        !signed.uploadUrl
+      ) {
+        throw new Error(
+          signed.message ??
+            "The edited image upload could not be prepared.",
+        );
+      }
+
+      const uploadResponse =
+        await fetch(
+          signed.uploadUrl,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type":
+                "image/webp",
+            },
+            body: result.blob,
+          },
+        );
+
+      if (!uploadResponse.ok) {
+        throw new Error(
+          `Direct R2 upload failed (HTTP ${uploadResponse.status}).`,
+        );
+      }
+
+      const commitResponse =
+        await fetch(
+          "/api/admin/selected-work",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify({
+              action:
+                "commit-edit",
+              category,
+              currentFilename:
+                image.filename,
+              nextFilename:
+                signed.filename,
+              width:
+                result.width,
+              height:
+                result.height,
+              settings:
+                result.settings,
+            }),
+          },
+        );
+
+      const committed =
+        (await commitResponse.json()) as
+          ApiResponse;
+
+      if (
+        !commitResponse.ok ||
+        !committed.ok ||
+        !committed.data
+      ) {
+        throw new Error(
+          committed.message ??
+            "The edited Selected Work image could not be saved.",
+        );
+      }
+
+      setData(
+        normaliseIncomingData(
+          committed.data,
+        ),
+      );
+
+      dataRef.current =
+        normaliseIncomingData(
+          committed.data,
+        );
+
+      setEditingImage(null);
+
+      setMessage(
+        `${categoryLabel(
+          category,
+        )} image updated.`,
+      );
+    } catch (error) {
+      setError(
+        error instanceof Error
+          ? error.message
+          : "The Selected Work image could not be edited.",
+      );
+    } finally {
+      setIsApplyingImageEdit(false);
+    }
   }
 
   async function uploadImages(
@@ -3111,6 +3309,30 @@ setCategorySaveState(
                             type="button"
                             className="backstage-button"
                             disabled={
+                              controlsDisabled ||
+                              isApplyingImageEdit
+                            }
+                            onClick={() =>
+                              setEditingImage({
+                                category:
+                                  category.id,
+                                image,
+                              })
+                            }
+                            style={{
+                              width:
+                                "100%",
+                              marginTop:
+                                "0.6rem",
+                            }}
+                          >
+                            Edit image
+                          </button>
+
+                          <button
+                            type="button"
+                            className="backstage-button"
+                            disabled={
                               controlsDisabled
                             }
                             onClick={() =>
@@ -3211,6 +3433,46 @@ setCategorySaveState(
           );
         },
       )}
+      {editingImage ? (
+        <ImageEditor
+          source={`${getSelectedWorkImageUrl(
+            editingImage.category,
+            editingImage.image.originalFilename ??
+              editingImage.image.filename,
+          )}?editor=1`}
+          filename={
+            editingImage.image.originalFilename ??
+            editingImage.image.filename
+          }
+          initialSettings={{
+            aspect:
+              editingImage.image.editAspect ??
+              "original",
+            zoom:
+              editingImage.image.editZoom ??
+              1,
+            panX:
+              editingImage.image.editPanX ??
+              0,
+            panY:
+              editingImage.image.editPanY ??
+              0,
+            brightness:
+              editingImage.image.editBrightness ??
+              100,
+            autoStrength:
+              editingImage.image.editAutoStrength ??
+              0,
+          }}
+          onCancel={() =>
+            setEditingImage(null)
+          }
+          onApply={
+            applySelectedWorkImageEdit
+          }
+        />
+      ) : null}
+
     </>
   );
 }
