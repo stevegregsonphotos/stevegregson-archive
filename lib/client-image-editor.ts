@@ -153,13 +153,6 @@ export function drawEditedImage(
     outputHeight,
   );
 
-  context.filter =
-    `brightness(${clamp(
-      settings.brightness,
-      25,
-      200,
-    )}%)`;
-
   context.drawImage(
     image,
     crop.x,
@@ -171,6 +164,59 @@ export function drawEditedImage(
     outputWidth,
     outputHeight,
   );
+
+  const brightness =
+    clamp(
+      settings.brightness,
+      25,
+      200,
+    ) / 100;
+
+  if (brightness !== 1) {
+    const imageData =
+      context.getImageData(
+        0,
+        0,
+        outputWidth,
+        outputHeight,
+      );
+
+    const data =
+      imageData.data;
+
+    for (
+      let index = 0;
+      index < data.length;
+      index += 4
+    ) {
+      data[index] = Math.min(
+        255,
+        Math.round(
+          data[index] * brightness,
+        ),
+      );
+
+      data[index + 1] = Math.min(
+        255,
+        Math.round(
+          data[index + 1] * brightness,
+        ),
+      );
+
+      data[index + 2] = Math.min(
+        255,
+        Math.round(
+          data[index + 2] * brightness,
+        ),
+      );
+    }
+
+    context.putImageData(
+      imageData,
+      0,
+      0,
+    );
+  }
 
   context.restore();
 }
@@ -270,4 +316,51 @@ export async function renderEditedImage(
     width,
     height,
   };
+}
+
+
+export async function prepareImageForUpload(
+  file: File | Blob,
+): Promise<EditedImageResult> {
+  const objectUrl =
+    URL.createObjectURL(file);
+
+  try {
+    const image =
+      await new Promise<HTMLImageElement>(
+        (resolve, reject) => {
+          const nextImage =
+            new Image();
+
+          nextImage.decoding = "async";
+
+          nextImage.onload = () =>
+            resolve(nextImage);
+
+          nextImage.onerror = () =>
+            reject(
+              new Error(
+                "The photograph could not be prepared for upload.",
+              ),
+            );
+
+          nextImage.src = objectUrl;
+        },
+      );
+
+    return renderEditedImage(
+      image,
+      {
+        aspect: "original",
+        zoom: 1,
+        panX: 0,
+        panY: 0,
+        brightness: 100,
+      },
+    );
+  } finally {
+    URL.revokeObjectURL(
+      objectUrl,
+    );
+  }
 }

@@ -10,6 +10,12 @@ import HeroEditor from "../../../../components/admin/editor/HeroEditor";
 import ProductionDetailsEditor from "../../../../components/admin/editor/ProductionDetailsEditor";
 import VisionMetadataPanel from "../../../../components/admin/editor/VisionMetadataPanel";
 import ImageEditor from "../../../../components/admin/image-editor/ImageEditor";
+import {
+  prepareImageForUpload,
+} from "../../../../lib/client-image-editor";
+import {
+  getProductionImageUrl,
+} from "../../../../lib/production-image-url";
 
 type GalleryLayout =
   | "wide"
@@ -100,8 +106,8 @@ const [accessPassword, setAccessPassword] =
   const [messageType, setMessageType] =
     useState<"success" | "error" | null>(null);
 
-  const [pendingImageFiles, setPendingImageFiles] =
-    useState<File[]>([]);
+  const [editingImage, setEditingImage] =
+    useState<ProductionImage | null>(null);
 
   const [isUploadingImage, setIsUploadingImage] =
     useState(false);
@@ -214,19 +220,113 @@ const [accessPassword, setAccessPassword] =
     setMessageType(null);
   }
 
-  function queueNewImages(
+  function webpFilename(
+    filename: string,
+  ) {
+    const stem =
+      filename
+        .replace(/\.[^.]+$/, "")
+        .trim() ||
+      "production-image";
+
+    return `${stem}.webp`;
+  }
+
+  async function requestUpload(
+    filename: string,
+  ) {
+    if (!production) {
+      throw new Error(
+        "The production is not loaded.",
+      );
+    }
+
+    const response =
+      await fetch(
+        "/api/admin/edit-production",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            action: "presign",
+            slug: production.slug,
+            originalFilename:
+              filename,
+          }),
+        },
+      );
+
+    const result =
+      (await response.json()) as
+        PresignResult;
+
+    if (
+      !response.ok ||
+      !result.ok ||
+      !result.filename ||
+      !result.uploadUrl
+    ) {
+      throw new Error(
+        result.message ??
+          "The image upload could not be prepared.",
+      );
+    }
+
+    return {
+      filename:
+        result.filename,
+      uploadUrl:
+        result.uploadUrl,
+    };
+  }
+
+  async function putImageToR2(
+    uploadUrl: string,
+    blob: Blob,
+  ) {
+    const response =
+      await fetch(
+        uploadUrl,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type":
+              "image/webp",
+          },
+          body: blob,
+        },
+      );
+
+    if (!response.ok) {
+      throw new Error(
+        `Direct R2 upload failed (HTTP ${response.status}).`,
+      );
+    }
+  }
+
+  async function uploadNewImages(
     files: FileList | null,
   ) {
-    if (!files?.length) {
+    if (
+      !production ||
+      !files?.length ||
+      isUploadingImage
+    ) {
       return;
     }
 
-    const images = Array.from(files).filter(
-      (file) =>
-        file.type.startsWith("image/"),
-    );
+    const selected =
+      Array.from(files).filter(
+        (file) =>
+          file.type.startsWith(
+            "image/",
+          ),
+      );
 
-    if (!images.length) {
+    if (!selected.length) {
       setMessage(
         "Choose one or more image files.",
       );
@@ -234,11 +334,63 @@ const [accessPassword, setAccessPassword] =
       return;
     }
 
-    setPendingImageFiles(images);
+    setIsUploadingImage(true);
     clearMessage();
+
+    const added:
+      ProductionImage[] = [];
+
+    try {
+      for (const file of selected) {
+        const prepared =
+          await prepareImageForUpload(
+            file,
+          );
+
+        const signed =
+          await requestUpload(
+            webpFilename(
+              file.name,
+            ),
+          );
+
+        await putImageToR2(
+          signed.uploadUrl,
+          prepared.blob,
+        );
+
+        added.push({
+          src: signed.filename,
+          alt:
+            `${production.title} production photograph`,
+          layout: "wide",
+        });
+      }
+
+      setGalleryImages(
+        (current) => [
+          ...current,
+          ...added,
+        ],
+      );
+
+      setMessage(
+        `${added.length} photograph${added.length === 1 ? "" : "s"} added. Save changes to publish ${added.length === 1 ? "it" : "them"} to the gallery.`,
+      );
+      setMessageType("success");
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "The images could not be uploaded.",
+      );
+      setMessageType("error");
+    } finally {
+      setIsUploadingImage(false);
+    }
   }
 
-  async function uploadEditedImage(
+  async function applyImageEdit(
     result: {
       blob: Blob;
       width: number;
@@ -248,6 +400,7 @@ const [accessPassword, setAccessPassword] =
   ) {
     if (
       !production ||
+      !editingImage ||
       isUploadingImage
     ) {
       return;
@@ -257,85 +410,54 @@ const [accessPassword, setAccessPassword] =
     clearMessage();
 
     try {
-      const signingResponse =
-        await fetch(
-          "/api/admin/edit-production",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
-            body: JSON.stringify({
-              action: "presign",
-              slug: production.slug,
-              originalFilename:
-                result.filename,
-            }),
-          },
-        );
-
       const signed =
-        (await signingResponse.json()) as
-          PresignResult;
-
-      if (
-        !signingResponse.ok ||
-        !signed.ok ||
-        !signed.filename ||
-        !signed.uploadUrl
-      ) {
-        throw new Error(
-          signed.message ??
-            "The image upload could not be prepared.",
-        );
-      }
-
-      const uploadResponse =
-        await fetch(
-          signed.uploadUrl,
-          {
-            method: "PUT",
-            headers: {
-              "Content-Type":
-                "image/webp",
-            },
-            body: result.blob,
-          },
+        await requestUpload(
+          result.filename,
         );
 
-      if (!uploadResponse.ok) {
-        throw new Error(
-          `Direct R2 upload failed (HTTP ${uploadResponse.status}).`,
-        );
-      }
+      await putImageToR2(
+        signed.uploadUrl,
+        result.blob,
+      );
+
+      const oldSrc =
+        editingImage.src;
 
       setGalleryImages(
-        (current) => [
-          ...current,
-          {
-            src: signed.filename!,
-            alt:
-              `${production.title} production photograph`,
-            layout: "wide",
-          },
-        ],
+        (current) =>
+          current.map(
+            (image) =>
+              image.src === oldSrc
+                ? {
+                    ...image,
+                    src:
+                      signed.filename,
+                    suggestedFilename:
+                      undefined,
+                  }
+                : image,
+          ),
       );
 
-      setPendingImageFiles(
-        (current) =>
-          current.slice(1),
-      );
+      if (
+        selectedHero === oldSrc
+      ) {
+        setSelectedHero(
+          signed.filename,
+        );
+      }
+
+      setEditingImage(null);
 
       setMessage(
-        `Added ${signed.filename}. Save changes to publish it to the production gallery.`,
+        "Image edit applied. Save changes to publish it.",
       );
       setMessageType("success");
     } catch (error) {
       setMessage(
         error instanceof Error
           ? error.message
-          : "The image could not be uploaded.",
+          : "The edited image could not be uploaded.",
       );
       setMessageType("error");
     } finally {
@@ -822,8 +944,11 @@ setAccessPassword("");
               multiple
               disabled={isUploadingImage}
               onChange={(event) => {
-                queueNewImages(
-                  event.currentTarget.files,
+                const files =
+                  event.currentTarget.files;
+
+                void uploadNewImages(
+                  files,
                 );
 
                 event.currentTarget.value =
@@ -841,37 +966,7 @@ setAccessPassword("");
           </label>
         </div>
 
-        {pendingImageFiles.length > 0 ? (
-          <p
-            style={{
-              margin: "1rem 0 0",
-              color: "#c7a369",
-              fontSize: "0.74rem",
-            }}
-          >
-            {pendingImageFiles.length} image
-            {pendingImageFiles.length === 1
-              ? ""
-              : "s"}{" "}
-            waiting to be edited.
-          </p>
-        ) : null}
       </section>
-
-      {pendingImageFiles[0] ? (
-        <ImageEditor
-          source={pendingImageFiles[0]}
-          filename={
-            pendingImageFiles[0].name
-          }
-          onCancel={() =>
-            setPendingImageFiles([])
-          }
-          onApply={
-            uploadEditedImage
-          }
-        />
-      ) : null}
 
       <VisionMetadataPanel
         productionSlug={production.slug}
@@ -901,6 +996,10 @@ setAccessPassword("");
           setSelectedHero(src);
           clearMessage();
         }}
+        onEditImage={(image) => {
+          setEditingImage(image);
+          clearMessage();
+        }}
         onChange={(nextImages) => {
           setGalleryImages(nextImages);
 
@@ -916,6 +1015,24 @@ setAccessPassword("");
           clearMessage();
         }}
       />
+
+      {editingImage ? (
+        <ImageEditor
+          source={getProductionImageUrl(
+            production.slug,
+            editingImage.src,
+          )}
+          filename={
+            editingImage.src
+          }
+          onCancel={() =>
+            setEditingImage(null)
+          }
+          onApply={
+            applyImageEdit
+          }
+        />
+      ) : null}
 
       <DeleteProductionPanel
         slug={production.slug}

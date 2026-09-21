@@ -145,6 +145,7 @@ export default function ImageEditor({
     if (
       typeof source === "string"
     ) {
+      image.crossOrigin = "anonymous";
       image.src = source;
     } else {
       objectUrl =

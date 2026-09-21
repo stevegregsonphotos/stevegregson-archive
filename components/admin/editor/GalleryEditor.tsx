@@ -23,6 +23,7 @@ type GalleryEditorProps = {
   images: GalleryEditorImage[];
   selectedHero: string;
   onSelectHero: (src: string) => void;
+  onEditImage: (image: GalleryEditorImage) => void;
   onChange: (images: GalleryEditorImage[]) => void;
 };
 
@@ -43,6 +44,7 @@ export default function GalleryEditor({
   images,
   selectedHero,
   onSelectHero,
+  onEditImage,
   onChange,
 }: GalleryEditorProps) {
   function updateImage(index: number, changes: Partial<GalleryEditorImage>) {
@@ -108,7 +110,19 @@ export default function GalleryEditor({
 
                 <p style={{ margin: "0.6rem 0 0", color: isSelectedHero ? "#c7a369" : "rgba(242,238,230,0.42)", fontSize: "0.5rem", fontWeight: 700, letterSpacing: "0.13em", textTransform: "uppercase" }}>{isSelectedHero ? "Selected as new hero" : "Click image to select hero"}</p>
 
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: "0.6rem", marginTop: "1rem" }}>
+                <button
+                  type="button"
+                  className="backstage-button backstage-button-primary"
+                  onClick={() => onEditImage(image)}
+                  style={{
+                    width: "100%",
+                    marginTop: "1rem",
+                  }}
+                >
+                  Edit image
+                </button>
+
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: "0.6rem", marginTop: "0.6rem" }}>
                   <button type="button" className="backstage-button" disabled={index === 0} onClick={() => moveImage(index, -1)}>Move earlier</button>
                   <button type="button" className="backstage-button" disabled={index === images.length - 1} onClick={() => moveImage(index, 1)}>Move later</button>
                 </div>
