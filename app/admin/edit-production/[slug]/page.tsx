@@ -953,8 +953,10 @@ setAccessPassword("");
         className="backstage-panel"
         style={{
           maxWidth: "90rem",
-          margin: "2rem auto",
-          padding: "1.5rem",
+          margin: "4rem auto 2rem",
+          padding: "2rem 1.5rem",
+          borderTop:
+            "1px solid rgba(242, 238, 230, 0.18)",
         }}
       >
         <div

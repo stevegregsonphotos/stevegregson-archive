@@ -63,7 +63,7 @@ export default function HeroEditor({
     <section
       style={{
         maxWidth: "90rem",
-        margin: "4rem auto 0",
+        margin: "4rem auto 2rem",
         borderTop:
           "1px solid rgba(242, 238, 230, 0.18)",
         paddingTop: "2rem",
@@ -115,8 +115,8 @@ export default function HeroEditor({
           }
         >
           {isOpen
-            ? "Hide hero images"
-            : "Show hero images"}
+            ? "Close hero chooser"
+            : "Choose hero image"}
         </button>
       </div>
 
