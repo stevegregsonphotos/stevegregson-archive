@@ -19,14 +19,14 @@ import {
 import styles from "../selected-work/selected-work.module.css";
 
 export const metadata: Metadata = {
-  title: "London Theatre & Production Photographer",
+  title: "Theatre Production Photography",
   alternates: {
     canonical: "/production",
   },
   openGraph: {
     type: "website",
     url: "/production",
-    title: "London Theatre & Production Photographer | Steve Gregson",
+    title: "Theatre Production Photography | Steve Gregson",
     description: "London theatre photographer Steve Gregson creates production photography for theatres, producers and performing arts organisations across the UK and internationally.",
     images: [
       {
@@ -39,7 +39,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "London Theatre & Production Photographer | Steve Gregson",
+    title: "Theatre Production Photography | Steve Gregson",
     description: "London theatre photographer Steve Gregson creates production photography for theatres, producers and performing arts organisations across the UK and internationally.",
     images: ["/images/homepage-hero.jpg"],
   },

@@ -123,10 +123,9 @@ export default async function RehearsalsPage() {
         </h1>
 
         <p className={styles.introText}>
-          Photographs from the rehearsal room,
-          documenting the collaboration,
-          experimentation and discovery through which
-          productions take shape.
+          Rehearsal and backstage photography documenting
+          the collaboration, experimentation and discovery
+          through which theatre productions take shape.
         </p>
       </section>
 
