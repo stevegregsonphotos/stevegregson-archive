@@ -1018,10 +1018,10 @@ setAccessPassword("");
 
       {editingImage ? (
         <ImageEditor
-          source={getProductionImageUrl(
+          source={`${getProductionImageUrl(
             production.slug,
             editingImage.src,
-          )}
+          )}?editor=1`}
           filename={
             editingImage.src
           }
