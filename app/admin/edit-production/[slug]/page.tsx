@@ -118,6 +118,12 @@ const [accessPassword, setAccessPassword] =
   const [isUploadingImage, setIsUploadingImage] =
     useState(false);
 
+  const [uploadProgress, setUploadProgress] =
+    useState<{
+      completed: number;
+      total: number;
+    } | null>(null);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -341,41 +347,78 @@ const [accessPassword, setAccessPassword] =
     }
 
     setIsUploadingImage(true);
+    setUploadProgress({
+      completed: 0,
+      total: selected.length,
+    });
     clearMessage();
 
     const added:
       ProductionImage[] = [];
 
     try {
-      for (const file of selected) {
-        const prepared =
-          await prepareImageForUpload(
-            file,
+      const concurrency = 3;
+
+      for (
+        let start = 0;
+        start < selected.length;
+        start += concurrency
+      ) {
+        const batch =
+          selected.slice(
+            start,
+            start + concurrency,
           );
 
-        const signed =
-          await requestUpload(
-            webpFilename(
-              file.name,
+        const batchResults =
+          await Promise.all(
+            batch.map(
+              async (file) => {
+                const prepared =
+                  await prepareImageForUpload(
+                    file,
+                  );
+
+                const signed =
+                  await requestUpload(
+                    webpFilename(
+                      file.name,
+                    ),
+                  );
+
+                await putImageToR2(
+                  signed.uploadUrl,
+                  prepared.blob,
+                );
+
+                return {
+                  src: signed.filename,
+                  alt:
+                    `${production.title} production photograph`,
+                  layout: "wide" as const,
+                  originalSrc:
+                    signed.filename,
+                  editAspect:
+                    "original" as const,
+                  editZoom: 1,
+                  editPanX: 0,
+                  editPanY: 0,
+                  editBrightness: 100,
+                };
+              },
             ),
           );
 
-        await putImageToR2(
-          signed.uploadUrl,
-          prepared.blob,
+        added.push(
+          ...batchResults,
         );
 
-        added.push({
-          src: signed.filename,
-          alt:
-            `${production.title} production photograph`,
-          layout: "wide",
-          originalSrc: signed.filename,
-          editAspect: "original",
-          editZoom: 1,
-          editPanX: 0,
-          editPanY: 0,
-          editBrightness: 100,
+        setUploadProgress({
+          completed: Math.min(
+            added.length,
+            selected.length,
+          ),
+          total: selected.length,
         });
       }
 
@@ -399,6 +442,7 @@ const [accessPassword, setAccessPassword] =
       setMessageType("error");
     } finally {
       setIsUploadingImage(false);
+      setUploadProgress(null);
     }
   }
 
@@ -940,10 +984,23 @@ setAccessPassword("");
                 lineHeight: 1.6,
               }}
             >
-              Add one or more images, then crop,
-              zoom and adjust brightness before
-              uploading directly to R2.
+              Add one or more images directly to the
+              gallery. Editing remains optional after upload.
             </p>
+
+            {uploadProgress ? (
+              <p
+                role="status"
+                style={{
+                  margin: "0.75rem 0 0",
+                  color: "#c7a369",
+                  fontSize: "0.75rem",
+                }}
+              >
+                Uploading {uploadProgress.completed} of{" "}
+                {uploadProgress.total} photographs…
+              </p>
+            ) : null}
           </div>
 
           <label
