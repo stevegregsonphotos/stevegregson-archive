@@ -85,6 +85,13 @@ type SubmitResponse = {
   message?: string;
 };
 
+type ConsolidatedFavouriteResponse = {
+  ok: boolean;
+  selected?: boolean;
+  definitiveImageIds?: string[];
+  message?: string;
+};
+
 function sameSelection(
   first: string[],
   second: string[],
@@ -119,6 +126,22 @@ export default function ProofingGalleryClient({
 }: ProofingGalleryClientProps) {
   const [favourites, setFavourites] =
     useState<string[]>(initialFavourites);
+
+  const [
+    definitiveImageIds,
+    setDefinitiveImageIds,
+  ] = useState<string[]>(
+    consolidatedSelection
+      ?.definitiveImageIds ?? [],
+  );
+
+  const [
+    updatingDefinitiveImageId,
+    setUpdatingDefinitiveImageId,
+  ] =
+    useState<string | null>(
+      null,
+    );
 
   const [
     submittedFavourites,
@@ -476,6 +499,44 @@ export default function ProofingGalleryClient({
       ],
     );
 
+  const consolidatedMetadataByImageId =
+    useMemo(
+      () =>
+        new Map(
+          consolidatedSelection
+            ?.images.map(
+              (image) => [
+                image.imageId,
+                image,
+              ],
+            ) ?? [],
+        ),
+      [consolidatedSelection],
+    );
+
+  const definitiveImageIdSet =
+    useMemo(
+      () =>
+        new Set(
+          definitiveImageIds,
+        ),
+      [definitiveImageIds],
+    );
+
+  const definitiveImages =
+    useMemo(
+      () =>
+        images.filter((image) =>
+          definitiveImageIdSet.has(
+            image.id,
+          ),
+        ),
+      [
+        images,
+        definitiveImageIdSet,
+      ],
+    );
+
   const orientationMatches = (
     image: ProofingClientImage,
   ) => {
@@ -732,6 +793,128 @@ export default function ProofingGalleryClient({
       );
     } finally {
       setUpdatingImageId(null);
+    }
+  }
+
+  async function toggleDefinitiveSelection(
+    imageId: string,
+  ) {
+    if (
+      updatingDefinitiveImageId
+    ) {
+      return;
+    }
+
+    const previous =
+      definitiveImageIds;
+
+    const alreadySelected =
+      previous.includes(
+        imageId,
+      );
+
+    const optimistic =
+      alreadySelected
+        ? previous.filter(
+            (id) =>
+              id !== imageId,
+          )
+        : [
+            ...previous,
+            imageId,
+          ];
+
+    setDefinitiveImageIds(
+      optimistic,
+    );
+
+    setUpdatingDefinitiveImageId(
+      imageId,
+    );
+
+    try {
+      const response =
+        await fetch(
+          "/api/proofing/consolidated-favourite",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify({
+              gallerySlug,
+              imageId,
+            }),
+          },
+        );
+
+      const data =
+        (await response.json()) as
+          ConsolidatedFavouriteResponse;
+
+      if (
+        !response.ok ||
+        !data.ok
+      ) {
+        throw new Error(
+          data.message ??
+            "Definitive selection could not be updated.",
+        );
+      }
+
+      setDefinitiveImageIds(
+        data.definitiveImageIds ??
+          [],
+      );
+    } catch (error) {
+      setDefinitiveImageIds(
+        previous,
+      );
+
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Definitive selection could not be updated.",
+      );
+    } finally {
+      setUpdatingDefinitiveImageId(
+        null,
+      );
+    }
+  }
+
+  async function copyDefinitiveForLightroom() {
+    const filenames =
+      definitiveImages
+        .map(
+          (image) =>
+            image.originalFilename,
+        )
+        .filter(Boolean);
+
+    if (
+      filenames.length === 0
+    ) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(
+        filenames.join(", "),
+      );
+
+      alert(
+        `${filenames.length} filename${
+          filenames.length === 1
+            ? ""
+            : "s"
+        } copied for Lightroom.`,
+      );
+    } catch {
+      alert(
+        "The Lightroom filename list could not be copied.",
+      );
     }
   }
 
@@ -1344,6 +1527,33 @@ export default function ProofingGalleryClient({
                 : "s"}.
             </p>
           </div>
+
+          <div className="proofing-consolidated-definitive-summary">
+            <strong>
+              {definitiveImageIds.length}
+            </strong>
+
+            <span>
+              definitive selection
+              {definitiveImageIds.length ===
+              1
+                ? ""
+                : "s"}
+            </span>
+
+            {definitiveImageIds.length >
+            0 ? (
+              <button
+                type="button"
+                className="proofing-toolbar-download-button"
+                onClick={() =>
+                  void copyDefinitiveForLightroom()
+                }
+              >
+                Copy for Lightroom
+              </button>
+            ) : null}
+          </div>
         </section>
       ) : null}
 
@@ -1381,6 +1591,16 @@ export default function ProofingGalleryClient({
         {images.map((image) => {
           const isFavourite =
             favouriteSet.has(image.id);
+
+          const consolidatedMetadata =
+            consolidatedMetadataByImageId.get(
+              image.id,
+            );
+
+          const isDefinitive =
+            definitiveImageIdSet.has(
+              image.id,
+            );
 
           const hiddenFromView =
             (
@@ -1429,7 +1649,52 @@ export default function ProofingGalleryClient({
                     opacity={watermarkOpacity}
                   />
 
-                  {view !== "consolidated" ? (
+                  {view === "consolidated" ? (
+                    <button
+                      type="button"
+                      className={
+                        isDefinitive
+                          ? "proofing-favourite-button is-favourite"
+                          : "proofing-favourite-button"
+                      }
+                      aria-pressed={
+                        isDefinitive
+                      }
+                      aria-label={
+                        isDefinitive
+                          ? `Remove ${image.originalFilename} from definitive selection`
+                          : `Add ${image.originalFilename} to definitive selection`
+                      }
+                      disabled={
+                        updatingDefinitiveImageId !==
+                        null
+                      }
+                      onClick={() =>
+                        void toggleDefinitiveSelection(
+                          image.id,
+                        )
+                      }
+                    >
+                      {isDefinitive ? (
+                        <>
+                          <span
+                            className="proofing-selected-check"
+                            aria-hidden="true"
+                          >
+                            ✓
+                          </span>
+
+                          <span className="proofing-selected-label">
+                            Definitive
+                          </span>
+                        </>
+                      ) : (
+                        <span aria-hidden="true">
+                          ♡
+                        </span>
+                      )}
+                    </button>
+                  ) : (
                     <button
                       type="button"
                       className={
@@ -1473,10 +1738,47 @@ export default function ProofingGalleryClient({
                           </span>
                         )}
                     </button>
-                  ) : null}
+                  )}
                 </div>
 
-                {showFilenames ? (
+                {view === "consolidated" &&
+                consolidatedMetadata ? (
+                  <div className="proofing-consolidated-meta">
+                    {consolidatedMetadata
+                      .selectedByAll ? (
+                      <strong className="proofing-consolidated-all">
+                        Selected by all
+                      </strong>
+                    ) : (
+                      <span>
+                        Selected by{" "}
+                        {
+                          consolidatedMetadata
+                            .participantCount
+                        }{" "}
+                        participant
+                        {consolidatedMetadata
+                          .participantCount ===
+                        1
+                          ? ""
+                          : "s"}
+                      </span>
+                    )}
+
+                    {consolidatedMetadata
+                      .labels.length > 0 ? (
+                      <span className="proofing-consolidated-labels">
+                        {consolidatedMetadata.labels.join(
+                          " · ",
+                        )}
+                      </span>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                {(showFilenames ||
+                  view ===
+                    "consolidated") ? (
                   <figcaption className="proofing-client-filename">
                     {image.originalFilename}
                   </figcaption>
@@ -1542,7 +1844,9 @@ export default function ProofingGalleryClient({
 
               <div className="proofing-viewer-actions">
                 <div className="proofing-viewer-meta">
-                  {showFilenames ? (
+                  {(showFilenames ||
+                    view ===
+                      "consolidated") ? (
                     <span className="proofing-viewer-filename">
                       {viewerImage.originalFilename}
                     </span>
@@ -1556,7 +1860,46 @@ export default function ProofingGalleryClient({
                 </div>
 
                 <div className="proofing-viewer-action-buttons">
-                  {view !== "consolidated" ? (
+                  {view === "consolidated" ? (
+                    <button
+                      type="button"
+                      className={
+                        definitiveImageIdSet.has(
+                          viewerImage.id,
+                        )
+                          ? "proofing-viewer-favourite is-favourite"
+                          : "proofing-viewer-favourite"
+                      }
+                      aria-pressed={
+                        definitiveImageIdSet.has(
+                          viewerImage.id,
+                        )
+                      }
+                      disabled={
+                        updatingDefinitiveImageId !==
+                        null
+                      }
+                      onClick={() =>
+                        void toggleDefinitiveSelection(
+                          viewerImage.id,
+                        )
+                      }
+                    >
+                      <span aria-hidden="true">
+                        {definitiveImageIdSet.has(
+                          viewerImage.id,
+                        )
+                          ? "♥"
+                          : "♡"}
+                      </span>
+
+                      {definitiveImageIdSet.has(
+                        viewerImage.id,
+                      )
+                        ? "Definitive selection"
+                        : "Add to definitive selection"}
+                    </button>
+                  ) : (
                     <button
                       type="button"
                       className={
@@ -1584,7 +1927,7 @@ export default function ProofingGalleryClient({
                         ? "Favourite"
                         : "Add to favourites"}
                     </button>
-                  ) : null}
+                  )}
 
                   {downloadPermission === "web" ||
                   (downloadPermission === "selected" &&
