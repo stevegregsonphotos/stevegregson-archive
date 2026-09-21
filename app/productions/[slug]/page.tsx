@@ -213,14 +213,15 @@ export default async function ProductionPage({
                 production.description,
             }
           : {}),
-        dateCreated: String(production.year),
+        dateCreated:
+          production.month
+            ? `${production.year}-${String(
+                production.month,
+              ).padStart(2, "0")}`
+            : String(production.year),
         locationCreated: {
           "@type": "Place",
           name: production.venue,
-        },
-        creator: {
-          "@id":
-            "https://www.stevegregson.com/#steve-gregson",
         },
         image: {
           "@id": `${productionUrl}#hero-image`,
