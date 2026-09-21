@@ -42,6 +42,7 @@ type ProductionImage = {
   editPanX?: number;
   editPanY?: number;
   editBrightness?: number;
+  editAutoStrength?: number;
 };
 
 type ProductionCredit = {
@@ -109,7 +110,9 @@ function isProductionImage(value: unknown): value is ProductionImage {
     (image.editPanY === undefined ||
       typeof image.editPanY === "number") &&
     (image.editBrightness === undefined ||
-      typeof image.editBrightness === "number");
+      typeof image.editBrightness === "number") &&
+    (image.editAutoStrength === undefined ||
+      typeof image.editAutoStrength === "number");
 }
 
 function parseCredits(value: unknown) {
@@ -163,6 +166,8 @@ function parseImages(value: unknown) {
       editPanX: image.editPanX ?? 0,
       editPanY: image.editPanY ?? 0,
       editBrightness: image.editBrightness ?? 100,
+      editAutoStrength:
+        image.editAutoStrength ?? 0,
     };
   });
 }

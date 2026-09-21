@@ -60,6 +60,7 @@ type ImageRow = {
   edit_pan_x: number | null;
   edit_pan_y: number | null;
   edit_brightness: number | null;
+  edit_auto_strength: number | null;
   position: number;
 };
 
@@ -129,6 +130,8 @@ function mapImageRow(
     editPanX: row.edit_pan_x ?? 0,
     editPanY: row.edit_pan_y ?? 0,
     editBrightness: row.edit_brightness ?? 100,
+    editAutoStrength:
+      row.edit_auto_strength ?? 0,
   };
 }
 
@@ -462,6 +465,7 @@ export async function getProductions():
         edit_pan_x,
         edit_pan_y,
         edit_brightness,
+        edit_auto_strength,
         position
       FROM production_images
       WHERE deleted_at IS NULL
@@ -629,6 +633,7 @@ export async function getProduction(
           edit_pan_x,
           edit_pan_y,
           edit_brightness,
+          edit_auto_strength,
           position
         FROM production_images
         WHERE deleted_at IS NULL
@@ -858,6 +863,7 @@ function productionInsertQueries(
         edit_pan_x,
         edit_pan_y,
         edit_brightness,
+        edit_auto_strength,
         created_at,
         updated_at,
         deleted_at
@@ -878,6 +884,7 @@ function productionInsertQueries(
         ${image.editPanX ?? 0},
         ${image.editPanY ?? 0},
         ${image.editBrightness ?? 100},
+        ${image.editAutoStrength ?? 0},
         now(),
         now(),
         null
@@ -968,6 +975,7 @@ export async function replaceProduction(
         position, blur_data_url, suggested_filename,
         original_display_filename, edit_aspect, edit_zoom,
         edit_pan_x, edit_pan_y, edit_brightness,
+        edit_auto_strength,
         created_at, updated_at, deleted_at
       )
       VALUES (
@@ -981,6 +989,7 @@ export async function replaceProduction(
         ${image.editPanX ?? 0},
         ${image.editPanY ?? 0},
         ${image.editBrightness ?? 100},
+        ${image.editAutoStrength ?? 0},
         now(), now(), null
       )
     `),

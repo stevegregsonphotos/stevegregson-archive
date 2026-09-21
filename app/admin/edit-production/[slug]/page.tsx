@@ -39,6 +39,7 @@ type ProductionImage = {
   editPanX?: number;
   editPanY?: number;
   editBrightness?: number;
+  editAutoStrength?: number;
 };
 
 type ProductionCredit = {
@@ -458,6 +459,7 @@ const [accessPassword, setAccessPassword] =
         panX: number;
         panY: number;
         brightness: number;
+        autoStrength: number;
       };
     },
   ) {
@@ -504,6 +506,8 @@ const [accessPassword, setAccessPassword] =
                     editPanX: result.settings.panX,
                     editPanY: result.settings.panY,
                     editBrightness: result.settings.brightness,
+                    editAutoStrength:
+                      result.settings.autoStrength,
                     suggestedFilename: undefined,
                   }
                 : image,
@@ -1109,6 +1113,8 @@ setAccessPassword("");
             panX: editingImage.editPanX ?? 0,
             panY: editingImage.editPanY ?? 0,
             brightness: editingImage.editBrightness ?? 100,
+            autoStrength:
+              editingImage.editAutoStrength ?? 0,
           }}
           onCancel={() =>
             setEditingImage(null)

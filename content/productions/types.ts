@@ -27,6 +27,7 @@ export type ProductionImage = {
   editPanX?: number;
   editPanY?: number;
   editBrightness?: number;
+  editAutoStrength?: number;
 };
 
 export type Production = {

@@ -7,10 +7,12 @@ import {
 } from "react";
 
 import {
+  analyseImageAutoCorrection,
   clamp,
   drawEditedImage,
   renderEditedImage,
   type EditedImageResult,
+  type ImageAutoCorrection,
   type ImageEditorAspect,
   type ImageEditorSettings,
 } from "@/lib/client-image-editor";
@@ -34,6 +36,7 @@ const DEFAULT_SETTINGS: ImageEditorSettings = {
   panX: 0,
   panY: 0,
   brightness: 100,
+  autoStrength: 0,
 };
 
 const ASPECT_OPTIONS: Array<{
@@ -110,6 +113,11 @@ export default function ImageEditor({
       ...initialSettings,
     });
 
+  const [autoCorrection, setAutoCorrection] =
+    useState<ImageAutoCorrection | null>(
+      null,
+    );
+
   const [isReady, setIsReady] =
     useState(false);
 
@@ -133,6 +141,13 @@ export default function ImageEditor({
       }
 
       imageRef.current = image;
+
+      setAutoCorrection(
+        analyseImageAutoCorrection(
+          image,
+        ),
+      );
+
       setIsReady(true);
     };
 
@@ -232,10 +247,12 @@ export default function ImageEditor({
       canvas.width,
       canvas.height,
       settings,
+      autoCorrection ?? undefined,
     );
   }, [
     settings,
     isReady,
+    autoCorrection,
   ]);
 
   function updateSetting<
@@ -371,6 +388,8 @@ export default function ImageEditor({
         await renderEditedImage(
           image,
           settings,
+          undefined,
+          autoCorrection ?? undefined,
         );
 
       await onApply({
@@ -588,6 +607,44 @@ export default function ImageEditor({
                 )
               }
             />
+          </label>
+
+          <label className="backstage-field">
+            <span className="backstage-field-label">
+              Auto —{" "}
+              {settings.autoStrength}%
+            </span>
+
+            <input
+              type="range"
+              min="0"
+              max="100"
+              step="1"
+              value={
+                settings.autoStrength
+              }
+              onChange={(event) =>
+                updateSetting(
+                  "autoStrength",
+                  Number(
+                    event.target.value,
+                  ),
+                )
+              }
+            />
+
+            <span
+              style={{
+                marginTop: "0.35rem",
+                color:
+                  "rgba(242, 238, 230, 0.45)",
+                fontSize: "0.68rem",
+                lineHeight: 1.5,
+              }}
+            >
+              0% keeps the original tones; 100% applies
+              the full automatic correction.
+            </span>
           </label>
 
           <label className="backstage-field">
