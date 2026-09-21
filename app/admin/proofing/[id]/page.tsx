@@ -25,6 +25,7 @@ import {
 import ProofingMediaWorkspace from "./ProofingMediaWorkspace";
 import ProofingPresentationEditor from "./ProofingPresentationEditor";
 import ProofingSelectionCopy from "./ProofingSelectionCopy";
+import ProofingConsolidationEditor from "./ProofingConsolidationEditor";
 import ProofingSettingsEditor from "./ProofingSettingsEditor";
 import ProofingUrlEditor from "./ProofingUrlEditor";
 import ProofingWorkspace from "./ProofingWorkspace";
@@ -462,6 +463,10 @@ export default async function ProofingGalleryPage({
           </p>
         </div>
       )}
+
+      <ProofingConsolidationEditor
+        galleryId={gallery.id}
+      />
     </div>
   );
 
