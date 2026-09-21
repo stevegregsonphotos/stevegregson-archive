@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { getProductionImageUrl } from "../../../lib/production-image-url";
 
 export type GalleryLayout =
@@ -16,6 +17,16 @@ export type GalleryEditorImage = {
   alt: string;
   layout: GalleryLayout;
   suggestedFilename?: string;
+};
+
+type VisionResult = {
+  ok: boolean;
+  metadata?: {
+    alt: string;
+    filename: string;
+    layout: GalleryLayout;
+  };
+  message?: string;
 };
 
 type GalleryEditorProps = {
@@ -47,10 +58,97 @@ export default function GalleryEditor({
   onEditImage,
   onChange,
 }: GalleryEditorProps) {
+  const [analysingImage, setAnalysingImage] =
+    useState<string | null>(null);
+
+  const [analysisError, setAnalysisError] =
+    useState<{
+      src: string;
+      message: string;
+    } | null>(null);
+
   function updateImage(index: number, changes: Partial<GalleryEditorImage>) {
     onChange(images.map((image, imageIndex) =>
       imageIndex === index ? { ...image, ...changes } : image,
     ));
+  }
+
+  async function analyseImage(
+    image: GalleryEditorImage,
+    index: number,
+  ) {
+    if (analysingImage) {
+      return;
+    }
+
+    setAnalysingImage(image.src);
+    setAnalysisError(null);
+
+    try {
+      const response =
+        await fetch(
+          "/api/admin/vision/analyse-image",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify({
+              slug:
+                productionSlug,
+              image:
+                image.src,
+            }),
+          },
+        );
+
+      let result:
+        | VisionResult
+        | null = null;
+
+      try {
+        result =
+          (await response.json()) as
+            VisionResult;
+      } catch {
+        result = null;
+      }
+
+      if (
+        !response.ok ||
+        !result?.ok ||
+        !result.metadata
+      ) {
+        throw new Error(
+          result?.message ??
+            `Vision AI could not analyse ${image.src}.`,
+        );
+      }
+
+      updateImage(
+        index,
+        {
+          alt:
+            result.metadata.alt,
+          suggestedFilename:
+            result.metadata.filename,
+          layout:
+            result.metadata.layout,
+        },
+      );
+    } catch (error) {
+      setAnalysisError({
+        src:
+          image.src,
+        message:
+          error instanceof Error
+            ? error.message
+            : "Vision AI analysis failed.",
+      });
+    } finally {
+      setAnalysingImage(null);
+    }
   }
 
   function moveImage(index: number, direction: -1 | 1) {
@@ -112,11 +210,49 @@ export default function GalleryEditor({
 
                 <button
                   type="button"
+                  className="backstage-button"
+                  disabled={
+                    analysingImage !== null
+                  }
+                  onClick={() =>
+                    void analyseImage(
+                      image,
+                      index,
+                    )
+                  }
+                  style={{
+                    width: "100%",
+                    marginTop: "1rem",
+                  }}
+                >
+                  {analysingImage === image.src
+                    ? "Analysing…"
+                    : image.suggestedFilename
+                      ? "Reanalyse image"
+                      : "Analyse image"}
+                </button>
+
+                {analysisError?.src === image.src ? (
+                  <p
+                    role="alert"
+                    style={{
+                      margin: "0.65rem 0 0",
+                      color: "#ffb3a7",
+                      fontSize: "0.72rem",
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    {analysisError.message}
+                  </p>
+                ) : null}
+
+                <button
+                  type="button"
                   className="backstage-button backstage-button-primary"
                   onClick={() => onEditImage(image)}
                   style={{
                     width: "100%",
-                    marginTop: "1rem",
+                    marginTop: "0.6rem",
                   }}
                 >
                   Edit image

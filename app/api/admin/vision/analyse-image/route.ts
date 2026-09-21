@@ -4,7 +4,6 @@ import {
 } from "@/lib/backstage-auth";
 
 import OpenAI from "openai";
-import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 
@@ -12,6 +11,9 @@ import { openai } from "@/lib/vision/client";
 import {
   getProductionImageUrl,
 } from "@/lib/production-image-url";
+import {
+  getProduction,
+} from "@/lib/productions-repository";
 import {
   getSelectedWorkItem,
 } from "@/lib/selected-work-repository";
@@ -121,20 +123,6 @@ function isSelectedWorkCategory(
       value as SelectedWorkCategory,
     )
   );
-}
-
-function readProductionFromSource(source: string) {
-  const objectMatch = source.match(
-    /=\s*({[\s\S]*})\s*;\s*$/,
-  );
-
-  if (!objectMatch) {
-    throw new Error(
-      "The production data could not be read.",
-    );
-  }
-
-  return JSON.parse(objectMatch[1]) as ProductionData;
 }
 
 function normaliseFilename(
@@ -324,25 +312,12 @@ async function loadProductionContext(
   slug: string,
   filename: string,
 ): Promise<AnalysisContext> {
-  const productionFile = path.join(
-    process.cwd(),
-    "content",
-    "productions",
-    `${slug}.ts`,
-  );
-
-  const productionSource =
-    await readFile(
-      productionFile,
-      "utf8",
-    );
-
   const production =
-    readProductionFromSource(productionSource);
+    await getProduction(slug);
 
-  if (production.slug !== slug) {
+  if (!production) {
     throw new Error(
-      "The production slug does not match its file.",
+      "The production could not be found.",
     );
   }
 
@@ -354,7 +329,8 @@ async function loadProductionContext(
           layout: "wide" as const,
         }
       : production.images.find(
-          (image) => image.src === filename,
+          (image) =>
+            image.src === filename,
         );
 
   if (!galleryImage) {
@@ -369,14 +345,17 @@ async function loadProductionContext(
         slug,
         filename,
       ),
-    prompt: buildProductionPrompt(
-      production,
-      galleryImage,
+    prompt:
+      buildProductionPrompt(
+        production,
+        galleryImage,
+        filename,
+      ),
+    originalFilename:
       filename,
-    ),
-    originalFilename: filename,
   };
 }
+
 function loadPrePublishProductionContext(
   previewUrl: string,
   production: PrePublishProduction,
