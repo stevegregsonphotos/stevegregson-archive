@@ -15,6 +15,7 @@ import {
 } from "@/lib/productions-repository";
 import {
   copyProductionImage,
+  createProductionImageUploadUrl,
   deleteProductionImage,
   productionImageExists,
   uniqueProductionImageFilename,
@@ -44,7 +45,9 @@ type ProductionCredit = {
 };
 
 type UpdateRequest = {
+  action?: unknown;
   slug?: unknown;
+  originalFilename?: unknown;
   hero?: unknown;
   title?: unknown;
   venue?: unknown;
@@ -193,6 +196,61 @@ export async function POST(request: Request) {
 
     const slug = body.slug;
     activeSlug = slug;
+
+    if (body.action === "presign") {
+      const originalFilename =
+        typeof body.originalFilename === "string"
+          ? body.originalFilename.trim()
+          : "";
+
+      if (
+        !originalFilename ||
+        !isSafeFilename(originalFilename) ||
+        !/\.webp$/i.test(originalFilename)
+      ) {
+        return Response.json(
+          {
+            ok: false,
+            message:
+              "A valid WebP filename is required.",
+          },
+          { status: 400 },
+        );
+      }
+
+      const existingProduction =
+        await getProduction(slug);
+
+      if (!existingProduction) {
+        return Response.json(
+          {
+            ok: false,
+            message:
+              "The production could not be found.",
+          },
+          { status: 404 },
+        );
+      }
+
+      const filename =
+        await uniqueProductionImageFilename(
+          slug,
+          originalFilename,
+        );
+
+      const uploadUrl =
+        await createProductionImageUploadUrl(
+          slug,
+          filename,
+        );
+
+      return Response.json({
+        ok: true,
+        filename,
+        uploadUrl,
+      });
+    }
+
     const existing = await getProduction(slug);
     if (!existing) {
       return Response.json(

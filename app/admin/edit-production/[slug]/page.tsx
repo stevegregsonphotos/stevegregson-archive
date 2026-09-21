@@ -9,6 +9,7 @@ import GalleryEditor from "../../../../components/admin/editor/GalleryEditor";
 import HeroEditor from "../../../../components/admin/editor/HeroEditor";
 import ProductionDetailsEditor from "../../../../components/admin/editor/ProductionDetailsEditor";
 import VisionMetadataPanel from "../../../../components/admin/editor/VisionMetadataPanel";
+import ImageEditor from "../../../../components/admin/image-editor/ImageEditor";
 
 type GalleryLayout =
   | "wide"
@@ -62,6 +63,13 @@ type SaveResult = {
   production?: Production;
 };
 
+type PresignResult = {
+  ok?: boolean;
+  message?: string;
+  filename?: string;
+  uploadUrl?: string;
+};
+
 export default function EditProductionPage() {
   const params = useParams<{ slug: string }>();
   const slug = params.slug;
@@ -91,6 +99,12 @@ const [accessPassword, setAccessPassword] =
   const [message, setMessage] = useState<string | null>(null);
   const [messageType, setMessageType] =
     useState<"success" | "error" | null>(null);
+
+  const [pendingImageFiles, setPendingImageFiles] =
+    useState<File[]>([]);
+
+  const [isUploadingImage, setIsUploadingImage] =
+    useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -198,6 +212,135 @@ const [accessPassword, setAccessPassword] =
   function clearMessage() {
     setMessage(null);
     setMessageType(null);
+  }
+
+  function queueNewImages(
+    files: FileList | null,
+  ) {
+    if (!files?.length) {
+      return;
+    }
+
+    const images = Array.from(files).filter(
+      (file) =>
+        file.type.startsWith("image/"),
+    );
+
+    if (!images.length) {
+      setMessage(
+        "Choose one or more image files.",
+      );
+      setMessageType("error");
+      return;
+    }
+
+    setPendingImageFiles(images);
+    clearMessage();
+  }
+
+  async function uploadEditedImage(
+    result: {
+      blob: Blob;
+      width: number;
+      height: number;
+      filename: string;
+    },
+  ) {
+    if (
+      !production ||
+      isUploadingImage
+    ) {
+      return;
+    }
+
+    setIsUploadingImage(true);
+    clearMessage();
+
+    try {
+      const signingResponse =
+        await fetch(
+          "/api/admin/edit-production",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify({
+              action: "presign",
+              slug: production.slug,
+              originalFilename:
+                result.filename,
+            }),
+          },
+        );
+
+      const signed =
+        (await signingResponse.json()) as
+          PresignResult;
+
+      if (
+        !signingResponse.ok ||
+        !signed.ok ||
+        !signed.filename ||
+        !signed.uploadUrl
+      ) {
+        throw new Error(
+          signed.message ??
+            "The image upload could not be prepared.",
+        );
+      }
+
+      const uploadResponse =
+        await fetch(
+          signed.uploadUrl,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type":
+                "image/webp",
+            },
+            body: result.blob,
+          },
+        );
+
+      if (!uploadResponse.ok) {
+        throw new Error(
+          `Direct R2 upload failed (HTTP ${uploadResponse.status}).`,
+        );
+      }
+
+      setGalleryImages(
+        (current) => [
+          ...current,
+          {
+            src: signed.filename!,
+            alt:
+              `${production.title} production photograph`,
+            layout: "wide",
+          },
+        ],
+      );
+
+      setPendingImageFiles(
+        (current) =>
+          current.slice(1),
+      );
+
+      setMessage(
+        `Added ${signed.filename}. Save changes to publish it to the production gallery.`,
+      );
+      setMessageType("success");
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "The image could not be uploaded.",
+      );
+      setMessageType("error");
+    } finally {
+      setIsUploadingImage(false);
+    }
   }
 
   async function saveChanges() {
@@ -614,6 +757,121 @@ setAccessPassword("");
           clearMessage();
         }}
       />
+
+      <section
+        className="backstage-panel"
+        style={{
+          maxWidth: "90rem",
+          margin: "2rem auto",
+          padding: "1.5rem",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: "1rem",
+            flexWrap: "wrap",
+          }}
+        >
+          <div>
+            <p className="backstage-eyebrow">
+              Gallery
+            </p>
+
+            <h2
+              style={{
+                margin: "0.35rem 0 0",
+                fontSize: "1.4rem",
+                fontWeight: 400,
+              }}
+            >
+              Add photographs
+            </h2>
+
+            <p
+              style={{
+                margin: "0.55rem 0 0",
+                color:
+                  "rgba(242, 238, 230, 0.52)",
+                fontSize: "0.78rem",
+                lineHeight: 1.6,
+              }}
+            >
+              Add one or more images, then crop,
+              zoom and adjust brightness before
+              uploading directly to R2.
+            </p>
+          </div>
+
+          <label
+            className="backstage-button backstage-button-primary"
+            style={{
+              cursor:
+                isUploadingImage
+                  ? "wait"
+                  : "pointer",
+            }}
+          >
+            Add images
+
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              multiple
+              disabled={isUploadingImage}
+              onChange={(event) => {
+                queueNewImages(
+                  event.currentTarget.files,
+                );
+
+                event.currentTarget.value =
+                  "";
+              }}
+              style={{
+                position: "absolute",
+                width: 1,
+                height: 1,
+                overflow: "hidden",
+                clip: "rect(0 0 0 0)",
+                whiteSpace: "nowrap",
+              }}
+            />
+          </label>
+        </div>
+
+        {pendingImageFiles.length > 0 ? (
+          <p
+            style={{
+              margin: "1rem 0 0",
+              color: "#c7a369",
+              fontSize: "0.74rem",
+            }}
+          >
+            {pendingImageFiles.length} image
+            {pendingImageFiles.length === 1
+              ? ""
+              : "s"}{" "}
+            waiting to be edited.
+          </p>
+        ) : null}
+      </section>
+
+      {pendingImageFiles[0] ? (
+        <ImageEditor
+          source={pendingImageFiles[0]}
+          filename={
+            pendingImageFiles[0].name
+          }
+          onCancel={() =>
+            setPendingImageFiles([])
+          }
+          onApply={
+            uploadEditedImage
+          }
+        />
+      ) : null}
 
       <VisionMetadataPanel
         productionSlug={production.slug}
