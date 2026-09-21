@@ -769,7 +769,9 @@ export async function POST(
       {
         ok: false,
         message:
-          "The photographs could not be uploaded.",
+          error instanceof Error
+            ? error.message
+            : "The photographs could not be uploaded.",
       },
       { status: 500 },
     );
