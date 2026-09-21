@@ -5,6 +5,10 @@ import {
   getProofingGalleryBySlug,
 } from "../../../lib/proofing/repository";
 
+import {
+  getProofingConsolidatedSelection,
+} from "../../../lib/proofing/consolidated-repository";
+
 import ProofingGalleryClient from "./ProofingGalleryClient";
 import ProofingGalleryEntry from "./ProofingGalleryEntry";
 
@@ -32,6 +36,11 @@ export default async function ProofingClientPage({
   if (!gallery) {
     notFound();
   }
+
+  const consolidatedSelection =
+    await getProofingConsolidatedSelection(
+      gallery.id,
+    );
 
   const hasExpiredByDate =
     Boolean(gallery.expiresAt) &&
@@ -180,6 +189,103 @@ export default async function ProofingClientPage({
         : []
     );
 
+  /*
+   * Consolidated client data is deliberately
+   * derived server-side.
+   *
+   * Visitor IDs and email addresses are not
+   * included in the client payload.
+   */
+  const clientConsolidatedSelection =
+    consolidatedSelection?.visible &&
+    consolidatedSelection.participants.length > 0
+      ? (() => {
+          const participantCount =
+            consolidatedSelection.participants.length;
+
+          const imageSelections =
+            new Map<
+              string,
+              {
+                participantCount: number;
+                labels: Set<string>;
+              }
+            >();
+
+          for (
+            const participant
+            of consolidatedSelection.participants
+          ) {
+            for (
+              const imageId
+              of participant.imageIds
+            ) {
+              const current =
+                imageSelections.get(
+                  imageId,
+                ) ?? {
+                  participantCount: 0,
+                  labels:
+                    new Set<string>(),
+                };
+
+              current.participantCount += 1;
+
+              if (
+                participant.publicLabel
+              ) {
+                current.labels.add(
+                  participant.publicLabel,
+                );
+              }
+
+              imageSelections.set(
+                imageId,
+                current,
+              );
+            }
+          }
+
+          return {
+            title:
+              consolidatedSelection.title,
+            definitiveImageIds:
+              consolidatedSelection
+                .definitiveImageIds,
+            participantCount,
+            images:
+              orderedImages.flatMap(
+                (image) => {
+                  const metadata =
+                    imageSelections.get(
+                      image.id,
+                    );
+
+                  if (!metadata) {
+                    return [];
+                  }
+
+                  return [
+                    {
+                      imageId:
+                        image.id,
+                      labels:
+                        [
+                          ...metadata.labels,
+                        ],
+                      participantCount:
+                        metadata.participantCount,
+                      selectedByAll:
+                        metadata.participantCount ===
+                        participantCount,
+                    },
+                  ];
+                },
+              ),
+          };
+        })()
+      : undefined;
+
   return (
     <main className="proofing-client-page">
       <div className="proofing-client-shell">
@@ -262,6 +368,9 @@ export default async function ProofingClientPage({
             }
             initialSubmittedFavourites={
               submittedFavouriteIds
+            }
+            consolidatedSelection={
+              clientConsolidatedSelection
             }
           />
         )}

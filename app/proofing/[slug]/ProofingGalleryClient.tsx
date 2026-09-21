@@ -17,6 +17,23 @@ type ProofingClientImage = {
   height: number;
 };
 
+type ProofingView =
+  | "all"
+  | "favourites"
+  | "consolidated";
+
+type ConsolidatedClientSelection = {
+  title: string;
+  participantCount: number;
+  definitiveImageIds: string[];
+  images: Array<{
+    imageId: string;
+    labels: string[];
+    participantCount: number;
+    selectedByAll: boolean;
+  }>;
+};
+
 type OrientationFilter =
   | "all"
   | "landscape"
@@ -49,6 +66,7 @@ type ProofingGalleryClientProps = {
   initialSelectionStatus?: string;
   initialSubmittedAt?: string;
   initialSubmittedFavourites: string[];
+  consolidatedSelection?: ConsolidatedClientSelection;
 };
 
 type FavouriteResponse = {
@@ -97,6 +115,7 @@ export default function ProofingGalleryClient({
   initialSelectionStatus = "not-started",
   initialSubmittedAt,
   initialSubmittedFavourites,
+  consolidatedSelection,
 }: ProofingGalleryClientProps) {
   const [favourites, setFavourites] =
     useState<string[]>(initialFavourites);
@@ -112,7 +131,7 @@ export default function ProofingGalleryClient({
     useState<string | null>(null);
 
   const [view, setView] =
-    useState<"all" | "favourites">("all");
+    useState<ProofingView>("all");
 
   const [
     orientationFilter,
@@ -126,18 +145,33 @@ export default function ProofingGalleryClient({
 
     if (params.get("view") === "favourites") {
       setView("favourites");
+    } else if (
+      params.get("view") === "consolidated" &&
+      consolidatedSelection
+    ) {
+      setView("consolidated");
     }
-  }, []);
+  }, [consolidatedSelection]);
 
   function changeView(
-    nextView: "all" | "favourites",
+    nextView: ProofingView,
   ) {
     setView(nextView);
 
     const url = new URL(window.location.href);
 
     if (nextView === "favourites") {
-      url.searchParams.set("view", "favourites");
+      url.searchParams.set(
+        "view",
+        "favourites",
+      );
+    } else if (
+      nextView === "consolidated"
+    ) {
+      url.searchParams.set(
+        "view",
+        "consolidated",
+      );
     } else {
       url.searchParams.delete("view");
     }
@@ -416,6 +450,32 @@ export default function ProofingGalleryClient({
     [images, favouriteSet],
   );
 
+  const consolidatedImageIdSet =
+    useMemo(
+      () =>
+        new Set(
+          consolidatedSelection?.images.map(
+            (image) =>
+              image.imageId,
+          ) ?? [],
+        ),
+      [consolidatedSelection],
+    );
+
+  const consolidatedImages =
+    useMemo(
+      () =>
+        images.filter((image) =>
+          consolidatedImageIdSet.has(
+            image.id,
+          ),
+        ),
+      [
+        images,
+        consolidatedImageIdSet,
+      ],
+    );
+
   const orientationMatches = (
     image: ProofingClientImage,
   ) => {
@@ -431,21 +491,27 @@ export default function ProofingGalleryClient({
       : !isPortrait;
   };
 
+  const activeViewImages =
+    view === "favourites"
+      ? favouriteImages
+      : view === "consolidated"
+        ? consolidatedImages
+        : images;
+
   const visibleImages =
-    (
-      view === "favourites"
-        ? favouriteImages
-        : images
-    ).filter(orientationMatches);
+    activeViewImages.filter(
+      orientationMatches,
+    );
 
   const landscapeCount =
-    images.filter(
+    activeViewImages.filter(
       (image) =>
         image.width >= image.height,
     ).length;
 
   const portraitCount =
-    images.length - landscapeCount;
+    activeViewImages.length -
+    landscapeCount;
 
   const viewerImageIndex = viewerImageId
     ? visibleImages.findIndex(
@@ -964,6 +1030,32 @@ export default function ProofingGalleryClient({
         ♥ {favourites.length}
       </span>
     </button>
+
+    {consolidatedSelection ? (
+      <button
+        type="button"
+        className={
+          view === "consolidated"
+            ? "is-active"
+            : ""
+        }
+        aria-pressed={
+          view === "consolidated"
+        }
+        onClick={() =>
+          changeView(
+            "consolidated",
+          )
+        }
+      >
+        Consolidated
+        <span>
+          {
+            consolidatedImages.length
+          }
+        </span>
+      </button>
+    ) : null}
     </div>
 
     <span
@@ -1222,6 +1314,39 @@ export default function ProofingGalleryClient({
         </section>
       ) : null}
 
+      {view === "consolidated" &&
+      consolidatedSelection ? (
+        <section className="proofing-review-header">
+          <div>
+            <p className="proofing-client-eyebrow">
+              Consolidated selection
+            </p>
+
+            <h2>
+              {consolidatedSelection.title}
+              <span className="proofing-review-count">
+                {
+                  consolidatedImages.length
+                }
+              </span>
+            </h2>
+
+            <p className="proofing-review-copy">
+              Combined favourites from{" "}
+              {
+                consolidatedSelection
+                  .participantCount
+              }{" "}
+              participant
+              {consolidatedSelection
+                .participantCount === 1
+                ? ""
+                : "s"}.
+            </p>
+          </div>
+        </section>
+      ) : null}
+
       {view === "favourites" &&
       favouriteImages.length === 0 ? (
         <div className="proofing-review-empty">
@@ -1244,7 +1369,9 @@ export default function ProofingGalleryClient({
         aria-label={
           view === "favourites"
             ? "Favourite photographs"
-            : "Proofing photographs"
+            : view === "consolidated"
+              ? "Consolidated photographs"
+              : "Proofing photographs"
         }
         hidden={
           view === "favourites" &&
@@ -1259,6 +1386,12 @@ export default function ProofingGalleryClient({
             (
               view === "favourites" &&
               !isFavourite
+            ) ||
+            (
+              view === "consolidated" &&
+              !consolidatedImageIdSet.has(
+                image.id,
+              )
             ) ||
             !orientationMatches(image);
 
@@ -1296,49 +1429,51 @@ export default function ProofingGalleryClient({
                     opacity={watermarkOpacity}
                   />
 
-                  <button
-                    type="button"
-                    className={
-                      isFavourite
-                        ? "proofing-favourite-button is-favourite"
-                        : "proofing-favourite-button"
-                    }
-                    aria-pressed={
-                      isFavourite
-                    }
-                    aria-label={
-                      isFavourite
-                        ? `Remove ${image.originalFilename} from favourites`
-                        : `Add ${image.originalFilename} to favourites`
-                    }
-                    disabled={
-                      isSubmitting
-                    }
-                    onClick={() =>
-                      toggleFavourite(
-                        image.id,
-                      )
-                    }
-                  >
-                      {isFavourite ? (
-                        <>
-                          <span
-                            className="proofing-selected-check"
-                            aria-hidden="true"
-                          >
-                            ✓
-                          </span>
+                  {view !== "consolidated" ? (
+                    <button
+                      type="button"
+                      className={
+                        isFavourite
+                          ? "proofing-favourite-button is-favourite"
+                          : "proofing-favourite-button"
+                      }
+                      aria-pressed={
+                        isFavourite
+                      }
+                      aria-label={
+                        isFavourite
+                          ? `Remove ${image.originalFilename} from favourites`
+                          : `Add ${image.originalFilename} to favourites`
+                      }
+                      disabled={
+                        isSubmitting
+                      }
+                      onClick={() =>
+                        toggleFavourite(
+                          image.id,
+                        )
+                      }
+                    >
+                        {isFavourite ? (
+                          <>
+                            <span
+                              className="proofing-selected-check"
+                              aria-hidden="true"
+                            >
+                              ✓
+                            </span>
 
-                          <span className="proofing-selected-label">
-                            Selected
+                            <span className="proofing-selected-label">
+                              Selected
+                            </span>
+                          </>
+                        ) : (
+                          <span aria-hidden="true">
+                            ♡
                           </span>
-                        </>
-                      ) : (
-                        <span aria-hidden="true">
-                          ♡
-                        </span>
-                      )}
-                  </button>
+                        )}
+                    </button>
+                  ) : null}
                 </div>
 
                 {showFilenames ? (
@@ -1421,33 +1556,35 @@ export default function ProofingGalleryClient({
                 </div>
 
                 <div className="proofing-viewer-action-buttons">
-                  <button
-                    type="button"
-                    className={
-                      favouriteSet.has(viewerImage.id)
-                        ? "proofing-viewer-favourite is-favourite"
-                        : "proofing-viewer-favourite"
-                    }
-                    aria-pressed={favouriteSet.has(
-                      viewerImage.id,
-                    )}
-                    disabled={
-                      isSubmitting
-                    }
-                    onClick={() =>
-                      toggleFavourite(viewerImage.id)
-                    }
-                  >
-                    <span aria-hidden="true">
-                      {favouriteSet.has(viewerImage.id)
-                        ? "♥"
-                        : "♡"}
-                    </span>
+                  {view !== "consolidated" ? (
+                    <button
+                      type="button"
+                      className={
+                        favouriteSet.has(viewerImage.id)
+                          ? "proofing-viewer-favourite is-favourite"
+                          : "proofing-viewer-favourite"
+                      }
+                      aria-pressed={favouriteSet.has(
+                        viewerImage.id,
+                      )}
+                      disabled={
+                        isSubmitting
+                      }
+                      onClick={() =>
+                        toggleFavourite(viewerImage.id)
+                      }
+                    >
+                      <span aria-hidden="true">
+                        {favouriteSet.has(viewerImage.id)
+                          ? "♥"
+                          : "♡"}
+                      </span>
 
-                    {favouriteSet.has(viewerImage.id)
-                      ? "Favourite"
-                      : "Add to favourites"}
-                  </button>
+                      {favouriteSet.has(viewerImage.id)
+                        ? "Favourite"
+                        : "Add to favourites"}
+                    </button>
+                  ) : null}
 
                   {downloadPermission === "web" ||
                   (downloadPermission === "selected" &&

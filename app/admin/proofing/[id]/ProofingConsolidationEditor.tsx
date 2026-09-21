@@ -69,6 +69,9 @@ export default function ProofingConsolidationEditor({
       "Consolidated favourites from all participants",
     );
 
+  const [visible, setVisible] =
+    useState(false);
+
   const [isLoading, setIsLoading] =
     useState(true);
 
@@ -135,6 +138,11 @@ export default function ProofingConsolidationEditor({
           setTitle(
             data.consolidated
               .title,
+          );
+
+          setVisible(
+            data.consolidated
+              .visible === true,
           );
 
           setSelectedIds(
@@ -263,6 +271,7 @@ export default function ProofingConsolidationEditor({
               galleryId,
               title:
                 title.trim(),
+              visible,
               participants:
                 [...selectedIds]
                   .map(
@@ -296,8 +305,14 @@ export default function ProofingConsolidationEditor({
 
       setHasExisting(true);
 
+      setVisible(
+        data.consolidated.visible === true,
+      );
+
       setMessage(
-        "Consolidated selection saved. It is still hidden from clients.",
+        data.consolidated.visible
+          ? "Consolidated selection saved and visible to clients."
+          : "Consolidated selection saved. It is hidden from clients.",
       );
 
       setMessageType(
@@ -637,6 +652,56 @@ export default function ProofingConsolidationEditor({
         selections will expose only
         labels you choose to enter.
       </p>
+
+      <label
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "0.7rem",
+          marginTop: "1.5rem",
+          padding: "1rem",
+          border:
+            "1px solid rgba(242, 238, 230, 0.14)",
+          cursor: "pointer",
+        }}
+      >
+        <input
+          type="checkbox"
+          checked={visible}
+          disabled={
+            isLoading ||
+            isSaving ||
+            !hasExisting
+          }
+          onChange={(event) => {
+            setVisible(
+              event.target.checked,
+            );
+            setMessage(null);
+            setMessageType(null);
+          }}
+        />
+
+        <span>
+          <strong>
+            Show consolidated selection to clients
+          </strong>
+
+          <span
+            style={{
+              display: "block",
+              marginTop: "0.25rem",
+              color:
+                "rgba(242, 238, 230, 0.5)",
+              fontSize: "0.75rem",
+            }}
+          >
+            When enabled, visitors to this gallery can
+            open the separate Consolidated view. Email
+            addresses are never shown.
+          </span>
+        </span>
+      </label>
 
       <div
         style={{

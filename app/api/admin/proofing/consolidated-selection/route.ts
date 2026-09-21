@@ -25,6 +25,7 @@ type SaveParticipantRequest = {
 type SaveRequest = {
   galleryId?: unknown;
   title?: unknown;
+  visible?: unknown;
   participants?: unknown;
 };
 
@@ -163,6 +164,9 @@ export async function POST(
       body.title,
     ) ||
     "Consolidated favourites from all participants";
+
+  const visible =
+    body.visible === true;
 
   if (!galleryId) {
     return NextResponse.json(
@@ -339,7 +343,7 @@ export async function POST(
       {
         galleryId,
         title,
-        visible: false,
+        visible,
         participants,
       },
     );
