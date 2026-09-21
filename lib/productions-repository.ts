@@ -54,6 +54,12 @@ type ImageRow = {
   layout: ProductionImage["layout"];
   blur_data_url: string | null;
   suggested_filename: string | null;
+  original_display_filename: string | null;
+  edit_aspect: ProductionImage["editAspect"] | null;
+  edit_zoom: number | null;
+  edit_pan_x: number | null;
+  edit_pan_y: number | null;
+  edit_brightness: number | null;
   position: number;
 };
 
@@ -112,6 +118,17 @@ function mapImageRow(
             row.suggested_filename,
         }
       : {}),
+    ...(row.original_display_filename
+      ? {
+          originalSrc:
+            row.original_display_filename,
+        }
+      : {}),
+    editAspect: row.edit_aspect ?? "original",
+    editZoom: row.edit_zoom ?? 1,
+    editPanX: row.edit_pan_x ?? 0,
+    editPanY: row.edit_pan_y ?? 0,
+    editBrightness: row.edit_brightness ?? 100,
   };
 }
 
@@ -439,6 +456,12 @@ export async function getProductions():
         layout,
         blur_data_url,
         suggested_filename,
+        original_display_filename,
+        edit_aspect,
+        edit_zoom,
+        edit_pan_x,
+        edit_pan_y,
+        edit_brightness,
         position
       FROM production_images
       WHERE deleted_at IS NULL
@@ -600,6 +623,12 @@ export async function getProduction(
           layout,
           blur_data_url,
           suggested_filename,
+          original_display_filename,
+          edit_aspect,
+          edit_zoom,
+          edit_pan_x,
+          edit_pan_y,
+          edit_brightness,
           position
         FROM production_images
         WHERE deleted_at IS NULL
@@ -823,6 +852,12 @@ function productionInsertQueries(
         position,
         blur_data_url,
         suggested_filename,
+        original_display_filename,
+        edit_aspect,
+        edit_zoom,
+        edit_pan_x,
+        edit_pan_y,
+        edit_brightness,
         created_at,
         updated_at,
         deleted_at
@@ -837,6 +872,12 @@ function productionInsertQueries(
         ${position},
         ${image.blurDataURL ?? null},
         ${image.suggestedFilename ?? null},
+        ${image.originalSrc ?? null},
+        ${image.editAspect ?? "original"},
+        ${image.editZoom ?? 1},
+        ${image.editPanX ?? 0},
+        ${image.editPanY ?? 0},
+        ${image.editBrightness ?? 100},
         now(),
         now(),
         null
@@ -925,6 +966,8 @@ export async function replaceProduction(
       INSERT INTO production_images (
         id, production_id, storage_key, display_filename, alt, layout,
         position, blur_data_url, suggested_filename,
+        original_display_filename, edit_aspect, edit_zoom,
+        edit_pan_x, edit_pan_y, edit_brightness,
         created_at, updated_at, deleted_at
       )
       VALUES (
@@ -932,6 +975,12 @@ export async function replaceProduction(
         ${productionStorageKey(production.slug, image.src)},
         ${image.src}, ${image.alt}, ${image.layout}, ${position},
         ${image.blurDataURL ?? null}, ${image.suggestedFilename ?? null},
+        ${image.originalSrc ?? null},
+        ${image.editAspect ?? "original"},
+        ${image.editZoom ?? 1},
+        ${image.editPanX ?? 0},
+        ${image.editPanY ?? 0},
+        ${image.editBrightness ?? 100},
         now(), now(), null
       )
     `),

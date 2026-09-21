@@ -33,6 +33,12 @@ type ProductionImage = {
   alt: string;
   layout: GalleryLayout;
   suggestedFilename?: string;
+  originalSrc?: string;
+  editAspect?: "original" | "3:2" | "4:5" | "1:1" | "16:9";
+  editZoom?: number;
+  editPanX?: number;
+  editPanY?: number;
+  editBrightness?: number;
 };
 
 type ProductionCredit = {
@@ -364,6 +370,12 @@ const [accessPassword, setAccessPassword] =
           alt:
             `${production.title} production photograph`,
           layout: "wide",
+          originalSrc: signed.filename,
+          editAspect: "original",
+          editZoom: 1,
+          editPanX: 0,
+          editPanY: 0,
+          editBrightness: 100,
         });
       }
 
@@ -396,6 +408,13 @@ const [accessPassword, setAccessPassword] =
       width: number;
       height: number;
       filename: string;
+      settings: {
+        aspect: "original" | "3:2" | "4:5" | "1:1" | "16:9";
+        zoom: number;
+        panX: number;
+        panY: number;
+        brightness: number;
+      };
     },
   ) {
     if (
@@ -423,6 +442,10 @@ const [accessPassword, setAccessPassword] =
       const oldSrc =
         editingImage.src;
 
+      const originalSrc =
+        editingImage.originalSrc ??
+        editingImage.src;
+
       setGalleryImages(
         (current) =>
           current.map(
@@ -430,22 +453,18 @@ const [accessPassword, setAccessPassword] =
               image.src === oldSrc
                 ? {
                     ...image,
-                    src:
-                      signed.filename,
-                    suggestedFilename:
-                      undefined,
+                    src: signed.filename,
+                    originalSrc,
+                    editAspect: result.settings.aspect,
+                    editZoom: result.settings.zoom,
+                    editPanX: result.settings.panX,
+                    editPanY: result.settings.panY,
+                    editBrightness: result.settings.brightness,
+                    suggestedFilename: undefined,
                   }
                 : image,
           ),
       );
-
-      if (
-        selectedHero === oldSrc
-      ) {
-        setSelectedHero(
-          signed.filename,
-        );
-      }
 
       setEditingImage(null);
 
@@ -1020,11 +1039,20 @@ setAccessPassword("");
         <ImageEditor
           source={`${getProductionImageUrl(
             production.slug,
-            editingImage.src,
+            editingImage.originalSrc ??
+              editingImage.src,
           )}?editor=1`}
           filename={
+            editingImage.originalSrc ??
             editingImage.src
           }
+          initialSettings={{
+            aspect: editingImage.editAspect ?? "original",
+            zoom: editingImage.editZoom ?? 1,
+            panX: editingImage.editPanX ?? 0,
+            panY: editingImage.editPanY ?? 0,
+            brightness: editingImage.editBrightness ?? 100,
+          }}
           onCancel={() =>
             setEditingImage(null)
           }

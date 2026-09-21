@@ -18,10 +18,12 @@ import {
 type ImageEditorProps = {
   source: string | File | Blob;
   filename?: string;
+  initialSettings?: Partial<ImageEditorSettings>;
   onCancel: () => void;
   onApply: (
     result: EditedImageResult & {
       filename: string;
+      settings: ImageEditorSettings;
     },
   ) => void | Promise<void>;
 };
@@ -79,6 +81,7 @@ function outputFilename(
 export default function ImageEditor({
   source,
   filename,
+  initialSettings,
   onCancel,
   onApply,
 }: ImageEditorProps) {
@@ -102,9 +105,10 @@ export default function ImageEditor({
     } | null>(null);
 
   const [settings, setSettings] =
-    useState<ImageEditorSettings>(
-      DEFAULT_SETTINGS,
-    );
+    useState<ImageEditorSettings>({
+      ...DEFAULT_SETTINGS,
+      ...initialSettings,
+    });
 
   const [isReady, setIsReady] =
     useState(false);
@@ -375,6 +379,7 @@ export default function ImageEditor({
           outputFilename(
             filename,
           ),
+        settings,
       });
     } catch (applyError) {
       setError(

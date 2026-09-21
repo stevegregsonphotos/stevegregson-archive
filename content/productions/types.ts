@@ -21,6 +21,12 @@ export type ProductionImage = {
   layout: GalleryLayout;
   blurDataURL?: string;
   suggestedFilename?: string;
+  originalSrc?: string;
+  editAspect?: "original" | "3:2" | "4:5" | "1:1" | "16:9";
+  editZoom?: number;
+  editPanX?: number;
+  editPanY?: number;
+  editBrightness?: number;
 };
 
 export type Production = {

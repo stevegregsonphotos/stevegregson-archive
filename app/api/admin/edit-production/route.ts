@@ -36,6 +36,12 @@ type ProductionImage = {
   layout: GalleryLayout;
   blurDataURL?: string;
   suggestedFilename?: string;
+  originalSrc?: string;
+  editAspect?: "original" | "3:2" | "4:5" | "1:1" | "16:9";
+  editZoom?: number;
+  editPanX?: number;
+  editPanY?: number;
+  editBrightness?: number;
 };
 
 type ProductionCredit = {
@@ -88,7 +94,22 @@ function isProductionImage(value: unknown): value is ProductionImage {
     (image.blurDataURL === undefined || typeof image.blurDataURL === "string") &&
     (image.suggestedFilename === undefined ||
       (typeof image.suggestedFilename === "string" &&
-       isSafeFilename(image.suggestedFilename)));
+       isSafeFilename(image.suggestedFilename))) &&
+    (image.originalSrc === undefined ||
+      (typeof image.originalSrc === "string" &&
+       isSafeFilename(image.originalSrc))) &&
+    (image.editAspect === undefined ||
+      ["original", "3:2", "4:5", "1:1", "16:9"].includes(
+        image.editAspect as string,
+      )) &&
+    (image.editZoom === undefined ||
+      typeof image.editZoom === "number") &&
+    (image.editPanX === undefined ||
+      typeof image.editPanX === "number") &&
+    (image.editPanY === undefined ||
+      typeof image.editPanY === "number") &&
+    (image.editBrightness === undefined ||
+      typeof image.editBrightness === "number");
 }
 
 function parseCredits(value: unknown) {
@@ -134,6 +155,14 @@ function parseImages(value: unknown) {
       ...(image.suggestedFilename
         ? { suggestedFilename: image.suggestedFilename.trim() }
         : {}),
+      ...(image.originalSrc
+        ? { originalSrc: image.originalSrc }
+        : {}),
+      editAspect: image.editAspect ?? "original",
+      editZoom: image.editZoom ?? 1,
+      editPanX: image.editPanX ?? 0,
+      editPanY: image.editPanY ?? 0,
+      editBrightness: image.editBrightness ?? 100,
     };
   });
 }
