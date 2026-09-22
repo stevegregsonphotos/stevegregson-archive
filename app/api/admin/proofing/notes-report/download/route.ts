@@ -103,32 +103,34 @@ export async function GET(
         galleryId,
       );
 
-    const body =
-      Uint8Array.from(
-        bytes,
-      ).buffer;
+    /*
+     * Return the exact R2 bytes as a conventional
+     * attachment response.
+     *
+     * Do not manufacture an ArrayBuffer and do not set
+     * Content-Length manually. Let the runtime handle the
+     * response framing.
+     */
+    const bodyBytes =
+      new Uint8Array(
+        bytes.byteLength,
+      );
 
-    return new NextResponse(
-      body,
+    bodyBytes.set(
+      bytes,
+    );
+
+    return new Response(
+      bodyBytes.buffer,
       {
         status: 200,
         headers: {
-          /*
-           * Safari has repeatedly stalled when this
-           * attachment is advertised as application/pdf.
-           * Send the exact PDF bytes as a generic binary
-           * attachment while retaining the .pdf filename.
-           */
           "Content-Type":
-            "application/octet-stream",
+            "application/pdf",
           "Content-Disposition":
             `attachment; filename="${filename}"`,
-          "Content-Length":
-            String(bytes.byteLength),
           "Cache-Control":
             "private, no-store",
-          "X-Content-Type-Options":
-            "nosniff",
         },
       },
     );
