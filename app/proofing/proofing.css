@@ -2594,3 +2594,138 @@
     flex-direction: column;
   }
 }
+
+/* Client photograph annotations */
+
+.proofing-annotation-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.proofing-annotation-overlay.is-editing {
+  pointer-events: auto;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.proofing-annotation-path {
+  fill: none;
+  stroke: #ff3b30;
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.proofing-viewer-annotation-button {
+  flex: 0 0 auto;
+  min-height: 2.6rem;
+  padding: 0 0.9rem;
+  border: 1px solid rgba(242, 238, 230, 0.22);
+  background: transparent;
+  color: rgba(242, 238, 230, 0.7);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.48rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.proofing-viewer-annotation-button:hover,
+.proofing-viewer-annotation-button.has-annotation {
+  border-color: #c7a369;
+  color: #c7a369;
+}
+
+.proofing-annotation-editor {
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(199, 163, 105, 0.28);
+  background: rgba(199, 163, 105, 0.045);
+}
+
+.proofing-annotation-editor-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.proofing-annotation-editor-copy strong {
+  color: #f2eee6;
+  font-size: 0.58rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.proofing-annotation-editor-copy span {
+  color: rgba(242, 238, 230, 0.52);
+  font-size: 0.62rem;
+  line-height: 1.4;
+}
+
+.proofing-annotation-editor-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.proofing-annotation-editor-actions button {
+  min-height: 2.35rem;
+  padding: 0 0.75rem;
+  border: 1px solid rgba(242, 238, 230, 0.2);
+  background: transparent;
+  color: rgba(242, 238, 230, 0.72);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.46rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.proofing-annotation-editor-actions button.is-primary {
+  border-color: #c7a369;
+  background: #c7a369;
+  color: #11100f;
+}
+
+.proofing-annotation-editor-actions button:disabled {
+  cursor: default;
+  opacity: 0.35;
+}
+
+.proofing-annotation-error {
+  margin: 0;
+  color: #efb0a8;
+  font-size: 0.58rem;
+}
+
+@media (max-width: 700px) {
+  .proofing-annotation-editor {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .proofing-annotation-editor-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .proofing-annotation-editor-actions button {
+    flex: 1 1 auto;
+  }
+}

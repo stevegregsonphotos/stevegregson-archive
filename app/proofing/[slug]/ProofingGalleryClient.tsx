@@ -107,6 +107,37 @@ type ImageNoteResponse = {
   message?: string;
 };
 
+type ClientAnnotationPoint = {
+  x: number;
+  y: number;
+};
+
+type ClientPenAnnotation = {
+  id: string;
+  type: "pen";
+  points: ClientAnnotationPoint[];
+};
+
+type ClientAnnotationDocument = {
+  version: 1;
+  marks: ClientPenAnnotation[];
+};
+
+type ImageAnnotationResponse = {
+  ok: boolean;
+  deleted?: boolean;
+  imageId?: string;
+  annotation?: {
+    imageId: string;
+    annotation: ClientAnnotationDocument;
+  };
+  annotations?: Array<{
+    imageId: string;
+    annotation: ClientAnnotationDocument;
+  }>;
+  message?: string;
+};
+
 function sameSelection(
   first: string[],
   second: string[],
@@ -365,6 +396,39 @@ export default function ProofingGalleryClient({
     setImageNoteError,
   ] = useState<string | null>(null);
 
+  const [
+    imageAnnotations,
+    setImageAnnotations,
+  ] = useState<
+    Record<
+      string,
+      ClientAnnotationDocument
+    >
+  >({});
+
+  const [
+    annotationEditorImageId,
+    setAnnotationEditorImageId,
+  ] = useState<string | null>(null);
+
+  const [
+    annotationDraft,
+    setAnnotationDraft,
+  ] = useState<ClientAnnotationDocument>({
+    version: 1,
+    marks: [],
+  });
+
+  const [
+    savingAnnotationImageId,
+    setSavingAnnotationImageId,
+  ] = useState<string | null>(null);
+
+  const [
+    imageAnnotationError,
+    setImageAnnotationError,
+  ] = useState<string | null>(null);
+
   const imageNoteEditorRef =
     useRef<HTMLDivElement | null>(null);
 
@@ -442,6 +506,99 @@ export default function ProofingGalleryClient({
   }, [viewerImageId]);
 
   useEffect(() => {
+    let cancelled = false;
+
+    async function loadImageAnnotations() {
+      try {
+        const response =
+          await fetch(
+            `/api/proofing/image-annotation?gallery=${encodeURIComponent(
+              gallerySlug,
+            )}`,
+            {
+              cache: "no-store",
+            },
+          );
+
+        if (!response.ok) {
+          return;
+        }
+
+        const data =
+          (await response.json()) as
+            ImageAnnotationResponse;
+
+        if (
+          !data.ok ||
+          !Array.isArray(
+            data.annotations,
+          )
+        ) {
+          return;
+        }
+
+        if (cancelled) {
+          return;
+        }
+
+        const nextAnnotations:
+          Record<
+            string,
+            ClientAnnotationDocument
+          > = {};
+
+        for (
+          const item of
+          data.annotations
+        ) {
+          if (
+            item.imageId &&
+            item.annotation?.version ===
+              1 &&
+            Array.isArray(
+              item.annotation.marks,
+            )
+          ) {
+            nextAnnotations[
+              item.imageId
+            ] = item.annotation;
+          }
+        }
+
+        setImageAnnotations(
+          nextAnnotations,
+        );
+      } catch (error) {
+        console.error(
+          "Proofing image annotations could not be loaded.",
+          error,
+        );
+      }
+    }
+
+    void loadImageAnnotations();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [gallerySlug]);
+
+  useEffect(() => {
+    setAnnotationEditorImageId(
+      null,
+    );
+
+    setAnnotationDraft({
+      version: 1,
+      marks: [],
+    });
+
+    setImageAnnotationError(
+      null,
+    );
+  }, [viewerImageId]);
+
+  useEffect(() => {
     if (!noteEditorImageId) {
       return;
     }
@@ -467,6 +624,9 @@ export default function ProofingGalleryClient({
 
   const viewerDialogRef =
     useRef<HTMLDivElement | null>(null);
+
+  const activeAnnotationMarkId =
+    useRef<string | null>(null);
 
   const viewerPreviousFocusRef =
     useRef<HTMLElement | null>(null);
@@ -1354,6 +1514,334 @@ export default function ProofingGalleryClient({
       );
     } finally {
       setSavingNoteImageId(
+        null,
+      );
+    }
+  }
+
+  function annotationPointFromPointer(
+    element: SVGSVGElement,
+    clientX: number,
+    clientY: number,
+  ): ClientAnnotationPoint {
+    const rect =
+      element.getBoundingClientRect();
+
+    return {
+      x:
+        Math.min(
+          1,
+          Math.max(
+            0,
+            (clientX - rect.left) /
+              rect.width,
+          ),
+        ),
+      y:
+        Math.min(
+          1,
+          Math.max(
+            0,
+            (clientY - rect.top) /
+              rect.height,
+          ),
+        ),
+    };
+  }
+
+  function annotationPath(
+    points: ClientAnnotationPoint[],
+  ) {
+    if (points.length === 0) {
+      return "";
+    }
+
+    return points
+      .map(
+        (point, index) =>
+          `${index === 0 ? "M" : "L"} ${
+            point.x * 1000
+          } ${point.y * 1000}`,
+      )
+      .join(" ");
+  }
+
+  function beginAnnotationStroke(
+    event:
+      React.PointerEvent<SVGSVGElement>,
+  ) {
+    if (!annotationEditorImageId) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    event.currentTarget.setPointerCapture(
+      event.pointerId,
+    );
+
+    const point =
+      annotationPointFromPointer(
+        event.currentTarget,
+        event.clientX,
+        event.clientY,
+      );
+
+    const id =
+      crypto.randomUUID();
+
+    activeAnnotationMarkId.current =
+      id;
+
+    setAnnotationDraft(
+      (current) => ({
+        ...current,
+        marks: [
+          ...current.marks,
+          {
+            id,
+            type: "pen",
+            points: [
+              point,
+              point,
+            ],
+          },
+        ],
+      }),
+    );
+  }
+
+  function continueAnnotationStroke(
+    event:
+      React.PointerEvent<SVGSVGElement>,
+  ) {
+    const activeId =
+      activeAnnotationMarkId.current;
+
+    if (!activeId) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const point =
+      annotationPointFromPointer(
+        event.currentTarget,
+        event.clientX,
+        event.clientY,
+      );
+
+    setAnnotationDraft(
+      (current) => ({
+        ...current,
+        marks:
+          current.marks.map(
+            (mark) => {
+              if (
+                mark.id !==
+                activeId
+              ) {
+                return mark;
+              }
+
+              const previous =
+                mark.points[
+                  mark.points.length - 1
+                ];
+
+              if (
+                previous &&
+                Math.hypot(
+                  point.x -
+                    previous.x,
+                  point.y -
+                    previous.y,
+                ) < 0.002
+              ) {
+                return mark;
+              }
+
+              if (
+                mark.points.length >=
+                2000
+              ) {
+                return mark;
+              }
+
+              return {
+                ...mark,
+                points: [
+                  ...mark.points,
+                  point,
+                ],
+              };
+            },
+          ),
+      }),
+    );
+  }
+
+  function endAnnotationStroke(
+    event:
+      React.PointerEvent<SVGSVGElement>,
+  ) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    activeAnnotationMarkId.current =
+      null;
+
+    if (
+      event.currentTarget.hasPointerCapture(
+        event.pointerId,
+      )
+    ) {
+      event.currentTarget.releasePointerCapture(
+        event.pointerId,
+      );
+    }
+  }
+
+  function undoAnnotationStroke() {
+    setAnnotationDraft(
+      (current) => ({
+        ...current,
+        marks:
+          current.marks.slice(
+            0,
+            -1,
+          ),
+      }),
+    );
+  }
+
+  function openImageAnnotationEditor(
+    imageId: string,
+  ) {
+    const existing =
+      imageAnnotations[imageId];
+
+    setAnnotationEditorImageId(
+      imageId,
+    );
+
+    setAnnotationDraft(
+      existing
+        ? {
+            version: 1,
+            marks:
+              existing.marks.map(
+                (mark) => ({
+                  ...mark,
+                  points:
+                    mark.points.map(
+                      (point) => ({
+                        ...point,
+                      }),
+                    ),
+                }),
+              ),
+          }
+        : {
+            version: 1,
+            marks: [],
+          },
+    );
+
+    setImageAnnotationError(
+      null,
+    );
+  }
+
+  async function saveImageAnnotation(
+    imageId: string,
+    annotation:
+      ClientAnnotationDocument,
+  ) {
+    if (savingAnnotationImageId) {
+      return;
+    }
+
+    setSavingAnnotationImageId(
+      imageId,
+    );
+
+    setImageAnnotationError(
+      null,
+    );
+
+    try {
+      const response =
+        await fetch(
+          "/api/proofing/image-annotation",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify({
+              gallerySlug,
+              imageId,
+              annotation,
+            }),
+          },
+        );
+
+      const data =
+        (await response.json()) as
+          ImageAnnotationResponse;
+
+      if (
+        !response.ok ||
+        !data.ok
+      ) {
+        throw new Error(
+          data.message ??
+            "Your annotation could not be saved.",
+        );
+      }
+
+      setImageAnnotations(
+        (current) => {
+          const next = {
+            ...current,
+          };
+
+          if (
+            annotation.marks.length >
+            0
+          ) {
+            next[imageId] =
+              annotation;
+          } else {
+            delete next[
+              imageId
+            ];
+          }
+
+          return next;
+        },
+      );
+
+      setAnnotationEditorImageId(
+        null,
+      );
+
+      setAnnotationDraft({
+        version: 1,
+        marks: [],
+      });
+    } catch (error) {
+      setImageAnnotationError(
+        error instanceof Error
+          ? error.message
+          : "Your annotation could not be saved.",
+      );
+    } finally {
+      setSavingAnnotationImageId(
         null,
       );
     }
@@ -2485,6 +2973,92 @@ export default function ProofingGalleryClient({
                   size={watermarkSize}
                   opacity={watermarkOpacity}
                 />
+
+                {(
+                  annotationEditorImageId ===
+                    viewerImage.id
+                    ? annotationDraft
+                    : imageAnnotations[
+                        viewerImage.id
+                      ]
+                )?.marks.length ? (
+                  <svg
+                    className={
+                      annotationEditorImageId ===
+                      viewerImage.id
+                        ? "proofing-annotation-overlay is-editing"
+                        : "proofing-annotation-overlay"
+                    }
+                    viewBox="0 0 1000 1000"
+                    preserveAspectRatio="none"
+                    aria-label="Photograph annotation"
+                    onPointerDown={
+                      annotationEditorImageId ===
+                      viewerImage.id
+                        ? beginAnnotationStroke
+                        : undefined
+                    }
+                    onPointerMove={
+                      annotationEditorImageId ===
+                      viewerImage.id
+                        ? continueAnnotationStroke
+                        : undefined
+                    }
+                    onPointerUp={
+                      annotationEditorImageId ===
+                      viewerImage.id
+                        ? endAnnotationStroke
+                        : undefined
+                    }
+                    onPointerCancel={
+                      annotationEditorImageId ===
+                      viewerImage.id
+                        ? endAnnotationStroke
+                        : undefined
+                    }
+                  >
+                    {(
+                      annotationEditorImageId ===
+                        viewerImage.id
+                        ? annotationDraft
+                        : imageAnnotations[
+                            viewerImage.id
+                          ]
+                    )?.marks.map(
+                      (mark) => (
+                        <path
+                          key={
+                            mark.id
+                          }
+                          d={annotationPath(
+                            mark.points,
+                          )}
+                          className="proofing-annotation-path"
+                        />
+                      ),
+                    )}
+                  </svg>
+                ) : annotationEditorImageId ===
+                  viewerImage.id ? (
+                  <svg
+                    className="proofing-annotation-overlay is-editing"
+                    viewBox="0 0 1000 1000"
+                    preserveAspectRatio="none"
+                    aria-label="Draw on photograph"
+                    onPointerDown={
+                      beginAnnotationStroke
+                    }
+                    onPointerMove={
+                      continueAnnotationStroke
+                    }
+                    onPointerUp={
+                      endAnnotationStroke
+                    }
+                    onPointerCancel={
+                      endAnnotationStroke
+                    }
+                  />
+                ) : null}
               </div>
 
               <div className="proofing-viewer-actions">
@@ -2596,6 +3170,28 @@ export default function ProofingGalleryClient({
                       : "Add note"}
                   </button>
 
+                  <button
+                    type="button"
+                    className={
+                      imageAnnotations[
+                        viewerImage.id
+                      ]
+                        ? "proofing-viewer-annotation-button has-annotation"
+                        : "proofing-viewer-annotation-button"
+                    }
+                    onClick={() =>
+                      openImageAnnotationEditor(
+                        viewerImage.id,
+                      )
+                    }
+                  >
+                    {imageAnnotations[
+                      viewerImage.id
+                    ]
+                      ? "Edit markup"
+                      : "Annotate"}
+                  </button>
+
                   {downloadPermission === "web" ||
                   (downloadPermission === "selected" &&
                     favouriteSet.has(viewerImage.id)) ? (
@@ -2623,6 +3219,111 @@ export default function ProofingGalleryClient({
                   ) : null}
                 </div>
               </div>
+
+              {annotationEditorImageId ===
+              viewerImage.id ? (
+                <div className="proofing-annotation-editor">
+                  <div className="proofing-annotation-editor-copy">
+                    <strong>
+                      Draw on photograph
+                    </strong>
+
+                    <span>
+                      Use the red pen to mark areas for retouching or editing.
+                    </span>
+                  </div>
+
+                  <div className="proofing-annotation-editor-actions">
+                    <button
+                      type="button"
+                      disabled={
+                        annotationDraft
+                          .marks.length ===
+                          0 ||
+                        savingAnnotationImageId ===
+                          viewerImage.id
+                      }
+                      onClick={
+                        undoAnnotationStroke
+                      }
+                    >
+                      Undo
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={
+                        annotationDraft
+                          .marks.length ===
+                          0 ||
+                        savingAnnotationImageId ===
+                          viewerImage.id
+                      }
+                      onClick={() =>
+                        setAnnotationDraft({
+                          version: 1,
+                          marks: [],
+                        })
+                      }
+                    >
+                      Clear
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={
+                        savingAnnotationImageId ===
+                        viewerImage.id
+                      }
+                      onClick={() => {
+                        setAnnotationEditorImageId(
+                          null,
+                        );
+
+                        setAnnotationDraft({
+                          version: 1,
+                          marks: [],
+                        });
+
+                        setImageAnnotationError(
+                          null,
+                        );
+                      }}
+                    >
+                      Cancel
+                    </button>
+
+                    <button
+                      type="button"
+                      className="is-primary"
+                      disabled={
+                        savingAnnotationImageId ===
+                        viewerImage.id
+                      }
+                      onClick={() =>
+                        void saveImageAnnotation(
+                          viewerImage.id,
+                          annotationDraft,
+                        )
+                      }
+                    >
+                      {savingAnnotationImageId ===
+                      viewerImage.id
+                        ? "Saving…"
+                        : "Save markup"}
+                    </button>
+                  </div>
+
+                  {imageAnnotationError ? (
+                    <p
+                      className="proofing-annotation-error"
+                      role="alert"
+                    >
+                      {imageAnnotationError}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
 
               {noteEditorImageId ===
               viewerImage.id ? (
