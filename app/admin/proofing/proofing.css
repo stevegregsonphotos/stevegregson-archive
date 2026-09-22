@@ -5618,3 +5618,120 @@ input[type="email"],
     gap: 0.75rem;
   }
 }
+
+/* Proofing client notes */
+
+.proofing-client-notes {
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid rgba(242, 238, 230, 0.12);
+}
+
+.proofing-client-notes-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 2rem;
+  margin-bottom: 1rem;
+}
+
+.proofing-client-notes-heading h3 {
+  margin: 0.25rem 0 0;
+  color: #f2eee6;
+  font-family:
+    "Iowan Old Style",
+    "Palatino Linotype",
+    Georgia,
+    serif;
+  font-size: 1.65rem;
+  font-weight: 400;
+  letter-spacing: -0.025em;
+}
+
+.proofing-client-notes-heading > p {
+  margin: 0;
+  color: rgba(242, 238, 230, 0.4);
+  font-size: 0.54rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.proofing-client-notes-list {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.proofing-client-note-card {
+  padding: 1.2rem 1.25rem;
+  border: 1px solid rgba(242, 238, 230, 0.1);
+  background: rgba(255, 255, 255, 0.018);
+}
+
+.proofing-client-note-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
+}
+
+.proofing-client-note-label {
+  flex: 0 0 auto;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid rgba(199, 163, 105, 0.35);
+  color: #c7a369;
+  font-size: 0.46rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.proofing-client-note-body {
+  display: grid;
+  grid-template-columns: minmax(9rem, 13rem) 1fr;
+  gap: 1.35rem;
+  align-items: start;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(242, 238, 230, 0.08);
+}
+
+.proofing-client-note-image {
+  min-width: 0;
+  margin: 0;
+}
+
+.proofing-client-note-image figcaption {
+  margin-top: 0.5rem;
+  color: rgba(242, 238, 230, 0.48);
+  font-size: 0.54rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.proofing-client-note-text {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  color: rgba(242, 238, 230, 0.82);
+  font-size: 0.82rem;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 650px) {
+  .proofing-client-notes-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .proofing-client-note-body {
+    grid-template-columns: 1fr;
+  }
+
+  .proofing-client-note-image {
+    max-width: 16rem;
+  }
+}

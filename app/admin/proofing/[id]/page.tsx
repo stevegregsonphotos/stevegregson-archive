@@ -19,6 +19,10 @@ import {
 } from "../../../../lib/proofing/download-events-repository";
 
 import {
+  getProofingImageNotes,
+} from "../../../../lib/proofing/image-notes-repository";
+
+import {
   getSelectedWorkImageUrl,
 } from "../../../../lib/selected-work-image-url";
 
@@ -155,6 +159,51 @@ export default async function ProofingGalleryPage({
     await getProofingDownloadEvents(
       gallery.id,
     );
+
+  const imageNotes =
+    await getProofingImageNotes(
+      gallery.id,
+    );
+
+  const resolvedImageNotes =
+    imageNotes
+      .map((note) => {
+        const visitor =
+          gallery.visitors.find(
+            (candidate) =>
+              candidate.id ===
+              note.visitorId,
+          );
+
+        const image =
+          gallery.images.find(
+            (candidate) =>
+              candidate.id ===
+              note.imageId,
+          );
+
+        if (
+          !visitor ||
+          !image
+        ) {
+          return null;
+        }
+
+        return {
+          ...note,
+          visitorEmail:
+            visitor.email,
+          image,
+        };
+      })
+      .filter(
+        (
+          note,
+        ): note is NonNullable<
+          typeof note
+        > =>
+          Boolean(note),
+      );
 
   const introTemplates =
     await getProofingIntroTemplates();
@@ -616,6 +665,91 @@ export default async function ProofingGalleryPage({
           </p>
         </div>
       )}
+
+      <section className="proofing-client-notes">
+        <div className="proofing-client-notes-heading">
+          <div>
+            <p className="proofing-section-label">
+              Editing requests
+            </p>
+
+            <h3>Client notes</h3>
+          </div>
+
+          <p>
+            {resolvedImageNotes.length}{" "}
+            note
+            {resolvedImageNotes.length === 1
+              ? ""
+              : "s"}
+          </p>
+        </div>
+
+        {resolvedImageNotes.length > 0 ? (
+          <div className="proofing-client-notes-list">
+            {resolvedImageNotes.map(
+              (note) => (
+                <article
+                  key={note.id}
+                  className="proofing-client-note-card"
+                >
+                  <header className="proofing-client-note-card-header">
+                    <div>
+                      <p className="proofing-selection-email">
+                        {note.visitorEmail}
+                      </p>
+
+                      <p className="proofing-selection-meta">
+                        Updated{" "}
+                        {formatDownloadDate(
+                          note.updatedAt,
+                        )}
+                      </p>
+                    </div>
+
+                    <span className="proofing-client-note-label">
+                      Note
+                    </span>
+                  </header>
+
+                  <div className="proofing-client-note-body">
+                    <figure className="proofing-client-note-image">
+                      <div className="proofing-selection-thumbnail-image">
+                        <img
+                          src={`/api/admin/proofing/image?galleryId=${encodeURIComponent(
+                            gallery.id,
+                          )}&imageId=${encodeURIComponent(
+                            note.image.id,
+                          )}`}
+                          alt={note.image.alt}
+                          loading="lazy"
+                        />
+                      </div>
+
+                      <figcaption>
+                        {
+                          note.image
+                            .originalFilename
+                        }
+                      </figcaption>
+                    </figure>
+
+                    <p className="proofing-client-note-text">
+                      {note.note}
+                    </p>
+                  </div>
+                </article>
+              ),
+            )}
+          </div>
+        ) : (
+          <div className="sp-selections-empty">
+            <p>
+              No client notes yet.
+            </p>
+          </div>
+        )}
+      </section>
 
       <section className="proofing-download-activity">
         <div className="proofing-download-activity-heading">
