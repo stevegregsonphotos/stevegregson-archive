@@ -850,20 +850,29 @@ export default function DownloadNotesReportButton({
 
   return (
     <div>
-      <button
-        type="button"
-        disabled={
-          isGenerating ||
-          items.length === 0
-        }
-        onClick={() =>
-          void downloadPdf()
-        }
-      >
-        {isGenerating
-          ? "Preparing PDF…"
-          : "Export PDF"}
-      </button>
+      {readyDownloadUrl ? (
+        <a
+          href={readyDownloadUrl}
+          className="proofing-notes-report-download-ready"
+        >
+          Download PDF
+        </a>
+      ) : (
+        <button
+          type="button"
+          disabled={
+            isGenerating ||
+            items.length === 0
+          }
+          onClick={() =>
+            void downloadPdf()
+          }
+        >
+          {isGenerating
+            ? "Preparing PDF…"
+            : "Export PDF"}
+        </button>
+      )}
 
       {error ? (
         <p
