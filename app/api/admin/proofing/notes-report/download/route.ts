@@ -8,6 +8,10 @@ import {
 } from "@/lib/proofing/image-notes-repository";
 
 import {
+  getProofingImageAnnotations,
+} from "@/lib/proofing/image-annotations-repository";
+
+import {
   getProofingImage,
 } from "@/lib/proofing/image-storage";
 
@@ -225,54 +229,151 @@ export async function GET(
       gallery.id,
     );
 
-  const resolvedNotes =
-    notes
-      .map((note) => {
-        const visitor =
-          gallery.visitors.find(
-            (candidate) =>
-              candidate.id ===
-              note.visitorId,
-          );
+  const annotations =
+    await getProofingImageAnnotations(
+      gallery.id,
+    );
 
-        const image =
-          gallery.images.find(
-            (candidate) =>
-              candidate.id ===
-              note.imageId,
-          );
+  type EditingRequest = {
+    id: string;
+    visitorId: string;
+    visitorEmail: string;
+    image: (typeof gallery.images)[number];
+    note?: string;
+    annotation?: (typeof annotations)[number]["annotation"];
+    updatedAt: string;
+  };
 
-        if (
-          !visitor ||
-          !image
-        ) {
-          return null;
-        }
+  const editingRequestMap =
+    new Map<
+      string,
+      EditingRequest
+    >();
 
-        return {
-          ...note,
-          visitorEmail:
-            visitor.email,
-          image,
-        };
-      })
-      .filter(
-        (
-          note,
-        ): note is NonNullable<
-          typeof note
-        > =>
-          Boolean(note),
+  for (const note of notes) {
+    const visitor =
+      gallery.visitors.find(
+        (candidate) =>
+          candidate.id ===
+          note.visitorId,
+      );
+
+    const image =
+      gallery.images.find(
+        (candidate) =>
+          candidate.id ===
+          note.imageId,
+      );
+
+    if (
+      !visitor ||
+      !image
+    ) {
+      continue;
+    }
+
+    const key =
+      `${note.visitorId}:${note.imageId}`;
+
+    editingRequestMap.set(
+      key,
+      {
+        id: key,
+        visitorId:
+          note.visitorId,
+        visitorEmail:
+          visitor.email,
+        image,
+        note:
+          note.note,
+        updatedAt:
+          note.updatedAt,
+      },
+    );
+  }
+
+  for (
+    const annotation of
+    annotations
+  ) {
+    const visitor =
+      gallery.visitors.find(
+        (candidate) =>
+          candidate.id ===
+          annotation.visitorId,
+      );
+
+    const image =
+      gallery.images.find(
+        (candidate) =>
+          candidate.id ===
+          annotation.imageId,
+      );
+
+    if (
+      !visitor ||
+      !image ||
+      annotation.annotation.marks.length ===
+        0
+    ) {
+      continue;
+    }
+
+    const key =
+      `${annotation.visitorId}:${annotation.imageId}`;
+
+    const existing =
+      editingRequestMap.get(
+        key,
+      );
+
+    editingRequestMap.set(
+      key,
+      {
+        id: key,
+        visitorId:
+          annotation.visitorId,
+        visitorEmail:
+          visitor.email,
+        image,
+        note:
+          existing?.note,
+        annotation:
+          annotation.annotation,
+        updatedAt:
+          existing &&
+          new Date(
+            existing.updatedAt,
+          ).getTime() >
+            new Date(
+              annotation.updatedAt,
+            ).getTime()
+            ? existing.updatedAt
+            : annotation.updatedAt,
+      },
+    );
+  }
+
+  const editingRequests =
+    [...editingRequestMap.values()]
+      .sort(
+        (first, second) =>
+          new Date(
+            second.updatedAt,
+          ).getTime() -
+          new Date(
+            first.updatedAt,
+          ).getTime(),
       );
 
   if (
-    resolvedNotes.length === 0
+    editingRequests.length === 0
   ) {
     return NextResponse.json(
       {
         ok: false,
         message:
-          "There are no client notes to export.",
+          "There are no editing requests to export.",
       },
       {
         status: 400,
@@ -304,11 +405,11 @@ export async function GET(
     for (
       let index = 0;
       index <
-      resolvedNotes.length;
+      editingRequests.length;
       index += 1
     ) {
       const item =
-        resolvedNotes[index];
+        editingRequests[index];
 
       const source =
         await getProofingImage(
@@ -475,6 +576,68 @@ export async function GET(
         },
       );
 
+      if (item.annotation) {
+        for (
+          const mark of
+          item.annotation.marks
+        ) {
+          if (
+            mark.type !== "pen" ||
+            mark.points.length < 2
+          ) {
+            continue;
+          }
+
+          for (
+            let pointIndex = 1;
+            pointIndex <
+            mark.points.length;
+            pointIndex += 1
+          ) {
+            const previous =
+              mark.points[
+                pointIndex - 1
+              ];
+
+            const current =
+              mark.points[
+                pointIndex
+              ];
+
+            page.drawLine({
+              start: {
+                x:
+                  imageX +
+                  previous.x *
+                    drawWidth,
+                y:
+                  imageY +
+                  (1 -
+                    previous.y) *
+                    drawHeight,
+              },
+              end: {
+                x:
+                  imageX +
+                  current.x *
+                    drawWidth,
+                y:
+                  imageY +
+                  (1 -
+                    current.y) *
+                    drawHeight,
+              },
+              thickness: 2.2,
+              color: rgb(
+                1,
+                0.23,
+                0.19,
+              ),
+            });
+          }
+        }
+      }
+
       const textX =
         imageX +
         imageBoxWidth +
@@ -587,7 +750,8 @@ export async function GET(
 
       drawTextLines(
         page,
-        item.note,
+        item.note ??
+          "Client supplied visual markup on the photograph.",
         {
           x: textX,
           y: textY,
