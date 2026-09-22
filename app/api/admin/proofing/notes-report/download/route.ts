@@ -402,6 +402,109 @@ export async function GET(
       pageWidth -
       margin * 2;
 
+    const imageBoxWidth =
+      190;
+
+    const imageBoxHeight =
+      260;
+
+    const requestGap = 24;
+    const dividerGap = 12;
+    const bottomMargin = 46;
+
+    const galleryTitle =
+      gallery.title;
+
+    let page: PDFPage | null =
+      null;
+
+    let requestY = 0;
+
+    function addReportPage() {
+      const nextPage =
+        pdf.addPage([
+          pageWidth,
+          pageHeight,
+        ]);
+
+      let headerY =
+        pageHeight -
+        margin;
+
+      nextPage.drawText(
+        "STEVE GREGSON · BACKSTAGE",
+        {
+          x: margin,
+          y: headerY,
+          size: 8,
+          font: bold,
+          color: rgb(
+            0.15,
+            0.15,
+            0.15,
+          ),
+        },
+      );
+
+      headerY -= 28;
+
+      nextPage.drawText(
+        pdfText(
+          galleryTitle,
+        ),
+        {
+          x: margin,
+          y: headerY,
+          size: 24,
+          font: regular,
+          color: rgb(
+            0.05,
+            0.05,
+            0.05,
+          ),
+        },
+      );
+
+      headerY -= 22;
+
+      nextPage.drawText(
+        "Client notes / editing requests",
+        {
+          x: margin,
+          y: headerY,
+          size: 11,
+          font: bold,
+        },
+      );
+
+      headerY -= 24;
+
+      nextPage.drawLine({
+        start: {
+          x: margin,
+          y: headerY,
+        },
+        end: {
+          x:
+            pageWidth -
+            margin,
+          y: headerY,
+        },
+        thickness: 1,
+        color: rgb(
+          0.15,
+          0.15,
+          0.15,
+        ),
+      });
+
+      return {
+        page: nextPage,
+        requestY:
+          headerY - 24,
+      };
+    }
+
     for (
       let index = 0;
       index <
@@ -437,111 +540,6 @@ export async function GET(
           jpegBytes,
         );
 
-      const page =
-        pdf.addPage([
-          pageWidth,
-          pageHeight,
-        ]);
-
-      let y =
-        pageHeight -
-        margin;
-
-      page.drawText(
-        "STEVE GREGSON · BACKSTAGE",
-        {
-          x: margin,
-          y,
-          size: 8,
-          font: bold,
-          color: rgb(
-            0.15,
-            0.15,
-            0.15,
-          ),
-        },
-      );
-
-      y -= 28;
-
-      page.drawText(
-        pdfText(
-          gallery.title,
-        ),
-        {
-          x: margin,
-          y,
-          size: 24,
-          font: regular,
-          color: rgb(
-            0.05,
-            0.05,
-            0.05,
-          ),
-        },
-      );
-
-      y -= 22;
-
-      page.drawText(
-        "Client notes / editing requests",
-        {
-          x: margin,
-          y,
-          size: 11,
-          font: bold,
-        },
-      );
-
-      y -= 24;
-
-      page.drawLine({
-        start: {
-          x: margin,
-          y,
-        },
-        end: {
-          x:
-            pageWidth -
-            margin,
-          y,
-        },
-        thickness: 1,
-        color: rgb(
-          0.15,
-          0.15,
-          0.15,
-        ),
-      });
-
-      y -= 24;
-
-      page.drawText(
-        String(
-          index + 1,
-        ).padStart(
-          2,
-          "0",
-        ),
-        {
-          x: margin,
-          y,
-          size: 14,
-          font: regular,
-          color: rgb(
-            0.45,
-            0.45,
-            0.45,
-          ),
-        },
-      );
-
-      const imageBoxWidth =
-        190;
-
-      const imageBoxHeight =
-        260;
-
       const scale =
         Math.min(
           imageBoxWidth /
@@ -558,15 +556,211 @@ export async function GET(
         jpeg.height *
         scale;
 
+      const textMaxWidth =
+        contentWidth -
+        imageBoxWidth -
+        60;
+
+      const filenameWords =
+        pdfText(
+          item.image.originalFilename,
+        )
+          .replace(
+            /\s+/g,
+            " ",
+          )
+          .trim()
+          .split(" ")
+          .filter(Boolean);
+
+      let filenameLines = 0;
+      let filenameCurrent = "";
+
+      for (
+        const word of
+        filenameWords
+      ) {
+        const candidate =
+          filenameCurrent
+            ? `${filenameCurrent} ${word}`
+            : word;
+
+        if (
+          bold.widthOfTextAtSize(
+            candidate,
+            10,
+          ) <=
+            textMaxWidth ||
+          !filenameCurrent
+        ) {
+          filenameCurrent =
+            candidate;
+        } else {
+          filenameLines += 1;
+          filenameCurrent =
+            word;
+        }
+      }
+
+      if (filenameCurrent) {
+        filenameLines += 1;
+      }
+
+      const filenameHeight =
+        Math.max(
+          filenameLines,
+          1,
+        ) * 13;
+
+      const requestText =
+        item.note ??
+        "Client supplied visual markup on the photograph.";
+
+      const requestWords =
+        pdfText(
+          requestText,
+        )
+          .replace(
+            /\s+/g,
+            " ",
+          )
+          .trim()
+          .split(" ")
+          .filter(Boolean);
+
+      let requestLines = 0;
+      let requestCurrent = "";
+
+      for (
+        const word of
+        requestWords
+      ) {
+        const candidate =
+          requestCurrent
+            ? `${requestCurrent} ${word}`
+            : word;
+
+        if (
+          bold.widthOfTextAtSize(
+            candidate,
+            10,
+          ) <=
+            textMaxWidth ||
+          !requestCurrent
+        ) {
+          requestCurrent =
+            candidate;
+        } else {
+          requestLines += 1;
+          requestCurrent =
+            word;
+        }
+      }
+
+      if (requestCurrent) {
+        requestLines += 1;
+      }
+
+      const requestTextHeight =
+        Math.max(
+          requestLines,
+          1,
+        ) * 14;
+
+      const textHeight =
+        filenameHeight +
+        12 +
+        12 +
+        24 +
+        12 +
+        28 +
+        15 +
+        requestTextHeight;
+
+      const contentHeight =
+        Math.max(
+          drawHeight,
+          textHeight,
+        );
+
+      const requestHeight =
+        contentHeight +
+        32;
+
+      if (
+        !page ||
+        requestY -
+          requestHeight <
+          bottomMargin
+      ) {
+        const created =
+          addReportPage();
+
+        page =
+          created.page;
+
+        requestY =
+          created.requestY;
+      } else {
+        page.drawLine({
+          start: {
+            x: margin,
+            y:
+              requestY -
+              dividerGap,
+          },
+          end: {
+            x:
+              pageWidth -
+              margin,
+            y:
+              requestY -
+              dividerGap,
+          },
+          thickness: 0.6,
+          color: rgb(
+            0.72,
+            0.72,
+            0.72,
+          ),
+        });
+
+        requestY -=
+          requestGap;
+      }
+
+      const currentPage =
+        page;
+
+      currentPage.drawText(
+        String(
+          index + 1,
+        ).padStart(
+          2,
+          "0",
+        ),
+        {
+          x: margin,
+          y: requestY,
+          size: 14,
+          font: regular,
+          color: rgb(
+            0.45,
+            0.45,
+            0.45,
+          ),
+        },
+      );
+
       const imageX =
         margin + 38;
 
       const imageY =
-        y -
+        requestY -
         drawHeight +
         2;
 
-      page.drawImage(
+      currentPage.drawImage(
         jpeg,
         {
           x: imageX,
@@ -604,7 +798,7 @@ export async function GET(
                 pointIndex
               ];
 
-            page.drawLine({
+            currentPage.drawLine({
               start: {
                 x:
                   imageX +
@@ -644,19 +838,17 @@ export async function GET(
         22;
 
       let textY =
-        y + 2;
+        requestY + 2;
 
-      const filenameHeight =
+      const actualFilenameHeight =
         drawTextLines(
-          page,
+          currentPage,
           item.image.originalFilename,
           {
             x: textX,
             y: textY,
             maxWidth:
-              contentWidth -
-              imageBoxWidth -
-              60,
+              textMaxWidth,
             size: 10,
             lineHeight: 13,
             font: bold,
@@ -664,10 +856,10 @@ export async function GET(
         );
 
       textY -=
-        filenameHeight +
+        actualFilenameHeight +
         12;
 
-      page.drawText(
+      currentPage.drawText(
         "CLIENT",
         {
           x: textX,
@@ -684,7 +876,7 @@ export async function GET(
 
       textY -= 12;
 
-      page.drawText(
+      currentPage.drawText(
         pdfText(
           item.visitorEmail,
         ),
@@ -698,7 +890,7 @@ export async function GET(
 
       textY -= 24;
 
-      page.drawText(
+      currentPage.drawText(
         "UPDATED",
         {
           x: textX,
@@ -715,7 +907,7 @@ export async function GET(
 
       textY -= 12;
 
-      page.drawText(
+      currentPage.drawText(
         pdfText(
           formatDate(
             item.updatedAt,
@@ -731,7 +923,7 @@ export async function GET(
 
       textY -= 28;
 
-      page.drawText(
+      currentPage.drawText(
         "REQUEST",
         {
           x: textX,
@@ -749,16 +941,13 @@ export async function GET(
       textY -= 15;
 
       drawTextLines(
-        page,
-        item.note ??
-          "Client supplied visual markup on the photograph.",
+        currentPage,
+        requestText,
         {
           x: textX,
           y: textY,
           maxWidth:
-            contentWidth -
-            imageBoxWidth -
-            60,
+            textMaxWidth,
           size: 10,
           lineHeight: 14,
           font: bold,
@@ -766,13 +955,12 @@ export async function GET(
       );
 
       const completedY =
-        Math.min(
-          imageY - 26,
-          150,
-        );
+        requestY -
+        contentHeight -
+        17;
 
-      page.drawRectangle({
-        x: margin + 38,
+      currentPage.drawRectangle({
+        x: imageX,
         y: completedY,
         width: 11,
         height: 11,
@@ -784,12 +972,12 @@ export async function GET(
         ),
       });
 
-      page.drawText(
+      currentPage.drawText(
         "COMPLETED",
         {
           x:
-            margin +
-            56,
+            imageX +
+            18,
           y:
             completedY +
             1,
@@ -797,6 +985,9 @@ export async function GET(
           font: bold,
         },
       );
+
+      requestY -=
+        requestHeight;
     }
 
     const bytes =
