@@ -1305,6 +1305,7 @@ export default async function ProofingGalleryPage({
             downloadCount={
               downloadEvents.length
             }
+            status={gallery.status}
           />
 
           <section className="sp-gallery-danger-zone">

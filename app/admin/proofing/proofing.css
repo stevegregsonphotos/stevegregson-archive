@@ -3660,6 +3660,54 @@
   font-size: 0.46rem;
 }
 
+.sp-gallery-workspace-status {
+  display: flex;
+  align-items: center;
+  align-self: center;
+  gap: 0.5rem;
+  margin-left: auto;
+  padding: 0 1.35rem;
+  color: rgba(242, 238, 230, 0.62);
+  font-size: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.sp-gallery-workspace-status-dot {
+  width: 0.48rem;
+  height: 0.48rem;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: rgba(242, 238, 230, 0.35);
+  box-shadow: 0 0 0 3px rgba(242, 238, 230, 0.05);
+}
+
+.sp-gallery-workspace-status-live
+.sp-gallery-workspace-status-dot {
+  background: #63c174;
+  box-shadow: 0 0 0 3px rgba(99, 193, 116, 0.12);
+}
+
+.sp-gallery-workspace-status-draft
+.sp-gallery-workspace-status-dot {
+  background: #d99a45;
+  box-shadow: 0 0 0 3px rgba(217, 154, 69, 0.12);
+}
+
+.sp-gallery-workspace-status-expired
+.sp-gallery-workspace-status-dot {
+  background: #cf665b;
+  box-shadow: 0 0 0 3px rgba(207, 102, 91, 0.12);
+}
+
+.sp-gallery-workspace-status-archived
+.sp-gallery-workspace-status-dot {
+  background: #77736d;
+  box-shadow: 0 0 0 3px rgba(119, 115, 109, 0.12);
+}
+
 .sp-gallery-workspace-content {
   min-width: 0;
 }

@@ -20,6 +20,12 @@ type WorkspaceTab =
   | "editing-requests"
   | "downloads";
 
+type GalleryStatus =
+  | "draft"
+  | "live"
+  | "expired"
+  | "archived";
+
 type Props = {
   media: ReactNode;
   settings: ReactNode;
@@ -31,6 +37,7 @@ type Props = {
   visitorCount: number;
   editingRequestCount: number;
   downloadCount: number;
+  status: GalleryStatus;
 };
 
 function isWorkspaceTab(
@@ -57,6 +64,7 @@ export default function ProofingWorkspace({
   visitorCount,
   editingRequestCount,
   downloadCount,
+  status,
 }: Props) {
   const router = useRouter();
   const pathname = usePathname();
@@ -251,6 +259,20 @@ export default function ProofingWorkspace({
 
           <small>{downloadCount}</small>
         </button>
+
+        <div
+          className={`sp-gallery-workspace-status sp-gallery-workspace-status-${status}`}
+          aria-label={`Gallery status: ${status}`}
+        >
+          <span
+            className="sp-gallery-workspace-status-dot"
+            aria-hidden="true"
+          />
+
+          <span>
+            {status}
+          </span>
+        </div>
       </nav>
 
       <div className="sp-gallery-workspace-content">
