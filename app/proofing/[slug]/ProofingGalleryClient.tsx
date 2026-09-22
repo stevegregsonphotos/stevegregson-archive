@@ -314,6 +314,11 @@ export default function ProofingGalleryClient({
   const [isDownloadingArchive, setIsDownloadingArchive] =
     useState(false);
 
+  const [
+    downloadingImageId,
+    setDownloadingImageId,
+  ] = useState<string | null>(null);
+
   const [downloadError, setDownloadError] =
     useState<string | null>(null);
 
@@ -1058,6 +1063,118 @@ export default function ProofingGalleryClient({
     }
   }
 
+  function browserDownloadFilename(
+    originalFilename: string,
+  ) {
+    const base =
+      originalFilename.replace(
+        /\.[^.]+$/,
+        "",
+      ) || "photograph";
+
+    const safeBase =
+      base
+        .replace(
+          /[\\/\r\n"]/g,
+          "",
+        )
+        .trim();
+
+    return `${safeBase || "photograph"}.webp`;
+  }
+
+  function saveBrowserBlob(
+    blob: Blob,
+    filename: string,
+  ) {
+    const objectUrl =
+      URL.createObjectURL(blob);
+
+    const link =
+      document.createElement("a");
+
+    link.href = objectUrl;
+    link.download = filename;
+    link.style.display = "none";
+
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+    /*
+     * Safari may still be consuming the Blob URL
+     * after link.click() returns. Keep it alive
+     * briefly instead of revoking synchronously.
+     */
+    window.setTimeout(
+      () => {
+        URL.revokeObjectURL(
+          objectUrl,
+        );
+      },
+      60_000,
+    );
+  }
+
+  async function downloadSingleImage(
+    image: ProofingClientImage,
+  ) {
+    if (downloadingImageId) {
+      return;
+    }
+
+    setDownloadingImageId(
+      image.id,
+    );
+    setDownloadError(null);
+
+    try {
+      /*
+       * This request still passes through the
+       * authenticated/audited Proofing endpoint.
+       * fetch follows its signed R2 redirect, so
+       * the image bytes remain browser <-> R2.
+       */
+      const response =
+        await fetch(
+          `/api/proofing/download?gallery=${encodeURIComponent(
+            gallerySlug,
+          )}&image=${encodeURIComponent(
+            image.id,
+          )}`,
+          {
+            cache: "no-store",
+          },
+        );
+
+      if (!response.ok) {
+        throw new Error(
+          "The photograph could not be downloaded.",
+        );
+      }
+
+      const blob =
+        await response.blob();
+
+      saveBrowserBlob(
+        blob,
+        browserDownloadFilename(
+          image.originalFilename,
+        ),
+      );
+    } catch (error) {
+      setDownloadError(
+        error instanceof Error
+          ? error.message
+          : "The photograph could not be downloaded.",
+      );
+    } finally {
+      setDownloadingImageId(
+        null,
+      );
+    }
+  }
+
   async function downloadArchive() {
     if (isDownloadingArchive) {
       return;
@@ -1147,21 +1264,10 @@ export default function ProofingGalleryClient({
           compression: "STORE",
         });
 
-      const objectUrl =
-        URL.createObjectURL(archive);
-
-      try {
-        const link =
-          document.createElement("a");
-        link.href = objectUrl;
-        link.download =
-          result.archiveFilename;
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-      } finally {
-        URL.revokeObjectURL(objectUrl);
-      }
+      saveBrowserBlob(
+        archive,
+        result.archiveFilename,
+      );
     } catch (error) {
       setDownloadError(
         error instanceof Error
@@ -1981,18 +2087,27 @@ export default function ProofingGalleryClient({
                   {downloadPermission === "web" ||
                   (downloadPermission === "selected" &&
                     favouriteSet.has(viewerImage.id)) ? (
-                    <a
+                    <button
+                      type="button"
                       className="proofing-viewer-download"
-                      href={`/api/proofing/download?gallery=${encodeURIComponent(
-                        gallerySlug,
-                      )}&image=${encodeURIComponent(
-                        viewerImage.id,
-                      )}`}
+                      disabled={
+                        downloadingImageId ===
+                        viewerImage.id
+                      }
+                      onClick={() =>
+                        void downloadSingleImage(
+                          viewerImage,
+                        )
+                      }
                     >
-                      {downloadPermission === "selected"
-                        ? "Download selected photo"
-                        : "Download photo"}
-                    </a>
+                      {downloadingImageId ===
+                      viewerImage.id
+                        ? "Downloading…"
+                        : downloadPermission ===
+                            "selected"
+                          ? "Download selected photo"
+                          : "Download photo"}
+                    </button>
                   ) : null}
                 </div>
               </div>
