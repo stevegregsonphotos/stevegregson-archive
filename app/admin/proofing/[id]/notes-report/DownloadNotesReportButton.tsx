@@ -259,11 +259,12 @@ export default function DownloadNotesReportButton({
   );
 
   const [
-    readyDownloadUrl,
-    setReadyDownloadUrl,
-  ] = useState<string | null>(
-    null,
-  );
+    readyPdf,
+    setReadyPdf,
+  ] = useState<{
+    blob: Blob;
+    filename: string;
+  } | null>(null);
 
   async function downloadPdf() {
     if (
@@ -275,7 +276,7 @@ export default function DownloadNotesReportButton({
 
     setIsGenerating(true);
     setError(null);
-    setReadyDownloadUrl(null);
+    setReadyPdf(null);
 
     try {
       const {
@@ -742,98 +743,19 @@ export default function DownloadNotesReportButton({
         )}-client-editing-requests.pdf`;
 
       /*
-       * Vercel signs only.
+       * Keep the completed PDF in the browser.
        *
-       * The finished PDF body travels
-       * browser -> R2 directly, then Safari
-       * downloads the private R2 object via
-       * a signed attachment response.
+       * The first click performs the asynchronous PDF
+       * generation. The second, explicit user click saves
+       * the already-prepared Blob synchronously. This uses
+       * the same Safari-safe Blob download path as the
+       * working proofing-image downloads and keeps PDF bytes
+       * out of Vercel entirely.
        */
-      const signResponse =
-        await fetch(
-          "/api/admin/proofing/notes-report",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
-            body: JSON.stringify({
-              galleryId,
-              downloadFilename,
-            }),
-          },
-        );
-
-      const signed =
-        (await signResponse.json()) as {
-          ok?: boolean;
-          uploadUrl?: string;
-          downloadUrl?: string;
-          message?: string;
-        };
-
-      if (
-        !signResponse.ok ||
-        !signed.ok ||
-        !signed.uploadUrl ||
-        !signed.downloadUrl
-      ) {
-        throw new Error(
-          signed.message ??
-            "The PDF download could not be prepared.",
-        );
-      }
-
-      const uploadResponse =
-        await fetch(
-          signed.uploadUrl,
-          {
-            method: "PUT",
-            headers: {
-              "Content-Type":
-                "application/pdf",
-              "Cache-Control":
-                "private, no-store",
-            },
-            body:
-              pdfBlob,
-          },
-        );
-
-      if (!uploadResponse.ok) {
-        throw new Error(
-          "The PDF could not be prepared for download.",
-        );
-      }
-
-      /*
-       * Use a conventional same-origin attachment
-       * response for the final download.
-       *
-       * Safari no longer has to save a Blob URL.
-       */
-      const finalDownloadUrl =
-        `/api/admin/proofing/notes-report/download?galleryId=${encodeURIComponent(
-          galleryId,
-        )}&filename=${encodeURIComponent(
-          downloadFilename,
-        )}`;
-
-      /*
-       * Do not attempt to start the download here.
-       *
-       * PDF generation and upload are asynchronous, so
-       * Safari may no longer regard a download triggered
-       * at this point as part of the user's click.
-       *
-       * Instead expose a genuine HTML link. The user's
-       * next click goes directly to the attachment
-       * endpoint with no JavaScript download trigger.
-       */
-      setReadyDownloadUrl(
-        finalDownloadUrl,
-      );
+      setReadyPdf({
+        blob: pdfBlob,
+        filename: downloadFilename,
+      });
 
     } catch (error) {
       setError(
@@ -850,13 +772,19 @@ export default function DownloadNotesReportButton({
 
   return (
     <div>
-      {readyDownloadUrl ? (
-        <a
-          href={readyDownloadUrl}
+      {readyPdf ? (
+        <button
+          type="button"
           className="proofing-notes-report-download-ready"
+          onClick={() => {
+            saveBrowserBlob(
+              readyPdf.blob,
+              readyPdf.filename,
+            );
+          }}
         >
           Download PDF
-        </a>
+        </button>
       ) : (
         <button
           type="button"
