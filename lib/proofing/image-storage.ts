@@ -92,6 +92,29 @@ export async function createProofingNotesReportUploadUrl(
   );
 }
 
+export async function getProofingNotesReport(
+  galleryId: string,
+) {
+  const result =
+    await getClient().send(
+      new GetObjectCommand({
+        Bucket: getBucket(),
+        Key:
+          getProofingNotesReportObjectKey(
+            galleryId,
+          ),
+      }),
+    );
+
+  if (!result.Body) {
+    throw new Error(
+      "Proofing notes report has no body.",
+    );
+  }
+
+  return result.Body.transformToByteArray();
+}
+
 export async function createProofingNotesReportDownloadUrl(
   galleryId: string,
   downloadFilename: string,

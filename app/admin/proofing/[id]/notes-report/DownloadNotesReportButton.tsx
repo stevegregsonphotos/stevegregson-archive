@@ -800,52 +800,35 @@ export default function DownloadNotesReportButton({
       }
 
       /*
-       * Match the proven Safari-safe proofing
-       * download flow exactly:
+       * Use a conventional same-origin attachment
+       * response for the final download.
        *
-       * fetch signed R2 object -> Blob ->
-       * object URL -> <a download>.
+       * Safari no longer has to save a Blob URL.
        */
-      const downloadResponse =
-        await fetch(
-          signed.downloadUrl,
-          {
-            cache: "no-store",
-          },
+      const finalDownloadUrl =
+        `/api/admin/proofing/notes-report/download?galleryId=${encodeURIComponent(
+          galleryId,
+        )}&filename=${encodeURIComponent(
+          downloadFilename,
+        )}`;
+
+      const link =
+        document.createElement(
+          "a",
         );
 
-      if (!downloadResponse.ok) {
-        throw new Error(
-          "The PDF could not be downloaded.",
-        );
-      }
+      link.href =
+        finalDownloadUrl;
 
-      const downloadedPdfBytes =
-        await downloadResponse.arrayBuffer();
+      link.style.display =
+        "none";
 
-      /*
-       * Safari can leave application/pdf Blob downloads
-       * stuck as a .download file. Save the exact PDF
-       * bytes as a generic binary attachment instead.
-       *
-       * The filename remains .pdf and the file contents
-       * remain a normal PDF.
-       */
-      const downloadedPdf =
-        new Blob(
-          [
-            downloadedPdfBytes,
-          ],
-          {
-            type:
-              "application/octet-stream",
-          },
-        );
-
-      saveBrowserBlob(
-        downloadedPdf,
-        downloadFilename,
+      document.body.appendChild(
+        link,
       );
+
+      link.click();
+      link.remove();
 
     } catch (error) {
       setError(
