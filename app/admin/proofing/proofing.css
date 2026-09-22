@@ -5487,3 +5487,111 @@ input[type="email"],
   color: #f2a18f;
   background: rgba(217, 90, 68, 0.08);
 }
+
+/* Proofing download activity */
+
+.proofing-download-activity {
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid rgba(242, 238, 230, 0.12);
+}
+
+.proofing-download-activity-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 2rem;
+  margin-bottom: 1rem;
+}
+
+.proofing-download-activity-heading h3 {
+  margin: 0.25rem 0 0;
+  color: #f2eee6;
+  font-family:
+    "Iowan Old Style",
+    "Palatino Linotype",
+    Georgia,
+    serif;
+  font-size: 1.65rem;
+  font-weight: 400;
+  letter-spacing: -0.025em;
+}
+
+.proofing-download-activity-heading > p {
+  margin: 0;
+  color: rgba(242, 238, 230, 0.4);
+  font-size: 0.54rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.proofing-download-activity-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.proofing-download-activity-card {
+  padding: 1.15rem 1.25rem;
+  border: 1px solid rgba(242, 238, 230, 0.1);
+  background: rgba(255, 255, 255, 0.018);
+}
+
+.proofing-download-activity-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
+}
+
+.proofing-download-activity-type {
+  flex: 0 0 auto;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid rgba(199, 163, 105, 0.35);
+  color: #c7a369;
+  font-size: 0.46rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.proofing-download-archive-name {
+  margin: 0.9rem 0 0;
+  color: rgba(242, 238, 230, 0.45);
+  font-size: 0.56rem;
+  line-height: 1.5;
+}
+
+.proofing-download-archive-name strong {
+  color: rgba(242, 238, 230, 0.72);
+  font-weight: 600;
+}
+
+.proofing-download-filenames {
+  display: grid;
+  gap: 0.32rem;
+  margin: 0.9rem 0 0;
+  padding: 0.85rem 0 0;
+  border-top: 1px solid rgba(242, 238, 230, 0.08);
+  list-style: none;
+}
+
+.proofing-download-filenames li {
+  margin: 0;
+  color: rgba(242, 238, 230, 0.55);
+  font-size: 0.56rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 600px) {
+  .proofing-download-activity-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .proofing-download-activity-card-header {
+    gap: 0.75rem;
+  }
+}

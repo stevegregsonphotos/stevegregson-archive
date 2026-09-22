@@ -15,6 +15,10 @@ import {
 } from "../../../../lib/proofing/consolidated-repository";
 
 import {
+  getProofingDownloadEvents,
+} from "../../../../lib/proofing/download-events-repository";
+
+import {
   getSelectedWorkImageUrl,
 } from "../../../../lib/selected-work-image-url";
 
@@ -76,6 +80,35 @@ function formatShootDate(
   );
 }
 
+function formatDownloadDate(
+  value: string,
+) {
+  const date =
+    new Date(value);
+
+  if (
+    Number.isNaN(
+      date.getTime(),
+    )
+  ) {
+    return "Unknown time";
+  }
+
+  return date.toLocaleString(
+    "en-GB",
+    {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+      timeZone:
+        "Europe/London",
+    },
+  );
+}
+
 export default async function ProofingGalleryPage({
   params,
 }: ProofingGalleryPageProps) {
@@ -116,6 +149,11 @@ export default async function ProofingGalleryPage({
     definitiveImages.map(
       (image) =>
         image.originalFilename,
+    );
+
+  const downloadEvents =
+    await getProofingDownloadEvents(
+      gallery.id,
     );
 
   const introTemplates =
@@ -578,6 +616,111 @@ export default async function ProofingGalleryPage({
           </p>
         </div>
       )}
+
+      <section className="proofing-download-activity">
+        <div className="proofing-download-activity-heading">
+          <div>
+            <p className="proofing-section-label">
+              Delivery activity
+            </p>
+
+            <h3>Download activity</h3>
+          </div>
+
+          <p>
+            {downloadEvents.length}{" "}
+            recorded download
+            {downloadEvents.length === 1
+              ? ""
+              : "s"}
+          </p>
+        </div>
+
+        {downloadEvents.length > 0 ? (
+          <div className="proofing-download-activity-list">
+            {downloadEvents.map(
+              (event) => (
+                <article
+                  key={event.id}
+                  className="proofing-download-activity-card"
+                >
+                  <header className="proofing-download-activity-card-header">
+                    <div>
+                      <p className="proofing-selection-email">
+                        {event.visitorEmail}
+                      </p>
+
+                      <p className="proofing-selection-meta">
+                        {event.downloadType ===
+                        "archive"
+                          ? event.downloadPermission ===
+                            "selected"
+                            ? `Downloaded ${event.fileCount} selected photograph${
+                                event.fileCount === 1
+                                  ? ""
+                                  : "s"
+                              }`
+                            : `Downloaded ${event.fileCount} photograph${
+                                event.fileCount === 1
+                                  ? ""
+                                  : "s"
+                              }`
+                          : "Downloaded 1 photograph"}
+                        <span aria-hidden="true">
+                          {" "}
+                          ·{" "}
+                        </span>
+                        {formatDownloadDate(
+                          event.createdAt,
+                        )}
+                      </p>
+                    </div>
+
+                    <div className="proofing-download-activity-type">
+                      {event.downloadType ===
+                      "archive"
+                        ? "ZIP"
+                        : "Single"}
+                    </div>
+                  </header>
+
+                  {event.archiveFilename ? (
+                    <p className="proofing-download-archive-name">
+                      Archive:{" "}
+                      <strong>
+                        {
+                          event.archiveFilename
+                        }
+                      </strong>
+                    </p>
+                  ) : null}
+
+                  <ul className="proofing-download-filenames">
+                    {event.filenames.map(
+                      (
+                        filename,
+                        index,
+                      ) => (
+                        <li
+                          key={`${event.id}-${index}`}
+                        >
+                          {filename}
+                        </li>
+                      ),
+                    )}
+                  </ul>
+                </article>
+              ),
+            )}
+          </div>
+        ) : (
+          <div className="sp-selections-empty">
+            <p>
+              No downloads recorded yet.
+            </p>
+          </div>
+        )}
+      </section>
 
       <ProofingConsolidationEditor
         galleryId={gallery.id}
