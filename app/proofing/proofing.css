@@ -2211,3 +2211,58 @@
     border-left: 0;
   }
 }
+
+/* Proofing toolbar client actions
+   Download / send controls sit on their own row so they
+   cannot collide with centred navigation or orientation filters. */
+.proofing-client-selection-toolbar:has(
+  > .proofing-client-toolbar-submit
+) {
+  padding-bottom: 4.25rem;
+}
+
+.proofing-client-toolbar-submit {
+  position: absolute;
+  right: 1rem;
+  bottom: 0.55rem;
+  left: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1rem;
+}
+
+@media (max-width: 760px) {
+  .proofing-client-selection-toolbar:has(
+    > .proofing-client-toolbar-submit
+  ) {
+    min-height: 9.5rem;
+    padding-bottom: 3.9rem;
+  }
+
+  .proofing-client-toolbar-submit {
+    right: 1rem;
+    bottom: 0.45rem;
+    left: 1rem;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 520px) {
+  .proofing-client-selection-toolbar:has(
+    > .proofing-client-toolbar-submit
+  ) {
+    min-height: 11rem;
+    padding-bottom: 5.4rem;
+  }
+
+  .proofing-client-toolbar-submit {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 0.55rem;
+  }
+
+  .proofing-client-toolbar-submit button {
+    width: 100%;
+  }
+}

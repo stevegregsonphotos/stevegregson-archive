@@ -1369,41 +1369,45 @@ export default function ProofingGalleryClient({
     </div>
   </div>
 
-  {downloadPermission === "web" && view === "all" ? (
-      <button
-        type="button"
-        className="proofing-toolbar-download-button"
-        disabled={isDownloadingArchive}
-        onClick={() => void downloadArchive()}
-      >
-        {isDownloadingArchive
-          ? "Preparing download…"
-          : `Download all ${images.length} photo${
-              images.length === 1 ? "" : "s"
-            }`}
-      </button>
-    ) : null}
-
-    {downloadPermission === "selected" &&
-    view === "favourites" &&
-    favourites.length > 0 ? (
-      <button
-        type="button"
-        className="proofing-toolbar-download-button"
-        disabled={isDownloadingArchive}
-        onClick={() => void downloadArchive()}
-      >
-        {isDownloadingArchive
-          ? "Preparing download…"
-          : `Download ${favourites.length} selected photo${
-              favourites.length === 1 ? "" : "s"
-            }`}
-      </button>
-    ) : null}
-
-    {toolbarAction && view === "favourites" ? (
+    {(downloadPermission === "web" && view === "all") ||
+    (view === "favourites" &&
+      (toolbarAction ||
+        (downloadPermission === "selected" &&
+          favourites.length > 0))) ? (
     <div className="proofing-client-toolbar-submit">
-      {toolbarAction.status ? (
+      {downloadPermission === "web" && view === "all" ? (
+        <button
+          type="button"
+          className="proofing-toolbar-download-button"
+          disabled={isDownloadingArchive}
+          onClick={() => void downloadArchive()}
+        >
+          {isDownloadingArchive
+            ? "Preparing download…"
+            : `Download all ${images.length} photo${
+                images.length === 1 ? "" : "s"
+              }`}
+        </button>
+      ) : null}
+
+      {downloadPermission === "selected" &&
+      view === "favourites" &&
+      favourites.length > 0 ? (
+        <button
+          type="button"
+          className="proofing-toolbar-download-button"
+          disabled={isDownloadingArchive}
+          onClick={() => void downloadArchive()}
+        >
+          {isDownloadingArchive
+            ? "Preparing download…"
+            : `Download ${favourites.length} selected photo${
+                favourites.length === 1 ? "" : "s"
+              }`}
+        </button>
+      ) : null}
+
+      {toolbarAction?.status ? (
         <span
           className={
             hasPendingChanges
@@ -1415,7 +1419,7 @@ export default function ProofingGalleryClient({
         </span>
       ) : null}
 
-      {toolbarAction.label ? (
+      {toolbarAction?.label ? (
         <button
           type="button"
           className="proofing-toolbar-submit-button"
