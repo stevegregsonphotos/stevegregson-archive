@@ -57,6 +57,76 @@ export function getProofingImageObjectKey(
   return `${safeSegment(galleryId)}/${safeSegment(webFilename)}`;
 }
 
+function getProofingNotesReportObjectKey(
+  galleryId: string,
+) {
+  return [
+    "reports",
+    safeSegment(galleryId),
+    "client-editing-requests.pdf",
+  ].join("/");
+}
+
+export async function createProofingNotesReportUploadUrl(
+  galleryId: string,
+) {
+  const command =
+    new PutObjectCommand({
+      Bucket: getBucket(),
+      Key:
+        getProofingNotesReportObjectKey(
+          galleryId,
+        ),
+      ContentType:
+        "application/pdf",
+      CacheControl:
+        "private, no-store",
+    });
+
+  return getSignedUrl(
+    getClient(),
+    command,
+    {
+      expiresIn: 15 * 60,
+    },
+  );
+}
+
+export async function createProofingNotesReportDownloadUrl(
+  galleryId: string,
+  downloadFilename: string,
+) {
+  const safeDownloadFilename =
+    downloadFilename
+      .replace(
+        /[\r\n"]/g,
+        "",
+      )
+      .trim() ||
+    "client-editing-requests.pdf";
+
+  const command =
+    new GetObjectCommand({
+      Bucket: getBucket(),
+      Key:
+        getProofingNotesReportObjectKey(
+          galleryId,
+        ),
+      ResponseContentType:
+        "application/pdf",
+      ResponseContentDisposition:
+        `attachment; filename="${safeDownloadFilename}"`,
+    });
+
+  return getSignedUrl(
+    getClient(),
+    command,
+    {
+      expiresIn: 15 * 60,
+    },
+  );
+}
+
 function getRenderedProofObjectKey(
   galleryId: string,
   imageId: string,

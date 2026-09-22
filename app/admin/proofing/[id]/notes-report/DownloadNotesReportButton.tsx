@@ -13,6 +13,7 @@ type ReportItem = {
 };
 
 type DownloadNotesReportButtonProps = {
+  galleryId: string;
   galleryTitle: string;
   items: ReportItem[];
 };
@@ -160,6 +161,7 @@ async function imageUrlToJpegBytes(
 }
 
 export default function DownloadNotesReportButton({
+  galleryId,
   galleryTitle,
   items,
 }: DownloadNotesReportButtonProps) {
@@ -632,31 +634,101 @@ export default function DownloadNotesReportButton({
       const bytes =
         await pdf.save();
 
-      const blob =
+      const pdfBlob =
         new Blob(
-          [new Uint8Array(bytes)],
+          [
+            new Uint8Array(
+              bytes,
+            ),
+          ],
           {
-            type: "application/pdf",
+            type:
+              "application/pdf",
           },
         );
 
-      const objectUrl =
-        URL.createObjectURL(
-          blob,
+      const downloadFilename =
+        `${safeFilename(
+          galleryTitle,
+        )}-client-editing-requests.pdf`;
+
+      /*
+       * Vercel signs only.
+       *
+       * The finished PDF body travels
+       * browser -> R2 directly, then Safari
+       * downloads the private R2 object via
+       * a signed attachment response.
+       */
+      const signResponse =
+        await fetch(
+          "/api/admin/proofing/notes-report",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify({
+              galleryId,
+              downloadFilename,
+            }),
+          },
         );
 
+      const signed =
+        (await signResponse.json()) as {
+          ok?: boolean;
+          uploadUrl?: string;
+          downloadUrl?: string;
+          message?: string;
+        };
+
+      if (
+        !signResponse.ok ||
+        !signed.ok ||
+        !signed.uploadUrl ||
+        !signed.downloadUrl
+      ) {
+        throw new Error(
+          signed.message ??
+            "The PDF download could not be prepared.",
+        );
+      }
+
+      const uploadResponse =
+        await fetch(
+          signed.uploadUrl,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type":
+                "application/pdf",
+              "Cache-Control":
+                "private, no-store",
+            },
+            body:
+              pdfBlob,
+          },
+        );
+
+      if (!uploadResponse.ok) {
+        throw new Error(
+          "The PDF could not be prepared for download.",
+        );
+      }
+
+      /*
+       * This is now a normal HTTPS attachment
+       * download rather than a Safari Blob URL.
+       */
       const link =
         document.createElement(
           "a",
         );
 
       link.href =
-        objectUrl;
-
-      link.download =
-        `${safeFilename(
-          galleryTitle,
-        )}-client-editing-requests.pdf`;
+        signed.downloadUrl;
 
       link.style.display =
         "none";
@@ -668,14 +740,6 @@ export default function DownloadNotesReportButton({
       link.click();
       link.remove();
 
-      window.setTimeout(
-        () => {
-          URL.revokeObjectURL(
-            objectUrl,
-          );
-        },
-        60_000,
-      );
     } catch (error) {
       setError(
         error instanceof Error

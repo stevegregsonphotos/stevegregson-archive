@@ -690,7 +690,7 @@ export default async function ProofingGalleryPage({
                 href={`/admin/proofing/${gallery.id}/notes-report`}
                 className="proofing-client-notes-report-link"
               >
-                Print / Save PDF report
+                PDF
               </Link>
             ) : null}
           </div>

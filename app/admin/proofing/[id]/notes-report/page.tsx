@@ -149,6 +149,7 @@ export default async function NotesReportPage({
           </Link>
 
           <DownloadNotesReportButton
+            galleryId={gallery.id}
             galleryTitle={gallery.title}
             items={resolvedNotes.map(
               (note) => ({
