@@ -365,6 +365,9 @@ export default function ProofingGalleryClient({
     setImageNoteError,
   ] = useState<string | null>(null);
 
+  const imageNoteEditorRef =
+    useRef<HTMLDivElement | null>(null);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -437,6 +440,24 @@ export default function ProofingGalleryClient({
     setNoteDraft("");
     setImageNoteError(null);
   }, [viewerImageId]);
+
+  useEffect(() => {
+    if (!noteEditorImageId) {
+      return;
+    }
+
+    const frame = window.requestAnimationFrame(
+      () => {
+        imageNoteEditorRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "nearest",
+        });
+      },
+    );
+
+    return () =>
+      window.cancelAnimationFrame(frame);
+  }, [noteEditorImageId]);
 
   const viewerTouchStartX =
     useRef<number | null>(null);
@@ -2468,7 +2489,10 @@ export default function ProofingGalleryClient({
 
               {noteEditorImageId ===
               viewerImage.id ? (
-                <div className="proofing-viewer-note-editor">
+                <div
+                  ref={imageNoteEditorRef}
+                  className="proofing-viewer-note-editor"
+                >
                   <label
                     htmlFor={`proofing-image-note-${viewerImage.id}`}
                   >
