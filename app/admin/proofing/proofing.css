@@ -6019,3 +6019,37 @@ input[type="email"],
     flex-direction: column;
   }
 }
+
+/* Keep Client notes actions with the heading rather than
+   pushing PDF export to the far edge of the workspace. */
+
+.proofing-client-notes-heading {
+  justify-content: flex-start;
+}
+
+.proofing-client-notes-title-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  margin-top: 0.25rem;
+}
+
+.proofing-client-notes-title-row h3 {
+  margin: 0;
+}
+
+.proofing-client-notes-count {
+  margin: 0;
+  color: rgba(242, 238, 230, 0.4);
+  font-size: 0.54rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 650px) {
+  .proofing-client-notes-title-row {
+    align-items: flex-start;
+  }
+}

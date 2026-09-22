@@ -68,6 +68,50 @@ function formatDate(
   );
 }
 
+function saveBrowserBlob(
+  blob: Blob,
+  filename: string,
+) {
+  const objectUrl =
+    URL.createObjectURL(
+      blob,
+    );
+
+  const link =
+    document.createElement(
+      "a",
+    );
+
+  link.href =
+    objectUrl;
+
+  link.download =
+    filename;
+
+  link.style.display =
+    "none";
+
+  document.body.appendChild(
+    link,
+  );
+
+  link.click();
+  link.remove();
+
+  /*
+   * Match the Safari-safe proofing download
+   * behaviour already used by the client gallery.
+   */
+  window.setTimeout(
+    () => {
+      URL.revokeObjectURL(
+        objectUrl,
+      );
+    },
+    60_000,
+  );
+}
+
 async function imageUrlToJpegBytes(
   imageUrl: string,
 ) {
@@ -719,26 +763,33 @@ export default function DownloadNotesReportButton({
       }
 
       /*
-       * This is now a normal HTTPS attachment
-       * download rather than a Safari Blob URL.
+       * Match the proven Safari-safe proofing
+       * download flow exactly:
+       *
+       * fetch signed R2 object -> Blob ->
+       * object URL -> <a download>.
        */
-      const link =
-        document.createElement(
-          "a",
+      const downloadResponse =
+        await fetch(
+          signed.downloadUrl,
+          {
+            cache: "no-store",
+          },
         );
 
-      link.href =
-        signed.downloadUrl;
+      if (!downloadResponse.ok) {
+        throw new Error(
+          "The PDF could not be downloaded.",
+        );
+      }
 
-      link.style.display =
-        "none";
+      const downloadedPdf =
+        await downloadResponse.blob();
 
-      document.body.appendChild(
-        link,
+      saveBrowserBlob(
+        downloadedPdf,
+        downloadFilename,
       );
-
-      link.click();
-      link.remove();
 
     } catch (error) {
       setError(

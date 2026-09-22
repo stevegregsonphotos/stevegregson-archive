@@ -673,26 +673,26 @@ export default async function ProofingGalleryPage({
               Editing requests
             </p>
 
-            <h3>Client notes</h3>
-          </div>
+            <div className="proofing-client-notes-title-row">
+              <h3>Client notes</h3>
 
-          <div className="proofing-client-notes-heading-actions">
-            <p>
-              {resolvedImageNotes.length}{" "}
-              note
-              {resolvedImageNotes.length === 1
-                ? ""
-                : "s"}
-            </p>
+              <p className="proofing-client-notes-count">
+                {resolvedImageNotes.length}{" "}
+                note
+                {resolvedImageNotes.length === 1
+                  ? ""
+                  : "s"}
+              </p>
 
-            {resolvedImageNotes.length > 0 ? (
-              <Link
-                href={`/admin/proofing/${gallery.id}/notes-report`}
-                className="proofing-client-notes-report-link"
-              >
-                PDF
-              </Link>
-            ) : null}
+              {resolvedImageNotes.length > 0 ? (
+                <Link
+                  href={`/admin/proofing/${gallery.id}/notes-report`}
+                  className="proofing-client-notes-report-link"
+                >
+                  Export PDF
+                </Link>
+              ) : null}
+            </div>
           </div>
         </div>
 
