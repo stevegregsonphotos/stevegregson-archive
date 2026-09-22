@@ -30,6 +30,7 @@ import ProofingMediaWorkspace from "./ProofingMediaWorkspace";
 import ProofingPresentationEditor from "./ProofingPresentationEditor";
 import ProofingSelectionCopy from "./ProofingSelectionCopy";
 import ProofingConsolidationEditor from "./ProofingConsolidationEditor";
+import ProofingSidebarStatus from "./ProofingSidebarStatus";
 import ProofingSettingsEditor from "./ProofingSettingsEditor";
 import ProofingUrlEditor from "./ProofingUrlEditor";
 import ProofingWorkspace from "./ProofingWorkspace";
@@ -758,13 +759,10 @@ export default async function ProofingGalleryPage({
             ) : null}
           </div>
 
-          <div className="sp-gallery-sidebar-status">
-            <span>Status</span>
-
-            <strong>
-              {gallery.status}
-            </strong>
-          </div>
+          <ProofingSidebarStatus
+            galleryId={gallery.id}
+            initialStatus={gallery.status}
+          />
         </aside>
 
         <section className="sp-gallery-admin-workspace">

@@ -23,7 +23,9 @@ type StatusRequest = {
 
 const allowedStatuses:
   ProofingGalleryStatus[] = [
+    "draft",
     "live",
+    "expired",
     "archived",
   ];
 

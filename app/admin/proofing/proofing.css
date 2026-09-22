@@ -3570,18 +3570,30 @@
   border: 1px solid rgba(199, 163, 105, 0.25);
 }
 
-.sp-gallery-sidebar-status span {
+.sp-gallery-sidebar-status label {
   color: rgba(242, 238, 230, 0.35);
   font-size: 0.48rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
-.sp-gallery-sidebar-status strong {
+.sp-gallery-sidebar-status select {
+  min-width: 6.8rem;
+  border: 0;
+  background: transparent;
   color: #c7a369;
+  font: inherit;
   font-size: 0.5rem;
+  font-weight: 700;
   letter-spacing: 0.1em;
+  text-align: right;
   text-transform: uppercase;
+  cursor: pointer;
+}
+
+.sp-gallery-sidebar-status select:disabled {
+  cursor: wait;
+  opacity: 0.6;
 }
 
 .sp-gallery-admin-workspace {
