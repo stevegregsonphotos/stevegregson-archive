@@ -2266,3 +2266,72 @@
     width: 100%;
   }
 }
+
+/* Definitive two-row proofing toolbar layout when client actions exist. */
+.proofing-client-selection-toolbar:has(
+  > .proofing-client-toolbar-submit
+) {
+  min-height: 7.25rem;
+  padding-bottom: 0.45rem;
+}
+
+/* Keep primary navigation on the upper row instead of
+   vertically centring it across the enlarged toolbar. */
+.proofing-client-selection-toolbar:has(
+  > .proofing-client-toolbar-submit
+) > .proofing-client-toolbar-primary {
+  top: 1.85rem;
+  transform: translateX(-50%);
+}
+
+/* Keep orientation filters on that same upper row. */
+.proofing-client-selection-toolbar:has(
+  > .proofing-client-toolbar-submit
+) > .proofing-client-toolbar-secondary {
+  top: 1.85rem;
+  transform: translateY(-50%);
+}
+
+/* Client actions occupy their own lower row. */
+.proofing-client-selection-toolbar:has(
+  > .proofing-client-toolbar-submit
+) > .proofing-client-toolbar-submit {
+  top: auto;
+  right: 1rem;
+  bottom: 0.55rem;
+  left: 1rem;
+  transform: none;
+  justify-content: flex-end;
+}
+
+/* Narrow screens continue to stack cleanly. */
+@media (max-width: 760px) {
+  .proofing-client-selection-toolbar:has(
+    > .proofing-client-toolbar-submit
+  ) {
+    min-height: 10rem;
+  }
+
+  .proofing-client-selection-toolbar:has(
+    > .proofing-client-toolbar-submit
+  ) > .proofing-client-toolbar-primary {
+    top: 0.55rem;
+    transform: translateX(-50%);
+  }
+
+  .proofing-client-selection-toolbar:has(
+    > .proofing-client-toolbar-submit
+  ) > .proofing-client-toolbar-secondary {
+    top: 4rem;
+    right: 1rem;
+    bottom: auto;
+    transform: none;
+  }
+
+  .proofing-client-selection-toolbar:has(
+    > .proofing-client-toolbar-submit
+  ) > .proofing-client-toolbar-submit {
+    bottom: 0.45rem;
+    justify-content: center;
+  }
+}
