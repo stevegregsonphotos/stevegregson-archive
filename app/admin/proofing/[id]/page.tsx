@@ -676,13 +676,24 @@ export default async function ProofingGalleryPage({
             <h3>Client notes</h3>
           </div>
 
-          <p>
-            {resolvedImageNotes.length}{" "}
-            note
-            {resolvedImageNotes.length === 1
-              ? ""
-              : "s"}
-          </p>
+          <div className="proofing-client-notes-heading-actions">
+            <p>
+              {resolvedImageNotes.length}{" "}
+              note
+              {resolvedImageNotes.length === 1
+                ? ""
+                : "s"}
+            </p>
+
+            {resolvedImageNotes.length > 0 ? (
+              <Link
+                href={`/admin/proofing/${gallery.id}/notes-report`}
+                className="proofing-client-notes-report-link"
+              >
+                Print / Save PDF report
+              </Link>
+            ) : null}
+          </div>
         </div>
 
         {resolvedImageNotes.length > 0 ? (
