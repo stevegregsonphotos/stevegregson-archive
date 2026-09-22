@@ -783,8 +783,27 @@ export default function DownloadNotesReportButton({
         );
       }
 
+      const downloadedPdfBytes =
+        await downloadResponse.arrayBuffer();
+
+      /*
+       * Safari can leave application/pdf Blob downloads
+       * stuck as a .download file. Save the exact PDF
+       * bytes as a generic binary attachment instead.
+       *
+       * The filename remains .pdf and the file contents
+       * remain a normal PDF.
+       */
       const downloadedPdf =
-        await downloadResponse.blob();
+        new Blob(
+          [
+            downloadedPdfBytes,
+          ],
+          {
+            type:
+              "application/octet-stream",
+          },
+        );
 
       saveBrowserBlob(
         downloadedPdf,
@@ -818,7 +837,7 @@ export default function DownloadNotesReportButton({
       >
         {isGenerating
           ? "Preparing PDF…"
-          : "Download PDF"}
+          : "Export PDF"}
       </button>
 
       {error ? (

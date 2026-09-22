@@ -6053,3 +6053,13 @@ input[type="email"],
     align-items: flex-start;
   }
 }
+
+/* Keep notes-report controls with the report heading. */
+
+.proofing-notes-report-header {
+  justify-content: flex-start;
+}
+
+.proofing-notes-report-controls {
+  margin-left: 1.5rem;
+}
