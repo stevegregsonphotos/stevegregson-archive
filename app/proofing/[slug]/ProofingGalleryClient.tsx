@@ -1230,6 +1230,78 @@ export default function ProofingGalleryClient({
           </section>
         </div>
       ) : null}
+    {(downloadPermission === "web" && view === "all") ||
+    (view === "favourites" &&
+      (toolbarAction ||
+        (downloadPermission === "selected" &&
+          favourites.length > 0))) ? (
+    <div className="proofing-client-actions-above">
+      {downloadPermission === "web" && view === "all" ? (
+        <button
+          type="button"
+          className="proofing-toolbar-download-button"
+          disabled={isDownloadingArchive}
+          onClick={() => void downloadArchive()}
+        >
+          {isDownloadingArchive
+            ? "Preparing download…"
+            : `Download all ${images.length} photo${
+                images.length === 1 ? "" : "s"
+              }`}
+        </button>
+      ) : null}
+
+      {downloadPermission === "selected" &&
+      view === "favourites" &&
+      favourites.length > 0 ? (
+        <button
+          type="button"
+          className="proofing-toolbar-download-button"
+          disabled={isDownloadingArchive}
+          onClick={() => void downloadArchive()}
+        >
+          {isDownloadingArchive
+            ? "Preparing download…"
+            : `Download ${favourites.length} selected photo${
+                favourites.length === 1 ? "" : "s"
+              }`}
+        </button>
+      ) : null}
+
+      {toolbarAction?.status ? (
+        <span
+          className={
+            hasPendingChanges
+              ? "proofing-toolbar-pending"
+              : "proofing-toolbar-submitted"
+          }
+        >
+          {toolbarAction.status}
+        </span>
+      ) : null}
+
+      {toolbarAction?.label ? (
+        <button
+          type="button"
+          className="proofing-toolbar-submit-button"
+          disabled={isSubmitting}
+          onClick={submitSelection}
+        >
+          {isSubmitting
+            ? "Sending…"
+            : hasPendingChanges
+              ? "Send changes"
+              : `Send ${favourites.length} favourite${
+                    favourites.length === 1
+                      ? ""
+                      : "s"
+                  }`}
+        </button>
+      ) : null}
+    </div>
+  ) : null}
+
+
       <div className="proofing-client-selection-toolbar">
   <div className="proofing-client-toolbar-primary">
     <span
@@ -1369,76 +1441,6 @@ export default function ProofingGalleryClient({
     </div>
   </div>
 
-    {(downloadPermission === "web" && view === "all") ||
-    (view === "favourites" &&
-      (toolbarAction ||
-        (downloadPermission === "selected" &&
-          favourites.length > 0))) ? (
-    <div className="proofing-client-toolbar-submit">
-      {downloadPermission === "web" && view === "all" ? (
-        <button
-          type="button"
-          className="proofing-toolbar-download-button"
-          disabled={isDownloadingArchive}
-          onClick={() => void downloadArchive()}
-        >
-          {isDownloadingArchive
-            ? "Preparing download…"
-            : `Download all ${images.length} photo${
-                images.length === 1 ? "" : "s"
-              }`}
-        </button>
-      ) : null}
-
-      {downloadPermission === "selected" &&
-      view === "favourites" &&
-      favourites.length > 0 ? (
-        <button
-          type="button"
-          className="proofing-toolbar-download-button"
-          disabled={isDownloadingArchive}
-          onClick={() => void downloadArchive()}
-        >
-          {isDownloadingArchive
-            ? "Preparing download…"
-            : `Download ${favourites.length} selected photo${
-                favourites.length === 1 ? "" : "s"
-              }`}
-        </button>
-      ) : null}
-
-      {toolbarAction?.status ? (
-        <span
-          className={
-            hasPendingChanges
-              ? "proofing-toolbar-pending"
-              : "proofing-toolbar-submitted"
-          }
-        >
-          {toolbarAction.status}
-        </span>
-      ) : null}
-
-      {toolbarAction?.label ? (
-        <button
-          type="button"
-          className="proofing-toolbar-submit-button"
-          disabled={isSubmitting}
-          onClick={submitSelection}
-        >
-          {isSubmitting
-            ? "Sending…"
-            : hasPendingChanges
-              ? "Send changes"
-              : `Send ${favourites.length} favourite${
-                    favourites.length === 1
-                      ? ""
-                      : "s"
-                  }`}
-        </button>
-      ) : null}
-    </div>
-  ) : null}
 </div>
 
       {submitError && view === "all" ? (
