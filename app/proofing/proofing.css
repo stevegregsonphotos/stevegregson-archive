@@ -2368,3 +2368,71 @@
     flex: 1;
   }
 }
+
+/* Final fullscreen viewer layout:
+   keep client actions centred and allow image notes to remain reachable. */
+
+.proofing-viewer {
+  overflow-x: hidden;
+  overflow-y: auto;
+  place-items: start center;
+}
+
+.proofing-viewer-stage {
+  max-height: none;
+  margin-block: auto;
+}
+
+/* Counter left, client actions centre, optional filename right. */
+.proofing-viewer-action-buttons {
+  grid-column: 2;
+  justify-self: center;
+}
+
+.proofing-viewer-filename {
+  grid-column: 3;
+  justify-self: end;
+  max-width: min(32vw, 30rem);
+  text-align: right;
+}
+
+/* When no filename is displayed, the actions still remain
+   geometrically centred beneath the photograph. */
+@media (max-width: 600px) {
+  .proofing-viewer {
+    place-items: start center;
+    overflow-y: auto;
+  }
+
+  .proofing-viewer-stage {
+    max-height: none;
+    margin-block: 0;
+  }
+
+  .proofing-viewer-actions {
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+
+  .proofing-viewer-position,
+  .proofing-viewer-filename,
+  .proofing-viewer-action-buttons {
+    grid-column: 1;
+    justify-self: center;
+  }
+
+  .proofing-viewer-position {
+    grid-row: 1;
+  }
+
+  .proofing-viewer-filename {
+    grid-row: 2;
+    max-width: 100%;
+    text-align: center;
+  }
+
+  .proofing-viewer-action-buttons {
+    grid-row: 3;
+    flex-wrap: wrap;
+  }
+}
