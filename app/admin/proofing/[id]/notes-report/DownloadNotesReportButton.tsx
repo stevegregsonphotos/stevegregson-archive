@@ -258,6 +258,13 @@ export default function DownloadNotesReportButton({
     null,
   );
 
+  const [
+    readyDownloadUrl,
+    setReadyDownloadUrl,
+  ] = useState<string | null>(
+    null,
+  );
+
   async function downloadPdf() {
     if (
       isGenerating ||
@@ -268,6 +275,7 @@ export default function DownloadNotesReportButton({
 
     setIsGenerating(true);
     setError(null);
+    setReadyDownloadUrl(null);
 
     try {
       const {
@@ -813,16 +821,17 @@ export default function DownloadNotesReportButton({
         )}`;
 
       /*
-       * Do not trigger the attachment with a synthetic
-       * anchor click. Safari may no longer treat that as
-       * part of the user's original action after the
-       * asynchronous PDF generation/upload work.
+       * Do not attempt to start the download here.
        *
-       * Navigate directly to the same-origin attachment
-       * endpoint instead. Content-Disposition: attachment
-       * makes this a normal browser download.
+       * PDF generation and upload are asynchronous, so
+       * Safari may no longer regard a download triggered
+       * at this point as part of the user's click.
+       *
+       * Instead expose a genuine HTML link. The user's
+       * next click goes directly to the attachment
+       * endpoint with no JavaScript download trigger.
        */
-      window.location.assign(
+      setReadyDownloadUrl(
         finalDownloadUrl,
       );
 
