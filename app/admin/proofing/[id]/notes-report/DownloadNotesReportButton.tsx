@@ -143,11 +143,46 @@ async function imageUrlToJpegBytes(
         "canvas",
       );
 
+    /*
+     * The report only displays photographs at a
+     * relatively small physical size. Do not embed
+     * the full proofing-image pixel dimensions in
+     * the PDF.
+     *
+     * 1600px on the longest edge is comfortably
+     * above the resolution needed for this report
+     * while keeping the resulting PDF manageable.
+     */
+    const maximumDimension =
+      1600;
+
+    const imageScale =
+      Math.min(
+        1,
+        maximumDimension /
+          Math.max(
+            bitmap.width,
+            bitmap.height,
+          ),
+      );
+
     canvas.width =
-      bitmap.width;
+      Math.max(
+        1,
+        Math.round(
+          bitmap.width *
+            imageScale,
+        ),
+      );
 
     canvas.height =
-      bitmap.height;
+      Math.max(
+        1,
+        Math.round(
+          bitmap.height *
+            imageScale,
+        ),
+      );
 
     const context =
       canvas.getContext(
@@ -164,6 +199,8 @@ async function imageUrlToJpegBytes(
       bitmap,
       0,
       0,
+      canvas.width,
+      canvas.height,
     );
 
     /*
