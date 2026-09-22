@@ -1153,15 +1153,85 @@ export default function ProofingGalleryClient({
         );
       }
 
-      const blob =
+      const sourceBlob =
         await response.blob();
 
-      saveBrowserBlob(
-        blob,
-        browserDownloadFilename(
-          image.originalFilename,
-        ),
-      );
+      const bitmap =
+        await createImageBitmap(
+          sourceBlob,
+        );
+
+      try {
+        const canvas =
+          document.createElement(
+            "canvas",
+          );
+
+        canvas.width =
+          bitmap.width;
+
+        canvas.height =
+          bitmap.height;
+
+        const context =
+          canvas.getContext(
+            "2d",
+          );
+
+        if (!context) {
+          throw new Error(
+            "The photograph could not be prepared for download.",
+          );
+        }
+
+        context.drawImage(
+          bitmap,
+          0,
+          0,
+        );
+
+        const jpegBlob =
+          await new Promise<Blob>(
+            (resolve, reject) => {
+              canvas.toBlob(
+                (blob) => {
+                  if (!blob) {
+                    reject(
+                      new Error(
+                        "The photograph could not be converted for download.",
+                      ),
+                    );
+                    return;
+                  }
+
+                  resolve(blob);
+                },
+                "image/jpeg",
+                0.95,
+              );
+            },
+          );
+
+        const jpegFilename =
+          image.originalFilename
+            .replace(
+              /\.[^.]+$/,
+              "",
+            )
+            .replace(
+              /[\\/\r\n"]/g,
+              "",
+            )
+            .trim() ||
+          "photograph";
+
+        saveBrowserBlob(
+          jpegBlob,
+          `${jpegFilename}.jpg`,
+        );
+      } finally {
+        bitmap.close();
+      }
     } catch (error) {
       setDownloadError(
         error instanceof Error
