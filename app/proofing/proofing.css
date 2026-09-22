@@ -2232,3 +2232,139 @@
     width: 100%;
   }
 }
+
+/* Proofing client image notes */
+
+.proofing-viewer-note-button {
+  flex: 0 0 auto;
+  min-height: 2.6rem;
+  padding: 0 0.9rem;
+  border: 1px solid rgba(242, 238, 230, 0.22);
+  background: transparent;
+  color: rgba(242, 238, 230, 0.7);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.48rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.proofing-viewer-note-button:hover,
+.proofing-viewer-note-button.has-note {
+  border-color: #c7a369;
+  color: #c7a369;
+}
+
+.proofing-viewer-note-editor {
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 0.75rem;
+  padding: 1rem;
+  border: 1px solid rgba(242, 238, 230, 0.12);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.proofing-viewer-note-editor label {
+  display: block;
+  margin-bottom: 0.55rem;
+  color: #f2eee6;
+  font-size: 0.54rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.proofing-viewer-note-editor textarea {
+  display: block;
+  width: 100%;
+  min-height: 6rem;
+  box-sizing: border-box;
+  resize: vertical;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid rgba(242, 238, 230, 0.16);
+  background: #11100f;
+  color: #f2eee6;
+  font: inherit;
+  font-size: 0.78rem;
+  line-height: 1.55;
+}
+
+.proofing-viewer-note-editor textarea:focus {
+  border-color: #c7a369;
+  outline: none;
+}
+
+.proofing-viewer-note-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 0.7rem;
+}
+
+.proofing-viewer-note-footer > span {
+  color: rgba(242, 238, 230, 0.35);
+  font-size: 0.48rem;
+}
+
+.proofing-viewer-note-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.proofing-viewer-note-actions button {
+  min-height: 2.35rem;
+  padding: 0 0.8rem;
+  font: inherit;
+  font-size: 0.48rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.proofing-viewer-note-cancel,
+.proofing-viewer-note-remove {
+  border: 1px solid rgba(242, 238, 230, 0.2);
+  background: transparent;
+  color: rgba(242, 238, 230, 0.65);
+}
+
+.proofing-viewer-note-remove {
+  color: #efb0a8;
+}
+
+.proofing-viewer-note-save {
+  border: 1px solid #c7a369;
+  background: #c7a369;
+  color: #11100f;
+}
+
+.proofing-viewer-note-actions button:disabled {
+  cursor: wait;
+  opacity: 0.45;
+}
+
+.proofing-viewer-note-error {
+  margin: 0.7rem 0 0;
+  color: #efb0a8;
+  font-size: 0.58rem;
+}
+
+@media (max-width: 600px) {
+  .proofing-viewer-note-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .proofing-viewer-note-actions {
+    width: 100%;
+  }
+
+  .proofing-viewer-note-actions button {
+    flex: 1;
+  }
+}

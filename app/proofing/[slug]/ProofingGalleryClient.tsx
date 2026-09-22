@@ -92,6 +92,21 @@ type ConsolidatedFavouriteResponse = {
   message?: string;
 };
 
+type ImageNoteResponse = {
+  ok: boolean;
+  deleted?: boolean;
+  imageId?: string;
+  note?: {
+    imageId: string;
+    note: string;
+  };
+  notes?: Array<{
+    imageId: string;
+    note: string;
+  }>;
+  message?: string;
+};
+
 function sameSelection(
   first: string[],
   second: string[],
@@ -324,6 +339,104 @@ export default function ProofingGalleryClient({
 
   const [viewerImageId, setViewerImageId] =
     useState<string | null>(null);
+
+  const [
+    imageNotes,
+    setImageNotes,
+  ] = useState<Record<string, string>>({});
+
+  const [
+    noteEditorImageId,
+    setNoteEditorImageId,
+  ] = useState<string | null>(null);
+
+  const [
+    noteDraft,
+    setNoteDraft,
+  ] = useState("");
+
+  const [
+    savingNoteImageId,
+    setSavingNoteImageId,
+  ] = useState<string | null>(null);
+
+  const [
+    imageNoteError,
+    setImageNoteError,
+  ] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadImageNotes() {
+      try {
+        const response =
+          await fetch(
+            `/api/proofing/image-note?gallery=${encodeURIComponent(
+              gallerySlug,
+            )}`,
+            {
+              cache: "no-store",
+            },
+          );
+
+        if (!response.ok) {
+          return;
+        }
+
+        const data =
+          (await response.json()) as
+            ImageNoteResponse;
+
+        if (
+          !data.ok ||
+          !Array.isArray(data.notes)
+        ) {
+          return;
+        }
+
+        if (cancelled) {
+          return;
+        }
+
+        const nextNotes:
+          Record<string, string> =
+            {};
+
+        for (const note of data.notes) {
+          if (
+            note.imageId &&
+            note.note
+          ) {
+            nextNotes[
+              note.imageId
+            ] = note.note;
+          }
+        }
+
+        setImageNotes(
+          nextNotes,
+        );
+      } catch (error) {
+        console.error(
+          "Proofing image notes could not be loaded.",
+          error,
+        );
+      }
+    }
+
+    void loadImageNotes();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [gallerySlug]);
+
+  useEffect(() => {
+    setNoteEditorImageId(null);
+    setNoteDraft("");
+    setImageNoteError(null);
+  }, [viewerImageId]);
 
   const viewerTouchStartX =
     useRef<number | null>(null);
@@ -1114,6 +1227,106 @@ export default function ProofingGalleryClient({
       },
       60_000,
     );
+  }
+
+  function openImageNoteEditor(
+    imageId: string,
+  ) {
+    setNoteEditorImageId(
+      imageId,
+    );
+
+    setNoteDraft(
+      imageNotes[imageId] ?? "",
+    );
+
+    setImageNoteError(null);
+  }
+
+  async function saveImageNote(
+    imageId: string,
+    note: string,
+  ) {
+    if (savingNoteImageId) {
+      return;
+    }
+
+    const cleanNote =
+      note.trim();
+
+    setSavingNoteImageId(
+      imageId,
+    );
+
+    setImageNoteError(null);
+
+    try {
+      const response =
+        await fetch(
+          "/api/proofing/image-note",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify({
+              gallerySlug,
+              imageId,
+              note: cleanNote,
+            }),
+          },
+        );
+
+      const data =
+        (await response.json()) as
+          ImageNoteResponse;
+
+      if (
+        !response.ok ||
+        !data.ok
+      ) {
+        throw new Error(
+          data.message ??
+            "Your note could not be saved.",
+        );
+      }
+
+      setImageNotes(
+        (current) => {
+          const next = {
+            ...current,
+          };
+
+          if (cleanNote) {
+            next[imageId] =
+              cleanNote;
+          } else {
+            delete next[
+              imageId
+            ];
+          }
+
+          return next;
+        },
+      );
+
+      setNoteEditorImageId(
+        null,
+      );
+
+      setNoteDraft("");
+    } catch (error) {
+      setImageNoteError(
+        error instanceof Error
+          ? error.message
+          : "Your note could not be saved.",
+      );
+    } finally {
+      setSavingNoteImageId(
+        null,
+      );
+    }
   }
 
   async function downloadSingleImage(
@@ -2203,6 +2416,28 @@ export default function ProofingGalleryClient({
                     </button>
                   )}
 
+                  <button
+                    type="button"
+                    className={
+                      imageNotes[
+                        viewerImage.id
+                      ]
+                        ? "proofing-viewer-note-button has-note"
+                        : "proofing-viewer-note-button"
+                    }
+                    onClick={() =>
+                      openImageNoteEditor(
+                        viewerImage.id,
+                      )
+                    }
+                  >
+                    {imageNotes[
+                      viewerImage.id
+                    ]
+                      ? "Edit note"
+                      : "Add note"}
+                  </button>
+
                   {downloadPermission === "web" ||
                   (downloadPermission === "selected" &&
                     favouriteSet.has(viewerImage.id)) ? (
@@ -2230,6 +2465,115 @@ export default function ProofingGalleryClient({
                   ) : null}
                 </div>
               </div>
+
+              {noteEditorImageId ===
+              viewerImage.id ? (
+                <div className="proofing-viewer-note-editor">
+                  <label
+                    htmlFor={`proofing-image-note-${viewerImage.id}`}
+                  >
+                    Note about this photograph
+                  </label>
+
+                  <textarea
+                    id={`proofing-image-note-${viewerImage.id}`}
+                    value={noteDraft}
+                    maxLength={2000}
+                    rows={4}
+                    placeholder="Add a comment, retouching request or editing note…"
+                    disabled={
+                      savingNoteImageId ===
+                      viewerImage.id
+                    }
+                    onChange={(event) =>
+                      setNoteDraft(
+                        event.target.value,
+                      )
+                    }
+                  />
+
+                  <div className="proofing-viewer-note-footer">
+                    <span>
+                      {noteDraft.length}
+                      {" / "}
+                      2000
+                    </span>
+
+                    <div className="proofing-viewer-note-actions">
+                      {imageNotes[
+                        viewerImage.id
+                      ] ? (
+                        <button
+                          type="button"
+                          className="proofing-viewer-note-remove"
+                          disabled={
+                            savingNoteImageId ===
+                            viewerImage.id
+                          }
+                          onClick={() =>
+                            void saveImageNote(
+                              viewerImage.id,
+                              "",
+                            )
+                          }
+                        >
+                          Remove note
+                        </button>
+                      ) : null}
+
+                      <button
+                        type="button"
+                        className="proofing-viewer-note-cancel"
+                        disabled={
+                          savingNoteImageId ===
+                          viewerImage.id
+                        }
+                        onClick={() => {
+                          setNoteEditorImageId(
+                            null,
+                          );
+                          setNoteDraft("");
+                          setImageNoteError(
+                            null,
+                          );
+                        }}
+                      >
+                        Cancel
+                      </button>
+
+                      <button
+                        type="button"
+                        className="proofing-viewer-note-save"
+                        disabled={
+                          savingNoteImageId ===
+                            viewerImage.id ||
+                          !noteDraft.trim()
+                        }
+                        onClick={() =>
+                          void saveImageNote(
+                            viewerImage.id,
+                            noteDraft,
+                          )
+                        }
+                      >
+                        {savingNoteImageId ===
+                        viewerImage.id
+                          ? "Saving…"
+                          : "Save note"}
+                      </button>
+                    </div>
+                  </div>
+
+                  {imageNoteError ? (
+                    <p
+                      className="proofing-viewer-note-error"
+                      role="alert"
+                    >
+                      {imageNoteError}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
 
             {nextViewerImage ? (
