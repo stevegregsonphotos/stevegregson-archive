@@ -151,6 +151,8 @@ export default async function NotesReportPage({
             href={`/api/admin/proofing/notes-report/download?galleryId=${encodeURIComponent(
               gallery.id,
             )}`}
+            target="_blank"
+            rel="noopener noreferrer"
           >
             Export PDF
           </a>

@@ -657,7 +657,7 @@ export async function GET(
           "Content-Type":
             "application/pdf",
           "Content-Disposition":
-            `attachment; filename="${safeFilename(
+            `inline; filename="${safeFilename(
               gallery.title,
             )}"`,
           "Cache-Control":
