@@ -550,11 +550,91 @@ export default function ProofingGalleryClient({
       ),
     );
 
+  const [
+    showGalleryHelp,
+    setShowGalleryHelp,
+  ] = useState(false);
+
+  const [
+    galleryHelpChecked,
+    setGalleryHelpChecked,
+  ] = useState(false);
+
   const introDialogRef =
     useRef<HTMLElement | null>(null);
 
   const firstGalleryControlRef =
     useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    const storageKey =
+      `proofing_help_seen_${gallerySlug}`;
+
+    try {
+      const hasSeenHelp =
+        window.localStorage.getItem(
+          storageKey,
+        ) === "1";
+
+      if (!hasSeenHelp) {
+        setShowGalleryHelp(
+          !showIntro,
+        );
+      }
+    } catch {
+      /*
+       * Private browsing / storage restrictions
+       * should never prevent use of the gallery.
+       */
+    } finally {
+      setGalleryHelpChecked(true);
+    }
+  }, [
+    gallerySlug,
+  ]);
+
+  useEffect(() => {
+    if (
+      !galleryHelpChecked ||
+      showIntro ||
+      showGalleryHelp
+    ) {
+      return;
+    }
+
+    const storageKey =
+      `proofing_help_seen_${gallerySlug}`;
+
+    try {
+      if (
+        window.localStorage.getItem(
+          storageKey,
+        ) !== "1"
+      ) {
+        setShowGalleryHelp(true);
+      }
+    } catch {
+      // Keep the manual help control available.
+    }
+  }, [
+    galleryHelpChecked,
+    gallerySlug,
+    showGalleryHelp,
+    showIntro,
+  ]);
+
+  function closeGalleryHelp() {
+    try {
+      window.localStorage.setItem(
+        `proofing_help_seen_${gallerySlug}`,
+        "1",
+      );
+    } catch {
+      // Closing help must still work without storage.
+    }
+
+    setShowGalleryHelp(false);
+  }
 
   useEffect(() => {
     if (!showIntroOnLoad) {
@@ -1689,6 +1769,134 @@ export default function ProofingGalleryClient({
           </section>
         </div>
       ) : null}
+
+      {showGalleryHelp ? (
+        <div
+          className="proofing-intro-modal-backdrop"
+          role="presentation"
+        >
+          <section
+            className="proofing-gallery-help-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="proofing-gallery-help-title"
+          >
+            <p className="proofing-client-eyebrow">
+              Client gallery guide
+            </p>
+
+            <h2 id="proofing-gallery-help-title">
+              How to use this gallery
+            </h2>
+
+            <div className="proofing-gallery-help-content">
+              <section>
+                <h3>Choose your favourites</h3>
+                <p>
+                  Click <strong>Add to favourites</strong> on
+                  any photograph you would like to select.
+                  You can remove it again at any time if you
+                  change your mind.
+                </p>
+              </section>
+
+              <section>
+                <h3>Review your selection</h3>
+                <p>
+                  Open <strong>Favourites</strong> to see all
+                  of your chosen photographs together.
+                </p>
+              </section>
+
+              <section>
+                <h3>Leave notes or editing requests</h3>
+                <p>
+                  Open a photograph and choose
+                  <strong> Add note</strong>. You can leave a
+                  comment, retouching request or editing note
+                  for that individual image. You can edit or
+                  remove the note later.
+                </p>
+              </section>
+
+              <section>
+                <h3>View photographs larger</h3>
+                <p>
+                  Click any photograph to open the full-screen
+                  viewer. Use the arrows or swipe to move
+                  between images.
+                </p>
+              </section>
+
+              {consolidatedSelection ? (
+                <section>
+                  <h3>Working with other people</h3>
+                  <p>
+                    Everyone can make their own favourites.
+                    The <strong>Consolidated</strong> view
+                    brings your shared selection together so
+                    the final choices can be agreed.
+                  </p>
+                </section>
+              ) : null}
+
+              <section>
+                <h3>Send your selection</h3>
+                <p>
+                  When you are happy with your favourites,
+                  use <strong>Send favourites</strong>. If you
+                  make changes afterwards, you can send the
+                  updated selection again.
+                </p>
+              </section>
+
+              {downloadPermission !== "none" ? (
+                <section>
+                  <h3>Download photographs</h3>
+                  <p>
+                    Where download controls are shown, you can
+                    download the photographs available to you.
+                    {downloadPermission === "selected"
+                      ? " For this gallery, downloads are available for photographs you have selected."
+                      : " You can use the gallery download controls to save the available photographs."}
+                  </p>
+                </section>
+              ) : null}
+            </div>
+
+            <div className="proofing-gallery-help-tip">
+              <strong>Tip</strong>
+              <span>
+                Your favourites and notes are saved, so you
+                can return to the gallery later using the same
+                email address.
+              </span>
+            </div>
+
+            <button
+              type="button"
+              className="proofing-gallery-help-close"
+              onClick={closeGalleryHelp}
+            >
+              Got it — view gallery
+            </button>
+          </section>
+        </div>
+      ) : null}
+
+      <div className="proofing-gallery-help-row">
+        <button
+          type="button"
+          className="proofing-gallery-help-button"
+          onClick={() =>
+            setShowGalleryHelp(true)
+          }
+        >
+          <span aria-hidden="true">ⓘ</span>
+          How to use this gallery
+        </button>
+      </div>
+
     {(downloadPermission === "web" && view === "all") ||
     (view === "favourites" &&
       (toolbarAction ||

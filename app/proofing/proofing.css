@@ -2436,3 +2436,161 @@
     flex-wrap: wrap;
   }
 }
+
+/* Proofing gallery help */
+
+.proofing-gallery-help-row {
+  display: flex;
+  justify-content: center;
+  padding: 0.7rem 1rem 0.45rem;
+}
+
+.proofing-gallery-help-button {
+  display: inline-flex;
+  min-height: 2.5rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  padding: 0.55rem 0.9rem;
+  border: 1px solid rgba(199, 163, 105, 0.4);
+  background: rgba(199, 163, 105, 0.045);
+  color: #c7a369;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.52rem;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.proofing-gallery-help-button:hover {
+  border-color: #c7a369;
+  background: #c7a369;
+  color: #11100f;
+}
+
+.proofing-gallery-help-button span {
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+.proofing-gallery-help-modal {
+  width: min(100%, 48rem);
+  max-height: min(86vh, 52rem);
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: clamp(1.6rem, 4vw, 2.75rem);
+  border: 1px solid rgba(199, 163, 105, 0.38);
+  background: #11100f;
+  box-shadow: 0 2rem 6rem rgba(0, 0, 0, 0.5);
+}
+
+.proofing-gallery-help-modal > h2 {
+  margin: 0.55rem 0 1.75rem;
+  color: #f2eee6;
+  font-family:
+    "Iowan Old Style",
+    "Palatino Linotype",
+    Georgia,
+    serif;
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+  font-weight: 400;
+  letter-spacing: -0.035em;
+}
+
+.proofing-gallery-help-content {
+  display: grid;
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+  gap: 1.35rem 2rem;
+}
+
+.proofing-gallery-help-content section {
+  padding-top: 1rem;
+  border-top: 1px solid rgba(242, 238, 230, 0.1);
+}
+
+.proofing-gallery-help-content h3 {
+  margin: 0;
+  color: #c7a369;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.proofing-gallery-help-content p {
+  margin: 0.55rem 0 0;
+  color: rgba(242, 238, 230, 0.68);
+  font-size: 0.76rem;
+  line-height: 1.65;
+}
+
+.proofing-gallery-help-content strong {
+  color: #f2eee6;
+  font-weight: 650;
+}
+
+.proofing-gallery-help-tip {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1.75rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid rgba(199, 163, 105, 0.18);
+  background: rgba(199, 163, 105, 0.045);
+  color: rgba(242, 238, 230, 0.68);
+  font-size: 0.68rem;
+  line-height: 1.55;
+}
+
+.proofing-gallery-help-tip strong {
+  flex: 0 0 auto;
+  color: #c7a369;
+  font-size: 0.55rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.proofing-gallery-help-close {
+  margin-top: 1.75rem;
+  min-height: 2.75rem;
+  padding: 0.8rem 1.2rem;
+  border: 1px solid #c7a369;
+  background: #c7a369;
+  color: #11100f;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.54rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.proofing-gallery-help-close:hover {
+  background: transparent;
+  color: #c7a369;
+}
+
+@media (max-width: 650px) {
+  .proofing-gallery-help-row {
+    padding-right: 0.5rem;
+    padding-left: 0.5rem;
+  }
+
+  .proofing-gallery-help-button {
+    width: 100%;
+  }
+
+  .proofing-gallery-help-content {
+    grid-template-columns: 1fr;
+    gap: 0.9rem;
+  }
+
+  .proofing-gallery-help-tip {
+    flex-direction: column;
+  }
+}
