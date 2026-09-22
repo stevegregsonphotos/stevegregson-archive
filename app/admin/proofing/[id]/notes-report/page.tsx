@@ -9,7 +9,7 @@ import {
   getProofingGallery,
 } from "../../../../../lib/proofing/repository";
 
-import PrintNotesReportButton from "./PrintNotesReportButton";
+import DownloadNotesReportButton from "./DownloadNotesReportButton";
 
 export const dynamic = "force-dynamic";
 
@@ -148,7 +148,27 @@ export default async function NotesReportPage({
             ← Back to gallery
           </Link>
 
-          <PrintNotesReportButton />
+          <DownloadNotesReportButton
+            galleryTitle={gallery.title}
+            items={resolvedNotes.map(
+              (note) => ({
+                filename:
+                  note.image.originalFilename,
+                clientEmail:
+                  note.visitorEmail,
+                updatedAt:
+                  note.updatedAt,
+                note:
+                  note.note,
+                imageUrl:
+                  `/api/admin/proofing/image?galleryId=${encodeURIComponent(
+                    gallery.id,
+                  )}&imageId=${encodeURIComponent(
+                    note.image.id,
+                  )}`,
+              }),
+            )}
+          />
         </div>
       </header>
 
