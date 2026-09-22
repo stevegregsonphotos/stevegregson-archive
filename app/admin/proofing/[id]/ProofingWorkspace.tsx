@@ -145,6 +145,10 @@ export default function ProofingWorkspace({
           </span>
 
           <span>Settings</span>
+
+          <small aria-hidden="true">
+            &nbsp;
+          </small>
         </button>
 
         <button
@@ -166,6 +170,10 @@ export default function ProofingWorkspace({
           </span>
 
           <span>Branding</span>
+
+          <small aria-hidden="true">
+            &nbsp;
+          </small>
         </button>
 
         <button
