@@ -363,15 +363,25 @@ export async function saveProofingConsolidatedSelection(
 /*
  * The definitive selection is deliberately
  * separate from every participant's favourites.
+ *
+ * Toggle one image atomically in Postgres so
+ * concurrent visitors cannot overwrite each
+ * other's definitive selections.
  */
-export async function saveProofingDefinitiveSelection(
+export async function toggleProofingDefinitiveSelection(
   galleryId: string,
-  imageIds: string[],
-): Promise<ProofingConsolidatedSelection> {
+  imageId: string,
+): Promise<{
+  selected: boolean;
+  definitiveImageIds: string[];
+}> {
   const sql = getSql();
 
   const cleanGalleryId =
     galleryId.trim();
+
+  const cleanImageId =
+    imageId.trim();
 
   if (!cleanGalleryId) {
     throw new Error(
@@ -379,21 +389,37 @@ export async function saveProofingDefinitiveSelection(
     );
   }
 
-  const cleanImageIds =
-    cleanIds(imageIds);
+  if (!cleanImageId) {
+    throw new Error(
+      "A proofing image id is required.",
+    );
+  }
 
   const rows =
     await sql`
       UPDATE proofing_consolidated_selections
       SET
         definitive_image_ids =
-          ${JSON.stringify(
-            cleanImageIds,
-          )}::jsonb,
+          CASE
+            WHEN COALESCE(
+              definitive_image_ids,
+              '[]'::jsonb
+            ) ? ${cleanImageId}
+            THEN COALESCE(
+              definitive_image_ids,
+              '[]'::jsonb
+            ) - ${cleanImageId}
+            ELSE COALESCE(
+              definitive_image_ids,
+              '[]'::jsonb
+            ) || jsonb_build_array(
+              ${cleanImageId}::text
+            )
+          END,
         updated_at = now()
       WHERE gallery_id =
         ${cleanGalleryId}
-      RETURNING id
+      RETURNING definitive_image_ids
     `;
 
   if (rows.length !== 1) {
@@ -402,16 +428,16 @@ export async function saveProofingDefinitiveSelection(
     );
   }
 
-  const saved =
-    await getProofingConsolidatedSelection(
-      cleanGalleryId,
+  const definitiveImageIds =
+    stringArray(
+      rows[0].definitive_image_ids,
     );
 
-  if (!saved) {
-    throw new Error(
-      "The definitive selection could not be read after saving.",
-    );
-  }
-
-  return saved;
+  return {
+    selected:
+      definitiveImageIds.includes(
+        cleanImageId,
+      ),
+    definitiveImageIds,
+  };
 }

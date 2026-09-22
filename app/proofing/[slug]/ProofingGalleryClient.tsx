@@ -176,6 +176,97 @@ export default function ProofingGalleryClient({
     }
   }, [consolidatedSelection]);
 
+  useEffect(() => {
+    if (
+      view !== "consolidated" ||
+      !consolidatedSelection ||
+      updatingDefinitiveImageId
+    ) {
+      return;
+    }
+
+    const controller =
+      new AbortController();
+
+    async function refreshDefinitiveSelection() {
+      try {
+        const response =
+          await fetch(
+            `/api/proofing/consolidated-favourite?gallerySlug=${encodeURIComponent(
+              gallerySlug,
+            )}`,
+            {
+              method: "GET",
+              signal:
+                controller.signal,
+              cache: "no-store",
+            },
+          );
+
+        if (!response.ok) {
+          return;
+        }
+
+        const data =
+          (await response.json()) as
+            ConsolidatedFavouriteResponse;
+
+        if (
+          !data.ok ||
+          !Array.isArray(
+            data.definitiveImageIds,
+          )
+        ) {
+          return;
+        }
+
+        setDefinitiveImageIds(
+          (current) =>
+            sameSelection(
+              current,
+              data.definitiveImageIds ?? [],
+            )
+              ? current
+              : data.definitiveImageIds ?? [],
+        );
+      } catch (error) {
+        if (
+          error instanceof DOMException &&
+          error.name === "AbortError"
+        ) {
+          return;
+        }
+
+        console.error(
+          "Definitive selection refresh failed.",
+          error,
+        );
+      }
+    }
+
+    void refreshDefinitiveSelection();
+
+    const intervalId =
+      window.setInterval(
+        () => {
+          void refreshDefinitiveSelection();
+        },
+        3000,
+      );
+
+    return () => {
+      controller.abort();
+      window.clearInterval(
+        intervalId,
+      );
+    };
+  }, [
+    view,
+    consolidatedSelection,
+    gallerySlug,
+    updatingDefinitiveImageId,
+  ]);
+
   function changeView(
     nextView: ProofingView,
   ) {
@@ -884,40 +975,6 @@ export default function ProofingGalleryClient({
     }
   }
 
-  async function copyDefinitiveForLightroom() {
-    const filenames =
-      definitiveImages
-        .map(
-          (image) =>
-            image.originalFilename,
-        )
-        .filter(Boolean);
-
-    if (
-      filenames.length === 0
-    ) {
-      return;
-    }
-
-    try {
-      await navigator.clipboard.writeText(
-        filenames.join(", "),
-      );
-
-      alert(
-        `${filenames.length} filename${
-          filenames.length === 1
-            ? ""
-            : "s"
-        } copied for Lightroom.`,
-      );
-    } catch {
-      alert(
-        "The Lightroom filename list could not be copied.",
-      );
-    }
-  }
-
   async function submitSelection() {
     if (
       favourites.length === 0 ||
@@ -1515,16 +1572,14 @@ export default function ProofingGalleryClient({
             </h2>
 
             <p className="proofing-review-copy">
-              Combined favourites from{" "}
-              {
-                consolidatedSelection
-                  .participantCount
-              }{" "}
-              participant
-              {consolidatedSelection
-                .participantCount === 1
-                ? ""
-                : "s"}.
+              This view combines the selections
+              from the participants chosen for
+              this gallery. Photographs selected
+              by more than one participant are
+              highlighted. Use the hearts to
+              create the final shared selection
+              — changes are visible to everyone
+              with access to this gallery.
             </p>
           </div>
 
@@ -1541,18 +1596,6 @@ export default function ProofingGalleryClient({
                 : "s"}
             </span>
 
-            {definitiveImageIds.length >
-            0 ? (
-              <button
-                type="button"
-                className="proofing-toolbar-download-button"
-                onClick={() =>
-                  void copyDefinitiveForLightroom()
-                }
-              >
-                Copy for Lightroom
-              </button>
-            ) : null}
           </div>
         </section>
       ) : null}

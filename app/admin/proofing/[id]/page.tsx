@@ -11,6 +11,10 @@ import {
 } from "../../../../lib/proofing/repository";
 
 import {
+  getProofingConsolidatedSelection,
+} from "../../../../lib/proofing/consolidated-repository";
+
+import {
   getSelectedWorkImageUrl,
 } from "../../../../lib/selected-work-image-url";
 
@@ -82,6 +86,36 @@ export default async function ProofingGalleryPage({
   if (!gallery) {
     notFound();
   }
+
+  const consolidated =
+    await getProofingConsolidatedSelection(
+      gallery.id,
+    );
+
+  const definitiveImages =
+    consolidated
+      ? consolidated.definitiveImageIds
+          .map((imageId) =>
+            gallery.images.find(
+              (image) =>
+                image.id === imageId,
+            ),
+          )
+          .filter(
+            (
+              image,
+            ): image is NonNullable<
+              typeof image
+            > =>
+              Boolean(image),
+          )
+      : [];
+
+  const definitiveFilenames =
+    definitiveImages.map(
+      (image) =>
+        image.originalFilename,
+    );
 
   const introTemplates =
     await getProofingIntroTemplates();
@@ -324,6 +358,86 @@ export default async function ProofingGalleryPage({
             : "s"}
         </p>
       </div>
+
+      {consolidated ? (
+        <article className="proofing-selection-card">
+          <header className="proofing-selection-card-header">
+            <div>
+              <p className="proofing-selection-email">
+                {consolidated.title}
+              </p>
+
+              <p className="proofing-selection-meta">
+                {consolidated.participants.length}{" "}
+                participant
+                {consolidated.participants.length ===
+                1
+                  ? ""
+                  : "s"}
+                <span aria-hidden="true">
+                  {" "}
+                  ·{" "}
+                </span>
+                {consolidated.visible
+                  ? "Visible to clients"
+                  : "Hidden from clients"}
+              </p>
+            </div>
+
+            <div className="proofing-selection-count">
+              <strong>
+                {definitiveImages.length}
+              </strong>
+
+              <span>Definitive</span>
+            </div>
+          </header>
+
+          {definitiveImages.length > 0 ? (
+            <>
+              <div className="proofing-selection-thumbnails">
+                {definitiveImages.map(
+                  (image) => (
+                    <figure
+                      key={image.id}
+                      className="proofing-selection-thumbnail"
+                    >
+                      <div className="proofing-selection-thumbnail-image">
+                        <img
+                          src={`/api/admin/proofing/image?galleryId=${encodeURIComponent(
+                            gallery.id,
+                          )}&imageId=${encodeURIComponent(
+                            image.id,
+                          )}`}
+                          alt={image.alt}
+                          loading="lazy"
+                        />
+                      </div>
+
+                      <figcaption>
+                        {image.originalFilename}
+                      </figcaption>
+                    </figure>
+                  ),
+                )}
+              </div>
+
+              <div className="proofing-selection-actions">
+                <ProofingSelectionCopy
+                  filenames={
+                    definitiveFilenames
+                  }
+                />
+              </div>
+            </>
+          ) : (
+            <p className="proofing-empty">
+              No definitive photographs selected
+              yet.
+            </p>
+          )}
+        </article>
+      ) : null}
 
       {gallery.visitors &&
       gallery.visitors.length > 0 ? (

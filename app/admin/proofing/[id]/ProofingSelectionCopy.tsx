@@ -18,7 +18,14 @@ export default function ProofingSelectionCopy({
   ) {
     const text =
       format === "lightroom"
-        ? filenames.join(", ")
+        ? filenames
+            .map((filename) =>
+              filename.replace(
+                /\.[^/.]+$/,
+                "",
+              ),
+            )
+            .join(", ")
         : filenames.join("\n");
 
     try {

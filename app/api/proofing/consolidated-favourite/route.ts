@@ -5,7 +5,7 @@ import {
 
 import {
   getProofingConsolidatedSelection,
-  saveProofingDefinitiveSelection,
+  toggleProofingDefinitiveSelection,
 } from "@/lib/proofing/consolidated-repository";
 
 import {
@@ -218,36 +218,145 @@ export async function POST(
     );
   }
 
-  const alreadySelected =
-    consolidated
-      .definitiveImageIds
-      .includes(imageId);
-
-  const definitiveImageIds =
-    alreadySelected
-      ? consolidated
-          .definitiveImageIds
-          .filter(
-            (id) =>
-              id !== imageId,
-          )
-      : [
-          ...consolidated
-            .definitiveImageIds,
-          imageId,
-        ];
-
   const saved =
-    await saveProofingDefinitiveSelection(
+    await toggleProofingDefinitiveSelection(
       gallery.id,
-      definitiveImageIds,
+      imageId,
     );
 
   return NextResponse.json({
     ok: true,
     selected:
-      !alreadySelected,
+      saved.selected,
     definitiveImageIds:
       saved.definitiveImageIds,
+  });
+}
+
+export async function GET(
+  request: NextRequest,
+) {
+  const gallerySlug =
+    cleanString(
+      request.nextUrl.searchParams.get(
+        "gallerySlug",
+      ),
+    );
+
+  if (!gallerySlug) {
+    return NextResponse.json(
+      {
+        ok: false,
+        message:
+          "Gallery is required.",
+      },
+      {
+        status: 400,
+      },
+    );
+  }
+
+  const gallery =
+    await getProofingGalleryBySlug(
+      gallerySlug,
+    );
+
+  if (!gallery) {
+    return NextResponse.json(
+      {
+        ok: false,
+        message:
+          "Gallery not found.",
+      },
+      {
+        status: 404,
+      },
+    );
+  }
+
+  const hasExpiredByDate =
+    Boolean(gallery.expiresAt) &&
+    new Date(
+      gallery.expiresAt as string,
+    ).getTime() < Date.now();
+
+  if (
+    gallery.status !== "live" ||
+    hasExpiredByDate
+  ) {
+    return NextResponse.json(
+      {
+        ok: false,
+        message:
+          "This gallery is not currently available.",
+      },
+      {
+        status: 403,
+      },
+    );
+  }
+
+  const visitorId =
+    request.cookies.get(
+      `proofing_${gallery.id}`,
+    )?.value;
+
+  if (!visitorId) {
+    return NextResponse.json(
+      {
+        ok: false,
+        message:
+          "Please enter your email address to access this gallery.",
+      },
+      {
+        status: 401,
+      },
+    );
+  }
+
+  const visitorExists =
+    (gallery.visitors ?? []).some(
+      (visitor) =>
+        visitor.id === visitorId,
+    );
+
+  if (!visitorExists) {
+    return NextResponse.json(
+      {
+        ok: false,
+        message:
+          "Your gallery session could not be found.",
+      },
+      {
+        status: 401,
+      },
+    );
+  }
+
+  const consolidated =
+    await getProofingConsolidatedSelection(
+      gallery.id,
+    );
+
+  if (
+    !consolidated ||
+    !consolidated.visible
+  ) {
+    return NextResponse.json(
+      {
+        ok: false,
+        message:
+          "The consolidated selection is not available.",
+      },
+      {
+        status: 404,
+      },
+    );
+  }
+
+  return NextResponse.json({
+    ok: true,
+    definitiveImageIds:
+      consolidated.definitiveImageIds,
   });
 }
