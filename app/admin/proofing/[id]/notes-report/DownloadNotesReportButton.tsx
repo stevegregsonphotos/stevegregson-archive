@@ -812,23 +812,19 @@ export default function DownloadNotesReportButton({
           downloadFilename,
         )}`;
 
-      const link =
-        document.createElement(
-          "a",
-        );
-
-      link.href =
-        finalDownloadUrl;
-
-      link.style.display =
-        "none";
-
-      document.body.appendChild(
-        link,
+      /*
+       * Do not trigger the attachment with a synthetic
+       * anchor click. Safari may no longer treat that as
+       * part of the user's original action after the
+       * asynchronous PDF generation/upload work.
+       *
+       * Navigate directly to the same-origin attachment
+       * endpoint instead. Content-Disposition: attachment
+       * makes this a normal browser download.
+       */
+      window.location.assign(
+        finalDownloadUrl,
       );
-
-      link.click();
-      link.remove();
 
     } catch (error) {
       setError(
