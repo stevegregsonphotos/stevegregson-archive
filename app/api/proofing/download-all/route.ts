@@ -199,6 +199,8 @@ export async function GET(
           );
 
     files.push({
+      imageId:
+        image.id,
       filename,
       url:
         await createProofingImageDownloadUrl(

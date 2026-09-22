@@ -12,10 +12,6 @@ import {
   getProofingGalleryBySlug,
 } from "../../../../lib/proofing/repository";
 
-import {
-  recordProofingDownloadEvent,
-} from "../../../../lib/proofing/download-events-repository";
-
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -222,25 +218,6 @@ export async function GET(
           image.originalFilename,
         ),
       );
-
-    await recordProofingDownloadEvent({
-      galleryId:
-        gallery.id,
-      visitorId:
-        visitor.id,
-      visitorEmail:
-        visitor.email,
-      downloadType:
-        "single",
-      downloadPermission:
-        gallery.downloadPermission,
-      imageIds: [
-        image.id,
-      ],
-      filenames: [
-        image.originalFilename,
-      ],
-    });
 
     return NextResponse.redirect(
       downloadUrl,

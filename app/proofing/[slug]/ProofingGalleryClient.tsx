@@ -1229,6 +1229,13 @@ export default function ProofingGalleryClient({
           jpegBlob,
           `${jpegFilename}.jpg`,
         );
+
+        await recordDownloadSuccess(
+          "single",
+          [
+            image.id,
+          ],
+        );
       } finally {
         bitmap.close();
       }
@@ -1241,6 +1248,38 @@ export default function ProofingGalleryClient({
     } finally {
       setDownloadingImageId(
         null,
+      );
+    }
+  }
+
+  async function recordDownloadSuccess(
+    downloadType:
+      | "single"
+      | "archive",
+    imageIds: string[],
+    archiveFilename?: string,
+  ) {
+    const response =
+      await fetch(
+        "/api/proofing/download-event",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            gallerySlug,
+            downloadType,
+            imageIds,
+            archiveFilename,
+          }),
+        },
+      );
+
+    if (!response.ok) {
+      console.error(
+        "Proofing download activity could not be recorded.",
       );
     }
   }
@@ -1269,6 +1308,7 @@ export default function ProofingGalleryClient({
           message?: string;
           archiveFilename?: string;
           files?: Array<{
+            imageId: string;
             filename: string;
             url: string;
           }>;
@@ -1336,6 +1376,15 @@ export default function ProofingGalleryClient({
 
       saveBrowserBlob(
         archive,
+        result.archiveFilename,
+      );
+
+      await recordDownloadSuccess(
+        "archive",
+        result.files.map(
+          (file) =>
+            file.imageId,
+        ),
         result.archiveFilename,
       );
     } catch (error) {
