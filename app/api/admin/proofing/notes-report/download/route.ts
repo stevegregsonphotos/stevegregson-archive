@@ -113,12 +113,22 @@ export async function GET(
       {
         status: 200,
         headers: {
+          /*
+           * Safari has repeatedly stalled when this
+           * attachment is advertised as application/pdf.
+           * Send the exact PDF bytes as a generic binary
+           * attachment while retaining the .pdf filename.
+           */
           "Content-Type":
-            "application/pdf",
+            "application/octet-stream",
           "Content-Disposition":
             `attachment; filename="${filename}"`,
+          "Content-Length":
+            String(bytes.byteLength),
           "Cache-Control":
             "private, no-store",
+          "X-Content-Type-Options":
+            "nosniff",
         },
       },
     );
