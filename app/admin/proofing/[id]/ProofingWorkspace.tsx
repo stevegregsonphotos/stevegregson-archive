@@ -16,15 +16,21 @@ type WorkspaceTab =
   | "media"
   | "settings"
   | "branding"
-  | "selections";
+  | "selections"
+  | "editing-requests"
+  | "downloads";
 
 type Props = {
   media: ReactNode;
   settings: ReactNode;
   branding: ReactNode;
   selections: ReactNode;
+  editingRequests: ReactNode;
+  downloads: ReactNode;
   imageCount: number;
   visitorCount: number;
+  editingRequestCount: number;
+  downloadCount: number;
 };
 
 function isWorkspaceTab(
@@ -34,7 +40,9 @@ function isWorkspaceTab(
     value === "media" ||
     value === "settings" ||
     value === "branding" ||
-    value === "selections"
+    value === "selections" ||
+    value === "editing-requests" ||
+    value === "downloads"
   );
 }
 
@@ -43,8 +51,12 @@ export default function ProofingWorkspace({
   settings,
   branding,
   selections,
+  editingRequests,
+  downloads,
   imageCount,
   visitorCount,
+  editingRequestCount,
+  downloadCount,
 }: Props) {
   const router = useRouter();
   const pathname = usePathname();
@@ -178,6 +190,59 @@ export default function ProofingWorkspace({
 
           <small>{visitorCount}</small>
         </button>
+
+        <button
+          type="button"
+          className={
+            activeTab ===
+            "editing-requests"
+              ? "is-active"
+              : ""
+          }
+          onClick={() =>
+            selectTab(
+              "editing-requests",
+            )
+          }
+        >
+          <span
+            className="sp-gallery-workspace-tab-icon"
+            aria-hidden="true"
+          >
+            ✎
+          </span>
+
+          <span>
+            Editing Requests
+          </span>
+
+          <small>
+            {editingRequestCount}
+          </small>
+        </button>
+
+        <button
+          type="button"
+          className={
+            activeTab === "downloads"
+              ? "is-active"
+              : ""
+          }
+          onClick={() =>
+            selectTab("downloads")
+          }
+        >
+          <span
+            className="sp-gallery-workspace-tab-icon"
+            aria-hidden="true"
+          >
+            ↓
+          </span>
+
+          <span>Downloads</span>
+
+          <small>{downloadCount}</small>
+        </button>
       </nav>
 
       <div className="sp-gallery-workspace-content">
@@ -202,6 +267,19 @@ export default function ProofingWorkspace({
         {activeTab === "selections" ? (
           <div key="selections">
             {selections}
+          </div>
+        ) : null}
+
+        {activeTab ===
+        "editing-requests" ? (
+          <div key="editing-requests">
+            {editingRequests}
+          </div>
+        ) : null}
+
+        {activeTab === "downloads" ? (
+          <div key="downloads">
+            {downloads}
           </div>
         ) : null}
       </div>

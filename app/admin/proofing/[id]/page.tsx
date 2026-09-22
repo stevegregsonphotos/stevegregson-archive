@@ -785,35 +785,43 @@ export default async function ProofingGalleryPage({
         </div>
       )}
 
-      <section className="proofing-client-notes">
-        <div className="proofing-client-notes-heading">
-          <div>
-            <p className="proofing-section-label">
-              Client feedback
-            </p>
+      <ProofingConsolidationEditor
+        galleryId={gallery.id}
+      />
+    </div>
+  );
 
-            <div className="proofing-client-notes-title-row">
-              <h3>Editing requests</h3>
+  const editingRequestsWorkspace = (
+    <div className="sp-workspace-panel">
+      <div className="sp-workspace-section-heading">
+        <div>
+          <p className="proofing-section-label">
+            Client feedback
+          </p>
 
-              <p className="proofing-client-notes-count">
-                {editingRequests.length}{" "}
-                request
-                {editingRequests.length === 1
-                  ? ""
-                  : "s"}
-              </p>
-
-              {editingRequests.length > 0 ? (
-                <Link
-                  href={`/admin/proofing/${gallery.id}/notes-report`}
-                  className="proofing-client-notes-report-link"
-                >
-                  Export PDF
-                </Link>
-              ) : null}
-            </div>
-          </div>
+          <h2>Editing requests</h2>
         </div>
+
+        <p>
+          {editingRequests.length}{" "}
+          request
+          {editingRequests.length === 1
+            ? ""
+            : "s"}
+        </p>
+      </div>
+
+      <section className="proofing-client-notes">
+        {editingRequests.length > 0 ? (
+          <div className="proofing-client-notes-title-row">
+            <Link
+              href={`/admin/proofing/${gallery.id}/notes-report`}
+              className="proofing-client-notes-report-link"
+            >
+              Export PDF
+            </Link>
+          </div>
+        ) : null}
 
         {editingRequests.length > 0 ? (
           <div className="proofing-client-notes-list">
@@ -950,24 +958,30 @@ export default async function ProofingGalleryPage({
         )}
       </section>
 
-      <section className="proofing-download-activity">
-        <div className="proofing-download-activity-heading">
-          <div>
-            <p className="proofing-section-label">
-              Delivery activity
-            </p>
+    </div>
+  );
 
-            <h3>Download activity</h3>
-          </div>
-
-          <p>
-            {downloadEvents.length}{" "}
-            recorded download
-            {downloadEvents.length === 1
-              ? ""
-              : "s"}
+  const downloadsWorkspace = (
+    <div className="sp-workspace-panel">
+      <div className="sp-workspace-section-heading">
+        <div>
+          <p className="proofing-section-label">
+            Delivery activity
           </p>
+
+          <h2>Downloads</h2>
         </div>
+
+        <p>
+          {downloadEvents.length}{" "}
+          recorded download
+          {downloadEvents.length === 1
+            ? ""
+            : "s"}
+        </p>
+      </div>
+
+      <section className="proofing-download-activity">
 
         {downloadEvents.length > 0 ? (
           <div className="proofing-download-activity-list">
@@ -1083,9 +1097,6 @@ export default async function ProofingGalleryPage({
         )}
       </section>
 
-      <ProofingConsolidationEditor
-        galleryId={gallery.id}
-      />
     </div>
   );
 
@@ -1282,6 +1293,18 @@ export default async function ProofingGalleryPage({
             settings={settings}
             branding={branding}
             selections={selections}
+            editingRequests={
+              editingRequestsWorkspace
+            }
+            downloads={
+              downloadsWorkspace
+            }
+            editingRequestCount={
+              editingRequests.length
+            }
+            downloadCount={
+              downloadEvents.length
+            }
           />
 
           <section className="sp-gallery-danger-zone">
