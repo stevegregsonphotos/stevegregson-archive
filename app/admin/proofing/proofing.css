@@ -5567,6 +5567,29 @@ input[type="email"],
   font-weight: 600;
 }
 
+.proofing-download-files-details {
+  margin-top: 0.9rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid rgba(242, 238, 230, 0.08);
+}
+
+.proofing-download-files-details summary {
+  width: fit-content;
+  color: #c7a369;
+  cursor: pointer;
+  font-size: 0.52rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.proofing-download-files-details
+  .proofing-download-filenames {
+  margin-top: 0.85rem;
+  padding-top: 0;
+  border-top: 0;
+}
+
 .proofing-download-filenames {
   display: grid;
   gap: 0.32rem;

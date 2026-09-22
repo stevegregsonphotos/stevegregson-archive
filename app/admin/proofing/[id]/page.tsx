@@ -695,20 +695,48 @@ export default async function ProofingGalleryPage({
                     </p>
                   ) : null}
 
-                  <ul className="proofing-download-filenames">
-                    {event.filenames.map(
-                      (
-                        filename,
-                        index,
-                      ) => (
-                        <li
-                          key={`${event.id}-${index}`}
-                        >
-                          {filename}
-                        </li>
-                      ),
-                    )}
-                  </ul>
+                  {event.downloadType ===
+                  "archive" ? (
+                    <details className="proofing-download-files-details">
+                      <summary>
+                        View {event.fileCount}{" "}
+                        photograph
+                        {event.fileCount === 1
+                          ? ""
+                          : "s"}
+                      </summary>
+
+                      <ul className="proofing-download-filenames">
+                        {event.filenames.map(
+                          (
+                            filename,
+                            index,
+                          ) => (
+                            <li
+                              key={`${event.id}-${index}`}
+                            >
+                              {filename}
+                            </li>
+                          ),
+                        )}
+                      </ul>
+                    </details>
+                  ) : (
+                    <ul className="proofing-download-filenames">
+                      {event.filenames.map(
+                        (
+                          filename,
+                          index,
+                        ) => (
+                          <li
+                            key={`${event.id}-${index}`}
+                          >
+                            {filename}
+                          </li>
+                        ),
+                      )}
+                    </ul>
+                  )}
                 </article>
               ),
             )}
