@@ -23,6 +23,10 @@ import {
 } from "../../../../lib/proofing/image-notes-repository";
 
 import {
+  getProofingImageAnnotations,
+} from "../../../../lib/proofing/image-annotations-repository";
+
+import {
   getSelectedWorkImageUrl,
 } from "../../../../lib/selected-work-image-url";
 
@@ -203,6 +207,121 @@ export default async function ProofingGalleryPage({
           typeof note
         > =>
           Boolean(note),
+      );
+
+  const imageAnnotations =
+    await getProofingImageAnnotations(
+      gallery.id,
+    );
+
+  const editingRequestMap =
+    new Map<
+      string,
+      {
+        id: string;
+        visitorId: string;
+        visitorEmail: string;
+        image: (typeof gallery.images)[number];
+        note?: string;
+        annotation?: (typeof imageAnnotations)[number]["annotation"];
+        updatedAt: string;
+      }
+    >();
+
+  for (const note of resolvedImageNotes) {
+    const key =
+      `${note.visitorId}:${note.imageId}`;
+
+    editingRequestMap.set(
+      key,
+      {
+        id: key,
+        visitorId:
+          note.visitorId,
+        visitorEmail:
+          note.visitorEmail,
+        image:
+          note.image,
+        note:
+          note.note,
+        updatedAt:
+          note.updatedAt,
+      },
+    );
+  }
+
+  for (
+    const annotation of
+    imageAnnotations
+  ) {
+    const visitor =
+      gallery.visitors.find(
+        (candidate) =>
+          candidate.id ===
+          annotation.visitorId,
+      );
+
+    const image =
+      gallery.images.find(
+        (candidate) =>
+          candidate.id ===
+          annotation.imageId,
+      );
+
+    if (
+      !visitor ||
+      !image ||
+      annotation.annotation.marks.length ===
+        0
+    ) {
+      continue;
+    }
+
+    const key =
+      `${annotation.visitorId}:${annotation.imageId}`;
+
+    const existing =
+      editingRequestMap.get(
+        key,
+      );
+
+    editingRequestMap.set(
+      key,
+      {
+        id: key,
+        visitorId:
+          annotation.visitorId,
+        visitorEmail:
+          visitor.email,
+        image,
+        note:
+          existing?.note,
+        annotation:
+          annotation.annotation,
+        updatedAt:
+          existing &&
+          new Date(
+            existing.updatedAt,
+          ).getTime() >
+            new Date(
+              annotation.updatedAt,
+            ).getTime()
+            ? existing.updatedAt
+            : annotation.updatedAt,
+      },
+    );
+  }
+
+  const editingRequests =
+    [...editingRequestMap.values()]
+      .sort(
+        (first, second) =>
+          new Date(
+            second.updatedAt,
+          ).getTime() -
+          new Date(
+            first.updatedAt,
+          ).getTime(),
       );
 
   const introTemplates =
@@ -670,21 +789,21 @@ export default async function ProofingGalleryPage({
         <div className="proofing-client-notes-heading">
           <div>
             <p className="proofing-section-label">
-              Editing requests
+              Client feedback
             </p>
 
             <div className="proofing-client-notes-title-row">
-              <h3>Client notes</h3>
+              <h3>Editing requests</h3>
 
               <p className="proofing-client-notes-count">
-                {resolvedImageNotes.length}{" "}
-                note
-                {resolvedImageNotes.length === 1
+                {editingRequests.length}{" "}
+                request
+                {editingRequests.length === 1
                   ? ""
                   : "s"}
               </p>
 
-              {resolvedImageNotes.length > 0 ? (
+              {editingRequests.length > 0 ? (
                 <Link
                   href={`/admin/proofing/${gallery.id}/notes-report`}
                   className="proofing-client-notes-report-link"
@@ -696,58 +815,127 @@ export default async function ProofingGalleryPage({
           </div>
         </div>
 
-        {resolvedImageNotes.length > 0 ? (
+        {editingRequests.length > 0 ? (
           <div className="proofing-client-notes-list">
-            {resolvedImageNotes.map(
-              (note) => (
+            {editingRequests.map(
+              (request) => (
                 <article
-                  key={note.id}
+                  key={request.id}
                   className="proofing-client-note-card"
                 >
                   <header className="proofing-client-note-card-header">
                     <div>
                       <p className="proofing-selection-email">
-                        {note.visitorEmail}
+                        {request.visitorEmail}
                       </p>
 
                       <p className="proofing-selection-meta">
                         Updated{" "}
                         {formatDownloadDate(
-                          note.updatedAt,
+                          request.updatedAt,
                         )}
                       </p>
                     </div>
 
                     <span className="proofing-client-note-label">
-                      Note
+                      {request.annotation &&
+                      request.note
+                        ? "Note + markup"
+                        : request.annotation
+                          ? "Markup"
+                          : "Note"}
                     </span>
                   </header>
 
                   <div className="proofing-client-note-body">
                     <figure className="proofing-client-note-image">
-                      <div className="proofing-selection-thumbnail-image">
+                      <div className="proofing-client-note-image-frame">
                         <img
                           src={`/api/admin/proofing/image?galleryId=${encodeURIComponent(
                             gallery.id,
                           )}&imageId=${encodeURIComponent(
-                            note.image.id,
+                            request.image.id,
                           )}`}
-                          alt={note.image.alt}
+                          alt={request.image.alt}
                           loading="lazy"
                         />
+
+                        {request.annotation ? (
+                          <svg
+                            className="proofing-client-note-annotation"
+                            viewBox="0 0 1000 1000"
+                            preserveAspectRatio="none"
+                            aria-label="Client markup"
+                          >
+                            {request.annotation.marks.map(
+                              (mark) => {
+                                if (
+                                  mark.type !==
+                                  "pen"
+                                ) {
+                                  return null;
+                                }
+
+                                const path =
+                                  mark.points
+                                    .map(
+                                      (
+                                        point,
+                                        index,
+                                      ) =>
+                                        `${
+                                          index ===
+                                          0
+                                            ? "M"
+                                            : "L"
+                                        } ${
+                                          point.x *
+                                          1000
+                                        } ${
+                                          point.y *
+                                          1000
+                                        }`,
+                                    )
+                                    .join(
+                                      " ",
+                                    );
+
+                                return (
+                                  <path
+                                    key={
+                                      mark.id
+                                    }
+                                    d={
+                                      path
+                                    }
+                                    className="proofing-client-note-annotation-path"
+                                  />
+                                );
+                              },
+                            )}
+                          </svg>
+                        ) : null}
                       </div>
 
                       <figcaption>
                         {
-                          note.image
+                          request.image
                             .originalFilename
                         }
                       </figcaption>
                     </figure>
 
-                    <p className="proofing-client-note-text">
-                      {note.note}
-                    </p>
+                    <div className="proofing-client-note-content">
+                      {request.note ? (
+                        <p className="proofing-client-note-text">
+                          {request.note}
+                        </p>
+                      ) : (
+                        <p className="proofing-client-note-markup-only">
+                          Client supplied visual markup without a written note.
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </article>
               ),
@@ -756,7 +944,7 @@ export default async function ProofingGalleryPage({
         ) : (
           <div className="sp-selections-empty">
             <p>
-              No client notes yet.
+              No editing requests yet.
             </p>
           </div>
         )}
