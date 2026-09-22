@@ -555,84 +555,13 @@ export default function ProofingGalleryClient({
     setShowGalleryHelp,
   ] = useState(false);
 
-  const [
-    galleryHelpChecked,
-    setGalleryHelpChecked,
-  ] = useState(false);
-
   const introDialogRef =
     useRef<HTMLElement | null>(null);
 
   const firstGalleryControlRef =
     useRef<HTMLButtonElement | null>(null);
 
-  useEffect(() => {
-    const storageKey =
-      `proofing_help_seen_${gallerySlug}`;
-
-    try {
-      const hasSeenHelp =
-        window.localStorage.getItem(
-          storageKey,
-        ) === "1";
-
-      if (!hasSeenHelp) {
-        setShowGalleryHelp(
-          !showIntro,
-        );
-      }
-    } catch {
-      /*
-       * Private browsing / storage restrictions
-       * should never prevent use of the gallery.
-       */
-    } finally {
-      setGalleryHelpChecked(true);
-    }
-  }, [
-    gallerySlug,
-  ]);
-
-  useEffect(() => {
-    if (
-      !galleryHelpChecked ||
-      showIntro ||
-      showGalleryHelp
-    ) {
-      return;
-    }
-
-    const storageKey =
-      `proofing_help_seen_${gallerySlug}`;
-
-    try {
-      if (
-        window.localStorage.getItem(
-          storageKey,
-        ) !== "1"
-      ) {
-        setShowGalleryHelp(true);
-      }
-    } catch {
-      // Keep the manual help control available.
-    }
-  }, [
-    galleryHelpChecked,
-    gallerySlug,
-    showGalleryHelp,
-    showIntro,
-  ]);
-
   function closeGalleryHelp() {
-    try {
-      window.localStorage.setItem(
-        `proofing_help_seen_${gallerySlug}`,
-        "1",
-      );
-    } catch {
-      // Closing help must still work without storage.
-    }
-
     setShowGalleryHelp(false);
   }
 
