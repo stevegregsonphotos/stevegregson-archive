@@ -61,8 +61,8 @@ function isPublishedImageMetadata(
     typeof candidate.filename === "string" &&
     Boolean(candidate.filename.trim()) &&
     typeof candidate.blurDataURL === "string" &&
-    candidate.blurDataURL.startsWith(
-      "data:image/webp;base64,",
+    /^data:image\/(?:webp|png|jpeg);base64,/i.test(
+      candidate.blurDataURL,
     )
   );
 }
