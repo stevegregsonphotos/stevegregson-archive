@@ -783,13 +783,70 @@ export default function CuratedArchiveImportClient({
           contentType,
         );
 
-        const signingResponse =
-          await fetch(
-            signingUrl.toString(),
-            {
-              method: "POST",
-            },
+        let signingResponse:
+          | Response
+          | null = null;
+
+        let signingError:
+          unknown = null;
+
+        for (
+          let attempt = 1;
+          attempt <= 5;
+          attempt += 1
+        ) {
+          try {
+            signingResponse =
+              await fetch(
+                signingUrl.toString(),
+                {
+                  method: "POST",
+                },
+              );
+
+            if (
+              signingResponse.ok ||
+              (
+                signingResponse.status < 500 &&
+                signingResponse.status !== 429
+              )
+            ) {
+              break;
+            }
+
+            signingError =
+              new Error(
+                `HTTP ${signingResponse.status}`,
+              );
+          } catch (error) {
+            signingResponse = null;
+            signingError = error;
+          }
+
+          if (attempt < 5) {
+            await new Promise(
+              (resolve) =>
+                setTimeout(
+                  resolve,
+                  Math.min(
+                    8000,
+                    500 *
+                      2 ** (attempt - 1),
+                  ),
+                ),
+            );
+          }
+        }
+
+        if (!signingResponse) {
+          throw new Error(
+            `Preparing R2 upload for "${relativePath}" failed after 5 attempts: ${
+              signingError instanceof Error
+                ? signingError.message
+                : String(signingError)
+            }`,
           );
+        }
 
         const signed =
           await readUploadResponse(
@@ -900,7 +957,7 @@ export default function CuratedArchiveImportClient({
        * reasonably quick without creating one enormous
        * request or browser-generated ZIP.
        */
-      const concurrency = 10;
+      const concurrency = 4;
 
       for (
         let index = 0;
