@@ -47,6 +47,46 @@ let directManifestCache:
 const DIRECT_MANIFEST_CACHE_MS =
   60 * 1000;
 
+async function withR2Retry<T>(
+  operation: () => Promise<T>,
+  context: string,
+  attempts = 5,
+) {
+  let lastError: unknown = null;
+
+  for (
+    let attempt = 1;
+    attempt <= attempts;
+    attempt += 1
+  ) {
+    try {
+      return await operation();
+    } catch (error) {
+      lastError = error;
+
+      if (attempt < attempts) {
+        await new Promise((resolve) =>
+          setTimeout(
+            resolve,
+            Math.min(
+              4000,
+              300 * 2 ** (attempt - 1),
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  throw new Error(
+    `${context} failed after ${attempts} attempts: ${
+      lastError instanceof Error
+        ? `${lastError.name}: ${lastError.message}`
+        : String(lastError)
+    }`,
+  );
+}
+
 const LOCAL_ROOT = path.join(
   os.tmpdir(),
   "stevegregson-curated-import",
@@ -159,14 +199,18 @@ async function listDirectStagingKeys() {
 
   do {
     const response =
-      await client.send(
-        new ListObjectsV2Command({
-          Bucket: bucket,
-          Prefix:
-            DIRECT_STAGING_PREFIX,
-          ContinuationToken:
-            continuationToken,
-        }),
+      await withR2Retry(
+        () =>
+          client.send(
+            new ListObjectsV2Command({
+              Bucket: bucket,
+              Prefix:
+                DIRECT_STAGING_PREFIX,
+              ContinuationToken:
+                continuationToken,
+            }),
+          ),
+        "Listing curated staging objects",
       );
 
     for (
@@ -425,77 +469,97 @@ export async function finalizeCuratedImportFiles(
     );
   }
 
-  async function verifyUploadedFile(
-    relativePath: string,
-  ) {
-    const key =
-      `${DIRECT_STAGING_PREFIX}${relativePath}`;
-    let lastError: unknown = null;
+  /*
+   * Browser PUT success is already checked before finalize.
+   * Do not issue one HeadObject request per staged file here:
+   * large curated imports contain thousands of images and that
+   * turns finalization into thousands of serial R2 operations,
+   * which is exactly the wrong shape for a Vercel control route.
+   *
+   * Instead, take a paginated R2 inventory (with transient retry)
+   * and compare the expected object keys in memory. This verifies
+   * the complete upload in O(R2 pages), not O(files) requests.
+   */
+  let stagedKeys =
+    await listDirectStagingKeys();
 
-    for (
-      let attempt = 1;
-      attempt <= 8;
-      attempt += 1
-    ) {
-      try {
-        await getClient().send(
-          new HeadObjectCommand({
-            Bucket: getBucket(),
-            Key: key,
-          }),
-        );
-
-        return relativePath;
-      } catch (error) {
-        lastError = error;
-
-        if (attempt < 8) {
-          await new Promise(
-            (resolve) =>
-              setTimeout(
-                resolve,
-                Math.min(
-                  5000,
-                  500 *
-                    2 ** (attempt - 1),
-                ),
-              ),
-          );
-        }
-      }
-    }
-
-    throw new Error(
-      `Curated staged file "${relativePath}" was not verified in R2 and the upload was not committed: ${
-        lastError instanceof Error
-          ? `${lastError.name}: ${lastError.message}`
-          : String(lastError)
-      }`,
+  let stagedRelativePaths =
+    new Set(
+      stagedKeys
+        .filter((key) =>
+          key.startsWith(
+            DIRECT_STAGING_PREFIX,
+          ),
+        )
+        .map((key) =>
+          key.slice(
+            DIRECT_STAGING_PREFIX.length,
+          ),
+        ),
     );
-  }
 
-  const manifestFiles: string[] = [];
-  const VERIFY_BATCH_SIZE = 5;
+  let missingFiles =
+    files.filter(
+      (relativePath) =>
+        !stagedRelativePaths.has(
+          relativePath,
+        ),
+    );
 
   for (
-    let offset = 0;
-    offset < files.length;
-    offset += VERIFY_BATCH_SIZE
+    let attempt = 1;
+    missingFiles.length > 0 &&
+    attempt < 4;
+    attempt += 1
   ) {
-    const batch =
-      files.slice(
-        offset,
-        offset + VERIFY_BATCH_SIZE,
-      );
-
-    manifestFiles.push(
-      ...await Promise.all(
-        batch.map(
-          verifyUploadedFile,
-        ),
+    await new Promise((resolve) =>
+      setTimeout(
+        resolve,
+        500 * 2 ** (attempt - 1),
       ),
     );
+
+    stagedKeys =
+      await listDirectStagingKeys();
+
+    stagedRelativePaths =
+      new Set(
+        stagedKeys
+          .filter((key) =>
+            key.startsWith(
+              DIRECT_STAGING_PREFIX,
+            ),
+          )
+          .map((key) =>
+            key.slice(
+              DIRECT_STAGING_PREFIX.length,
+            ),
+          ),
+      );
+
+    missingFiles =
+      files.filter(
+        (relativePath) =>
+          !stagedRelativePaths.has(
+            relativePath,
+          ),
+      );
   }
+
+  if (missingFiles.length > 0) {
+    const preview =
+      missingFiles
+        .slice(0, 10)
+        .join(", ");
+
+    throw new Error(
+      `Curated upload is incomplete: ${missingFiles.length} expected staged file${
+        missingFiles.length === 1 ? " is" : "s are"
+      } missing from R2${preview ? ` (${preview}${missingFiles.length > 10 ? ", …" : ""})` : ""}. The manifest was not committed.`,
+    );
+  }
+
+  const manifestFiles = files;
 
   const hasFinalSelection =
     manifestFiles.some(
@@ -583,9 +647,7 @@ export async function finalizeCuratedImportFiles(
     new Set(manifestFiles);
 
   const staleKeys =
-    (
-      await listDirectStagingKeys()
-    )
+    stagedKeys
       .filter((key) => {
         if (
           !key.startsWith(
@@ -660,23 +722,27 @@ export async function finalizeCuratedImportFiles(
     files: combinedManifestFiles,
   };
 
-  await getClient().send(
-    new PutObjectCommand({
-      Bucket:
-        getBucket(),
-      Key:
-        DIRECT_MANIFEST_KEY,
-      Body:
-        JSON.stringify(
-          manifest,
-          null,
-          2,
-        ) + "\n",
-      ContentType:
-        "application/json",
-      CacheControl:
-        "no-store",
-    }),
+  await withR2Retry(
+    () =>
+      getClient().send(
+        new PutObjectCommand({
+          Bucket:
+            getBucket(),
+          Key:
+            DIRECT_MANIFEST_KEY,
+          Body:
+            JSON.stringify(
+              manifest,
+              null,
+              2,
+            ) + "\n",
+          ContentType:
+            "application/json",
+          CacheControl:
+            "no-store",
+        }),
+      ),
+    "Writing curated staging manifest",
   );
 
   directManifestCache = null;
@@ -1008,24 +1074,18 @@ async function materializeDirectFiles(
     }
 
     const response =
-      await getClient()
-        .send(
-          new GetObjectCommand({
-            Bucket:
-              getBucket(),
-            Key:
-              `${DIRECT_STAGING_PREFIX}${relativePath}`,
-          }),
-        )
-        .catch((error: unknown) => {
-          throw new Error(
-            `Could not read curated staged file "${relativePath}" from R2: ${
-              error instanceof Error
-                ? `${error.name}: ${error.message}`
-                : String(error)
-            }`,
-          );
-        });
+      await withR2Retry(
+        () =>
+          getClient().send(
+            new GetObjectCommand({
+              Bucket:
+                getBucket(),
+              Key:
+                `${DIRECT_STAGING_PREFIX}${relativePath}`,
+            }),
+          ),
+        `Reading curated staged file "${relativePath}"`,
+      );
 
     if (!response.Body) {
       throw new Error(

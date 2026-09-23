@@ -85,121 +85,6 @@ const MONTHS = [
 const CURATED_IMPORT_SESSION_KEY =
   "stevegregson_curated_import_preflight";
 
-const CURATED_EDITOR_THUMBNAIL_SIZE = 800;
-
-async function createCuratedEditorThumbnail(
-  file: File,
-) {
-  const objectUrl = URL.createObjectURL(file);
-
-  try {
-    const image = new Image();
-
-    await new Promise<void>((resolve, reject) => {
-      image.onload = () => resolve();
-      image.onerror = () =>
-        reject(
-          new Error(
-            `Could not prepare editor thumbnail for ${file.name}.`,
-          ),
-        );
-      image.src = objectUrl;
-    });
-
-    const scale = Math.min(
-      1,
-      CURATED_EDITOR_THUMBNAIL_SIZE /
-        Math.max(
-          image.naturalWidth,
-          image.naturalHeight,
-        ),
-    );
-
-    const width = Math.max(
-      1,
-      Math.round(
-        image.naturalWidth * scale,
-      ),
-    );
-    const height = Math.max(
-      1,
-      Math.round(
-        image.naturalHeight * scale,
-      ),
-    );
-
-    const canvas =
-      document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
-
-    const context =
-      canvas.getContext("2d");
-
-    if (!context) {
-      throw new Error(
-        `Could not prepare editor thumbnail for ${file.name}.`,
-      );
-    }
-
-    context.drawImage(
-      image,
-      0,
-      0,
-      width,
-      height,
-    );
-
-    return new Promise<Blob>(
-      (resolve, reject) => {
-        canvas.toBlob(
-          (blob) => {
-            if (blob) {
-              resolve(blob);
-            } else {
-              reject(
-                new Error(
-                  `Could not prepare editor thumbnail for ${file.name}.`,
-                ),
-              );
-            }
-          },
-          "image/webp",
-          0.78,
-        );
-      },
-    );
-  } finally {
-    URL.revokeObjectURL(objectUrl);
-  }
-}
-
-function curatedEditorThumbnailPath(
-  relativePath: string,
-) {
-  const marker =
-    "/selected-web-staging/";
-  const markerIndex =
-    relativePath.indexOf(marker);
-
-  if (markerIndex === -1) {
-    return null;
-  }
-
-  const folderPath =
-    relativePath.slice(0, markerIndex);
-  const filename =
-    relativePath.slice(
-      markerIndex + marker.length,
-    );
-
-  if (!folderPath || !filename) {
-    return null;
-  }
-
-  return `${folderPath}/.editor-thumbnails/${filename}.webp`;
-}
-
 type CuratedPublishJob = {
   kind: "hero" | "gallery";
   sourceFilepath: string;
@@ -683,20 +568,6 @@ export default function CuratedArchiveImportClient({
             ),
         );
 
-      const editorThumbnailPaths =
-        stagedImages.flatMap(
-          (relativePath) => {
-            const thumbnailPath =
-              curatedEditorThumbnailPath(
-                relativePath,
-              );
-
-            return thumbnailPath
-              ? [thumbnailPath]
-              : [];
-          },
-        );
-
       const metadataFiles =
         packagedPaths.filter(
           (relativePath) =>
@@ -938,25 +809,6 @@ export default function CuratedArchiveImportClient({
                 contentType,
                 file,
               );
-
-              const thumbnailPath =
-                curatedEditorThumbnailPath(
-                  relativePath,
-                );
-
-              if (thumbnailPath) {
-                const thumbnail =
-                  await createCuratedEditorThumbnail(
-                    file,
-                  );
-
-                await uploadDirectToR2(
-                  thumbnailPath,
-                  "image/webp",
-                  thumbnail,
-                  "private, max-age=31536000",
-                );
-              }
             },
           ),
         );
@@ -981,10 +833,7 @@ export default function CuratedArchiveImportClient({
       finalizeForm.set(
         "relativePaths",
         JSON.stringify(
-          [
-            ...packagedPaths,
-            ...editorThumbnailPaths,
-          ],
+          packagedPaths,
         ),
       );
 
