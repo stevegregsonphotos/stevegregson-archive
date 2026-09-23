@@ -12,9 +12,19 @@ export type CuratedArchiveCredit = {
   website?: string;
 };
 
+export type CuratedArchiveImageEditSettings = {
+  aspect: "original" | "3:2" | "4:5" | "1:1" | "16:9";
+  zoom: number;
+  panX: number;
+  panY: number;
+  brightness: number;
+  autoStrength: number;
+};
+
 export type CuratedArchiveImageOverride = {
   heroIndex: number;
   selectedIndexes: number[];
+  edits?: Record<string, CuratedArchiveImageEditSettings>;
 };
 
 export type CuratedArchiveOverride = {

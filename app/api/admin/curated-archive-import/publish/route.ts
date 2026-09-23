@@ -195,6 +195,8 @@ export async function POST(
               payload.hero.filename,
               "hero",
             ),
+          editSettings:
+            heroSource.editSettings,
         },
         ...payload.images.map(
           (image, index) => {
@@ -225,6 +227,8 @@ export async function POST(
                     "0",
                   ),
                 ),
+              editSettings:
+                source.editSettings,
             };
           },
         ),

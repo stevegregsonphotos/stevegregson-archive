@@ -6,6 +6,12 @@ import {
   useState,
 } from "react";
 
+import {
+  analyseImageAutoCorrection,
+  renderEditedImage,
+  type ImageEditorSettings,
+} from "@/lib/client-image-editor";
+
 type ExistingProduction = {
   slug: string;
   title: string;
@@ -90,6 +96,7 @@ type CuratedPublishJob = {
   sourceFilepath: string;
   sourceRelativePath: string;
   outputFilename: string;
+  editSettings?: ImageEditorSettings;
 };
 
 type CuratedPublishedAsset = {
@@ -102,6 +109,7 @@ async function preparePublishedImage(
   sourceBlob: Blob,
   sourceFilepath: string,
   outputFilename: string,
+  editSettings?: ImageEditorSettings,
 ): Promise<{
   blob: Blob;
   asset: CuratedPublishedAsset;
@@ -125,70 +133,137 @@ async function preparePublishedImage(
       },
     );
 
-    const scale = Math.min(
-      1,
-      2560 /
-        Math.max(
-          image.naturalWidth,
-          image.naturalHeight,
-        ),
-    );
+    let canvas: HTMLCanvasElement;
+    let blob: Blob;
 
-    const width = Math.max(
-      1,
-      Math.round(
-        image.naturalWidth * scale,
-      ),
-    );
-    const height = Math.max(
-      1,
-      Math.round(
-        image.naturalHeight * scale,
-      ),
-    );
+    if (editSettings) {
+      const edited =
+        await renderEditedImage(
+          image,
+          editSettings,
+          {
+            maxDimension: 2560,
+            quality: 0.82,
+          },
+          analyseImageAutoCorrection(
+            image,
+          ),
+        );
 
-    const canvas =
-      document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
+      blob = edited.blob;
+      canvas =
+        document.createElement("canvas");
+      canvas.width = edited.width;
+      canvas.height = edited.height;
 
-    const context =
-      canvas.getContext("2d");
+      const editedImage = new Image();
+      const editedUrl =
+        URL.createObjectURL(blob);
 
-    if (!context) {
-      throw new Error(
-        `Could not prepare ${sourceFilepath} for publishing.`,
+      try {
+        await new Promise<void>(
+          (resolve, reject) => {
+            editedImage.onload = () => resolve();
+            editedImage.onerror = () =>
+              reject(
+                new Error(
+                  `Could not prepare edited ${sourceFilepath} for publishing.`,
+                ),
+              );
+            editedImage.src = editedUrl;
+          },
+        );
+
+        const context =
+          canvas.getContext("2d");
+
+        if (!context) {
+          throw new Error(
+            `Could not prepare ${sourceFilepath} for publishing.`,
+          );
+        }
+
+        context.drawImage(
+          editedImage,
+          0,
+          0,
+          canvas.width,
+          canvas.height,
+        );
+      } finally {
+        URL.revokeObjectURL(
+          editedUrl,
+        );
+      }
+    } else {
+      const scale = Math.min(
+        1,
+        2560 /
+          Math.max(
+            image.naturalWidth,
+            image.naturalHeight,
+          ),
       );
+
+      const width = Math.max(
+        1,
+        Math.round(
+          image.naturalWidth * scale,
+        ),
+      );
+      const height = Math.max(
+        1,
+        Math.round(
+          image.naturalHeight * scale,
+        ),
+      );
+
+      canvas =
+        document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+
+      const context =
+        canvas.getContext("2d");
+
+      if (!context) {
+        throw new Error(
+          `Could not prepare ${sourceFilepath} for publishing.`,
+        );
+      }
+
+      context.drawImage(
+        image,
+        0,
+        0,
+        width,
+        height,
+      );
+
+      blob =
+        await new Promise<Blob>(
+          (resolve, reject) => {
+            canvas.toBlob(
+              (result) => {
+                if (result) {
+                  resolve(result);
+                } else {
+                  reject(
+                    new Error(
+                      `Could not create ${outputFilename}.`,
+                    ),
+                  );
+                }
+              },
+              "image/webp",
+              0.82,
+            );
+          },
+        );
     }
 
-    context.drawImage(
-      image,
-      0,
-      0,
-      width,
-      height,
-    );
-
-    const blob =
-      await new Promise<Blob>(
-        (resolve, reject) => {
-          canvas.toBlob(
-            (result) => {
-              if (result) {
-                resolve(result);
-              } else {
-                reject(
-                  new Error(
-                    `Could not create ${outputFilename}.`,
-                  ),
-                );
-              }
-            },
-            "image/webp",
-            0.82,
-          );
-        },
-      );
+    const width = canvas.width;
+    const height = canvas.height;
 
     const blurCanvas =
       document.createElement("canvas");
@@ -1147,6 +1222,7 @@ export default function CuratedArchiveImportClient({
                   await sourceResponse.blob(),
                   job.sourceFilepath,
                   job.outputFilename,
+                  job.editSettings,
                 );
 
               const uploadResponse =

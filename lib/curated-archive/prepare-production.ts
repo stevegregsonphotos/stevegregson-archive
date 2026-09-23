@@ -7,6 +7,7 @@ import {
 import {
   getCuratedArchiveAccessOverrides,
   getCuratedArchiveOverrides,
+  type CuratedArchiveImageEditSettings,
   type CuratedArchiveOverride,
 } from "@/lib/curated-archive-overrides-repository";
 import {
@@ -57,6 +58,7 @@ type SourceImage = {
   absolutePath: string;
   stagedRelativePath: string | null;
   alt?: string;
+  editSettings?: CuratedArchiveImageEditSettings;
 };
 
 export type PreparedCuratedProduction = {
@@ -873,6 +875,8 @@ export async function prepareCuratedProduction(
                     )
                   : null,
               alt: source.alt,
+              editSettings:
+                imageOverride?.edits?.[String(index)],
             },
           ];
         },

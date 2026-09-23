@@ -10,6 +10,8 @@ import {
 } from "next/navigation";
 
 import CreditsEditor from "../../../../../components/admin/editor/CreditsEditor";
+import ImageEditor from "../../../../../components/admin/image-editor/ImageEditor";
+import type { ImageEditorSettings } from "@/lib/client-image-editor";
 
 type Credit = {
   role: string;
@@ -23,6 +25,7 @@ type CuratedImage = {
   hero: boolean;
   stagedFile: string;
   sourceName: string;
+  editSettings?: ImageEditorSettings;
 };
 
 type CuratedProduction = {
@@ -104,6 +107,9 @@ export default function CuratedProductionEditPage() {
 
   const [heroIndex, setHeroIndex] =
     useState<number | null>(null);
+
+  const [editingImage, setEditingImage] =
+    useState<CuratedImage | null>(null);
 
   const [loading, setLoading] =
     useState(true);
@@ -255,14 +261,18 @@ export default function CuratedProductionEditPage() {
             original.heroIndex ||
           JSON.stringify(
             images.map(
-              (image) =>
-                image.index,
+              (image) => ({
+                index: image.index,
+                editSettings: image.editSettings,
+              }),
             ),
           ) !==
             JSON.stringify(
               original.images.map(
-                (image) =>
-                  image.index,
+                (image) => ({
+                  index: image.index,
+                  editSettings: image.editSettings,
+                }),
               ),
             )
         ),
@@ -525,6 +535,15 @@ export default function CuratedProductionEditPage() {
                 images.map(
                   (image) =>
                     image.index,
+                ),
+              imageEdits:
+                Object.fromEntries(
+                  images.flatMap(
+                    (image) =>
+                      image.editSettings
+                        ? [[String(image.index), image.editSettings]]
+                        : [],
+                  ),
                 ),
             }),
           },
@@ -1330,6 +1349,21 @@ export default function CuratedProductionEditPage() {
                     {image.sourceName}
                   </p>
 
+                  {image.editSettings ? (
+                    <p
+                      style={{
+                        margin: "0.45rem 0 0",
+                        color: "#c7a369",
+                        fontSize: "0.5rem",
+                        fontWeight: 700,
+                        letterSpacing: "0.1em",
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      Image edit applied
+                    </p>
+                  ) : null}
+
                   <div
                     style={{
                       display: "flex",
@@ -1338,6 +1372,22 @@ export default function CuratedProductionEditPage() {
                       marginTop: "0.9rem",
                     }}
                   >
+                    <button
+                      type="button"
+                      className="backstage-button"
+                      onClick={() => {
+                        setEditingImage(image);
+                        clearMessage();
+                      }}
+                      style={{
+                        fontSize: "0.5rem",
+                      }}
+                    >
+                      {image.editSettings
+                        ? "Edit crop"
+                        : "Edit image"}
+                    </button>
+
                     <button
                       type="button"
                       className="backstage-button"
@@ -1434,6 +1484,40 @@ export default function CuratedProductionEditPage() {
           )}
         </div>
       </section>
+
+      {editingImage && original ? (
+        <ImageEditor
+          source={`/api/admin/curated-archive-import/image?folder=${encodeURIComponent(
+            original.folder,
+          )}&file=${encodeURIComponent(
+            editingImage.stagedFile,
+          )}&editor=1`}
+          filename={editingImage.sourceName}
+          initialSettings={
+            editingImage.editSettings
+          }
+          onCancel={() =>
+            setEditingImage(null)
+          }
+          onApply={(result) => {
+            setImages((current) =>
+              current.map((image) =>
+                image.index === editingImage.index
+                  ? {
+                      ...image,
+                      editSettings: result.settings,
+                    }
+                  : image,
+              ),
+            );
+            setEditingImage(null);
+            setMessage(
+              "Image edit applied. Save image changes to keep it for import.",
+            );
+            setMessageType("success");
+          }}
+        />
+      ) : null}
 
       <CreditsEditor
         credits={credits}

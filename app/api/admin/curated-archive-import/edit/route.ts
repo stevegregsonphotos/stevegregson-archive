@@ -16,6 +16,7 @@ import path from "node:path";
 import {
   getCuratedArchiveOverrides,
   setCuratedArchiveOverride,
+  type CuratedArchiveImageEditSettings,
   type CuratedArchiveOverride,
 } from "@/lib/curated-archive-overrides-repository";
 
@@ -28,11 +29,6 @@ type CuratedCredit = {
   role: string;
   name: string;
   website?: string;
-};
-
-type CuratedImageOverride = {
-  heroIndex: number;
-  selectedIndexes: number[];
 };
 
 type CuratedOverride =
@@ -416,6 +412,8 @@ async function loadCuratedProduction(
                 hero:
                   image.index ===
                   heroIndex,
+                editSettings:
+                  imageOverride?.edits?.[String(image.index)],
               },
             ];
           },
@@ -1089,6 +1087,7 @@ export async function PUT(
     production?: unknown;
     heroIndex?: unknown;
     selectedIndexes?: unknown;
+    imageEdits?: unknown;
   };
 
   try {
@@ -1124,6 +1123,66 @@ export async function PUT(
             Number(value),
         )
       : [];
+
+  const rawImageEdits =
+    body.imageEdits &&
+    typeof body.imageEdits === "object" &&
+    !Array.isArray(body.imageEdits)
+      ? body.imageEdits as Record<string, unknown>
+      : {};
+
+  const validAspects =
+    new Set([
+      "original",
+      "3:2",
+      "4:5",
+      "1:1",
+      "16:9",
+    ]);
+
+  const imageEdits:
+    Record<string, CuratedArchiveImageEditSettings> = {};
+
+  for (const [key, value] of Object.entries(rawImageEdits)) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      return NextResponse.json(
+        { ok: false, message: "Image edit settings are invalid." },
+        { status: 400 },
+      );
+    }
+
+    const candidate = value as Record<string, unknown>;
+    const aspect = candidate.aspect;
+    const zoom = Number(candidate.zoom);
+    const panX = Number(candidate.panX);
+    const panY = Number(candidate.panY);
+    const brightness = Number(candidate.brightness);
+    const autoStrength = Number(candidate.autoStrength);
+
+    if (
+      typeof aspect !== "string" ||
+      !validAspects.has(aspect) ||
+      !Number.isFinite(zoom) || zoom < 1 || zoom > 4 ||
+      !Number.isFinite(panX) || panX < -1 || panX > 1 ||
+      !Number.isFinite(panY) || panY < -1 || panY > 1 ||
+      !Number.isFinite(brightness) || brightness < 50 || brightness > 150 ||
+      !Number.isFinite(autoStrength) || autoStrength < 0 || autoStrength > 100
+    ) {
+      return NextResponse.json(
+        { ok: false, message: "Image edit settings are invalid." },
+        { status: 400 },
+      );
+    }
+
+    imageEdits[key] = {
+      aspect: aspect as CuratedArchiveImageEditSettings["aspect"],
+      zoom,
+      panX,
+      panY,
+      brightness,
+      autoStrength,
+    };
+  }
 
   if (!production) {
     return NextResponse.json(
@@ -1277,6 +1336,11 @@ export async function PUT(
     );
   }
 
+  const editedIndexes =
+    Object.keys(imageEdits).map(
+      (value) => Number(value),
+    );
+
   if (
     selectedIndexes.some(
       (index) =>
@@ -1286,6 +1350,12 @@ export async function PUT(
     ) ||
     !allowedIndexes.has(
       heroIndex,
+    ) ||
+    editedIndexes.some(
+      (index) =>
+        !Number.isInteger(index) ||
+        !selectedIndexes.includes(index) ||
+        !allowedIndexes?.has(index),
     )
   ) {
     return NextResponse.json(
@@ -1311,6 +1381,9 @@ export async function PUT(
     images: {
       heroIndex,
       selectedIndexes,
+      ...(Object.keys(imageEdits).length > 0
+        ? { edits: imageEdits }
+        : {}),
     },
   };
 
