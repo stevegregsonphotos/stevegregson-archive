@@ -90,6 +90,16 @@ async function getPrepared(
     prepared.status !== "ready" ||
     !prepared.payload
   ) {
+    if (
+      prepared?.status === "existing"
+    ) {
+      throw new ProductionConflictError(
+        prepared.existingSlug
+          ? `Already published as "${prepared.existingSlug}".`
+          : "Already published.",
+      );
+    }
+
     throw new Error(
       prepared?.issues.length
         ? prepared.issues.join(" ")
