@@ -6,6 +6,10 @@ import {
 import {
   getProductionIndex,
 } from "@/lib/productions-repository";
+
+import {
+  createProductionSlug,
+} from "@/lib/publishing/production-slug";
 import {
   getCuratedArchiveAccessOverrides,
   getCuratedArchiveOverrides,
@@ -332,35 +336,24 @@ export async function GET(
 
   function findExistingSlug(
     title: string,
-    month: number | null,
-    year: number | null,
   ) {
-    if (
-      !title.trim() ||
-      year === null
-    ) {
+    const cleanTitle =
+      title.trim();
+
+    if (!cleanTitle) {
       return null;
     }
 
-    const normalisedTitle =
-      normaliseProductionName(
-        title,
+    const expectedSlug =
+      createProductionSlug(
+        cleanTitle,
       );
 
     const existing =
       productions.find(
         (production) =>
-          normaliseProductionName(
-            production.title,
-          ) === normalisedTitle &&
-          production.year === year &&
-          (
-            production.month ===
-              undefined ||
-            production.month ===
-              null ||
-            production.month === month
-          ),
+          production.slug ===
+          expectedSlug,
       );
 
     return existing?.slug ?? null;
@@ -807,10 +800,6 @@ export async function GET(
     const existingSlug =
       findExistingSlug(
         title,
-        month,
-        Number.isInteger(year)
-          ? year
-          : null,
       );
 
     const status =
@@ -855,15 +844,76 @@ export async function GET(
     });
   }
 
-  results.sort(
+  /*
+   * A website production is identified by its researched publication
+   * identity, not by the curator's physical output folder.  Older archive
+   * discovery produced more than one folder for the same show (for example
+   * export/dress/legacy folder variants).  Collapse only exact researched
+   * matches so one real production is shown once and all of its curated
+   * folders can be published together.
+   */
+  const groupedResults = Array.from(
+    results.reduce((groups, result) => {
+      const identity =
+        result.title
+          ? `slug:${createProductionSlug(
+              result.title,
+            )}`
+          : `folder:${result.folder}`;
+
+      const existing = groups.get(identity);
+
+      if (!existing) {
+        groups.set(identity, {
+          ...result,
+          folders: [result.folder],
+          sourceProductions: [result.production],
+        });
+        return groups;
+      }
+
+      existing.folders.push(result.folder);
+      existing.sourceProductions.push(result.production);
+      existing.edited ||= result.edited;
+      existing.excluded ||= result.excluded;
+      existing.locked ||= result.locked;
+      existing.automaticLocked ||= result.automaticLocked;
+      existing.existingSlug ||= result.existingSlug;
+      existing.issues = Array.from(
+        new Set([...existing.issues, ...result.issues]),
+      );
+
+      if (existing.accessOverride !== result.accessOverride) {
+        existing.issues.push(
+          "Duplicate source folders have different access settings.",
+        );
+      }
+
+      existing.status =
+        existing.excluded
+          ? "excluded"
+          : existing.existingSlug
+            ? "existing"
+            : existing.issues.length > 0
+              ? "attention"
+              : "ready";
+
+      return groups;
+    }, new Map<string, (typeof results)[number] & {
+      folders: string[];
+      sourceProductions: string[];
+    }>()).values(),
+  );
+
+  groupedResults.sort(
     (first, second) =>
-      first.production.localeCompare(
-        second.production,
+      (first.title || first.production).localeCompare(
+        second.title || second.production,
       ),
   );
 
   const summary =
-    results.reduce(
+    groupedResults.reduce(
       (current, result) => {
         current.total += 1;
 
@@ -905,6 +955,6 @@ export async function GET(
   return Response.json({
     ok: true,
     summary,
-    productions: results,
+    productions: groupedResults,
   });
 }
