@@ -619,12 +619,59 @@ export default function CuratedArchiveImportClient({
         `Preparing ${packageFiles.length.toLocaleString()} authoritative files from ${selectedFiles.length.toLocaleString()} selected files…`,
       );
 
-      const packagedPaths =
+      const rawPackagedPaths =
         packageFiles.map((file) =>
           (
             file.webkitRelativePath ||
             `${folderName}/${file.name}`
           ).replace(/\\/g, "/"),
+        );
+
+      /*
+       * Directory selection always includes the chosen root
+       * directory in webkitRelativePath.
+       *
+       * For a collection:
+       *   Collection/Production/final-selection.json
+       *
+       * For one production:
+       *   Production/final-selection.json
+       *
+       * R2 staging must always have Production as its top-level
+       * directory, regardless of which of those two workflows
+       * was used.
+       */
+      const isCollectionUpload =
+        rawPackagedPaths.some(
+          (relativePath) =>
+            relativePath.endsWith(
+              "/final-selection.json",
+            ) &&
+            relativePath
+              .split("/")
+              .filter(Boolean)
+              .length >= 3,
+        );
+
+      function stagingRelativePath(
+        relativePath: string,
+      ) {
+        const parts =
+          relativePath
+            .replace(/\\/g, "/")
+            .split("/")
+            .filter(Boolean);
+
+        return (
+          isCollectionUpload
+            ? parts.slice(1)
+            : parts
+        ).join("/");
+      }
+
+      const packagedPaths =
+        rawPackagedPaths.map(
+          stagingRelativePath,
         );
 
       const finalSelections =
@@ -870,10 +917,12 @@ export default function CuratedArchiveImportClient({
           batch.map(
             async (file) => {
               const relativePath =
-                (
-                  file.webkitRelativePath ||
-                  `${folderName}/${file.name}`
-                ).replace(/\\/g, "/");
+                stagingRelativePath(
+                  (
+                    file.webkitRelativePath ||
+                    `${folderName}/${file.name}`
+                  ).replace(/\\/g, "/"),
+                );
 
               const contentType =
                 file.type ||
@@ -910,6 +959,13 @@ export default function CuratedArchiveImportClient({
         JSON.stringify(
           packagedPaths,
         ),
+      );
+
+      finalizeForm.set(
+        "mode",
+        isCollectionUpload
+          ? "replace"
+          : "additive",
       );
 
       const finalizeResponse =

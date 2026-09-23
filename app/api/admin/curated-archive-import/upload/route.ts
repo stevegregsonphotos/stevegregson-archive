@@ -166,9 +166,18 @@ export async function POST(
         relativePaths = [];
       }
 
+      const mode =
+        String(
+          formData.get("mode") ??
+            "additive",
+        ).trim() === "replace"
+          ? "replace"
+          : "additive";
+
       const manifest =
         await finalizeCuratedImportFiles(
           relativePaths,
+          mode,
         );
 
       return Response.json({

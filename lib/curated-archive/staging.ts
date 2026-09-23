@@ -442,6 +442,8 @@ export async function putCuratedImportFile(
 
 export async function finalizeCuratedImportFiles(
   relativePaths: string[],
+  mode: "additive" | "replace" =
+    "additive",
 ) {
   const files = [
     ...new Set(
@@ -607,14 +609,14 @@ export async function finalizeCuratedImportFiles(
   }
 
   /*
-   * Additive staging contract:
+   * Staging contract:
    *
-   * - unrelated production folders already waiting remain untouched;
-   * - every top-level folder included in this upload becomes authoritative;
-   * - stale objects from an older version of one of those exact folders are
-   *   deleted from R2;
-   * - the new manifest replaces those exact folders while preserving all
-   *   other staged productions.
+   * - a single-production upload is additive and replaces only that
+   *   production folder;
+   * - a collection upload is authoritative and replaces the complete
+   *   staged collection;
+   * - stale R2 objects are removed after the new upload has been verified;
+   * - every manifest path begins at the production-folder level.
    */
   const uploadedFolderNames =
     new Set(
@@ -636,12 +638,14 @@ export async function finalizeCuratedImportFiles(
       ) ?? [];
 
   const preservedManifestFiles =
-    existingManifestFiles.filter(
-      (relativePath) =>
-        !uploadedFolderNames.has(
-          relativePath.split("/")[0],
-        ),
-    );
+    mode === "replace"
+      ? []
+      : existingManifestFiles.filter(
+          (relativePath) =>
+            !uploadedFolderNames.has(
+              relativePath.split("/")[0],
+            ),
+        );
 
   const currentUploadSet =
     new Set(manifestFiles);
@@ -666,8 +670,11 @@ export async function finalizeCuratedImportFiles(
           relativePath.split("/")[0];
 
         return (
-          uploadedFolderNames.has(
-            folderName,
+          (
+            mode === "replace" ||
+            uploadedFolderNames.has(
+              folderName,
+            )
           ) &&
           !currentUploadSet.has(
             relativePath,
