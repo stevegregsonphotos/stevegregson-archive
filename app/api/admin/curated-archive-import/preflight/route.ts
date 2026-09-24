@@ -902,18 +902,21 @@ export async function GET(
         result.title &&
         result.venue &&
         result.year
-          ? `production:${createProductionIdentityKey(
-              {
-                title:
-                  result.title,
-                venue:
-                  result.venue,
-                month:
-                  result.month,
-                year:
-                  result.year,
-              },
-            )}`
+          ? [
+              "production",
+              normaliseProductionName(
+                result.title,
+              ),
+              normaliseProductionName(
+                result.venue,
+              ),
+              String(
+                result.month ?? "",
+              ),
+              String(
+                result.year,
+              ),
+            ].join(":")
           : `folder:${result.folder}`;
 
       const existing = groups.get(identity);
