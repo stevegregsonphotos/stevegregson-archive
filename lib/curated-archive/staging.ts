@@ -1006,13 +1006,17 @@ export async function readCuratedImportDirectFile(
     );
 
   const response =
-    await getClient().send(
-      new GetObjectCommand({
-        Bucket:
-          getBucket(),
-        Key:
-          `${DIRECT_STAGING_PREFIX}${safePath}`,
-      }),
+    await withR2Retry(
+      () =>
+        getClient().send(
+          new GetObjectCommand({
+            Bucket:
+              getBucket(),
+            Key:
+              `${DIRECT_STAGING_PREFIX}${safePath}`,
+          }),
+        ),
+      `Reading curated staged file "${safePath}"`,
     );
 
   if (!response.Body) {
