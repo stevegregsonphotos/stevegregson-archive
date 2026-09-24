@@ -44,6 +44,15 @@ const DETAIL_LABELS: Record<
   | "venue"
   | "year"
   | "director"
+  | "associateDirector"
+  | "musicalDirector"
+  | "choreographer"
+  | "movementDirector"
+  | "lightingDesign"
+  | "setDesign"
+  | "costumeDesign"
+  | "setCostumeDesign"
+  | "soundDesign"
   | "commissionedBy"
   | "description"
 > = {
@@ -53,6 +62,38 @@ const DETAIL_LABELS: Record<
   theatre: "venue",
   year: "year",
   director: "director",
+  "associate director":
+    "associateDirector",
+  "musical director":
+    "musicalDirector",
+  choreographer:
+    "choreographer",
+  "movement director":
+    "movementDirector",
+  "lighting design":
+    "lightingDesign",
+  "lighting designer":
+    "lightingDesign",
+  "set design":
+    "setDesign",
+  "set designer":
+    "setDesign",
+  "costume design":
+    "costumeDesign",
+  "costume designer":
+    "costumeDesign",
+  "set & costume design":
+    "setCostumeDesign",
+  "set and costume design":
+    "setCostumeDesign",
+  "set & costume designer":
+    "setCostumeDesign",
+  "set and costume designer":
+    "setCostumeDesign",
+  "sound design":
+    "soundDesign",
+  "sound designer":
+    "soundDesign",
   "commissioned by":
     "commissionedBy",
   description:
@@ -237,6 +278,15 @@ function parseDetails(
     venue: "",
     year: "",
     director: "",
+    associateDirector: "",
+    musicalDirector: "",
+    choreographer: "",
+    movementDirector: "",
+    lightingDesign: "",
+    setDesign: "",
+    costumeDesign: "",
+    setCostumeDesign: "",
+    soundDesign: "",
     commissionedBy: "",
     description: "",
   };
@@ -640,6 +690,60 @@ export default function ProductionUpload() {
     useState("");
 
   const [
+    associateDirector,
+    setAssociateDirector,
+  ] =
+    useState("");
+
+  const [
+    musicalDirector,
+    setMusicalDirector,
+  ] =
+    useState("");
+
+  const [
+    choreographer,
+    setChoreographer,
+  ] =
+    useState("");
+
+  const [
+    movementDirector,
+    setMovementDirector,
+  ] =
+    useState("");
+
+  const [
+    lightingDesign,
+    setLightingDesign,
+  ] =
+    useState("");
+
+  const [
+    setDesign,
+    setSetDesign,
+  ] =
+    useState("");
+
+  const [
+    costumeDesign,
+    setCostumeDesign,
+  ] =
+    useState("");
+
+  const [
+    setAndCostumeDesign,
+    setSetAndCostumeDesign,
+  ] =
+    useState("");
+
+  const [
+    soundDesign,
+    setSoundDesign,
+  ] =
+    useState("");
+
+  const [
     progress,
     setProgress,
   ] =
@@ -821,6 +925,33 @@ export default function ProductionUpload() {
         );
         setDirector(
           fields.director,
+        );
+        setAssociateDirector(
+          fields.associateDirector,
+        );
+        setMusicalDirector(
+          fields.musicalDirector,
+        );
+        setChoreographer(
+          fields.choreographer,
+        );
+        setMovementDirector(
+          fields.movementDirector,
+        );
+        setLightingDesign(
+          fields.lightingDesign,
+        );
+        setSetDesign(
+          fields.setDesign,
+        );
+        setCostumeDesign(
+          fields.costumeDesign,
+        );
+        setSetAndCostumeDesign(
+          fields.setCostumeDesign,
+        );
+        setSoundDesign(
+          fields.soundDesign,
         );
         setCommissionedBy(
           fields.commissionedBy,
@@ -1139,27 +1270,28 @@ export default function ProductionUpload() {
         `${title.trim()} at ${venue.trim()} — production photograph`;
 
       const credits = [
-        ...(director.trim()
-          ? [
-              {
-                role:
-                  "Director",
-                name:
-                  director.trim(),
-              },
-            ]
-          : []),
-        ...(commissionedBy.trim()
-          ? [
-              {
-                role:
-                  "Commissioned by",
-                name:
-                  commissionedBy.trim(),
-              },
-            ]
-          : []),
-      ];
+        ["Director", director],
+        ["Associate Director", associateDirector],
+        ["Musical Director", musicalDirector],
+        ["Choreographer", choreographer],
+        ["Movement Director", movementDirector],
+        ["Lighting Design", lightingDesign],
+        ["Set Design", setDesign],
+        ["Costume Design", costumeDesign],
+        ["Set & Costume Design", setAndCostumeDesign],
+        ["Sound Design", soundDesign],
+        ["Commissioned by", commissionedBy],
+      ].flatMap(
+        ([role, name]) =>
+          name.trim()
+            ? [
+                {
+                  role,
+                  name: name.trim(),
+                },
+              ]
+            : [],
+      );
 
       const payload = {
         slug,
@@ -1493,6 +1625,96 @@ export default function ProductionUpload() {
                         .target
                         .value,
                     )
+                  }
+                />
+              </label>
+
+              <label>
+                Associate Director
+                <input
+                  value={associateDirector}
+                  onChange={(event) =>
+                    setAssociateDirector(event.target.value)
+                  }
+                />
+              </label>
+
+              <label>
+                Musical Director
+                <input
+                  value={musicalDirector}
+                  onChange={(event) =>
+                    setMusicalDirector(event.target.value)
+                  }
+                />
+              </label>
+
+              <label>
+                Choreographer
+                <input
+                  value={choreographer}
+                  onChange={(event) =>
+                    setChoreographer(event.target.value)
+                  }
+                />
+              </label>
+
+              <label>
+                Movement Director
+                <input
+                  value={movementDirector}
+                  onChange={(event) =>
+                    setMovementDirector(event.target.value)
+                  }
+                />
+              </label>
+
+              <label>
+                Lighting Design
+                <input
+                  value={lightingDesign}
+                  onChange={(event) =>
+                    setLightingDesign(event.target.value)
+                  }
+                />
+              </label>
+
+              <label>
+                Set Design
+                <input
+                  value={setDesign}
+                  onChange={(event) =>
+                    setSetDesign(event.target.value)
+                  }
+                />
+              </label>
+
+              <label>
+                Costume Design
+                <input
+                  value={costumeDesign}
+                  onChange={(event) =>
+                    setCostumeDesign(event.target.value)
+                  }
+                />
+              </label>
+
+              <label>
+                Set &amp; Costume Design
+                <input
+                  value={setAndCostumeDesign}
+                  onChange={(event) =>
+                    setSetAndCostumeDesign(event.target.value)
+                  }
+                />
+              </label>
+
+              <label>
+                Sound Design
+                <input
+                  value={soundDesign}
+                  onChange={(event) =>
+                    setSoundDesign(event.target.value)
                   }
                 />
               </label>
