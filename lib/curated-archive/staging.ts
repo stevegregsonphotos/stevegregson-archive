@@ -1041,78 +1041,99 @@ async function materializeDirectFiles(
   const files =
     await readDirectManifest();
 
-  for (const relativePath of files) {
-    /*
-     * Production photographs remain in R2.
-     * Only the small metadata/control files are
-     * materialised onto the temporary filesystem.
-     */
-    if (
-      /(^|\/)selected-web-staging\/[^/]+$/i.test(
-        relativePath,
-      ) ||
-      /(^|\/)\.editor-thumbnails\/[^/]+\.webp$/i.test(
-        relativePath,
-      )
-    ) {
-      continue;
-    }
-
-    const parts =
-      safeZipPath(
-        relativePath,
-      );
-
-    const destination =
-      path.resolve(
-        LOCAL_ROOT,
-        ...parts,
-      );
-
-    if (
-      destination !== LOCAL_ROOT &&
-      !destination.startsWith(
-        `${LOCAL_ROOT}${path.sep}`,
-      )
-    ) {
-      throw new Error(
-        "Curated staged file resolves outside its local staging root.",
-      );
-    }
-
-    const response =
-      await withR2Retry(
-        () =>
-          getClient().send(
-            new GetObjectCommand({
-              Bucket:
-                getBucket(),
-              Key:
-                `${DIRECT_STAGING_PREFIX}${relativePath}`,
-            }),
-          ),
-        `Reading curated staged file "${relativePath}"`,
-      );
-
-    if (!response.Body) {
-      throw new Error(
-        `Curated staged file "${relativePath}" has no body.`,
-      );
-    }
-
-    await fs.mkdir(
-      path.dirname(
-        destination,
-      ),
-      {
-        recursive: true,
-      },
+  /*
+   * Only small metadata/control files are materialised locally.
+   * Production photographs remain in R2.
+   *
+   * Fetch metadata in bounded parallel batches rather than one
+   * object at a time. Large curated collections otherwise spend
+   * minutes performing serial R2 reads before preflight can start.
+   */
+  const filesToMaterialize =
+    files.filter(
+      (relativePath) =>
+        !/(^|\/)selected-web-staging\/[^/]+$/i.test(
+          relativePath,
+        ) &&
+        !/(^|\/)\.editor-thumbnails\/[^/]+\.webp$/i.test(
+          relativePath,
+        ),
     );
 
-    await fs.writeFile(
-      destination,
-      Buffer.from(
-        await response.Body.transformToByteArray(),
+  const MATERIALIZE_CONCURRENCY = 12;
+
+  for (
+    let index = 0;
+    index < filesToMaterialize.length;
+    index += MATERIALIZE_CONCURRENCY
+  ) {
+    const batch =
+      filesToMaterialize.slice(
+        index,
+        index + MATERIALIZE_CONCURRENCY,
+      );
+
+    await Promise.all(
+      batch.map(
+        async (relativePath) => {
+          const parts =
+            safeZipPath(
+              relativePath,
+            );
+
+          const destination =
+            path.resolve(
+              LOCAL_ROOT,
+              ...parts,
+            );
+
+          if (
+            destination !== LOCAL_ROOT &&
+            !destination.startsWith(
+              `${LOCAL_ROOT}${path.sep}`,
+            )
+          ) {
+            throw new Error(
+              "Curated staged file resolves outside its local staging root.",
+            );
+          }
+
+          const response =
+            await withR2Retry(
+              () =>
+                getClient().send(
+                  new GetObjectCommand({
+                    Bucket:
+                      getBucket(),
+                    Key:
+                      `${DIRECT_STAGING_PREFIX}${relativePath}`,
+                  }),
+                ),
+              `Reading curated staged file "${relativePath}"`,
+            );
+
+          if (!response.Body) {
+            throw new Error(
+              `Curated staged file "${relativePath}" has no body.`,
+            );
+          }
+
+          await fs.mkdir(
+            path.dirname(
+              destination,
+            ),
+            {
+              recursive: true,
+            },
+          );
+
+          await fs.writeFile(
+            destination,
+            Buffer.from(
+              await response.Body.transformToByteArray(),
+            ),
+          );
+        },
       ),
     );
   }
