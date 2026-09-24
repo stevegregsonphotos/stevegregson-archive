@@ -247,11 +247,11 @@ export default function ArchiveExplorer({
 
           @media (max-width: 900px) {
             .archive-search-compact {
-              width: min(18rem, 72vw);
+              width: clamp(12rem, 56vw, 14rem);
             }
 
             input {
-              font-size: 0.85rem;
+              font-size: 0.78rem;
             }
           }
         `}</style>
