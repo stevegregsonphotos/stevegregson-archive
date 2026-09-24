@@ -1742,6 +1742,17 @@ a {
   color: #c7a369;
 }
 
+/*
+ * The production service link is useful on desktop,
+ * but competes with the primary navigation on phones.
+ */
+@media (max-width: 720px),
+       (max-width: 1000px) and (max-height: 600px) and (orientation: landscape) {
+  .production-service-link {
+    display: none;
+  }
+}
+
 
 /* Site-wide back to top */
 
