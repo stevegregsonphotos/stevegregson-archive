@@ -7,7 +7,7 @@ import {
 } from "@/lib/curated-archive/prepare-production";
 import {
   createCuratedImportDownloadUrl,
-  materializeCuratedImport,
+  materializeCuratedImportFolder,
 } from "@/lib/curated-archive/staging";
 import {
   createProductionImageUploadUrl,
@@ -71,7 +71,9 @@ async function getPrepared(
   folder: string,
 ) {
   const curationRoot =
-    await materializeCuratedImport();
+    await materializeCuratedImportFolder(
+      folder,
+    );
 
   if (!curationRoot) {
     throw new Error(

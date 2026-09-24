@@ -6,7 +6,7 @@ import {
   prepareCuratedProduction,
 } from "@/lib/curated-archive/prepare-production";
 import {
-  materializeCuratedImport,
+  materializeCuratedImportFolder,
 } from "@/lib/curated-archive/staging";
 
 import { NextResponse } from "next/server";
@@ -43,7 +43,9 @@ export async function GET(
   }
 
   const curationRoot =
-    await materializeCuratedImport();
+    await materializeCuratedImportFolder(
+      folder,
+    );
 
   if (!curationRoot) {
     return NextResponse.json(

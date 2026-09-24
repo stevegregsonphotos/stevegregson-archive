@@ -1060,7 +1060,7 @@ async function materializeDirectFiles(
         ),
     );
 
-  const MATERIALIZE_CONCURRENCY = 12;
+  const MATERIALIZE_CONCURRENCY = 4;
 
   for (
     let index = 0;
@@ -1245,6 +1245,164 @@ async function resolveCuratedImportRoot() {
   }
 
   return LOCAL_ROOT;
+}
+
+
+export async function materializeCuratedImportFolder(
+  folder: string,
+) {
+  const safeFolder =
+    safeCuratedRelativePath(
+      folder.trim(),
+    );
+
+  if (!safeFolder) {
+    return null;
+  }
+
+  const directFiles =
+    await getCuratedImportDirectFiles();
+
+  if (!directFiles) {
+    return null;
+  }
+
+  const folderPrefix =
+    `${safeFolder}/`;
+
+  const controlFiles =
+    directFiles.filter(
+      (relativePath) =>
+        relativePath.startsWith(
+          folderPrefix,
+        ) &&
+        !/(^|\/)selected-web-staging\/[^/]+$/i.test(
+          relativePath,
+        ) &&
+        !/(^|\/)\.editor-thumbnails\/[^/]+\.webp$/i.test(
+          relativePath,
+        ),
+    );
+
+  const hasFinalSelection =
+    controlFiles.some(
+      (relativePath) =>
+        relativePath ===
+        `${safeFolder}/final-selection.json`,
+    );
+
+  if (!hasFinalSelection) {
+    return null;
+  }
+
+  /*
+   * Publishing one production must never rebuild the complete
+   * staged collection. Give this production its own temporary
+   * root and materialise only its small control/metadata files.
+   */
+  const singleRoot =
+    path.join(
+      os.tmpdir(),
+      "stevegregson-curated-import-single",
+    );
+
+  await fs.rm(
+    singleRoot,
+    {
+      recursive: true,
+      force: true,
+    },
+  );
+
+  await fs.mkdir(
+    singleRoot,
+    {
+      recursive: true,
+    },
+  );
+
+  const concurrency = 3;
+
+  for (
+    let index = 0;
+    index < controlFiles.length;
+    index += concurrency
+  ) {
+    const batch =
+      controlFiles.slice(
+        index,
+        index + concurrency,
+      );
+
+    await Promise.all(
+      batch.map(
+        async (relativePath) => {
+          const parts =
+            safeZipPath(
+              relativePath,
+            );
+
+          const destination =
+            path.resolve(
+              singleRoot,
+              ...parts,
+            );
+
+          if (
+            destination !== singleRoot &&
+            !destination.startsWith(
+              `${singleRoot}${path.sep}`,
+            )
+          ) {
+            throw new Error(
+              "Curated staged file resolves outside its single-production root.",
+            );
+          }
+
+          const response =
+            await withR2Retry(
+              () =>
+                getClient().send(
+                  new GetObjectCommand({
+                    Bucket:
+                      getBucket(),
+                    Key:
+                      `${DIRECT_STAGING_PREFIX}${relativePath}`,
+                  }),
+                ),
+              `Reading curated staged file "${relativePath}"`,
+            );
+
+          if (!response.Body) {
+            throw new Error(
+              `Curated staged file "${relativePath}" has no body.`,
+            );
+          }
+
+          const body =
+            Buffer.from(
+              await response.Body.transformToByteArray(),
+            );
+
+          await fs.mkdir(
+            path.dirname(
+              destination,
+            ),
+            {
+              recursive: true,
+            },
+          );
+
+          await fs.writeFile(
+            destination,
+            body,
+          );
+        },
+      ),
+    );
+  }
+
+  return singleRoot;
 }
 
 export async function materializeCuratedImport() {
