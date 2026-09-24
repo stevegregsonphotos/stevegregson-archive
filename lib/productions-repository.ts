@@ -186,6 +186,7 @@ export type ArchiveProduction = {
   slug: string;
   title: string;
   venue: string;
+  month: number | null;
   year: number;
   description: string;
   hero: string;
@@ -207,6 +208,7 @@ export async function getArchiveProductions():
           slug,
           title,
           venue,
+          month,
           year,
           description,
           access,
@@ -244,11 +246,13 @@ export async function getArchiveProductions():
     );
   }
 
-  return (productionRows as Array<{
+  const productions =
+    (productionRows as Array<{
     id: string;
     slug: string;
     title: string;
     venue: string;
+    month: number | null;
     year: number;
     description: string;
     access: "public" | "password" | null;
@@ -259,6 +263,7 @@ export async function getArchiveProductions():
     slug: row.slug,
     title: row.title,
     venue: row.venue,
+    month: row.month,
     year: row.year,
     description: row.description,
     hero: row.hero_display_filename,
@@ -274,11 +279,9 @@ export async function getArchiveProductions():
       : {}),
     credits:
       creditsByProduction.get(row.id) ?? [],
-  })).sort(
-    (a, b) =>
-      b.year - a.year ||
-      a.title.localeCompare(b.title),
-  );
+  }));
+
+  return sortProductions(productions);
 }
 
 export type PeopleProduction = {
