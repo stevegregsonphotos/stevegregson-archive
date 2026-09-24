@@ -1,2437 +1,1266 @@
 "use client";
 
 import {
-  FormEvent,
   useMemo,
   useState,
 } from "react";
 
-import JSZip from "jszip";
-
-import ProductionWebsitePreview from "../../../components/admin/ProductionWebsitePreview";
-
-type GalleryLayout =
-  | "wide"
-  | "left"
-  | "right"
-  | "medium"
-  | "full"
-  | "left-small"
-  | "right-small"
-  | "wide-left"
-  | "wide-right";
-
-type ImageMetrics = {
-  resolutionScore: number;
-  sharpness: number;
-  brightness: number;
-  contrast: number;
-  entropy: number;
-  technicalScore: number;
-  duplicateScore: number;
-  galleryScore: number;
-};
-
-type PreviewImage = {
-  filename: string;
+type LocalImage = {
+  id: string;
+  file: File;
   filepath: string;
   previewUrl: string;
-  width: number | null;
-  height: number | null;
-  orientation:
-    | "landscape"
-    | "portrait"
-    | "square"
-    | "unknown";
-  heroScore: number;
-  fingerprint: string;
-  metrics: ImageMetrics;
-      aiAlt?: string;
-    aiFilename?: string;
-    aiLayout?: GalleryLayout;
-  suggestion: {
-    include: boolean;
-    order: number | null;
-    layout: GalleryLayout;
-    duplicateOf: string | null;
-    explanation: string[];
-  };
+  included: boolean;
 };
 
-type ExtractedProductionFields = {
-  title: string;
-  venue: string;
-  month: string;
-  year: string;
-  director: string;
-  associateDirector: string;
-  musicalDirector: string;
-  choreographer: string;
-  lightingDesign: string;
-  setDesign: string;
-  costumeDesign: string;
-  setCostumeDesign: string;
-  soundDesign: string;
-  commissionedBy: string;
-  description: string;
+type PublishedAsset = {
+  sourceFilepath: string;
+  filename: string;
+  blurDataURL: string;
 };
 
-type ExtractedProductionDetails = {
-  sourceFile: string | null;
-  fields: ExtractedProductionFields;
-  plainText: string;
-};
-
-type UploadResult = {
-  ok: boolean;
-  message: string;
-  archive?: {
-    name: string;
-    size: number;
-    type: string;
-    suggestedSlug: string;
-  };
-  contents?: {
-    imageCount: number;
-    previewCount: number;
-    previewLimitReached: boolean;
-    images: PreviewImage[];
-    detailsFiles: string[];
-    otherFiles: string[];
-    suggestedHeroPath: string | null;
-    extractedDetails: ExtractedProductionDetails;
-    curation: {
-      selectedCount: number;
-      excludedCount: number;
-      duplicateCount: number;
-      selectedPaths: string[];
-    };
-  };
-};
-
-type EditableProductionFields = ExtractedProductionFields;
-
-type VisionReview = {
-  hero: string;
-  heroReason: string;
-  keep: string[];
-  remove: string[];
-  sequence: string[];
-  editorialSummary: string;
-};
-
-type PublishResult = {
-  ok: boolean;
-  message: string;
-  production?: {
-    slug: string;
-    title: string;
-    url: string;
-    imageCount: number;
-    hero: string;
-    productionFile: string;
-    imageDirectory: string;
-  };
-};
-
-function formatBytes(bytes: number) {
-  if (bytes < 1024) {
-    return `${bytes} bytes`;
-  }
-
-  if (bytes < 1024 * 1024) {
-    return `${(bytes / 1024).toFixed(1)} KB`;
-  }
-
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function filenameOnly(filepath: string) {
-  return filepath.split("/").at(-1) ?? filepath;
-}
-
-function scoreLabel(score: number) {
-  if (score >= 85) return "Excellent";
-  if (score >= 72) return "Strong";
-  if (score >= 58) return "Good";
-  if (score >= 42) return "Fair";
-  return "Weak";
-}
-
-function starRating(score: number) {
-  if (score >= 88) return "★★★★★";
-  if (score >= 74) return "★★★★☆";
-  if (score >= 58) return "★★★☆☆";
-  if (score >= 42) return "★★☆☆☆";
-  return "★☆☆☆☆";
-}
-
-function imageStatus(image: PreviewImage) {
-  if (image.suggestion.duplicateOf) {
-    return "Near duplicate";
-  }
-
-  if (image.suggestion.include) {
-    return "Gallery selection";
-  }
-
-  return "Alternative";
-}
-
-function editorialAssessment(image: PreviewImage) {
-  const assessment: string[] = [];
-
-  if (image.heroScore >= 85) {
-    assessment.push("Excellent hero candidate");
-  } else if (image.heroScore >= 70) {
-    assessment.push("Strong hero potential");
-  }
-
-  if (image.metrics.sharpness >= 70) {
-    assessment.push("Excellent sharpness");
-  } else if (image.metrics.sharpness >= 55) {
-    assessment.push("Good technical sharpness");
-  }
-
-  if (
-    image.metrics.brightness >= 30 &&
-    image.metrics.brightness <= 70
-  ) {
-    assessment.push("Balanced exposure");
-  }
-
-  if (image.metrics.contrast >= 60) {
-    assessment.push("Strong tonal separation");
-  }
-
-  if (image.orientation === "landscape") {
-    assessment.push("Suitable for wide presentation");
-  }
-
-  if (image.suggestion.include) {
-    assessment.push("Included in the suggested edit");
-  }
-
-  return assessment.slice(0, 5);
-}
-
-const EMPTY_PRODUCTION_FIELDS: EditableProductionFields = {
-  title: "",
-  venue: "",
-  month: "",
-  year: "",
-  director: "",
-  associateDirector: "",
-  musicalDirector: "",
-  choreographer: "",
-  lightingDesign: "",
-  setDesign: "",
-  costumeDesign: "",
-  setCostumeDesign: "",
-  soundDesign: "",
-  commissionedBy: "",
-  description: "",
-};
-
-const MONTH_OPTIONS = [
-  { value: "1", label: "January" },
-  { value: "2", label: "February" },
-  { value: "3", label: "March" },
-  { value: "4", label: "April" },
-  { value: "5", label: "May" },
-  { value: "6", label: "June" },
-  { value: "7", label: "July" },
-  { value: "8", label: "August" },
-  { value: "9", label: "September" },
-  { value: "10", label: "October" },
-  { value: "11", label: "November" },
-  { value: "12", label: "December" },
+const MONTHS = [
+  "",
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
 ];
 
-const currentYear = new Date().getFullYear();
+const IMAGE_EXTENSIONS =
+  /\.(jpe?g|png|webp)$/i;
 
-const YEAR_OPTIONS = Array.from(
-  { length: currentYear + 2 - 1900 },
-  (_, index) => currentYear + 1 - index,
-);
-
-export default function ProductionUpload() {
-  const [isUploading, setIsUploading] =
-    useState(false);
-
-  const [result, setResult] =
-    useState<UploadResult | null>(null);
-
-  const [
-    selectedHeroPath,
-    setSelectedHeroPath,
-  ] = useState<string | null>(null);
-
-  const [showWebsitePreview, setShowWebsitePreview] =
-    useState(false);
-
-  const [isReviewing, setIsReviewing] =
-    useState(false);
-
-  const [visionReview, setVisionReview] =
-    useState<VisionReview | null>(null);
-  const [isGeneratingMetadata, setIsGeneratingMetadata] =
-    useState(false);
-
-  const [metadataProgress, setMetadataProgress] =
-    useState({
-      current: 0,
-      total: 0,
-    });
-    const [metadataComplete, setMetadataComplete] =
-  useState(false);
-  const [productionArchive, setProductionArchive] =
-    useState<File | null>(null);
-
-  const [isPublishing, setIsPublishing] =
-    useState(false);
-
-  const [publishResult, setPublishResult] =
-    useState<PublishResult | null>(null);
-
-  const [productionFields, setProductionFields] =
-    useState<EditableProductionFields>({
-      ...EMPTY_PRODUCTION_FIELDS,
-    });
-
-  const selectedHero = useMemo(() => {
-    return (
-      result?.contents?.images.find(
-        (image) =>
-          image.filepath === selectedHeroPath,
-      ) ?? null
+function slugify(
+  value: string,
+) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/[’']/g, "")
+    .replace(
+      /[^a-z0-9]+/g,
+      "-",
+    )
+    .replace(
+      /^-+|-+$/g,
+      "",
     );
-  }, [result, selectedHeroPath]);
+}
 
-  const aiHeroImage = useMemo(() => {
-    if (!visionReview) {
-      return null;
-    }
+function webStem(
+  value: string,
+) {
+  const filename =
+    value
+      .split("/")
+      .at(-1) ??
+    value;
 
-    return (
-      result?.contents?.images.find(
-        (image) =>
-          image.filename === visionReview.hero,
-      ) ?? null
-    );
-  }, [result, visionReview]);
-
-  const aiKeepImages = useMemo(() => {
-    if (!visionReview) {
-      return [];
-    }
-
-    const keep = new Set(visionReview.keep);
-
-    return (
-      result?.contents?.images.filter((image) =>
-        keep.has(image.filename),
-      ) ?? []
-    );
-  }, [result, visionReview]);
-
-  const aiRemoveImages = useMemo(() => {
-    if (!visionReview) {
-      return [];
-    }
-
-    const remove = new Set(visionReview.remove);
-
-    return (
-      result?.contents?.images.filter((image) =>
-        remove.has(image.filename),
-      ) ?? []
-    );
-  }, [result, visionReview]);
-
-  const curatedImages = useMemo(() => {
-    const images = result?.contents?.images ?? [];
-
-    return images
-      .filter((image) => image.suggestion.include)
-      .sort(
-        (first, second) =>
-          (first.suggestion.order ??
-            Number.MAX_SAFE_INTEGER) -
-          (second.suggestion.order ??
-            Number.MAX_SAFE_INTEGER),
-      );
-  }, [result]);
-
-  const excludedImages = useMemo(() => {
-    const images = result?.contents?.images ?? [];
-
-    return images
-      .filter((image) => !image.suggestion.include)
-      .sort(
-        (first, second) =>
-          second.metrics.galleryScore -
-          first.metrics.galleryScore,
-      );
-  }, [result]);
-
-  const displayedImages = useMemo(() => {
-    return [...curatedImages, ...excludedImages];
-  }, [curatedImages, excludedImages]);
-
-  const editorialSummary = useMemo(() => {
-    if (!result?.contents) {
-      return null;
-    }
-
-    const selected = curatedImages;
-    const landscapes = selected.filter(
-      (image) => image.orientation === "landscape",
-    ).length;
-    const portraits = selected.filter(
-      (image) => image.orientation === "portrait",
-    ).length;
-    const averageTechnical =
-      selected.length > 0
-        ? Math.round(
-            selected.reduce(
-              (total, image) =>
-                total + image.metrics.technicalScore,
-              0,
-            ) / selected.length,
-          )
-        : 0;
-
-    return {
-      landscapes,
-      portraits,
-      averageTechnical,
-      recommendation:
-        averageTechnical >= 75
-          ? "Excellent upload. Only a light manual review is recommended."
-          : averageTechnical >= 60
-            ? "Strong upload. Review the alternatives before publishing."
-            : "A useful first edit. A closer manual review is recommended.",
-    };
-  }, [result, curatedImages]);
-
-  function updateProductionField(
-    field: keyof EditableProductionFields,
-    value: string,
-  ) {
-    setProductionFields((current) => ({
-      ...current,
-      [field]: value,
-    }));
-  }
-
-  async function handleSubmit(
-    event: FormEvent<HTMLFormElement>,
-  ) {
-    event.preventDefault();
-
-    setIsUploading(true);
-    setResult(null);
-    setSelectedHeroPath(null);
-    setShowWebsitePreview(false);
-    setVisionReview(null);
-    setPublishResult(null);
-    setProductionArchive(null);
-    setProductionFields({
-      ...EMPTY_PRODUCTION_FIELDS,
-    });
-
-    const formData = new FormData();
-
-    const folderInput =
-      event.currentTarget.elements.namedItem(
-        "productionFolder",
-      ) as HTMLInputElement | null;
-
-    const archiveInput =
-      event.currentTarget.elements.namedItem(
-        "productionArchive",
-      ) as HTMLInputElement | null;
-
-    const folderFiles = folderInput?.files;
-    const archiveFile = archiveInput?.files?.[0];
-
-    let archive: File;
-
-    if (folderFiles && folderFiles.length > 0) {
-      const productionFiles =
-        Array.from(folderFiles);
-
-      const firstRelativePath =
-        productionFiles[0].webkitRelativePath;
-
-      const productionFolderName =
-        firstRelativePath
-          ? firstRelativePath.split("/")[0]
-          : "production";
-
-      const zip = new JSZip();
-
-      for (const file of productionFiles) {
-        const relativePath =
-          file.webkitRelativePath ||
-          `${productionFolderName}/${file.name}`;
-
-        zip.file(relativePath, file);
-      }
-
-      const zipBlob = await zip.generateAsync({
-        type: "blob",
-        compression: "DEFLATE",
-        compressionOptions: {
-          level: 6,
-        },
-      });
-
-      archive = new File(
-        [zipBlob],
-        `${productionFolderName}.zip`,
-        {
-          type: "application/zip",
-        },
-      );
-    } else if (archiveFile) {
-      archive = archiveFile;
-    } else {
-      setResult({
-        ok: false,
-        message:
-          "Please choose a production folder or ZIP file.",
-      });
-      setIsUploading(false);
-      return;
-    }
-
-    setProductionArchive(archive);
-
-    formData.set(
-      "productionArchive",
-      archive,
+  const withoutExtension =
+    filename.replace(
+      /\.[^.]+$/,
+      "",
     );
 
-    try {
-      const response = await fetch(
-        "/api/admin/production-preview",
-        {
-          method: "POST",
-          body: formData,
-        },
-      );
+  return (
+    slugify(
+      withoutExtension,
+    ) || "photograph"
+  );
+}
 
-      const data =
-        (await response.json()) as UploadResult;
-
-      setResult(data);
-
-      if (data.contents?.extractedDetails.fields) {
-        setProductionFields({
-          ...EMPTY_PRODUCTION_FIELDS,
-          ...data.contents.extractedDetails.fields,
-        });
-      }
-
-      if (data.contents?.suggestedHeroPath) {
-        setSelectedHeroPath(
-          data.contents.suggestedHeroPath,
-        );
-      }
-    } catch {
-      setResult({
-        ok: false,
-        message: "The upload request failed.",
-      });
-    } finally {
-      setIsUploading(false);
-    }
-  }
-
-  async function runVisionReview() {
-  if (!result?.contents) {
-    return;
-  }
-
-  setIsReviewing(true);
-  setVisionReview(null);
+async function prepareImage(
+  source: LocalImage,
+  outputFilename: string,
+): Promise<{
+  blob: Blob;
+  asset: PublishedAsset;
+}> {
+  const objectUrl =
+    URL.createObjectURL(
+      source.file,
+    );
 
   try {
-    const response = await fetch(
-      "/api/admin/vision-review",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          production: {
-            title: productionFields.title,
-            venue: productionFields.venue,
-            year: productionFields.year,
-            description:
-              productionFields.description,
-          },
+    const image =
+      new Image();
 
-          images: curatedImages.map((image) => ({
-            filename: image.filename,
-            previewUrl: image.previewUrl,
-            heroScore: image.heroScore,
-            technicalScore:
-              image.metrics.technicalScore,
-            width: image.width,
-            height: image.height,
-            orientation: image.orientation,
-          })),
-        }),
+    await new Promise<void>(
+      (
+        resolve,
+        reject,
+      ) => {
+        image.onload = () =>
+          resolve();
+
+        image.onerror = () =>
+          reject(
+            new Error(
+              `Could not read ${source.file.name}.`,
+            ),
+          );
+
+        image.src =
+          objectUrl;
       },
     );
 
-    const data = await response.json();
+    const scale =
+      Math.min(
+        1,
+        2560 /
+          Math.max(
+            image.naturalWidth,
+            image.naturalHeight,
+          ),
+      );
 
-    if (!response.ok) {
+    const width =
+      Math.max(
+        1,
+        Math.round(
+          image.naturalWidth *
+            scale,
+        ),
+      );
+
+    const height =
+      Math.max(
+        1,
+        Math.round(
+          image.naturalHeight *
+            scale,
+        ),
+      );
+
+    const canvas =
+      document.createElement(
+        "canvas",
+      );
+
+    canvas.width =
+      width;
+    canvas.height =
+      height;
+
+    const context =
+      canvas.getContext(
+        "2d",
+      );
+
+    if (!context) {
       throw new Error(
-        data.message ??
-          "Vision AI review failed.",
+        `Could not prepare ${source.file.name}.`,
       );
     }
 
-    setVisionReview(data.review);
-
-    if (data.review.editorialSummary?.trim()) {
-      setProductionFields((current) =>
-        current.description.trim()
-          ? current
-          : {
-              ...current,
-              description:
-                data.review.editorialSummary.trim(),
-            },
-      );
-    }
-
-    const suggestedHero =
-      curatedImages.find(
-        (image) =>
-          image.filename ===
-          data.review.hero,
-      );
-
-    if (suggestedHero) {
-      setSelectedHeroPath(
-        suggestedHero.filepath,
-      );
-    }
-  } catch (error) {
-    console.error(error);
-
-    alert(
-      error instanceof Error
-        ? error.message
-        : "Vision AI review failed.",
+    context.drawImage(
+      image,
+      0,
+      0,
+      width,
+      height,
     );
+
+    const blob =
+      await new Promise<Blob>(
+        (
+          resolve,
+          reject,
+        ) => {
+          canvas.toBlob(
+            (result) => {
+              if (
+                result
+              ) {
+                resolve(
+                  result,
+                );
+              } else {
+                reject(
+                  new Error(
+                    `Could not create ${outputFilename}.`,
+                  ),
+                );
+              }
+            },
+            "image/webp",
+            0.82,
+          );
+        },
+      );
+
+    const blurCanvas =
+      document.createElement(
+        "canvas",
+      );
+
+    const blurWidth =
+      24;
+
+    blurCanvas.width =
+      blurWidth;
+
+    blurCanvas.height =
+      Math.max(
+        1,
+        Math.round(
+          height *
+            (
+              blurWidth /
+              width
+            ),
+        ),
+      );
+
+    const blurContext =
+      blurCanvas.getContext(
+        "2d",
+      );
+
+    if (!blurContext) {
+      throw new Error(
+        `Could not create blur placeholder for ${source.file.name}.`,
+      );
+    }
+
+    blurContext.drawImage(
+      canvas,
+      0,
+      0,
+      blurCanvas.width,
+      blurCanvas.height,
+    );
+
+    return {
+      blob,
+      asset: {
+        sourceFilepath:
+          source.filepath,
+        filename:
+          outputFilename,
+        blurDataURL:
+          blurCanvas.toDataURL(
+            "image/webp",
+            0.38,
+          ),
+      },
+    };
   } finally {
-    setIsReviewing(false);
+    URL.revokeObjectURL(
+      objectUrl,
+    );
   }
 }
-  async function generateImageMetadata() {
-    if (!result?.contents || isGeneratingMetadata) {
+
+export default function ProductionUpload() {
+  const [
+    images,
+    setImages,
+  ] =
+    useState<
+      LocalImage[]
+    >([]);
+
+  const [
+    heroId,
+    setHeroId,
+  ] =
+    useState("");
+
+  const [
+    title,
+    setTitle,
+  ] =
+    useState("");
+
+  const [
+    venue,
+    setVenue,
+  ] =
+    useState("");
+
+  const [
+    month,
+    setMonth,
+  ] =
+    useState("");
+
+  const [
+    year,
+    setYear,
+  ] =
+    useState("");
+
+  const [
+    description,
+    setDescription,
+  ] =
+    useState("");
+
+  const [
+    commissionedBy,
+    setCommissionedBy,
+  ] =
+    useState("");
+
+  const [
+    director,
+    setDirector,
+  ] =
+    useState("");
+
+  const [
+    progress,
+    setProgress,
+  ] =
+    useState("");
+
+  const [
+    error,
+    setError,
+  ] =
+    useState("");
+
+  const [
+    publishedUrl,
+    setPublishedUrl,
+  ] =
+    useState("");
+
+  const [
+    isPublishing,
+    setIsPublishing,
+  ] =
+    useState(false);
+
+  const includedImages =
+    useMemo(
+      () =>
+        images.filter(
+          (image) =>
+            image.included,
+        ),
+      [images],
+    );
+
+  const hero =
+    images.find(
+      (image) =>
+        image.id ===
+        heroId,
+    ) ?? null;
+
+  function chooseFolder(
+    files:
+      FileList | null,
+  ) {
+    if (!files) {
       return;
     }
 
-    const images = result.contents.images;
+    for (
+      const old of
+      images
+    ) {
+      URL.revokeObjectURL(
+        old.previewUrl,
+      );
+    }
 
-    if (images.length === 0) {
+    const next =
+      Array.from(
+        files,
+      )
+        .filter(
+          (file) =>
+            IMAGE_EXTENSIONS.test(
+              file.name,
+            ),
+        )
+        .map(
+          (
+            file,
+            index,
+          ) => ({
+            id:
+              `${index}:${file.webkitRelativePath || file.name}`,
+            file,
+            filepath:
+              file.webkitRelativePath ||
+              file.name,
+            previewUrl:
+              URL.createObjectURL(
+                file,
+              ),
+            included:
+              true,
+          }),
+        );
+
+    setImages(
+      next,
+    );
+
+    setHeroId(
+      next[0]?.id ??
+        "",
+    );
+
+    setError("");
+    setPublishedUrl("");
+
+    setProgress(
+      `Found ${next.length.toLocaleString()} photograph${
+        next.length === 1
+          ? ""
+          : "s"
+      }.`,
+    );
+  }
+
+  async function publish() {
+    setError("");
+    setPublishedUrl("");
+
+    const parsedMonth =
+      Number.parseInt(
+        month,
+        10,
+      );
+
+    const parsedYear =
+      Number.parseInt(
+        year,
+        10,
+      );
+
+    if (
+      !title.trim() ||
+      !venue.trim() ||
+      !Number.isInteger(
+        parsedMonth,
+      ) ||
+      parsedMonth < 1 ||
+      parsedMonth > 12 ||
+      !Number.isInteger(
+        parsedYear,
+      ) ||
+      parsedYear < 1800 ||
+      parsedYear > 2200 ||
+      !description.trim()
+    ) {
+      setError(
+        "Title, venue, month, year and description are required.",
+      );
       return;
     }
 
-    setIsGeneratingMetadata(true);
-    setMetadataProgress({
-      current: 0,
-      total: images.length,
-    });
-setMetadataComplete(false);
+    if (
+      !hero ||
+      !hero.included
+    ) {
+      setError(
+        "Choose an included hero image.",
+      );
+      return;
+    }
+
+    const gallery =
+      includedImages.filter(
+        (image) =>
+          image.id !==
+          hero.id,
+      );
+
+    if (
+      gallery.length === 0
+    ) {
+      setError(
+        "Include at least one gallery image in addition to the hero.",
+      );
+      return;
+    }
+
+    const slug =
+      slugify(
+        [
+          title,
+          venue,
+          MONTHS[
+            parsedMonth
+          ],
+          parsedYear,
+        ].join(" "),
+      );
+
+    if (!slug) {
+      setError(
+        "Could not create a production slug.",
+      );
+      return;
+    }
+
+    if (
+      !window.confirm(
+        `Publish "${title.trim()}" with ${gallery.length + 1} images?`,
+      )
+    ) {
+      return;
+    }
+
+    setIsPublishing(
+      true,
+    );
+
     try {
-      for (
-        let index = 0;
-        index < images.length;
-        index += 1
-      ) {
-        const image = images[index];
+      setProgress(
+        "Checking production identity…",
+      );
 
-        setMetadataProgress({
-          current: index + 1,
-          total: images.length,
-        });
-
-        const response = await fetch(
-          "/api/admin/vision/analyse-image",
+      const checkResponse =
+        await fetch(
+          "/api/admin/new-production-r2",
           {
-            method: "POST",
+            method:
+              "POST",
             headers: {
-              "Content-Type": "application/json",
+              "Content-Type":
+                "application/json",
             },
-            body: JSON.stringify({
-  image: image.filename,
-  previewUrl: image.previewUrl,
-  production: {
-    title: productionFields.title,
-    venue: productionFields.venue,
-    year: productionFields.year,
-    description:
-      productionFields.description,
-  },
-}),
+            body:
+              JSON.stringify(
+                {
+                  action:
+                    "check",
+                  slug,
+                },
+              ),
           },
         );
 
-        const data = (await response.json()) as {
-          ok: boolean;
-          metadata?: {
-            alt: string;
-            filename: string;
-            layout: GalleryLayout;
-          };
+      const check =
+        (await checkResponse.json()) as {
+          ok?: boolean;
+          exists?: boolean;
           message?: string;
         };
 
+      if (
+        !checkResponse.ok ||
+        !check.ok
+      ) {
+        throw new Error(
+          check.message ||
+            "Production check failed.",
+        );
+      }
+
+      if (
+        check.exists
+      ) {
+        throw new Error(
+          `A production already exists for "${slug}".`,
+        );
+      }
+
+      const jobs = [
+        {
+          image:
+            hero,
+          outputFilename:
+            `hero-${webStem(
+              hero.file.name,
+            )}.webp`,
+        },
+        ...gallery.map(
+          (
+            image,
+            index,
+          ) => ({
+            image,
+            outputFilename:
+              `${String(
+                index + 1,
+              ).padStart(
+                2,
+                "0",
+              )}-${webStem(
+                image.file.name,
+              )}.webp`,
+          }),
+        ),
+      ];
+
+      const assets:
+        PublishedAsset[] =
+        [];
+
+      for (
+        let index = 0;
+        index <
+        jobs.length;
+        index += 1
+      ) {
+        const job =
+          jobs[
+            index
+          ];
+
+        setProgress(
+          `Preparing and uploading ${index + 1} of ${jobs.length}: ${job.image.file.name}`,
+        );
+
+        const signedResponse =
+          await fetch(
+            "/api/admin/new-production-r2",
+            {
+              method:
+                "POST",
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
+              body:
+                JSON.stringify(
+                  {
+                    action:
+                      "sign-image",
+                    slug,
+                    filename:
+                      job.outputFilename,
+                  },
+                ),
+            },
+          );
+
+        const signed =
+          (await signedResponse.json()) as {
+            ok?: boolean;
+            uploadUrl?: string;
+            message?: string;
+          };
+
         if (
-          !response.ok ||
-          !data.ok ||
-          !data.metadata
+          !signedResponse.ok ||
+          !signed.ok ||
+          !signed.uploadUrl
         ) {
           throw new Error(
-            data.message ??
-              `Vision AI could not analyse ${image.filename}.`,
+            signed.message ||
+              `Could not prepare ${job.image.file.name} for upload.`,
           );
         }
 
-        const metadata = data.metadata;
+        const prepared =
+          await prepareImage(
+            job.image,
+            job.outputFilename,
+          );
 
-        setResult((current) => {
-          if (!current?.contents) {
-            return current;
-          }
-
-          return {
-            ...current,
-            contents: {
-              ...current.contents,
-              images: current.contents.images.map(
-                (currentImage) =>
-                  currentImage.filepath ===
-                  image.filepath
-                    ? {
-                        ...currentImage,
-                        aiAlt: metadata.alt,
-                        aiFilename:
-                          metadata.filename,
-                        aiLayout:
-                          metadata.layout,
-                      }
-                    : currentImage,
-              ),
+        const uploadResponse =
+          await fetch(
+            signed.uploadUrl,
+            {
+              method:
+                "PUT",
+              headers: {
+                "Content-Type":
+                  "image/webp",
+                "Cache-Control":
+                  "public, max-age=31536000, immutable",
+              },
+              body:
+                prepared.blob,
             },
-          };
-        });
-      }
-    setMetadataComplete(true);
-    } catch (error) {
-      console.error(error);
+          );
 
-      alert(
-        error instanceof Error
-          ? error.message
-          : "Vision AI metadata generation failed.",
-      );
-    } finally {
-      setIsGeneratingMetadata(false);
-    }
-  }
-  async function publishProduction() {
-    if (
-      !result?.archive ||
-      !result.contents ||
-      !productionArchive ||
-      !selectedHero
-    ) {
-      setPublishResult({
-        ok: false,
-        message:
-          "Upload a production ZIP and select a hero before publishing.",
-      });
-      return;
-    }
+        if (
+          !uploadResponse.ok
+        ) {
+          throw new Error(
+            `R2 upload failed for ${job.image.file.name} (HTTP ${uploadResponse.status}).`,
+          );
+        }
 
-    const month = Number.parseInt(
-      productionFields.month,
-      10,
-    );
-
-    const year = Number.parseInt(
-      productionFields.year,
-      10,
-    );
-
-    if (
-      !productionFields.title.trim() ||
-      !productionFields.venue.trim() ||
-      !Number.isInteger(month) ||
-      month < 1 ||
-      month > 12 ||
-      !Number.isInteger(year)
-    ) {
-      setPublishResult({
-        ok: false,
-        message:
-          "Production title, venue, month and a valid year are required.",
-      });
-      return;
-    }
-
-    const imageByFilename = new Map(
-      curatedImages.map((image) => [
-        image.filename,
-        image,
-      ]),
-    );
-
-    const requestedOrder =
-      visionReview?.sequence.length
-        ? visionReview.sequence
-        : visionReview?.keep.length
-          ? visionReview.keep
-          : curatedImages.map(
-              (image) => image.filename,
-            );
-
-    const orderedImages: PreviewImage[] = [];
-    const usedFilenames = new Set<string>();
-
-    for (const filename of requestedOrder) {
-      const image = imageByFilename.get(filename);
-
-      if (
-        !image ||
-        image.filename === selectedHero.filename ||
-        usedFilenames.has(image.filename)
-      ) {
-        continue;
+        assets.push(
+          prepared.asset,
+        );
       }
 
-      orderedImages.push(image);
-      usedFilenames.add(image.filename);
-    }
+      const genericAlt =
+        `${title.trim()} at ${venue.trim()} — production photograph`;
 
-    for (const image of curatedImages) {
-      if (
-        image.filename === selectedHero.filename ||
-        usedFilenames.has(image.filename)
-      ) {
-        continue;
-      }
+      const credits = [
+        ...(director.trim()
+          ? [
+              {
+                role:
+                  "Director",
+                name:
+                  director.trim(),
+              },
+            ]
+          : []),
+        ...(commissionedBy.trim()
+          ? [
+              {
+                role:
+                  "Commissioned by",
+                name:
+                  commissionedBy.trim(),
+              },
+            ]
+          : []),
+      ];
 
-      orderedImages.push(image);
-      usedFilenames.add(image.filename);
-    }
-
-    if (orderedImages.length === 0) {
-      setPublishResult({
-        ok: false,
-        message:
-          "At least one gallery image is required in addition to the hero.",
-      });
-      return;
-    }
-
-    const credits = [
-      {
-        role: "Venue",
-        name: productionFields.venue.trim(),
-      },
-      {
-        role: "Director",
-        name: productionFields.director.trim(),
-      },
-      {
-        role: "Associate Director",
-        name:
-          productionFields.associateDirector.trim(),
-      },
-      {
-        role: "Musical Director",
-        name:
-          productionFields.musicalDirector.trim(),
-      },
-      {
-        role: "Choreographer",
-        name: productionFields.choreographer.trim(),
-      },
-      {
-        role: "Lighting Design",
-        name:
-          productionFields.lightingDesign.trim(),
-      },
-      {
-        role: "Set Design",
-        name: productionFields.setDesign.trim(),
-      },
-      {
-        role: "Costume Design",
-        name:
-          productionFields.costumeDesign.trim(),
-      },
-      {
-        role: "Set & Costume Design",
-        name:
-          productionFields.setCostumeDesign.trim(),
-      },
-      {
-        role: "Sound Design",
-        name: productionFields.soundDesign.trim(),
-      },
-      {
-        role: "Commissioned by",
-        name:
-          productionFields.commissionedBy.trim(),
-      },
-      {
-        role: "Photography",
-        name: "Steve Gregson",
-      },
-    ].filter((credit) => credit.name);
-
-    const description =
-      productionFields.description.trim();
-
-    if (!description) {
-      alert(
-        "Add a production description before publishing.",
-      );
-      return;
-    }
-
-    const genericAlt = `${productionFields.title.trim()} at ${productionFields.venue.trim()}, photographed by Steve Gregson`;
-
-    const productionData = {
-      slug: result.archive.suggestedSlug,
-      title: productionFields.title.trim(),
-      venue: productionFields.venue.trim(),
-      month,
-      year,
-      description,
-      hero: {
-        filepath: selectedHero.filepath,
-        filename:
-          selectedHero.aiFilename ||
-          selectedHero.filename,
-        alt:
-          selectedHero.aiAlt ||
-          genericAlt,
-      },
-      credits,
-      images: orderedImages.map((image) => ({
-        filepath: image.filepath,
-        filename:
-          image.aiFilename ||
-          image.filename,
-        alt:
-          image.aiAlt ||
-          genericAlt,
-        layout:
-          image.aiLayout ||
-          image.suggestion.layout,
-      })),
-    };
-
-    const confirmed = window.confirm(
-      `Publish "${productionData.title}" with ${productionData.images.length} gallery images?`,
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
-    setIsPublishing(true);
-    setPublishResult(null);
-
-    try {
-      const formData = new FormData();
-      formData.set(
-        "productionArchive",
-        productionArchive,
-      );
-      formData.set(
-        "productionData",
-        JSON.stringify(productionData),
-      );
-
-      const response = await fetch(
-        "/api/admin/publish-production",
-        {
-          method: "POST",
-          body: formData,
+      const payload = {
+        slug,
+        title:
+          title.trim(),
+        venue:
+          venue.trim(),
+        month:
+          parsedMonth,
+        year:
+          parsedYear,
+        description:
+          description.trim(),
+        hero: {
+          filepath:
+            hero.filepath,
+          filename:
+            jobs[0]
+              .outputFilename,
+          alt:
+            genericAlt,
         },
+        credits,
+        images:
+          gallery.map(
+            (
+              image,
+              index,
+            ) => ({
+              filepath:
+                image.filepath,
+              filename:
+                jobs[
+                  index +
+                    1
+                ]
+                  .outputFilename,
+              alt:
+                genericAlt,
+              layout:
+                "wide" as const,
+            }),
+          ),
+      };
+
+      setProgress(
+        "Verifying R2 and committing production to the archive…",
       );
 
-      const responseText = await response.text();
+      const finalizeResponse =
+        await fetch(
+          "/api/admin/new-production-r2",
+          {
+            method:
+              "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body:
+              JSON.stringify(
+                {
+                  action:
+                    "finalize",
+                  payload,
+                  heroAsset:
+                    assets[0],
+                  galleryAssets:
+                    assets.slice(
+                      1,
+                    ),
+                },
+              ),
+          },
+        );
 
-let data: PublishResult;
+      const finalized =
+        (await finalizeResponse.json()) as {
+          ok?: boolean;
+          message?: string;
+          production?: {
+            url?: string;
+          };
+        };
 
-if (!responseText.trim()) {
-  data = {
-    ok: false,
-    message: `The publishing route returned an empty response (${response.status} ${response.statusText}). Check the terminal running npm run dev for the server error.`,
-  };
-} else {
-  try {
-    data = JSON.parse(responseText) as PublishResult;
-  } catch {
-    data = {
-      ok: false,
-      message: `The publishing route returned invalid JSON (${response.status} ${response.statusText}): ${responseText.slice(
-        0,
-        500,
-      )}`,
-    };
-  }
-}
-
-      setPublishResult(data);
-
-      if (!response.ok || !data.ok) {
-        return;
+      if (
+        !finalizeResponse.ok ||
+        !finalized.ok
+      ) {
+        throw new Error(
+          finalized.message ||
+            "Production could not be finalized.",
+        );
       }
 
-      setShowWebsitePreview(false);
-    } catch (error) {
-      console.error(error);
+      setProgress(
+        "Published successfully.",
+      );
 
-      setPublishResult({
-        ok: false,
-        message:
-          error instanceof Error
-            ? error.message
-            : "The production could not be published.",
-      });
+      setPublishedUrl(
+        finalized.production
+          ?.url ?? "",
+      );
+    } catch (
+      publishError
+    ) {
+      setError(
+        publishError instanceof
+          Error
+          ? publishError.message
+          : "Production publishing failed.",
+      );
     } finally {
-      setIsPublishing(false);
+      setIsPublishing(
+        false,
+      );
     }
   }
 
   return (
-    <section
+    <div
       style={{
-        borderTop:
-          "1px solid rgba(242, 238, 230, 0.22)",
-        paddingTop: "2rem",
+        display:
+          "grid",
+        gap:
+          "2rem",
       }}
     >
-      <form onSubmit={handleSubmit}>
-        <label
-          htmlFor="productionFolder"
-          style={{
-            display: "block",
-            marginBottom: "1rem",
-            color: "#c7a369",
-            fontSize: "0.55rem",
-            fontWeight: 700,
-            letterSpacing: "0.18em",
-            textTransform: "uppercase",
-          }}
-        >
-        Production Folder
-        </label>
-
-        <input
-          id="productionFolder"
-          name="productionFolder"
-          type="file"
-          // @ts-expect-error - supported by Chromium/WebKit browsers
-          webkitdirectory=""
-          multiple
-          style={{
-            display: "block",
-            width: "100%",
-            border:
-              "1px solid rgba(242, 238, 230, 0.25)",
-            padding: "1.25rem",
-            background:
-              "rgba(255, 255, 255, 0.03)",
-            color: "inherit",
-          }}
-        />
-        <div
-          style={{
-            margin: "1.25rem 0",
-            color: "rgba(242, 238, 230, 0.5)",
-            fontSize: "0.55rem",
-            fontWeight: 700,
-            letterSpacing: "0.18em",
-            textTransform: "uppercase",
-          }}
-        >
-          Or
+      <section className="backstage-section">
+        <div className="backstage-section-heading">
+          <h2>
+            Production folder
+          </h2>
+          <p>
+            Browser → Cloudflare R2
+          </p>
         </div>
 
-        <label
-          htmlFor="productionArchive"
+        <p
           style={{
-            display: "block",
-            marginBottom: "1rem",
-            color: "#c7a369",
-            fontSize: "0.55rem",
-            fontWeight: 700,
-            letterSpacing: "0.18em",
-            textTransform: "uppercase",
+            maxWidth:
+              "52rem",
+            color:
+              "rgba(242,238,230,.72)",
+            lineHeight:
+              1.7,
           }}
         >
-          Production ZIP
-        </label>
+          Choose one production folder. Photographs remain in your browser until the selected images are converted to WebP and uploaded directly to R2.
+        </p>
 
         <input
-          id="productionArchive"
-          name="productionArchive"
           type="file"
-          accept=".zip,application/zip"
-          style={{
-            display: "block",
-            width: "100%",
-            border:
-              "1px solid rgba(242, 238, 230, 0.25)",
-            padding: "1.25rem",
-            background:
-              "rgba(255, 255, 255, 0.03)",
-            color: "inherit",
-          }}
+          multiple
+          // @ts-expect-error webkitdirectory is supported by Safari/Chromium.
+          webkitdirectory=""
+          onChange={(
+            event,
+          ) =>
+            chooseFolder(
+              event.target
+                .files,
+            )
+          }
         />
-        <button
-          type="submit"
-          disabled={isUploading}
-          style={{
-            marginTop: "1.5rem",
-            border:
-              "1px solid rgba(242, 238, 230, 0.5)",
-            padding: "1rem 1.4rem",
-            background: "transparent",
-            color: "inherit",
-            cursor: isUploading
-              ? "wait"
-              : "pointer",
-            fontSize: "0.58rem",
-            fontWeight: 700,
-            letterSpacing: "0.17em",
-            textTransform: "uppercase",
-            opacity: isUploading ? 0.55 : 1,
-          }}
-        >
-          {isUploading
-            ? "Creating thumbnails…"
-            : "Import Production"}
-        </button>
-      </form>
 
-      {result ? (
-        <div
-          role="status"
-          style={{
-            marginTop: "3rem",
-            borderTop:
-              "1px solid rgba(242, 238, 230, 0.18)",
-            paddingTop: "2rem",
-          }}
-        >
+        {progress ? (
+          <p>
+            {progress}
+          </p>
+        ) : null}
+
+        {error ? (
           <p
             style={{
-              margin: 0,
-              color: result.ok
-                ? "#c7a369"
-                : "#ffb3a7",
+              color:
+                "#e6a89c",
             }}
           >
-            {result.message}
+            {error}
           </p>
+        ) : null}
 
-          {result.archive &&
-          result.contents ? (
-            <>
-              <dl
-                style={{
-                  display: "grid",
-                  gridTemplateColumns:
-                    "11rem minmax(0, 1fr)",
-                  gap: "0.8rem 1.5rem",
-                  marginTop: "2rem",
-                }}
-              >
-                <dt>Filename</dt>
-                <dd style={{ margin: 0 }}>
-                  {result.archive.name}
-                </dd>
+        {publishedUrl ? (
+          <p>
+            Published:{" "}
+            <a
+              href={
+                publishedUrl
+              }
+            >
+              {publishedUrl}
+            </a>
+          </p>
+        ) : null}
+      </section>
 
-                <dt>Size</dt>
-                <dd style={{ margin: 0 }}>
-                  {formatBytes(
-                    result.archive.size,
+      {images.length >
+      0 ? (
+        <>
+          <section className="backstage-section">
+            <div className="backstage-section-heading">
+              <h2>
+                Production information
+              </h2>
+              <p>
+                Required before publishing
+              </p>
+            </div>
+
+            <div
+              style={{
+                display:
+                  "grid",
+                gridTemplateColumns:
+                  "repeat(2, minmax(0,1fr))",
+                gap:
+                  "1rem",
+              }}
+            >
+              <label>
+                Production
+                <input
+                  value={
+                    title
+                  }
+                  onChange={(
+                    event,
+                  ) =>
+                    setTitle(
+                      event
+                        .target
+                        .value,
+                    )
+                  }
+                />
+              </label>
+
+              <label>
+                Venue
+                <input
+                  value={
+                    venue
+                  }
+                  onChange={(
+                    event,
+                  ) =>
+                    setVenue(
+                      event
+                        .target
+                        .value,
+                    )
+                  }
+                />
+              </label>
+
+              <label>
+                Month
+                <select
+                  value={
+                    month
+                  }
+                  onChange={(
+                    event,
+                  ) =>
+                    setMonth(
+                      event
+                        .target
+                        .value,
+                    )
+                  }
+                >
+                  <option value="">
+                    Choose month
+                  </option>
+                  {MONTHS.slice(
+                    1,
+                  ).map(
+                    (
+                      name,
+                      index,
+                    ) => (
+                      <option
+                        key={
+                          name
+                        }
+                        value={
+                          index +
+                          1
+                        }
+                      >
+                        {name}
+                      </option>
+                    ),
                   )}
-                </dd>
+                </select>
+              </label>
 
-                <dt>Suggested slug</dt>
-                <dd style={{ margin: 0 }}>
-                  {
-                    result.archive
-                      .suggestedSlug
+              <label>
+                Year
+                <input
+                  inputMode="numeric"
+                  value={
+                    year
                   }
-                </dd>
-
-                <dt>Photographs found</dt>
-                <dd style={{ margin: 0 }}>
-                  {
-                    result.contents
-                      .imageCount
+                  onChange={(
+                    event,
+                  ) =>
+                    setYear(
+                      event
+                        .target
+                        .value,
+                    )
                   }
-                </dd>
+                />
+              </label>
 
-                <dt>Thumbnails created</dt>
-                <dd style={{ margin: 0 }}>
-                  {
-                    result.contents
-                      .previewCount
+              <label>
+                Director
+                <input
+                  value={
+                    director
                   }
-                </dd>
-
-                <dt>Details files found</dt>
-                <dd style={{ margin: 0 }}>
-                  {
-                    result.contents
-                      .detailsFiles.length
+                  onChange={(
+                    event,
+                  ) =>
+                    setDirector(
+                      event
+                        .target
+                        .value,
+                    )
                   }
-                </dd>
+                />
+              </label>
 
-                <dt>Archive status</dt>
-                <dd style={{ margin: 0 }}>
-                  Preview only — nothing has
-                  been published
-                </dd>
-              </dl>
+              <label>
+                Commissioned by
+                <input
+                  value={
+                    commissionedBy
+                  }
+                  onChange={(
+                    event,
+                  ) =>
+                    setCommissionedBy(
+                      event
+                        .target
+                        .value,
+                    )
+                  }
+                />
+              </label>
+            </div>
 
-              {result.contents
-                .previewLimitReached ? (
-                <p
-                  style={{
-                    marginTop: "1.5rem",
-                    color:
-                      "rgba(242, 238, 230, 0.58)",
-                  }}
-                >
-                  This archive contains more
-                  than 120 images. The first
-                  120 are shown in this
-                  preview.
-                </p>
-              ) : null}
+            <label
+              style={{
+                display:
+                  "grid",
+                gap:
+                  ".5rem",
+                marginTop:
+                  "1rem",
+              }}
+            >
+              Description
+              <textarea
+                rows={
+                  7
+                }
+                value={
+                  description
+                }
+                onChange={(
+                  event,
+                ) =>
+                  setDescription(
+                    event
+                      .target
+                      .value,
+                  )
+                }
+              />
+            </label>
+          </section>
 
-              {editorialSummary ? (
-                <section className="backstage-section">
-                  <div className="backstage-section-heading">
-                    <h2>Editorial review</h2>
+          <section className="backstage-section">
+            <div className="backstage-section-heading">
+              <h2>
+                Images
+              </h2>
+              <p>
+                {includedImages.length} included
+              </p>
+            </div>
 
-                    <p>Backstage picture edit</p>
-                  </div>
-
-                  <div
+            <div
+              style={{
+                display:
+                  "grid",
+                gridTemplateColumns:
+                  "repeat(auto-fill,minmax(180px,1fr))",
+                gap:
+                  "1rem",
+              }}
+            >
+              {images.map(
+                (
+                  image,
+                ) => (
+                  <article
+                    key={
+                      image.id
+                    }
                     style={{
-                      display: "grid",
-                      gridTemplateColumns:
-                        "repeat(4, minmax(0, 1fr))",
-                      gap: "1rem",
-                    }}
-                  >
-                    {[
-                      {
-                        label: "Suggested edit",
-                        value:
-                          result.contents.curation
-                            .selectedCount,
-                      },
-                      {
-                        label: "Alternatives",
-                        value:
-                          result.contents.curation
-                            .excludedCount,
-                      },
-                      {
-                        label: "Near duplicates",
-                        value:
-                          result.contents.curation
-                            .duplicateCount,
-                      },
-                      {
-                        label: "Average quality",
-                        value: `${editorialSummary.averageTechnical}%`,
-                      },
-                    ].map(({ label, value }) => (
-                      <div
-                        key={label}
-                        style={{
-                          border:
-                            "1px solid rgba(242, 238, 230, 0.16)",
-                          padding: "1.25rem",
-                          background:
-                            "rgba(255, 255, 255, 0.025)",
-                        }}
-                      >
-                        <p
-                          style={{
-                            margin: 0,
-                            color: "#c7a369",
-                            fontSize: "0.5rem",
-                            fontWeight: 700,
-                            letterSpacing: "0.15em",
-                            textTransform: "uppercase",
-                          }}
-                        >
-                          {label}
-                        </p>
-
-                        <p
-                          style={{
-                            margin: "0.55rem 0 0",
-                            fontFamily:
-                              '"Iowan Old Style", "Palatino Linotype", Georgia, serif',
-                            fontSize: "2rem",
-                            lineHeight: 1,
-                          }}
-                        >
-                          {value}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns:
-                        "minmax(0, 1fr) minmax(16rem, 0.7fr)",
-                      gap: "2rem",
-                      marginTop: "1.5rem",
-                      borderTop:
-                        "1px solid rgba(242, 238, 230, 0.14)",
-                      paddingTop: "1.5rem",
-                    }}
-                  >
-                    <div>
-                      <p
-                        style={{
-                          margin: 0,
-                          color: "#c7a369",
-                          fontSize: "0.5rem",
-                          fontWeight: 700,
-                          letterSpacing: "0.15em",
-                          textTransform: "uppercase",
-                        }}
-                      >
-                        Recommendation
-                      </p>
-
-                      <p
-                        style={{
-                          maxWidth: "42rem",
-                          margin: "0.65rem 0 0",
-                          fontFamily:
-                            '"Iowan Old Style", "Palatino Linotype", Georgia, serif',
-                          fontSize: "1.45rem",
-                          lineHeight: 1.35,
-                        }}
-                      >
-                        {editorialSummary.recommendation}
-                      </p>
-                    </div>
-
-                    <dl
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns:
-                          "repeat(2, minmax(0, 1fr))",
-                        gap: "1rem",
-                        margin: 0,
-                      }}
-                    >
-                      <div>
-                        <dt
-                          style={{
-                            color:
-                              "rgba(242, 238, 230, 0.45)",
-                            fontSize: "0.48rem",
-                            fontWeight: 700,
-                            letterSpacing: "0.13em",
-                            textTransform: "uppercase",
-                          }}
-                        >
-                          Landscape
-                        </dt>
-                        <dd
-                          style={{
-                            margin: "0.3rem 0 0",
-                          }}
-                        >
-                          {editorialSummary.landscapes}
-                        </dd>
-                      </div>
-
-                      <div>
-                        <dt
-                          style={{
-                            color:
-                              "rgba(242, 238, 230, 0.45)",
-                            fontSize: "0.48rem",
-                            fontWeight: 700,
-                            letterSpacing: "0.13em",
-                            textTransform: "uppercase",
-                          }}
-                        >
-                          Portrait
-                        </dt>
-                        <dd
-                          style={{
-                            margin: "0.3rem 0 0",
-                          }}
-                        >
-                          {editorialSummary.portraits}
-                        </dd>
-                      </div>
-                    </dl>
-                  </div>
-                </section>
-              ) : null}
-
-              <section
-                style={{
-                  marginTop: "4rem",
-                  borderTop:
-                    "1px solid rgba(242, 238, 230, 0.18)",
-                  paddingTop: "2rem",
-                }}
-              >
-                <p
-                  style={{
-                    margin: "0 0 1rem",
-                    color: "#c7a369",
-                    fontSize: "0.55rem",
-                    fontWeight: 700,
-                    letterSpacing: "0.18em",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  Selected hero
-                </p>
-
-                {selectedHero ? (
-                  <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns:
-                        "minmax(0, 2fr) minmax(14rem, 1fr)",
-                      gap: "2rem",
-                      alignItems: "end",
+                      border:
+                        image.id ===
+                        heroId
+                          ? "2px solid #c7a369"
+                          : "1px solid rgba(242,238,230,.18)",
+                      padding:
+                        ".65rem",
                     }}
                   >
                     <img
                       src={
-                        selectedHero.previewUrl
+                        image.previewUrl
                       }
-                      alt={`Preview of ${selectedHero.filename}`}
+                      alt=""
                       style={{
-                        display: "block",
-                        width: "100%",
-                        maxHeight: "68vh",
-                        objectFit: "contain",
-                        objectPosition:
-                          "left bottom",
-                        background: "#080808",
+                        display:
+                          "block",
+                        width:
+                          "100%",
+                        aspectRatio:
+                          "4 / 3",
+                        objectFit:
+                          "contain",
+                        background:
+                          "#080808",
                       }}
                     />
 
-                    <div>
-                      <h2
-                        style={{
-                          margin: 0,
-                          fontFamily:
-                            '"Iowan Old Style", "Palatino Linotype", Georgia, serif',
-                          fontSize:
-                            "clamp(2rem, 4vw, 4rem)",
-                          fontWeight: 400,
-                          lineHeight: 1,
-                        }}
-                      >
-                        {
-                          selectedHero.filename
-                        }
-                      </h2>
-
-                      <p
-                        style={{
-                          color:
-                            "rgba(242, 238, 230, 0.62)",
-                          lineHeight: 1.6,
-                        }}
-                      >
-                        {selectedHero.width &&
-                        selectedHero.height
-                          ? `${selectedHero.width} × ${selectedHero.height} · `
-                          : ""}
-                        {
-                          selectedHero.orientation
-                        }
-                      </p>
-
-                      <p
-                        style={{
-                          color: "#c7a369",
-                          fontSize: "0.55rem",
-                          fontWeight: 700,
-                          letterSpacing: "0.16em",
-                          textTransform:
-                            "uppercase",
-                        }}
-                      >
-                        {selectedHero.filepath ===
-                        result.contents
-                          .suggestedHeroPath
-                          ? "Automatic suggestion"
-                          : "Your selection"}
-                      </p>
-
-                      <div
-                        style={{
-                          marginTop: "1.5rem",
-                          borderTop:
-                            "1px solid rgba(242, 238, 230, 0.14)",
-                          paddingTop: "1.25rem",
-                        }}
-                      >
-                        <p
-                          style={{
-                            margin: 0,
-                            color: "#c7a369",
-                            fontSize: "0.5rem",
-                            fontWeight: 700,
-                            letterSpacing: "0.15em",
-                            textTransform: "uppercase",
-                          }}
-                        >
-                          {starRating(
-                            selectedHero.heroScore,
-                          )}{" "}
-                          {scoreLabel(
-                            selectedHero.heroScore,
-                          )} hero candidate
-                        </p>
-
-                        <ul
-                          style={{
-                            margin: "0.9rem 0 0",
-                            paddingLeft: "1.1rem",
-                            color:
-                              "rgba(242, 238, 230, 0.68)",
-                            lineHeight: 1.65,
-                          }}
-                        >
-                          {editorialAssessment(
-                            selectedHero,
-                          ).map((reason) => (
-                            <li key={reason}>
-                              {reason}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <p>
-                    No hero image is currently
-                    selected.
-                  </p>
-                )}
-              </section>
-
-              <section
-                style={{
-                  marginTop: "4rem",
-                  borderTop:
-                    "1px solid rgba(242, 238, 230, 0.18)",
-                  paddingTop: "2rem",
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent:
-                      "space-between",
-                    gap: "2rem",
-                    alignItems: "baseline",
-                  }}
-                >
-                  <h2
-                    style={{
-                      margin: 0,
-                      fontFamily:
-                        '"Iowan Old Style", "Palatino Linotype", Georgia, serif',
-                      fontSize:
-                        "clamp(2rem, 4vw, 4rem)",
-                      fontWeight: 400,
-                    }}
-                  >
-                    Photographs
-                  </h2>
-
-                  <p
-                    style={{
-                      margin: 0,
-                      color:
-                        "rgba(242, 238, 230, 0.5)",
-                      fontSize: "0.55rem",
-                      letterSpacing: "0.14em",
-                      textTransform:
-                        "uppercase",
-                    }}
-                  >
-                    Select an image to use as
-                    the hero
-                  </p>
-                </div>
-
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns:
-                      "repeat(auto-fill, minmax(13rem, 1fr))",
-                    gap: "1rem",
-                    marginTop: "2rem",
-                  }}
-                >
-                  {displayedImages.map(
-                    (image) => {
-                      const isSelected =
-                        image.filepath ===
-                        selectedHeroPath;
-
-                      return (
-                        <button
-                          type="button"
-                          key={image.filepath}
-                          onClick={() =>
-                            setSelectedHeroPath(
-                              image.filepath,
-                            )
-                          }
-                          aria-pressed={
-                            isSelected
-                          }
-                          style={{
-                            padding: 0,
-                            overflow:
-                              "hidden",
-                            border:
-                              isSelected
-                                ? "2px solid #c7a369"
-                                : "1px solid rgba(242, 238, 230, 0.16)",
-                            background:
-                              "#080808",
-                            color: "inherit",
-                            cursor: "pointer",
-                            textAlign: "left",
-                          }}
-                        >
-                          <div
-                            style={{
-                              aspectRatio:
-                                "4 / 3",
-                              background:
-                                "#080808",
-                            }}
-                          >
-                            <img
-                              src={
-                                image.previewUrl
-                              }
-                              alt={`Preview of ${image.filename}`}
-                              loading="lazy"
-                              style={{
-                                display:
-                                  "block",
-                                width: "100%",
-                                height: "100%",
-                                objectFit:
-                                  "contain",
-                              }}
-                            />
-                          </div>
-
-                          <div
-                            style={{
-                              padding:
-                                "0.85rem",
-                            }}
-                          >
-                            <p
-                              style={{
-                                margin: 0,
-                                overflow:
-                                  "hidden",
-                                fontSize:
-                                  "0.68rem",
-                                lineHeight:
-                                  1.35,
-                                textOverflow:
-                                  "ellipsis",
-                                whiteSpace:
-                                  "nowrap",
-                              }}
-                            >
-                              {
-                                image.filename
-                              }
-                            </p>
-
-                            <p
-                              style={{
-                                margin:
-                                  "0.4rem 0 0",
-                                color:
-                                  isSelected
-                                    ? "#c7a369"
-                                    : "rgba(242, 238, 230, 0.42)",
-                                fontSize:
-                                  "0.48rem",
-                                fontWeight:
-                                  700,
-                                letterSpacing:
-                                  "0.13em",
-                                textTransform:
-                                  "uppercase",
-                              }}
-                            >
-                              {isSelected
-                                ? "Selected hero"
-                                : imageStatus(image)}
-                            </p>
-
-                            <p
-                              style={{
-                                margin: "0.45rem 0 0",
-                                color:
-                                  "rgba(242, 238, 230, 0.55)",
-                                fontSize: "0.52rem",
-                                lineHeight: 1.45,
-                              }}
-                            >
-                              {image.suggestion.include
-                                ? `Position #${image.suggestion.order ?? "—"} · ${image.suggestion.layout}`
-                                : image.suggestion.duplicateOf
-                                  ? `Similar to ${filenameOnly(
-                                      image.suggestion.duplicateOf,
-                                    )}`
-                                  : "Available as an alternative"}
-                            </p>
-
-                            <p
-                              style={{
-                                margin: "0.45rem 0 0",
-                                color:
-                                  "rgba(242, 238, 230, 0.42)",
-                                fontSize: "0.5rem",
-                                lineHeight: 1.45,
-                              }}
-                            >
-                              {scoreLabel(
-                                image.metrics.galleryScore,
-                              )}{" "}
-                              gallery potential ·{" "}
-                              {
-                                image.metrics
-                                  .galleryScore
-                              }
-                              /100
-                            </p>
-                          </div>
-                        </button>
-                      );
-                    },
-                  )}
-                </div>
-              </section>
-
-              <section className="backstage-section">
-                <div className="backstage-section-heading">
-                  <h2>Production information</h2>
-
-                  <p>
-                    {result.contents.extractedDetails.sourceFile
-                      ? `Read from ${filenameOnly(
-                          result.contents.extractedDetails.sourceFile,
-                        )}`
-                      : "Enter production details"}
-                  </p>
-                </div>
-
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns:
-                      "repeat(2, minmax(0, 1fr))",
-                    gap: "1.5rem",
-                  }}
-                >
-                  <label
-                    style={{
-                      display: "grid",
-                      gap: "0.55rem",
-                    }}
-                  >
-                    <span
+                    <p
                       style={{
-                        color: "#c7a369",
-                        fontSize: "0.52rem",
-                        fontWeight: 700,
-                        letterSpacing: "0.15em",
-                        textTransform: "uppercase",
+                        fontSize:
+                          ".72rem",
+                        overflowWrap:
+                          "anywhere",
                       }}
                     >
-                      Production month
-                    </span>
-
-                    <select
-                      value={productionFields.month}
-                      onChange={(event) =>
-                        updateProductionField(
-                          "month",
-                          event.target.value,
-                        )
+                      {
+                        image
+                          .file
+                          .name
                       }
-                      required
+                    </p>
+
+                    <label
                       style={{
-                        width: "100%",
-                        border:
-                          "1px solid rgba(242, 238, 230, 0.2)",
-                        padding: "0.95rem 1rem",
-                        background: "#171614",
-                        color: "#f2eee6",
-                        font: "inherit",
+                        display:
+                          "block",
                       }}
                     >
-                      <option value="">Select month</option>
+                      <input
+                        type="checkbox"
+                        checked={
+                          image.included
+                        }
+                        onChange={() =>
+                          setImages(
+                            (
+                              current,
+                            ) =>
+                              current.map(
+                                (
+                                  candidate,
+                                ) =>
+                                  candidate.id ===
+                                  image.id
+                                    ? {
+                                        ...candidate,
+                                        included:
+                                          !candidate.included,
+                                      }
+                                    : candidate,
+                              ),
+                          )
+                        }
+                      />{" "}
+                      Include
+                    </label>
 
-                      {MONTH_OPTIONS.map((month) => (
-                        <option
-                          key={month.value}
-                          value={month.value}
-                        >
-                          {month.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label
-                    style={{
-                      display: "grid",
-                      gap: "0.55rem",
-                    }}
-                  >
-                    <span
+                    <label
                       style={{
-                        color: "#c7a369",
-                        fontSize: "0.52rem",
-                        fontWeight: 700,
-                        letterSpacing: "0.15em",
-                        textTransform: "uppercase",
+                        display:
+                          "block",
+                        marginTop:
+                          ".45rem",
                       }}
                     >
-                      Production year
-                    </span>
-
-                    <select
-                      value={productionFields.year}
-                      onChange={(event) =>
-                        updateProductionField(
-                          "year",
-                          event.target.value,
-                        )
-                      }
-                      required
-                      style={{
-                        width: "100%",
-                        border:
-                          "1px solid rgba(242, 238, 230, 0.2)",
-                        padding: "0.95rem 1rem",
-                        background: "#171614",
-                        color: "#f2eee6",
-                        font: "inherit",
-                      }}
-                    >
-                      <option value="">Select year</option>
-
-                      {YEAR_OPTIONS.map((year) => (
-                        <option
-                          key={year}
-                          value={String(year)}
-                        >
-                          {year}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  {[
-                    {
-                      label: "Production title",
-                      field: "title",
-                    },
-                    {
-                      label: "Venue",
-                      field: "venue",
-                    },
-                    {
-                      label: "Director",
-                      field: "director",
-                    },
-                    {
-                      label: "Associate Director",
-                      field: "associateDirector",
-                    },
-                    {
-                      label: "Musical Director",
-                      field: "musicalDirector",
-                    },
-                    {
-                      label: "Choreographer",
-                      field: "choreographer",
-                    },
-                    {
-                      label: "Lighting Design",
-                      field: "lightingDesign",
-                    },
-                    {
-                      label: "Set Design",
-                      field: "setDesign",
-                    },
-                    {
-                      label: "Costume Design",
-                      field: "costumeDesign",
-                    },
-                    {
-                      label: "Set & Costume Design",
-                      field: "setCostumeDesign",
-                    },
-                    {
-                      label: "Sound Design",
-                      field: "soundDesign",
-                    },
-                    {
-                      label: "Commissioned by",
-                      field: "commissionedBy",
-                    },
-                  ].map(({ label, field }) => {
-                    const fieldName =
-                      field as keyof EditableProductionFields;
-
-                    return (
-                      <label
-                        key={field}
-                        style={{
-                          display: "grid",
-                          gap: "0.55rem",
-                        }}
-                      >
-                        <span
-                          style={{
-                            color: "#c7a369",
-                            fontSize: "0.52rem",
-                            fontWeight: 700,
-                            letterSpacing: "0.15em",
-                            textTransform: "uppercase",
-                          }}
-                        >
-                          {label}
-                        </span>
-
-                        <input
-                          type={
-                            field === "year"
-                              ? "number"
-                              : "text"
-                          }
-                          value={
-                            productionFields[fieldName]
-                          }
-                          onChange={(event) =>
-                            updateProductionField(
-                              fieldName,
-                              event.target.value,
-                            )
-                          }
-                          style={{
-                            width: "100%",
-                            border:
-                              "1px solid rgba(242, 238, 230, 0.2)",
-                            padding: "0.95rem 1rem",
-                            background:
-                              "rgba(255, 255, 255, 0.025)",
-                            color: "#f2eee6",
-                            font: "inherit",
-                          }}
-                        />
-                      </label>
-                    );
-                  })}
-                </div>
-
-                <label
-                  style={{
-                    display: "grid",
-                    gap: "0.55rem",
-                    marginTop: "1.5rem",
-                  }}
-                >
-                  <span
-                    style={{
-                      color: "#c7a369",
-                      fontSize: "0.52rem",
-                      fontWeight: 700,
-                      letterSpacing: "0.15em",
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    Description
-                  </span>
-
-                  <textarea
-                    value={productionFields.description}
-                    onChange={(event) =>
-                      updateProductionField(
-                        "description",
-                        event.target.value,
-                      )
-                    }
-                    rows={5}
-                    style={{
-                      width: "100%",
-                      resize: "vertical",
-                      border:
-                        "1px solid rgba(242, 238, 230, 0.2)",
-                      padding: "1rem",
-                      background:
-                        "rgba(255, 255, 255, 0.025)",
-                      color: "#f2eee6",
-                      font: "inherit",
-                      lineHeight: 1.6,
-                    }}
-                  />
-                </label>
-              </section>
-              <section className="backstage-section">
-  <div className="backstage-section-heading">
-    <h2>Review</h2>
-
-    <p>Preview before publishing</p>
-  </div>
-
-  <div
-  style={{
-    display: "flex",
-    gap: "1rem",
-    flexWrap: "wrap",
-  }}
->
-  <button
-    type="button"
-    className="backstage-button"
-    disabled={!result?.contents || isReviewing}
-    onClick={runVisionReview}
-  >
-    {isReviewing
-      ? "Vision AI reviewing..."
-      : "Vision AI Review"}
-  </button>
-    <button
-      type="button"
-      className="backstage-button"
-      disabled={
-        !result?.contents ||
-        isGeneratingMetadata
-      }
-      onClick={generateImageMetadata}
-    >
-      {isGeneratingMetadata
-  ? `Generating metadata ${metadataProgress.current} of ${metadataProgress.total}...`
-  : metadataComplete
-    ? "AI Metadata Complete ✓"
-    : "Generate AI Metadata"}
-    </button>
-  <button
-  type="button"
-  className="backstage-button backstage-button-primary"
-  disabled={!selectedHero}
-  onClick={() => setShowWebsitePreview(true)}
->
-  Preview website
-  <span aria-hidden="true">→</span>
-</button>
-
-<button
-  type="button"
-  className="backstage-button backstage-button-primary"
-  disabled={isPublishing}
-  onClick={publishProduction}
->
-  {isPublishing
-    ? "Publishing production…"
-    : "Publish production"}
-  <span aria-hidden="true">→</span>
-</button>
-
-</div>
-
-{visionReview ? (
-  <div
-    style={{
-      marginTop: "2rem",
-      border: "1px solid rgba(242,238,230,.15)",
-      padding: "1.5rem",
-    }}
-  >
-
-    <h3>Vision AI Editorial Review</h3>
-
-    <div style={{ marginTop: "1.25rem" }}>
-      <p
-        style={{
-          margin: "0 0 0.75rem",
-          color: "#c7a369",
-          fontSize: "0.55rem",
-          fontWeight: 700,
-          letterSpacing: "0.16em",
-          textTransform: "uppercase",
-        }}
-      >
-        ★ Vision AI hero
-      </p>
-
-      {aiHeroImage ? (
-        <img
-          src={aiHeroImage.previewUrl}
-          alt={`Vision AI hero recommendation: ${aiHeroImage.filename}`}
-          style={{
-            display: "block",
-            width: "100%",
-            maxWidth: "760px",
-            maxHeight: "65vh",
-            objectFit: "contain",
-            objectPosition: "left center",
-            background: "#080808",
-          }}
-        />
-      ) : (
-        <p>{visionReview.hero}</p>
-      )}
-
-      <p
-        style={{
-          maxWidth: "48rem",
-          margin: "1.25rem 0 0",
-          fontFamily:
-            '"Iowan Old Style", "Palatino Linotype", Georgia, serif',
-          fontSize: "1.25rem",
-          lineHeight: 1.5,
-        }}
-      >
-        {visionReview.heroReason}
-      </p>
-    </div>
-
-    <p>
-      <strong>Editorial Summary</strong><br />
-      {visionReview.editorialSummary}
-    </p>
-
-    <div style={{ marginTop: "2rem" }}>
-      <p
-        style={{
-          margin: "0 0 0.85rem",
-          color: "#c7a369",
-          fontSize: "0.55rem",
-          fontWeight: 700,
-          letterSpacing: "0.16em",
-          textTransform: "uppercase",
-        }}
-      >
-        Keep
-      </p>
-
-      {aiKeepImages.length > 0 ? (
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns:
-              "repeat(auto-fill, minmax(9rem, 1fr))",
-            gap: "0.8rem",
-          }}
-        >
-          {aiKeepImages.map((image) => (
-            <div
-              key={image.filepath}
-              style={{
-                overflow: "hidden",
-                border:
-                  "1px solid rgba(199, 163, 105, 0.45)",
-                background: "#080808",
-              }}
-            >
-              <div
-                style={{
-                  aspectRatio: "4 / 3",
-                  background: "#080808",
-                }}
-              >
-                <img
-                  src={image.previewUrl}
-                  alt={`Vision AI keep recommendation: ${image.filename}`}
-                  loading="lazy"
-                  style={{
-                    display: "block",
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "contain",
-                  }}
-                />
-              </div>
+                      <input
+                        type="radio"
+                        name="hero"
+                        checked={
+                          heroId ===
+                          image.id
+                        }
+                        onChange={() =>
+                          setHeroId(
+                            image.id,
+                          )
+                        }
+                      />{" "}
+                      Hero
+                    </label>
+                  </article>
+                ),
+              )}
             </div>
-          ))}
-        </div>
-      ) : (
-        <p
-          style={{
-            margin: 0,
-            color:
-              "rgba(242, 238, 230, 0.55)",
-          }}
-        >
-          No matching keep images were found.
-        </p>
-      )}
-    </div>
+          </section>
 
-    <div style={{ marginTop: "2rem" }}>
-      <p
-        style={{
-          margin: "0 0 0.85rem",
-          color: "#ffb3a7",
-          fontSize: "0.55rem",
-          fontWeight: 700,
-          letterSpacing: "0.16em",
-          textTransform: "uppercase",
-        }}
-      >
-        Remove
-      </p>
-
-      {aiRemoveImages.length > 0 ? (
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns:
-              "repeat(auto-fill, minmax(9rem, 1fr))",
-            gap: "0.8rem",
-          }}
-        >
-          {aiRemoveImages.map((image) => (
-            <div
-              key={image.filepath}
-              style={{
-                overflow: "hidden",
-                border:
-                  "1px solid rgba(255, 179, 167, 0.38)",
-                background: "#080808",
-                opacity: 0.72,
-              }}
+          <section className="backstage-section">
+            <button
+              type="button"
+              className="backstage-button"
+              disabled={
+                isPublishing
+              }
+              onClick={() =>
+                void publish()
+              }
             >
-              <div
-                style={{
-                  aspectRatio: "4 / 3",
-                  background: "#080808",
-                }}
-              >
-                <img
-                  src={image.previewUrl}
-                  alt={`Vision AI remove recommendation: ${image.filename}`}
-                  loading="lazy"
-                  style={{
-                    display: "block",
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "contain",
-                  }}
-                />
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p
-          style={{
-            margin: 0,
-            color:
-              "rgba(242, 238, 230, 0.55)",
-          }}
-        >
-          Vision AI did not recommend removing any images.
-        </p>
-      )}
-    </div>
-  </div>
-) : null}
-
-{publishResult ? (
-  <div
-    role="status"
-    style={{
-      marginTop: "1.5rem",
-      border: `1px solid ${
-        publishResult.ok
-          ? "rgba(199, 163, 105, 0.55)"
-          : "rgba(255, 179, 167, 0.45)"
-      }`,
-      padding: "1.5rem",
-      background: publishResult.ok
-        ? "rgba(199, 163, 105, 0.06)"
-        : "rgba(255, 179, 167, 0.04)",
-    }}
-  >
-    <p
-      style={{
-        margin: 0,
-        color: publishResult.ok
-          ? "#c7a369"
-          : "#ffb3a7",
-        fontFamily:
-          '"Iowan Old Style", "Palatino Linotype", Georgia, serif',
-        fontSize: "1.35rem",
-        lineHeight: 1.4,
-      }}
-    >
-      {publishResult.message}
-    </p>
-
-    {publishResult.ok &&
-    publishResult.production ? (
-      <div style={{ marginTop: "1.25rem" }}>
-        <p
-          style={{
-            margin: 0,
-            color:
-              "rgba(242, 238, 230, 0.62)",
-            lineHeight: 1.7,
-          }}
-        >
-          {publishResult.production.imageCount} gallery
-          images copied · Hero:{" "}
-          {publishResult.production.hero}
-        </p>
-
-        <a
-          href={publishResult.production.url}
-          target="_blank"
-          rel="noreferrer"
-          className="backstage-button backstage-button-primary"
-          style={{
-            display: "inline-flex",
-            marginTop: "1.25rem",
-            textDecoration: "none",
-          }}
-        >
-          View production
-          <span aria-hidden="true">→</span>
-        </a>
-      </div>
-    ) : null}
-  </div>
-) : null}
-
-  {!selectedHero ? (
-    <p
-      style={{
-        marginTop: "1rem",
-        color: "rgba(242, 238, 230, 0.55)",
-      }}
-    >
-      Select a hero image before opening the website preview.
-    </p>
-    
-  ) : null}
-</section>
-
-              <section
-                style={{
-                  marginTop: "4rem",
-                  borderTop:
-                    "1px solid rgba(242, 238, 230, 0.18)",
-                  paddingTop: "2rem",
-                }}
-              >
-                <h2
-                  style={{
-                    margin: 0,
-                    fontFamily:
-                      '"Iowan Old Style", "Palatino Linotype", Georgia, serif',
-                    fontSize:
-                      "clamp(2rem, 4vw, 4rem)",
-                    fontWeight: 400,
-                  }}
-                >
-                  Details files
-                </h2>
-
-                {result.contents
-                  .detailsFiles.length > 0 ? (
-                  <ul>
-                    {result.contents.detailsFiles.map(
-                      (filepath) => (
-                        <li key={filepath}>
-                          {filenameOnly(
-                            filepath,
-                          )}
-                        </li>
-                      ),
-                    )}
-                  </ul>
-                ) : (
-                  <p>
-                    No text, RTF, Word or PDF
-                    details file was found.
-                  </p>
-                )}
-              </section>
-            </>
-          ) : null}
-        </div>
+              {isPublishing
+                ? "Publishing…"
+                : "Upload & Publish"}
+            </button>
+          </section>
+        </>
       ) : null}
-      {showWebsitePreview &&
-selectedHero &&
-result?.contents ? (
-  <ProductionWebsitePreview
-    fields={productionFields}
-    hero={selectedHero}
-    images={curatedImages}
-    onClose={() =>
-      setShowWebsitePreview(false)
-    }
-  />
-) : null}
-    </section>
+    </div>
   );
 }

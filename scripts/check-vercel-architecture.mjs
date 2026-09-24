@@ -70,7 +70,9 @@ const checks = [
   // Legacy heavyweight publish/preview tools must be unavailable on Vercel.
   () => assertContains("app/api/admin/production-preview/route.ts", ["process.env.VERCEL === \"1\""]),
   () => assertContains("app/api/admin/publish-production/route.ts", ["process.env.VERCEL === \"1\""]),
-  () => assertContains("app/admin/new-production/page.tsx", ["process.env.VERCEL === \"1\""]),
+  () => assertNotContains("app/admin/new-production/ProductionUpload.tsx", ["JSZip", "/api/admin/production-preview", "/api/admin/publish-production"]),
+  () => assertContains("app/admin/new-production/ProductionUpload.tsx", ["/api/admin/new-production-r2", "image/webp"]),
+  () => assertContains("app/api/admin/new-production-r2/route.ts", ["createProductionImageUploadUrl", "finalizePublishedProduction"]),
   () => assertContains("app/admin/bulk-import/page.tsx", ["process.env.VERCEL === \"1\""]),
 ];
 
