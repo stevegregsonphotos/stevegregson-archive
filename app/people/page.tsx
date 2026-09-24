@@ -59,19 +59,22 @@ const excludedRoles = new Set([
 const roleOrder = [
   "Director",
   "Associate Director",
+  "Writer",
   "Musical Director",
   "Choreographer",
+  "Movement Director",
   "Lighting Design",
+  "Set Design",
+  "Costume Design",
   "Set & Costume Design",
   "Sound Design",
+  "Cast",
 ];
 
 function normaliseRole(role: string) {
   const aliases: Record<string, string> = {
     Lighting: "Lighting Design",
     "Lighting Designer": "Lighting Design",
-    "Set Design": "Set & Costume Design",
-    "Costume Design": "Set & Costume Design",
   };
 
   return aliases[role] ?? role;

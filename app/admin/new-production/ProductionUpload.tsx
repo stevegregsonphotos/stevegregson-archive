@@ -44,6 +44,8 @@ const DETAIL_LABELS: Record<
   | "venue"
   | "year"
   | "director"
+  | "writer"
+  | "cast"
   | "associateDirector"
   | "musicalDirector"
   | "choreographer"
@@ -62,6 +64,8 @@ const DETAIL_LABELS: Record<
   theatre: "venue",
   year: "year",
   director: "director",
+  writer: "writer",
+  cast: "cast",
   "associate director":
     "associateDirector",
   "musical director":
@@ -111,6 +115,46 @@ function normaliseDetailLabel(
     .toLowerCase();
 }
 
+function normaliseAllCapsDisplayValue(
+  value: string,
+) {
+  const trimmed = value.trim();
+
+  const letters =
+    trimmed.match(/[A-Za-zÀ-ÖØ-öø-ÿ]/g) ?? [];
+
+  if (
+    letters.length === 0 ||
+    letters.some(
+      (letter) =>
+        letter !== letter.toUpperCase(),
+    )
+  ) {
+    return trimmed;
+  }
+
+  const acronymLike =
+    /^[A-Z0-9&.+/-]{2,6}$/.test(
+      trimmed,
+    );
+
+  if (acronymLike) {
+    return trimmed;
+  }
+
+  return trimmed
+    .toLowerCase()
+    .replace(
+      /(^|[\s\-–—/('])([a-zà-öø-ÿ])/g,
+      (_match, prefix: string, letter: string) =>
+        `${prefix}${letter.toUpperCase()}`,
+    )
+    .replace(
+      /\b([A-Z])\.\s*([A-Z])\./g,
+      "$1.$2.",
+    );
+}
+
 function cleanDetailValue(
   value: string,
 ) {
@@ -121,11 +165,18 @@ function cleanDetailValue(
       .replace(/\.$/, "")
       .trim();
 
-  return /^not\s+found$/i.test(
+  if (
+    !cleaned ||
+    /^not\s+found$/i.test(
+      cleaned,
+    )
+  ) {
+    return "";
+  }
+
+  return normaliseAllCapsDisplayValue(
     cleaned,
-  )
-    ? ""
-    : cleaned;
+  );
 }
 
 function decodeWindows1252Byte(
@@ -278,6 +329,8 @@ function parseDetails(
     venue: "",
     year: "",
     director: "",
+    writer: "",
+    cast: "",
     associateDirector: "",
     musicalDirector: "",
     choreographer: "",
@@ -690,6 +743,18 @@ export default function ProductionUpload() {
     useState("");
 
   const [
+    writer,
+    setWriter,
+  ] =
+    useState("");
+
+  const [
+    cast,
+    setCast,
+  ] =
+    useState("");
+
+  const [
     associateDirector,
     setAssociateDirector,
   ] =
@@ -925,6 +990,12 @@ export default function ProductionUpload() {
         );
         setDirector(
           fields.director,
+        );
+        setWriter(
+          fields.writer,
+        );
+        setCast(
+          fields.cast,
         );
         setAssociateDirector(
           fields.associateDirector,
@@ -1269,8 +1340,26 @@ export default function ProductionUpload() {
       const genericAlt =
         `${title.trim()} at ${venue.trim()} — production photograph`;
 
+      const castCredits =
+        cast
+          .split(
+            /\s*(?:,|;|\band\b)\s*/i,
+          )
+          .map(
+            (name) =>
+              normaliseAllCapsDisplayValue(
+                name,
+              ),
+          )
+          .filter(Boolean)
+          .map((name) => ({
+            role: "Cast",
+            name,
+          }));
+
       const credits = [
         ["Director", director],
+        ["Writer", writer],
         ["Associate Director", associateDirector],
         ["Musical Director", musicalDirector],
         ["Choreographer", choreographer],
@@ -1282,15 +1371,30 @@ export default function ProductionUpload() {
         ["Sound Design", soundDesign],
         ["Commissioned by", commissionedBy],
       ].flatMap(
-        ([role, name]) =>
-          name.trim()
+        ([rawRole, rawName]) => {
+          const role =
+            normaliseAllCapsDisplayValue(
+              rawRole,
+            );
+
+          const name =
+            normaliseAllCapsDisplayValue(
+              rawName,
+            );
+
+          return name
             ? [
                 {
                   role,
-                  name: name.trim(),
+                  name,
                 },
               ]
-            : [],
+            : [];
+        },
+      );
+
+      credits.push(
+        ...castCredits,
       );
 
       const payload = {
@@ -1625,6 +1729,26 @@ export default function ProductionUpload() {
                         .target
                         .value,
                     )
+                  }
+                />
+              </label>
+
+              <label>
+                Writer
+                <input
+                  value={writer}
+                  onChange={(event) =>
+                    setWriter(event.target.value)
+                  }
+                />
+              </label>
+
+              <label>
+                Cast
+                <input
+                  value={cast}
+                  onChange={(event) =>
+                    setCast(event.target.value)
                   }
                 />
               </label>
