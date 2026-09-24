@@ -172,12 +172,12 @@ export default async function ArchivePage() {
         @media (max-width: 900px) {
   .archive-page {
     position: relative;
-    padding: 2.5rem 1.4rem 5rem;
+    padding: 1.25rem 1.4rem 5rem;
   }
 
   .archive-search-position {
     position: absolute;
-    top: 2.25rem;
+    top: 0.95rem;
     right: 1.4rem;
     justify-content: flex-end;
     min-height: auto;
