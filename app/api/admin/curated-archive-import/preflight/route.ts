@@ -1010,9 +1010,41 @@ export async function GET(
       },
     );
 
+  const duplicateGroups =
+    groupedResults.filter(
+      (result) =>
+        result.folders.length > 1,
+    );
+
   return Response.json({
     ok: true,
     summary,
+    diagnostics: {
+      rawResults:
+        results.length,
+      groupedResults:
+        groupedResults.length,
+      collapsedCount:
+        results.length -
+        groupedResults.length,
+      duplicateGroupCount:
+        duplicateGroups.length,
+      duplicateGroups:
+        duplicateGroups.map(
+          (result) => ({
+            title:
+              result.title,
+            venue:
+              result.venue,
+            month:
+              result.month,
+            year:
+              result.year,
+            folders:
+              result.folders,
+          }),
+        ),
+    },
     productions: groupedResults,
   });
 }
