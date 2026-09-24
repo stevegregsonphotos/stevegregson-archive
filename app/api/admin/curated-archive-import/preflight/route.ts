@@ -18,7 +18,7 @@ import {
 import {
   findCuratedImportStagedImage,
   getCuratedImportDirectFiles,
-  materializeCuratedImport,
+  readCuratedImportDirectFile,
 } from "@/lib/curated-archive/staging";
 import {
   validateCuratedSourceBoundary,
@@ -184,21 +184,21 @@ export async function GET(
     return createUnauthorizedResponse();
   }
 
-  let CURATION_ROOT: string | null;
+  let directFiles: string[] | null;
 
   try {
-    CURATION_ROOT =
-      await materializeCuratedImport();
+    directFiles =
+      await getCuratedImportDirectFiles();
   } catch (error) {
     console.error(
-      "[curated-preflight] materializeCuratedImport failed:",
+      "[curated-preflight] direct manifest read failed:",
       error,
     );
 
     return Response.json(
       {
         ok: false,
-        message: `STAGE 1 — staging materialisation failed: ${
+        message: `STAGE 1 — staged manifest read failed: ${
           error instanceof Error
             ? `${error.name}: ${error.message}`
             : String(error)
@@ -208,7 +208,7 @@ export async function GET(
     );
   }
 
-  if (!CURATION_ROOT) {
+  if (!directFiles) {
     return Response.json({
       ok: true,
       summary: {
@@ -223,8 +223,16 @@ export async function GET(
     });
   }
 
-  const directFiles =
-    await getCuratedImportDirectFiles();
+  async function readDirectText(
+    folder: string,
+    filename: string,
+  ) {
+    return (
+      await readCuratedImportDirectFile(
+        `${folder}/${filename}`,
+      )
+    ).toString("utf8");
+  }
 
   let productions:
     Awaited<
@@ -359,12 +367,30 @@ export async function GET(
     return existing?.slug ?? null;
   }
 
+  const folderNames =
+    Array.from(
+      new Set(
+        directFiles.flatMap(
+          (relativePath) => {
+            const match =
+              relativePath.match(
+                /^([^/]+)\/final-selection\.json$/i,
+              );
+
+            return match
+              ? [match[1]]
+              : [];
+          },
+        ),
+      ),
+    );
+
   const entries =
-    await fs.readdir(
-      CURATION_ROOT,
-      {
-        withFileTypes: true,
-      },
+    folderNames.map(
+      (name) => ({
+        name,
+        isDirectory: () => true,
+      }),
     );
 
   const metadataByProduction =
@@ -378,26 +404,12 @@ export async function GET(
       continue;
     }
 
-    const metadataResearchPath =
-      path.join(
-        CURATION_ROOT,
-        entry.name,
-        "metadata-research.json",
-      );
-
-    const metadataProposedPath =
-      path.join(
-        CURATION_ROOT,
-        entry.name,
-        "metadata-proposed.txt",
-      );
-
     try {
       const research =
         JSON.parse(
-          await fs.readFile(
-            metadataResearchPath,
-            "utf8",
+          await readDirectText(
+            entry.name,
+            "metadata-research.json",
           ),
         ) as {
           production?: unknown;
@@ -413,9 +425,9 @@ export async function GET(
 
       const proposed =
         parseMetadata(
-          await fs.readFile(
-            metadataProposedPath,
-            "utf8",
+          await readDirectText(
+            entry.name,
+            "metadata-proposed.txt",
           ),
         );
 
@@ -438,22 +450,10 @@ export async function GET(
     }
 
     const directory =
-      path.join(
-        CURATION_ROOT,
-        entry.name,
-      );
-
-    const finalSelectionPath =
-      path.join(
-        directory,
-        "final-selection.json",
-      );
+      entry.name;
 
     const stagingDirectory =
-      path.join(
-        directory,
-        "selected-web-staging",
-      );
+      "";
 
     let finalSelection:
       | {
@@ -479,9 +479,9 @@ export async function GET(
     try {
       finalSelection =
         JSON.parse(
-          await fs.readFile(
-            finalSelectionPath,
-            "utf8",
+          await readDirectText(
+            entry.name,
+            "final-selection.json",
           ),
         );
     } catch {
@@ -544,9 +544,9 @@ export async function GET(
     // with the same normalised name can never override the aligned output.
     try {
       metadata = parseMetadata(
-        await fs.readFile(
-          path.join(directory, "metadata-proposed.txt"),
-          "utf8",
+        await readDirectText(
+          entry.name,
+          "metadata-proposed.txt",
         ),
       );
     } catch {
