@@ -175,7 +175,7 @@ export default async function ArchivePage() {
   }
 
   .archive-search-position {
-    justify-content: stretch;
+    justify-content: flex-end;
     min-height: auto;
     margin-bottom: 1.5rem;
   }
