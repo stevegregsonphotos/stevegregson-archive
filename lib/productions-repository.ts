@@ -467,13 +467,8 @@ export async function moveProductionWithinArchiveMonth(
       archive_position
     FROM productions
     WHERE year = ${target.year}
-      AND (
-        month = ${target.month}
-        OR (
-          month IS NULL AND
-          ${target.month} IS NULL
-        )
-      )
+      AND month IS NOT DISTINCT FROM
+        ${target.month}::integer
       AND deleted_at IS NULL
     ORDER BY
       archive_position ASC NULLS LAST,
