@@ -41,9 +41,8 @@ export default async function ArchivePage() {
   const productions =
     await getArchiveProductions();
 
-  const sortedProductions = [...productions].sort(
-    (a, b) => b.year - a.year,
-  );
+  const sortedProductions =
+    productions;
 
   return (
     <main className="archive-page">
