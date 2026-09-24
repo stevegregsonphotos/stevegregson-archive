@@ -707,6 +707,20 @@ export default async function ProofingGalleryPage({
                               "in-progress"
                             ? "Selection in progress"
                             : "No selection started"}
+                        {visitor.selection.status ===
+                          "submitted" &&
+                        visitor.selection.submittedAt ? (
+                          <>
+                            <span aria-hidden="true">
+                              {" "}
+                              ·{" "}
+                            </span>
+                            {formatDownloadDate(
+                              visitor.selection
+                                .submittedAt,
+                            )}
+                          </>
+                        ) : null}
                       </p>
                     </div>
 
@@ -1254,15 +1268,8 @@ export default async function ProofingGalleryPage({
 
             <strong>
               {latestVisitor
-                ? new Date(
+                ? formatDownloadDate(
                     latestVisitor.lastSeenAt,
-                  ).toLocaleDateString(
-                    "en-GB",
-                    {
-                      day: "numeric",
-                      month: "short",
-                      year: "numeric",
-                    },
                   )
                 : "No visits yet"}
             </strong>
