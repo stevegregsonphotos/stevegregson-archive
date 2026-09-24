@@ -30,6 +30,7 @@ type ProductionRow = {
   venue: string;
   month: number | null;
   year: number;
+  archivePosition: number | null;
   description: string;
   access: "public" | "password" | null;
   show_hero_when_locked: boolean | null;
@@ -77,6 +78,7 @@ function sortProductions<
     year: number;
     month?: number | null;
     title: string;
+    archivePosition?: number | null;
   },
 >(productions: T[]) {
   return productions.sort(
@@ -84,6 +86,14 @@ function sortProductions<
       second.year - first.year ||
       productionMonth(second) -
         productionMonth(first) ||
+      (
+        first.archivePosition ??
+        Number.MAX_SAFE_INTEGER
+      ) -
+        (
+          second.archivePosition ??
+          Number.MAX_SAFE_INTEGER
+        ) ||
       first.title.localeCompare(
         second.title,
       ),
@@ -210,6 +220,7 @@ export async function getArchiveProductions():
           venue,
           month,
           year,
+          archive_position,
           description,
           access,
           show_hero_when_locked,
@@ -254,6 +265,7 @@ export async function getArchiveProductions():
     venue: string;
     month: number | null;
     year: number;
+    archive_position: number | null;
     description: string;
     access: "public" | "password" | null;
     show_hero_when_locked: boolean | null;
@@ -265,6 +277,8 @@ export async function getArchiveProductions():
     venue: row.venue,
     month: row.month,
     year: row.year,
+    archivePosition:
+      row.archive_position,
     description: row.description,
     hero: row.hero_display_filename,
     heroAlt: row.hero_alt,
@@ -349,6 +363,7 @@ export type AdminProductionSummary = {
   venue: string;
   month: number | null;
   year: number;
+  archivePosition: number | null;
   hero: string;
   imageCount: number;
 };
@@ -363,6 +378,7 @@ export async function getAdminProductionSummaries():
       p.venue,
       p.month,
       p.year,
+      p.archive_position,
       p.hero_display_filename AS hero,
       COUNT(i.production_id)::int AS image_count
     FROM productions p
@@ -377,6 +393,7 @@ export async function getAdminProductionSummaries():
       p.venue,
       p.month,
       p.year,
+      p.archive_position,
       p.hero_display_filename
   `;
 
@@ -387,6 +404,7 @@ export async function getAdminProductionSummaries():
       venue: string;
       month: number | null;
       year: number;
+      archive_position: number | null;
       hero: string;
       image_count: number;
     }>).map((row) => ({
@@ -395,10 +413,150 @@ export async function getAdminProductionSummaries():
       venue: row.venue,
       month: row.month,
       year: row.year,
+      archivePosition:
+        row.archive_position,
       hero: row.hero,
       imageCount: Number(row.image_count),
     })),
   );
+}
+
+export async function moveProductionWithinArchiveMonth(
+  slug: string,
+  direction: "up" | "down",
+) {
+  const sql = getSql();
+
+  const targetRows = await sql`
+    SELECT
+      id,
+      slug,
+      title,
+      month,
+      year,
+      archive_position
+    FROM productions
+    WHERE lower(slug) = lower(${slug})
+      AND deleted_at IS NULL
+    LIMIT 1
+  `;
+
+  const target =
+    targetRows[0] as
+      | {
+          id: string;
+          slug: string;
+          title: string;
+          month: number | null;
+          year: number;
+          archive_position:
+            | number
+            | null;
+        }
+      | undefined;
+
+  if (!target) {
+    return null;
+  }
+
+  const monthRows = await sql`
+    SELECT
+      id,
+      slug,
+      title,
+      archive_position
+    FROM productions
+    WHERE year = ${target.year}
+      AND (
+        month = ${target.month}
+        OR (
+          month IS NULL AND
+          ${target.month} IS NULL
+        )
+      )
+      AND deleted_at IS NULL
+    ORDER BY
+      archive_position ASC NULLS LAST,
+      title ASC
+  `;
+
+  const ordered =
+    monthRows as Array<{
+      id: string;
+      slug: string;
+      title: string;
+      archive_position:
+        | number
+        | null;
+    }>;
+
+  const currentIndex =
+    ordered.findIndex(
+      (production) =>
+        production.id ===
+        target.id,
+    );
+
+  if (currentIndex < 0) {
+    return null;
+  }
+
+  const destinationIndex =
+    direction === "up"
+      ? currentIndex - 1
+      : currentIndex + 1;
+
+  if (
+    destinationIndex < 0 ||
+    destinationIndex >=
+      ordered.length
+  ) {
+    return {
+      moved: false,
+      slug: target.slug,
+    };
+  }
+
+  const reordered =
+    [...ordered];
+
+  const [
+    movedProduction,
+  ] =
+    reordered.splice(
+      currentIndex,
+      1,
+    );
+
+  reordered.splice(
+    destinationIndex,
+    0,
+    movedProduction,
+  );
+
+  const queries =
+    reordered.map(
+      (production, position) =>
+        sql`
+          UPDATE productions
+          SET
+            archive_position =
+              ${position},
+            updated_at = now()
+          WHERE id =
+            ${production.id}
+            AND deleted_at IS NULL
+        `,
+    );
+
+  await sql.transaction(
+    queries,
+  );
+
+  return {
+    moved: true,
+    slug: target.slug,
+  };
 }
 
 export type ProductionNavigationEntry = {

@@ -15,6 +15,7 @@ type ProductionSummary = {
   venue: string;
   month: number | null;
   year: number;
+  archivePosition: number | null;
   hero: string;
   imageCount: number;
 };
@@ -91,6 +92,23 @@ export default function ProductionManager({
   const [venueFilter, setVenueFilter] =
     useState("all");
 
+  const [
+    productionList,
+    setProductionList,
+  ] = useState(productions);
+
+  const [
+    movingSlug,
+    setMovingSlug,
+  ] = useState<string | null>(
+    null,
+  );
+
+  const [
+    orderError,
+    setOrderError,
+  ] = useState("");
+
   const normalisedQuery = query
     .trim()
     .toLowerCase();
@@ -99,7 +117,7 @@ export default function ProductionManager({
     () =>
       [
         ...new Set(
-          productions.map((production) =>
+          productionList.map((production) =>
             String(production.year),
           ),
         ),
@@ -107,14 +125,14 @@ export default function ProductionManager({
         (first, second) =>
           Number(second) - Number(first),
       ),
-    [productions],
+    [productionList],
   );
 
   const venues = useMemo(
     () =>
       [
         ...new Set(
-          productions
+          productionList
             .map((production) =>
               production.venue.trim(),
             )
@@ -123,12 +141,12 @@ export default function ProductionManager({
       ].sort((first, second) =>
         first.localeCompare(second),
       ),
-    [productions],
+    [productionList],
   );
 
   const filteredProductions = useMemo(() => {
     const matchingProductions =
-      productions.filter((production) => {
+      productionList.filter((production) => {
         const searchableText = [
           production.title,
           production.venue,
@@ -187,16 +205,29 @@ export default function ProductionManager({
 
           case "newest":
           default:
-            return compareProductionDates(
-              second,
-              first,
+            return (
+              compareProductionDates(
+                second,
+                first,
+              ) ||
+              (
+                first.archivePosition ??
+                Number.MAX_SAFE_INTEGER
+              ) -
+                (
+                  second.archivePosition ??
+                  Number.MAX_SAFE_INTEGER
+                ) ||
+              first.title.localeCompare(
+                second.title,
+              )
             );
         }
       },
     );
   }, [
     normalisedQuery,
-    productions,
+    productionList,
     sortBy,
     venueFilter,
     yearFilter,
@@ -211,6 +242,161 @@ export default function ProductionManager({
     setQuery("");
     setYearFilter("all");
     setVenueFilter("all");
+  }
+
+  async function moveProduction(
+    production:
+      ProductionSummary,
+    direction:
+      | "up"
+      | "down",
+  ) {
+    setMovingSlug(
+      production.slug,
+    );
+    setOrderError("");
+
+    try {
+      const response =
+        await fetch(
+          "/api/admin/production-archive-order",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify({
+              slug:
+                production.slug,
+              direction,
+            }),
+          },
+        );
+
+      const result =
+        (await response.json()) as {
+          ok?: boolean;
+          moved?: boolean;
+          message?: string;
+        };
+
+      if (
+        !response.ok ||
+        !result.ok
+      ) {
+        throw new Error(
+          result.message ||
+            "Archive order could not be changed.",
+        );
+      }
+
+      if (!result.moved) {
+        return;
+      }
+
+      const sameMonth =
+        productionList
+          .filter(
+            (candidate) =>
+              candidate.year ===
+                production.year &&
+              candidate.month ===
+                production.month,
+          )
+          .sort(
+            (
+              first,
+              second,
+            ) =>
+              (
+                first.archivePosition ??
+                Number.MAX_SAFE_INTEGER
+              ) -
+                (
+                  second.archivePosition ??
+                  Number.MAX_SAFE_INTEGER
+                ) ||
+              first.title.localeCompare(
+                second.title,
+              ),
+          );
+
+      const currentIndex =
+        sameMonth.findIndex(
+          (candidate) =>
+            candidate.slug ===
+            production.slug,
+        );
+
+      const destinationIndex =
+        direction === "up"
+          ? currentIndex - 1
+          : currentIndex + 1;
+
+      if (
+        currentIndex >= 0 &&
+        destinationIndex >= 0 &&
+        destinationIndex <
+          sameMonth.length
+      ) {
+        const reordered =
+          [...sameMonth];
+
+        const [moved] =
+          reordered.splice(
+            currentIndex,
+            1,
+          );
+
+        reordered.splice(
+          destinationIndex,
+          0,
+          moved,
+        );
+
+        const positions =
+          new Map(
+            reordered.map(
+              (
+                item,
+                index,
+              ) => [
+                item.slug,
+                index,
+              ],
+            ),
+          );
+
+        setProductionList(
+          (current) =>
+            current.map(
+              (item) =>
+                positions.has(
+                  item.slug,
+                )
+                  ? {
+                      ...item,
+                      archivePosition:
+                        positions.get(
+                          item.slug,
+                        ) ?? null,
+                    }
+                  : item,
+            ),
+        );
+      }
+    } catch (error) {
+      setOrderError(
+        error instanceof Error
+          ? error.message
+          : "Archive order could not be changed.",
+      );
+    } finally {
+      setMovingSlug(
+        null,
+      );
+    }
   }
 
   return (
@@ -396,9 +582,9 @@ export default function ProductionManager({
               </strong>{" "}
               of{" "}
               <strong>
-                {productions.length}
+                {productionList.length}
               </strong>{" "}
-              {productions.length === 1
+              {productionList.length === 1
                 ? "production"
                 : "productions"}
             </p>
@@ -413,6 +599,17 @@ export default function ProductionManager({
             ) : null}
           </div>
         </section>
+
+        {orderError ? (
+          <p
+            style={{
+              margin: "0 0 1.5rem",
+              color: "#e6a89c",
+            }}
+          >
+            {orderError}
+          </p>
+        ) : null}
 
         <section
           className="production-manager-list"
@@ -500,6 +697,57 @@ export default function ProductionManager({
                   </div>
 
                   <div className="production-manager-actions">
+                    {sortBy === "newest" ? (
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: ".4rem",
+                          alignItems: "center",
+                        }}
+                        aria-label="Archive order within month"
+                      >
+                        <button
+                          type="button"
+                          disabled={
+                            movingSlug !== null
+                          }
+                          onClick={() =>
+                            void moveProduction(
+                              production,
+                              "up",
+                            )
+                          }
+                          title="Move earlier within this month"
+                          aria-label={`Move ${production.title} earlier within ${productionDate(
+                            production.month,
+                            production.year,
+                          )}`}
+                        >
+                          ↑
+                        </button>
+
+                        <button
+                          type="button"
+                          disabled={
+                            movingSlug !== null
+                          }
+                          onClick={() =>
+                            void moveProduction(
+                              production,
+                              "down",
+                            )
+                          }
+                          title="Move later within this month"
+                          aria-label={`Move ${production.title} later within ${productionDate(
+                            production.month,
+                            production.year,
+                          )}`}
+                        >
+                          ↓
+                        </button>
+                      </div>
+                    ) : null}
+
                     <Link
                       href={`/productions/${production.slug}`}
                       target="_blank"
