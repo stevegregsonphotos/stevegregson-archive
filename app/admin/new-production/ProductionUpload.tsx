@@ -38,6 +38,326 @@ const MONTHS = [
 const IMAGE_EXTENSIONS =
   /\.(jpe?g|png|webp)$/i;
 
+const DETAIL_LABELS: Record<
+  string,
+  | "title"
+  | "venue"
+  | "year"
+  | "director"
+  | "commissionedBy"
+  | "description"
+> = {
+  production: "title",
+  title: "title",
+  venue: "venue",
+  theatre: "venue",
+  year: "year",
+  director: "director",
+  "commissioned by":
+    "commissionedBy",
+  description:
+    "description",
+};
+
+function normaliseDetailLabel(
+  value: string,
+) {
+  return value
+    .trim()
+    .replace(/:$/, "")
+    .replace(/\.$/, "")
+    .trim()
+    .toLowerCase();
+}
+
+function cleanDetailValue(
+  value: string,
+) {
+  const cleaned =
+    value
+      .trim()
+      .replace(/\s+\.$/, ".")
+      .replace(/\.$/, "")
+      .trim();
+
+  return /^not\s+found$/i.test(
+    cleaned,
+  )
+    ? ""
+    : cleaned;
+}
+
+function decodeWindows1252Byte(
+  hex: string,
+) {
+  return new TextDecoder(
+    "windows-1252",
+  ).decode(
+    Uint8Array.of(
+      Number.parseInt(
+        hex,
+        16,
+      ),
+    ),
+  );
+}
+
+function rtfToPlainText(
+  rtf: string,
+) {
+  let result = rtf;
+
+  result =
+    result.replace(
+      /\{\\(?:fonttbl|colortbl|expandedcolortbl|stylesheet|info)[\s\S]*?\}(?=\s*\{|\s*\\|\s*$)/gi,
+      "",
+    );
+
+  result =
+    result.replace(
+      /\\'([0-9a-f]{2})/gi,
+      (
+        _match,
+        hex: string,
+      ) =>
+        decodeWindows1252Byte(
+          hex,
+        ),
+    );
+
+  result =
+    result.replace(
+      /\\u(-?\d+)\??/g,
+      (
+        _match,
+        value: string,
+      ) => {
+        const number =
+          Number.parseInt(
+            value,
+            10,
+          );
+
+        const codePoint =
+          number < 0
+            ? number +
+              65536
+            : number;
+
+        return String.fromCharCode(
+          codePoint,
+        );
+      },
+    );
+
+  result =
+    result
+      .replace(
+        /\\par(?=[\\\s{}]|$)/gi,
+        "\n",
+      )
+      .replace(
+        /\\line(?=[\\\s{}]|$)/gi,
+        "\n",
+      )
+      .replace(
+        /\\tab(?=[\\\s{}]|$)/gi,
+        "\t",
+      )
+      .replace(
+        /\\\{/g,
+        "{",
+      )
+      .replace(
+        /\\\}/g,
+        "}",
+      )
+      .replace(
+        /\\\\/g,
+        "\\",
+      );
+
+  result =
+    result.replace(
+      /\\\r?\n/g,
+      "\n",
+    );
+
+  result =
+    result
+      .replace(
+        /\\[a-z]+-?\d*\s?/gi,
+        "",
+      )
+      .replace(
+        /[{}]/g,
+        "",
+      );
+
+  const lines =
+    result
+      .split(/\r?\n/)
+      .map(
+        (line) =>
+          line
+            .replace(
+              /\s+/g,
+              " ",
+            )
+            .trim(),
+      )
+      .filter(Boolean);
+
+  const firstLabelIndex =
+    lines.findIndex(
+      (line) =>
+        Boolean(
+          DETAIL_LABELS[
+            normaliseDetailLabel(
+              line,
+            )
+          ],
+        ),
+    );
+
+  return (
+    firstLabelIndex >= 0
+      ? lines.slice(
+          firstLabelIndex,
+        )
+      : lines
+  ).join("\n");
+}
+
+function parseDetails(
+  plainText: string,
+) {
+  const fields = {
+    title: "",
+    venue: "",
+    year: "",
+    director: "",
+    commissionedBy: "",
+    description: "",
+  };
+
+  let activeField:
+    | keyof typeof fields
+    | null = null;
+
+  const lines =
+    plainText
+      .split(/\r?\n/)
+      .map(
+        (line) =>
+          line.trim(),
+      )
+      .filter(Boolean);
+
+  for (
+    const line of lines
+  ) {
+    const inlineMatch =
+      line.match(
+        /^([^:]{2,60}):\s*(.+)$/,
+      );
+
+    if (inlineMatch) {
+      const [
+        ,
+        rawLabel,
+        rawValue,
+      ] =
+        inlineMatch;
+
+      const field =
+        DETAIL_LABELS[
+          normaliseDetailLabel(
+            rawLabel,
+          )
+        ];
+
+      if (field) {
+        const value =
+          cleanDetailValue(
+            rawValue,
+          );
+
+        if (
+          field ===
+            "description" &&
+          fields.description
+        ) {
+          fields.description =
+            `${fields.description} ${value}`;
+        } else if (
+          !fields[field]
+        ) {
+          fields[field] =
+            value;
+        }
+
+        activeField =
+          null;
+        continue;
+      }
+    }
+
+    const field =
+      DETAIL_LABELS[
+        normaliseDetailLabel(
+          line,
+        )
+      ];
+
+    if (field) {
+      activeField =
+        field;
+      continue;
+    }
+
+    if (!activeField) {
+      continue;
+    }
+
+    const value =
+      cleanDetailValue(
+        line,
+      );
+
+    if (!value) {
+      continue;
+    }
+
+    if (
+      activeField ===
+        "description" &&
+      fields.description
+    ) {
+      fields.description =
+        `${fields.description} ${value}`;
+    } else if (
+      !fields[
+        activeField
+      ]
+    ) {
+      fields[
+        activeField
+      ] = value;
+    }
+
+    if (
+      activeField !==
+      "description"
+    ) {
+      activeField =
+        null;
+    }
+  }
+
+  return fields;
+}
+
 function slugify(
   value: string,
 ) {
@@ -326,6 +646,12 @@ export default function ProductionUpload() {
     useState("");
 
   const [
+    detailsFileName,
+    setDetailsFileName,
+  ] =
+    useState("");
+
+  const [
     error,
     setError,
   ] =
@@ -360,7 +686,7 @@ export default function ProductionUpload() {
         heroId,
     ) ?? null;
 
-  function chooseFolder(
+  async function chooseFolder(
     files:
       FileList | null,
   ) {
@@ -377,10 +703,13 @@ export default function ProductionUpload() {
       );
     }
 
-    const next =
+    const selectedFiles =
       Array.from(
         files,
-      )
+      );
+
+    const next =
+      selectedFiles
         .filter(
           (file) =>
             IMAGE_EXTENSIONS.test(
@@ -418,14 +747,123 @@ export default function ProductionUpload() {
 
     setError("");
     setPublishedUrl("");
+    setDetailsFileName("");
 
-    setProgress(
-      `Found ${next.length.toLocaleString()} photograph${
-        next.length === 1
-          ? ""
-          : "s"
-      }.`,
-    );
+    const detailsFile =
+      selectedFiles.find(
+        (file) =>
+          /(^|\/)details?\.txt$/i.test(
+            file.webkitRelativePath ||
+              file.name,
+          ),
+      ) ??
+      selectedFiles.find(
+        (file) =>
+          /(^|\/)details?\.rtf$/i.test(
+            file.webkitRelativePath ||
+              file.name,
+          ),
+      ) ??
+      selectedFiles.find(
+        (file) =>
+          /\.txt$/i.test(
+            file.name,
+          ),
+      ) ??
+      selectedFiles.find(
+        (file) =>
+          /\.rtf$/i.test(
+            file.name,
+          ),
+      ) ??
+      null;
+
+    if (detailsFile) {
+      try {
+        const rawText =
+          await detailsFile.text();
+
+        const plainText =
+          /\.rtf$/i.test(
+            detailsFile.name,
+          )
+            ? rtfToPlainText(
+                rawText,
+              )
+            : rawText
+                .split(
+                  /\r?\n/,
+                )
+                .map(
+                  (line) =>
+                    line.trim(),
+                )
+                .filter(
+                  Boolean,
+                )
+                .join(
+                  "\n",
+                );
+
+        const fields =
+          parseDetails(
+            plainText,
+          );
+
+        setTitle(
+          fields.title,
+        );
+        setVenue(
+          fields.venue,
+        );
+        setYear(
+          fields.year,
+        );
+        setDirector(
+          fields.director,
+        );
+        setCommissionedBy(
+          fields.commissionedBy,
+        );
+        setDescription(
+          fields.description,
+        );
+
+        setDetailsFileName(
+          detailsFile.name,
+        );
+
+        setProgress(
+          `Found ${next.length.toLocaleString()} photograph${
+            next.length === 1
+              ? ""
+              : "s"
+          }. Read production details from ${detailsFile.name}.`,
+        );
+      } catch (detailsError) {
+        setProgress(
+          `Found ${next.length.toLocaleString()} photograph${
+            next.length === 1
+              ? ""
+              : "s"
+          }.`,
+        );
+
+        setError(
+          detailsError instanceof Error
+            ? `Photographs loaded, but ${detailsFile.name} could not be read: ${detailsError.message}`
+            : `Photographs loaded, but ${detailsFile.name} could not be read.`,
+        );
+      }
+    } else {
+      setProgress(
+        `Found ${next.length.toLocaleString()} photograph${
+          next.length === 1
+            ? ""
+            : "s"
+        }. No details.txt or details.rtf file was found.`,
+      );
+    }
   }
 
   async function publish() {
@@ -881,7 +1319,7 @@ export default function ProductionUpload() {
           onChange={(
             event,
           ) =>
-            chooseFolder(
+            void chooseFolder(
               event.target
                 .files,
             )
@@ -928,7 +1366,9 @@ export default function ProductionUpload() {
                 Production information
               </h2>
               <p>
-                Required before publishing
+                {detailsFileName
+                  ? `Read from ${detailsFileName}`
+                  : "Required before publishing"}
               </p>
             </div>
 
