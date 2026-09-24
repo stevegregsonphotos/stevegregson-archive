@@ -432,6 +432,112 @@ export async function GET(
       }),
     );
 
+  /*
+   * Preflight used to read the same small R2 control files
+   * serially inside multiple loops. With hundreds of curated
+   * productions that produced well over a thousand sequential
+   * R2 requests and could exceed the Vercel function window.
+   *
+   * Read each manifest-listed control file once with bounded
+   * concurrency, then use the in-memory cache below.
+   */
+  const directTextCache =
+    new Map<string, string>();
+
+  const directReadErrors =
+    new Map<string, string>();
+
+  const controlFiles =
+    directFiles.filter(
+      (relativePath) =>
+        /(^|\/)final-selection\.json$/i.test(
+          relativePath,
+        ) ||
+        /(^|\/)metadata-research\.json$/i.test(
+          relativePath,
+        ) ||
+        /(^|\/)metadata-proposed\.txt$/i.test(
+          relativePath,
+        ),
+    );
+
+  let controlFileIndex = 0;
+  const CONTROL_FILE_CONCURRENCY = 8;
+
+  async function readControlFiles() {
+    while (true) {
+      const index =
+        controlFileIndex;
+      controlFileIndex += 1;
+
+      if (
+        index >=
+        controlFiles.length
+      ) {
+        return;
+      }
+
+      const relativePath =
+        controlFiles[index];
+
+      try {
+        directTextCache.set(
+          relativePath,
+          (
+            await readCuratedImportDirectFile(
+              relativePath,
+            )
+          ).toString("utf8"),
+        );
+      } catch (error) {
+        directReadErrors.set(
+          relativePath,
+          error instanceof Error
+            ? `${error.name}: ${error.message}`
+            : String(error),
+        );
+      }
+    }
+  }
+
+  await Promise.all(
+    Array.from(
+      {
+        length:
+          CONTROL_FILE_CONCURRENCY,
+      },
+      () => readControlFiles(),
+    ),
+  );
+
+  function cachedDirectText(
+    folder: string,
+    filename: string,
+  ) {
+    const relativePath =
+      `${folder}/${filename}`;
+
+    const value =
+      directTextCache.get(
+        relativePath,
+      );
+
+    if (value !== undefined) {
+      return value;
+    }
+
+    const readError =
+      directReadErrors.get(
+        relativePath,
+      );
+
+    throw new Error(
+      readError
+        ? `Could not read "${relativePath}": ${readError}`
+        : `Curated staged file "${relativePath}" is not present in the manifest.`,
+    );
+  }
+
   const metadataByProduction =
     new Map<
       string,
@@ -446,7 +552,7 @@ export async function GET(
     try {
       const research =
         JSON.parse(
-          await readDirectText(
+          cachedDirectText(
             entry.name,
             "metadata-research.json",
           ),
@@ -464,7 +570,7 @@ export async function GET(
 
       const proposed =
         parseMetadata(
-          await readDirectText(
+          cachedDirectText(
             entry.name,
             "metadata-proposed.txt",
           ),
@@ -518,7 +624,7 @@ export async function GET(
     try {
       finalSelection =
         JSON.parse(
-          await readDirectText(
+          cachedDirectText(
             entry.name,
             "final-selection.json",
           ),
@@ -583,7 +689,7 @@ export async function GET(
     // with the same normalised name can never override the aligned output.
     try {
       metadata = parseMetadata(
-        await readDirectText(
+        cachedDirectText(
           entry.name,
           "metadata-proposed.txt",
         ),
@@ -1029,6 +1135,19 @@ export async function GET(
         groupedResults.length,
       duplicateGroupCount:
         duplicateGroups.length,
+      controlFileCount:
+        controlFiles.length,
+      controlFileReadFailureCount:
+        directReadErrors.size,
+      controlFileReadFailures:
+        Array.from(
+          directReadErrors.entries(),
+        ).map(
+          ([relativePath, error]) => ({
+            relativePath,
+            error,
+          }),
+        ),
       duplicateGroups:
         duplicateGroups.map(
           (result) => ({
