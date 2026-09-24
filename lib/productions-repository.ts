@@ -152,6 +152,7 @@ function mapImageRow(
 export type ProductionIndexEntry = {
   slug: string;
   title: string;
+  venue: string;
   month: number | null;
   year: number;
   access: "public" | "password" | null;
@@ -166,6 +167,7 @@ export async function getProductionIndex():
     SELECT
       slug,
       title,
+      venue,
       month,
       year,
       access,

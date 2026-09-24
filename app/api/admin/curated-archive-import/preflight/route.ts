@@ -8,8 +8,9 @@ import {
 } from "@/lib/productions-repository";
 
 import {
-  createProductionSlug,
-} from "@/lib/publishing/production-slug";
+  createProductionIdentityKey,
+  productionIdentityMatches,
+} from "@/lib/publishing/production-identity";
 import {
   getCuratedArchiveAccessOverrides,
   getCuratedArchiveOverrides,
@@ -344,24 +345,62 @@ export async function GET(
 
   function findExistingSlug(
     title: string,
+    venue: string,
+    month: number | null,
+    year: number | null,
   ) {
-    const cleanTitle =
-      title.trim();
-
-    if (!cleanTitle) {
+    if (
+      !title.trim() ||
+      !venue.trim() ||
+      year === null
+    ) {
       return null;
     }
-
-    const expectedSlug =
-      createProductionSlug(
-        cleanTitle,
-      );
 
     const existing =
       productions.find(
         (production) =>
-          production.slug ===
-          expectedSlug,
+          (
+            productionIdentityMatches(
+              {
+                title,
+                venue,
+                month,
+                year,
+              },
+              {
+                title:
+                  production.title,
+                venue:
+                  production.venue,
+                month:
+                  production.month,
+                year:
+                  production.year,
+              },
+            ) ||
+            (
+              production.month === null &&
+              production.year === year &&
+              productionIdentityMatches(
+                {
+                  title,
+                  venue,
+                  month: null,
+                  year,
+                },
+                {
+                  title:
+                    production.title,
+                  venue:
+                    production.venue,
+                  month: null,
+                  year:
+                    production.year,
+                },
+              )
+            )
+          ),
       );
 
     return existing?.slug ?? null;
@@ -800,6 +839,11 @@ export async function GET(
     const existingSlug =
       findExistingSlug(
         title,
+        venue,
+        month,
+        Number.isInteger(year)
+          ? year
+          : null,
       );
 
     const status =
@@ -855,9 +899,20 @@ export async function GET(
   const groupedResults = Array.from(
     results.reduce((groups, result) => {
       const identity =
-        result.title
-          ? `slug:${createProductionSlug(
-              result.title,
+        result.title &&
+        result.venue &&
+        result.year
+          ? `production:${createProductionIdentityKey(
+              {
+                title:
+                  result.title,
+                venue:
+                  result.venue,
+                month:
+                  result.month,
+                year:
+                  result.year,
+              },
             )}`
           : `folder:${result.folder}`;
 

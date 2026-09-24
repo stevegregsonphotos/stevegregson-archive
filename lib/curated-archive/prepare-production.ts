@@ -1,8 +1,9 @@
 import {
-  createProductionSlug,
-} from "@/lib/publishing/production-slug";
+  createCuratedProductionSlug,
+  productionIdentityMatches,
+} from "@/lib/publishing/production-identity";
 import {
-  productionExists,
+  getProductionIndex,
 } from "@/lib/productions-repository";
 import {
   getCuratedArchiveAccessOverrides,
@@ -544,19 +545,68 @@ async function loadMetadata(
 
 async function findExistingSlug(
   title: string,
+  venue: string,
+  month: number | null,
+  year: number | null,
 ) {
-  if (!title.trim()) {
+  if (
+    !title.trim() ||
+    !venue.trim() ||
+    year === null
+  ) {
     return null;
   }
 
-  const slug =
-    createProductionSlug(
-      title,
+  const productions =
+    await getProductionIndex();
+
+  const existing =
+    productions.find(
+      (production) =>
+        (
+          productionIdentityMatches(
+            {
+              title,
+              venue,
+              month,
+              year,
+            },
+            {
+              title:
+                production.title,
+              venue:
+                production.venue,
+              month:
+                production.month,
+              year:
+                production.year,
+            },
+          ) ||
+          (
+            production.month === null &&
+            production.year === year &&
+            productionIdentityMatches(
+              {
+                title,
+                venue,
+                month: null,
+                year,
+              },
+              {
+                title:
+                  production.title,
+                venue:
+                  production.venue,
+                month: null,
+                year:
+                  production.year,
+              },
+            )
+          )
+        ),
     );
 
-  return await productionExists(slug)
-    ? slug
-    : null;
+  return existing?.slug ?? null;
 }
 
 export async function prepareCuratedProduction(
@@ -1023,6 +1073,9 @@ export async function prepareCuratedProduction(
     const existingSlug =
       await findExistingSlug(
         title,
+        venue,
+        month,
+        year,
       );
 
     const excluded =
@@ -1110,8 +1163,13 @@ export async function prepareCuratedProduction(
             : "ready";
 
     const slug =
-      createProductionSlug(
-        title,
+      createCuratedProductionSlug(
+        {
+          title,
+          venue,
+          month,
+          year,
+        },
       );
 
     const hero =
