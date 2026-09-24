@@ -105,6 +105,88 @@ type CuratedPublishedAsset = {
   blurDataURL: string;
 };
 
+type CuratedPreflightIndexImage = {
+  index?: number;
+  hero?: boolean;
+  stagedFile?: string;
+  sourcePath?: string;
+  sourceFolder?: string;
+  sourceRootId?: string;
+  sourceRootPath?: string;
+};
+
+type CuratedPreflightIndexProduction = {
+  folder: string;
+  production: string;
+  source?: unknown;
+  sourceBoundary?: unknown;
+  hero?: number;
+  selectedCount?: number;
+  images: CuratedPreflightIndexImage[];
+  metadata: Record<string, string>;
+};
+
+type CuratedPreflightIndex = {
+  version: 1;
+  generatedAt: string;
+  productions: CuratedPreflightIndexProduction[];
+};
+
+function normalisePreflightProductionName(
+  value: string,
+) {
+  return value
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[—–−]/g, "-")
+    .replace(/\s*-\s*/g, "-")
+    .replace(/[^a-zA-Z0-9]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLowerCase();
+}
+
+function parsePreflightMetadata(
+  text: string,
+) {
+  const result: Record<string, string> = {};
+
+  for (
+    const rawLine
+    of text.split(/\r?\n/)
+  ) {
+    const line =
+      rawLine.trim();
+
+    if (!line) {
+      continue;
+    }
+
+    const separator =
+      line.indexOf(":");
+
+    if (separator === -1) {
+      continue;
+    }
+
+    const key =
+      line
+        .slice(0, separator)
+        .trim();
+
+    const value =
+      line
+        .slice(separator + 1)
+        .trim();
+
+    if (key) {
+      result[key] = value;
+    }
+  }
+
+  return result;
+}
+
 async function preparePublishedImage(
   sourceBlob: Blob,
   sourceFilepath: string,
@@ -615,9 +697,7 @@ export default function CuratedArchiveImportClient({
           );
         });
 
-      setUploadProgressText(
-        `Preparing ${packageFiles.length.toLocaleString()} authoritative files from ${selectedFiles.length.toLocaleString()} selected files…`,
-      );
+
 
       const rawPackagedPaths =
         packageFiles.map((file) =>
@@ -700,6 +780,12 @@ export default function CuratedArchiveImportClient({
               "/metadata-proposed.txt",
             ),
         );
+
+      setUploadProgressText(
+        `Found ${finalSelections.length.toLocaleString()} completed production${
+          finalSelections.length === 1 ? "" : "s"
+        }. Preparing ${packageFiles.length.toLocaleString()} authoritative files from ${selectedFiles.length.toLocaleString()} selected files…`,
+      );
 
       if (
         finalSelections.length === 0 &&
@@ -926,6 +1012,264 @@ export default function CuratedArchiveImportClient({
       }
 
       /*
+       * Build the compact preflight index from the files already
+       * available in the browser. This keeps the eventual preflight
+       * route from rediscovering hundreds of small R2 objects.
+       */
+      const fileByStagingPath =
+        new Map(
+          packageFiles.map(
+            (file) => [
+              stagingRelativePath(
+                (
+                  file.webkitRelativePath ||
+                  `${folderName}/${file.name}`
+                ).replace(/\\/g, "/"),
+              ),
+              file,
+            ] as const,
+          ),
+        );
+
+      const metadataFallbackByProduction =
+        new Map<
+          string,
+          Record<string, string>
+        >();
+
+      const productionFolders =
+        Array.from(
+          new Set(
+            finalSelections.map(
+              (relativePath) =>
+                relativePath.split("/")[0],
+            ),
+          ),
+        );
+
+      for (const folder of productionFolders) {
+        const researchFile =
+          fileByStagingPath.get(
+            `${folder}/metadata-research.json`,
+          );
+
+        const proposedFile =
+          fileByStagingPath.get(
+            `${folder}/metadata-proposed.txt`,
+          );
+
+        if (
+          !researchFile ||
+          !proposedFile
+        ) {
+          continue;
+        }
+
+        try {
+          const research =
+            JSON.parse(
+              await researchFile.text(),
+            ) as {
+              production?: unknown;
+            };
+
+          if (
+            typeof research.production !==
+              "string" ||
+            !research.production.trim()
+          ) {
+            continue;
+          }
+
+          metadataFallbackByProduction.set(
+            normalisePreflightProductionName(
+              research.production,
+            ),
+            parsePreflightMetadata(
+              await proposedFile.text(),
+            ),
+          );
+        } catch {
+          continue;
+        }
+      }
+
+      const uploadedIndexProductions:
+        CuratedPreflightIndexProduction[] =
+        [];
+
+      for (
+        const finalSelectionPath
+        of finalSelections
+      ) {
+        const folder =
+          finalSelectionPath.split("/")[0];
+
+        const finalSelectionFile =
+          fileByStagingPath.get(
+            finalSelectionPath,
+          );
+
+        if (!finalSelectionFile) {
+          throw new Error(
+            `Could not build preflight index for "${folder}": final-selection.json is missing from the browser package.`,
+          );
+        }
+
+        let finalSelection: {
+          production?: unknown;
+          source?: unknown;
+          sourceBoundary?: unknown;
+          hero?: unknown;
+          selectedCount?: unknown;
+          images?: unknown;
+        };
+
+        try {
+          finalSelection =
+            JSON.parse(
+              await finalSelectionFile.text(),
+            ) as typeof finalSelection;
+        } catch (error) {
+          throw new Error(
+            `Could not build preflight index for "${folder}": ${
+              error instanceof Error
+                ? error.message
+                : String(error)
+            }`,
+          );
+        }
+
+        const production =
+          typeof finalSelection.production ===
+            "string" &&
+          finalSelection.production.trim()
+            ? finalSelection.production.trim()
+            : folder;
+
+        const proposedFile =
+          fileByStagingPath.get(
+            `${folder}/metadata-proposed.txt`,
+          );
+
+        let metadata:
+          Record<string, string> = {};
+
+        if (proposedFile) {
+          metadata =
+            parsePreflightMetadata(
+              await proposedFile.text(),
+            );
+        } else {
+          metadata =
+            metadataFallbackByProduction.get(
+              normalisePreflightProductionName(
+                production,
+              ),
+            ) ?? {};
+        }
+
+        const images =
+          Array.isArray(
+            finalSelection.images,
+          )
+            ? finalSelection.images.flatMap(
+                (value) => {
+                  if (
+                    !value ||
+                    typeof value !==
+                      "object"
+                  ) {
+                    return [];
+                  }
+
+                  const image =
+                    value as Record<
+                      string,
+                      unknown
+                    >;
+
+                  const compact:
+                    CuratedPreflightIndexImage =
+                    {};
+
+                  if (
+                    typeof image.index ===
+                    "number"
+                  ) {
+                    compact.index =
+                      image.index;
+                  }
+
+                  if (
+                    typeof image.hero ===
+                    "boolean"
+                  ) {
+                    compact.hero =
+                      image.hero;
+                  }
+
+                  for (
+                    const key
+                    of [
+                      "stagedFile",
+                      "sourcePath",
+                      "sourceFolder",
+                      "sourceRootId",
+                      "sourceRootPath",
+                    ] as const
+                  ) {
+                    if (
+                      typeof image[key] ===
+                      "string"
+                    ) {
+                      compact[key] =
+                        image[key] as string;
+                    }
+                  }
+
+                  return [compact];
+                },
+              )
+            : [];
+
+        uploadedIndexProductions.push({
+          folder,
+          production,
+          ...(finalSelection.source !==
+          undefined
+            ? {
+                source:
+                  finalSelection.source,
+              }
+            : {}),
+          ...(finalSelection.sourceBoundary !==
+          undefined
+            ? {
+                sourceBoundary:
+                  finalSelection.sourceBoundary,
+              }
+            : {}),
+          ...(typeof finalSelection.hero ===
+          "number"
+            ? {
+                hero:
+                  finalSelection.hero,
+              }
+            : {}),
+          ...(typeof finalSelection.selectedCount ===
+          "number"
+            ? {
+                selectedCount:
+                  finalSelection.selectedCount,
+              }
+            : {}),
+          images,
+          metadata,
+        });
+      }
+
+      /*
        * Start with a clean temporary staging area.
        */
       const beginForm =
@@ -1025,6 +1369,13 @@ export default function CuratedArchiveImportClient({
           : "additive",
       );
 
+      finalizeForm.set(
+        "expectedFinalSelectionCount",
+        String(
+          finalSelections.length,
+        ),
+      );
+
       const finalizeResponse =
         await fetch(
           "/api/admin/curated-archive-import/upload",
@@ -1034,9 +1385,206 @@ export default function CuratedArchiveImportClient({
           },
         );
 
-      await readUploadResponse(
-        finalizeResponse,
-        "Finalizing curated folder upload",
+      const finalizeResult =
+        await readUploadResponse(
+          finalizeResponse,
+          "Finalizing curated folder upload",
+        ) as {
+          ok: boolean;
+          stagedFileCount?: number;
+          finalSelectionCount?: number;
+        };
+
+      if (
+        finalizeResult.finalSelectionCount !==
+        finalSelections.length
+      ) {
+        throw new Error(
+          `Finalization safety check failed: browser expected ${finalSelections.length.toLocaleString()} final selections but R2 committed ${Number(
+            finalizeResult.finalSelectionCount ?? 0,
+          ).toLocaleString()}. The staged collection was not accepted.`,
+        );
+      }
+
+      let indexProductions =
+        uploadedIndexProductions;
+
+      if (!isCollectionUpload) {
+        const signingResponse =
+          await fetch(
+            "/api/admin/curated-archive-import/upload?action=preflight-index-read",
+            {
+              method: "POST",
+            },
+          );
+
+        const signingResult =
+          await readUploadResponse(
+            signingResponse,
+            "Preparing existing preflight index read",
+          ) as {
+            ok: boolean;
+            url?: string;
+          };
+
+        let existingProductions:
+          CuratedPreflightIndexProduction[] =
+          [];
+
+        if (signingResult.url) {
+          const existingResponse =
+            await fetch(
+              signingResult.url,
+              {
+                cache: "no-store",
+              },
+            );
+
+          if (
+            existingResponse.ok
+          ) {
+            const existingIndex =
+              (await existingResponse.json()) as
+                Partial<CuratedPreflightIndex>;
+
+            if (
+              existingIndex.version === 1 &&
+              Array.isArray(
+                existingIndex.productions,
+              )
+            ) {
+              existingProductions =
+                existingIndex.productions;
+            }
+          } else if (
+            existingResponse.status !== 404
+          ) {
+            throw new Error(
+              `Could not read the existing preflight index from R2 (HTTP ${existingResponse.status}).`,
+            );
+          }
+        }
+
+        const uploadedFolders =
+          new Set(
+            uploadedIndexProductions.map(
+              (production) =>
+                production.folder,
+            ),
+          );
+
+        indexProductions = [
+          ...existingProductions.filter(
+            (production) =>
+              !uploadedFolders.has(
+                production.folder,
+              ),
+          ),
+          ...uploadedIndexProductions,
+        ];
+      }
+
+      indexProductions.sort(
+        (first, second) =>
+          first.folder.localeCompare(
+            second.folder,
+            undefined,
+            {
+              numeric: true,
+              sensitivity: "base",
+            },
+          ),
+      );
+
+      const preflightIndex:
+        CuratedPreflightIndex = {
+          version: 1,
+          generatedAt:
+            new Date().toISOString(),
+          productions:
+            indexProductions,
+        };
+
+      if (
+        preflightIndex.productions.length !==
+        Number(
+          finalizeResult.finalSelectionCount ??
+            0,
+        )
+      ) {
+        throw new Error(
+          `Preflight index safety check failed: manifest contains ${Number(
+            finalizeResult.finalSelectionCount ?? 0,
+          ).toLocaleString()} final selections but the consolidated index contains ${preflightIndex.productions.length.toLocaleString()} productions.`,
+        );
+      }
+
+      const indexSigningResponse =
+        await fetch(
+          "/api/admin/curated-archive-import/upload?action=preflight-index-upload",
+          {
+            method: "POST",
+          },
+        );
+
+      const indexSigningResult =
+        await readUploadResponse(
+          indexSigningResponse,
+          "Preparing preflight index upload",
+        ) as {
+          ok: boolean;
+          url?: string;
+        };
+
+      if (!indexSigningResult.url) {
+        throw new Error(
+          "No R2 upload URL was returned for the consolidated preflight index.",
+        );
+      }
+
+      const indexBlob =
+        new Blob(
+          [
+            JSON.stringify(
+              preflightIndex,
+            ),
+          ],
+          {
+            type:
+              "application/json",
+          },
+        );
+
+      const indexUploadResponse =
+        await fetch(
+          indexSigningResult.url,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type":
+                "application/json",
+              "Cache-Control":
+                "no-store",
+            },
+            body:
+              indexBlob,
+          },
+        );
+
+      if (
+        !indexUploadResponse.ok
+      ) {
+        throw new Error(
+          `Could not upload the consolidated preflight index directly to R2 (HTTP ${indexUploadResponse.status}).`,
+        );
+      }
+
+      setUploadProgressText(
+        `Committed ${finalSelections.length.toLocaleString()} completed production${
+          finalSelections.length === 1
+            ? ""
+            : "s"
+        } and updated the ${preflightIndex.productions.length.toLocaleString()}-production preflight index successfully.`,
       );
 
       setLoading(true);

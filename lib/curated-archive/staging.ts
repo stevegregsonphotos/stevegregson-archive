@@ -36,6 +36,9 @@ const DIRECT_STAGING_PREFIX =
 const DIRECT_MANIFEST_KEY =
   "__curated-import-staging/current.json";
 
+const DIRECT_PREFLIGHT_INDEX_KEY =
+  "__curated-import-staging/preflight-index.json";
+
 let directManifestCache:
   | {
       etag: string;
@@ -386,6 +389,61 @@ export async function curatedImportFileExists(
 
     throw error;
   }
+}
+
+export async function createCuratedImportPreflightIndexDownloadUrl() {
+  return getSignedUrl(
+    getClient(),
+    new GetObjectCommand({
+      Bucket: getBucket(),
+      Key: DIRECT_PREFLIGHT_INDEX_KEY,
+      ResponseContentType: "application/json",
+    }),
+    {
+      expiresIn: 15 * 60,
+    },
+  );
+}
+
+export async function createCuratedImportPreflightIndexUploadUrl() {
+  return getSignedUrl(
+    getClient(),
+    new PutObjectCommand({
+      Bucket: getBucket(),
+      Key: DIRECT_PREFLIGHT_INDEX_KEY,
+      ContentType: "application/json",
+      CacheControl: "no-store",
+    }),
+    {
+      expiresIn: 15 * 60,
+    },
+  );
+}
+
+export async function readCuratedImportPreflightIndex() {
+  const response =
+    await withR2Retry(
+      () =>
+        getClient().send(
+          new GetObjectCommand({
+            Bucket:
+              getBucket(),
+            Key:
+              DIRECT_PREFLIGHT_INDEX_KEY,
+          }),
+        ),
+      "Reading curated preflight index",
+    );
+
+  if (!response.Body) {
+    throw new Error(
+      "The curated preflight index has no body.",
+    );
+  }
+
+  return Buffer.from(
+    await response.Body.transformToByteArray(),
+  ).toString("utf8");
 }
 
 export async function createCuratedImportDownloadUrl(

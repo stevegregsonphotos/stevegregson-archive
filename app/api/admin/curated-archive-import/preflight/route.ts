@@ -19,7 +19,7 @@ import {
 import {
   findCuratedImportStagedImage,
   getCuratedImportDirectFiles,
-  readCuratedImportDirectFile,
+  readCuratedImportPreflightIndex,
 } from "@/lib/curated-archive/staging";
 import {
   validateCuratedSourceBoundary,
@@ -119,6 +119,33 @@ type CuratedOverride = {
   description?: string;
   credits?: CuratedCredit[];
   images?: CuratedImageOverride;
+};
+
+type CuratedPreflightIndexImage = {
+  index?: number;
+  hero?: boolean;
+  stagedFile?: string;
+  sourcePath?: string;
+  sourceFolder?: string;
+  sourceRootId?: string;
+  sourceRootPath?: string;
+};
+
+type CuratedPreflightIndexProduction = {
+  folder: string;
+  production: string;
+  source?: unknown;
+  sourceBoundary?: unknown;
+  hero?: number;
+  selectedCount?: number;
+  images: CuratedPreflightIndexImage[];
+  metadata: Record<string, string>;
+};
+
+type CuratedPreflightIndex = {
+  version: 1;
+  generatedAt?: string;
+  productions: CuratedPreflightIndexProduction[];
 };
 
 function metadataCredits(
@@ -224,15 +251,163 @@ export async function GET(
     });
   }
 
-  async function readDirectText(
-    folder: string,
-    filename: string,
-  ) {
-    return (
-      await readCuratedImportDirectFile(
-        `${folder}/${filename}`,
+  const manifestFolderNames =
+    Array.from(
+      new Set(
+        directFiles.flatMap(
+          (relativePath) => {
+            const match =
+              relativePath.match(
+                /^([^/]+)\/final-selection\.json$/i,
+              );
+
+            return match
+              ? [match[1]]
+              : [];
+          },
+        ),
+      ),
+    ).sort((first, second) =>
+      first.localeCompare(
+        second,
+        undefined,
+        {
+          numeric: true,
+          sensitivity: "base",
+        },
+      ),
+    );
+
+  let preflightIndex:
+    CuratedPreflightIndex;
+
+  try {
+    const parsed =
+      JSON.parse(
+        await readCuratedImportPreflightIndex(),
+      ) as Partial<CuratedPreflightIndex>;
+
+    if (
+      parsed.version !== 1 ||
+      !Array.isArray(
+        parsed.productions,
       )
-    ).toString("utf8");
+    ) {
+      throw new Error(
+        "The consolidated preflight index is invalid.",
+      );
+    }
+
+    const indexedProductions =
+      parsed.productions;
+
+    const invalidEntry =
+      indexedProductions.find(
+        (production) =>
+          !production ||
+          typeof production !== "object" ||
+          typeof production.folder !==
+            "string" ||
+          !production.folder.trim() ||
+          typeof production.production !==
+            "string" ||
+          !Array.isArray(
+            production.images,
+          ) ||
+          !production.metadata ||
+          typeof production.metadata !==
+            "object" ||
+          Array.isArray(
+            production.metadata,
+          ),
+      );
+
+    if (invalidEntry) {
+      throw new Error(
+        "The consolidated preflight index contains an invalid production entry.",
+      );
+    }
+
+    const indexedFolderNames =
+      indexedProductions
+        .map(
+          (production) =>
+            production.folder.trim(),
+        )
+        .sort((first, second) =>
+          first.localeCompare(
+            second,
+            undefined,
+            {
+              numeric: true,
+              sensitivity: "base",
+            },
+          ),
+        );
+
+    if (
+      new Set(
+        indexedFolderNames,
+      ).size !==
+      indexedFolderNames.length
+    ) {
+      throw new Error(
+        "The consolidated preflight index contains duplicate production folders.",
+      );
+    }
+
+    const missingFromIndex =
+      manifestFolderNames.filter(
+        (folder) =>
+          !indexedFolderNames.includes(
+            folder,
+          ),
+      );
+
+    const missingFromManifest =
+      indexedFolderNames.filter(
+        (folder) =>
+          !manifestFolderNames.includes(
+            folder,
+          ),
+      );
+
+    if (
+      missingFromIndex.length > 0 ||
+      missingFromManifest.length > 0
+    ) {
+      throw new Error(
+        `The consolidated preflight index does not match the staged manifest. Manifest folders: ${manifestFolderNames.length}; index folders: ${indexedFolderNames.length}; missing from index: ${missingFromIndex.length}; missing from manifest: ${missingFromManifest.length}.`,
+      );
+    }
+
+    preflightIndex = {
+      version: 1,
+      generatedAt:
+        typeof parsed.generatedAt ===
+        "string"
+          ? parsed.generatedAt
+          : undefined,
+      productions:
+        indexedProductions,
+    };
+  } catch (error) {
+    console.error(
+      "[curated-preflight] consolidated index read failed:",
+      error,
+    );
+
+    return Response.json(
+      {
+        ok: false,
+        message: `STAGE 1B — consolidated preflight index failed: ${
+          error instanceof Error
+            ? `${error.name}: ${error.message}`
+            : String(error)
+        }`,
+      },
+      { status: 500 },
+    );
   }
 
   let productions:
@@ -406,186 +581,15 @@ export async function GET(
     return existing?.slug ?? null;
   }
 
-  const folderNames =
-    Array.from(
-      new Set(
-        directFiles.flatMap(
-          (relativePath) => {
-            const match =
-              relativePath.match(
-                /^([^/]+)\/final-selection\.json$/i,
-              );
-
-            return match
-              ? [match[1]]
-              : [];
-          },
-        ),
-      ),
-    );
-
   const entries =
-    folderNames.map(
-      (name) => ({
-        name,
+    preflightIndex.productions.map(
+      (indexedProduction) => ({
+        name:
+          indexedProduction.folder,
+        indexedProduction,
         isDirectory: () => true,
       }),
     );
-
-  /*
-   * Preflight used to read the same small R2 control files
-   * serially inside multiple loops. With hundreds of curated
-   * productions that produced well over a thousand sequential
-   * R2 requests and could exceed the Vercel function window.
-   *
-   * Read each manifest-listed control file once with bounded
-   * concurrency, then use the in-memory cache below.
-   */
-  const directTextCache =
-    new Map<string, string>();
-
-  const directReadErrors =
-    new Map<string, string>();
-
-  const controlFiles =
-    directFiles.filter(
-      (relativePath) =>
-        /(^|\/)final-selection\.json$/i.test(
-          relativePath,
-        ) ||
-        /(^|\/)metadata-research\.json$/i.test(
-          relativePath,
-        ) ||
-        /(^|\/)metadata-proposed\.txt$/i.test(
-          relativePath,
-        ),
-    );
-
-  let controlFileIndex = 0;
-  const CONTROL_FILE_CONCURRENCY = 8;
-
-  async function readControlFiles() {
-    while (true) {
-      const index =
-        controlFileIndex;
-      controlFileIndex += 1;
-
-      if (
-        index >=
-        controlFiles.length
-      ) {
-        return;
-      }
-
-      const relativePath =
-        controlFiles[index];
-
-      try {
-        directTextCache.set(
-          relativePath,
-          (
-            await readCuratedImportDirectFile(
-              relativePath,
-            )
-          ).toString("utf8"),
-        );
-      } catch (error) {
-        directReadErrors.set(
-          relativePath,
-          error instanceof Error
-            ? `${error.name}: ${error.message}`
-            : String(error),
-        );
-      }
-    }
-  }
-
-  await Promise.all(
-    Array.from(
-      {
-        length:
-          CONTROL_FILE_CONCURRENCY,
-      },
-      () => readControlFiles(),
-    ),
-  );
-
-  function cachedDirectText(
-    folder: string,
-    filename: string,
-  ) {
-    const relativePath =
-      `${folder}/${filename}`;
-
-    const value =
-      directTextCache.get(
-        relativePath,
-      );
-
-    if (value !== undefined) {
-      return value;
-    }
-
-    const readError =
-      directReadErrors.get(
-        relativePath,
-      );
-
-    throw new Error(
-      readError
-        ? `Could not read "${relativePath}": ${readError}`
-        : `Curated staged file "${relativePath}" is not present in the manifest.`,
-    );
-  }
-
-  const metadataByProduction =
-    new Map<
-      string,
-      Record<string, string>
-    >();
-
-  for (const entry of entries) {
-    if (!entry.isDirectory()) {
-      continue;
-    }
-
-    try {
-      const research =
-        JSON.parse(
-          cachedDirectText(
-            entry.name,
-            "metadata-research.json",
-          ),
-        ) as {
-          production?: unknown;
-        };
-
-      if (
-        typeof research.production !==
-          "string" ||
-        !research.production.trim()
-      ) {
-        continue;
-      }
-
-      const proposed =
-        parseMetadata(
-          cachedDirectText(
-            entry.name,
-            "metadata-proposed.txt",
-          ),
-        );
-
-      metadataByProduction.set(
-        normaliseProductionName(
-          research.production,
-        ),
-        proposed,
-      );
-    } catch {
-      continue;
-    }
-  }
 
   const results = [];
 
@@ -600,42 +604,23 @@ export async function GET(
     const stagingDirectory =
       "";
 
-    let finalSelection:
-      | {
-          source?: unknown;
-          sourceBoundary?: unknown;
-          production?: string;
-          hero?: number;
-          selectedCount?: number;
-          images?: Array<{
-            sequence?: number;
-            index?: number;
-            hero?: boolean;
-            stagedFile?: string;
-            sourceName?: string;
-            sourcePath?: string;
-            sourceFolder?: string;
-            sourceRootId?: string;
-            sourceRootPath?: string;
-          }>;
-        }
-      | null = null;
+    const indexedProduction =
+      entry.indexedProduction;
 
-    try {
-      finalSelection =
-        JSON.parse(
-          cachedDirectText(
-            entry.name,
-            "final-selection.json",
-          ),
-        );
-    } catch {
-      continue;
-    }
-
-    if (!finalSelection) {
-      continue;
-    }
+    const finalSelection = {
+      source:
+        indexedProduction.source,
+      sourceBoundary:
+        indexedProduction.sourceBoundary,
+      production:
+        indexedProduction.production,
+      hero:
+        indexedProduction.hero,
+      selectedCount:
+        indexedProduction.selectedCount,
+      images:
+        indexedProduction.images,
+    };
 
     const production =
       finalSelection.production?.trim() ||
@@ -679,24 +664,8 @@ export async function GET(
         ? "manual"
         : "automatic";
 
-    let metadata =
-      metadataByProduction.get(
-        normalisedProduction,
-      ) ?? {};
-
-    // The curator contract is one self-contained production folder.
-    // Prefer metadata beside this final selection so an older/stale folder
-    // with the same normalised name can never override the aligned output.
-    try {
-      metadata = parseMetadata(
-        cachedDirectText(
-          entry.name,
-          "metadata-proposed.txt",
-        ),
-      );
-    } catch {
-      // Legacy output may still rely on the global exact-name lookup above.
-    }
+    const metadata =
+      indexedProduction.metadata;
 
     const curatedOverride =
       curatedOverrides[production] ?? {};
@@ -1126,6 +1095,13 @@ export async function GET(
     ok: true,
     summary,
     diagnostics: {
+      manifestFinalSelectionCount:
+        manifestFolderNames.length,
+      preflightIndexProductionCount:
+        preflightIndex.productions.length,
+      preflightIndexGeneratedAt:
+        preflightIndex.generatedAt ??
+        null,
       rawResults:
         results.length,
       groupedResults:
@@ -1135,19 +1111,6 @@ export async function GET(
         groupedResults.length,
       duplicateGroupCount:
         duplicateGroups.length,
-      controlFileCount:
-        controlFiles.length,
-      controlFileReadFailureCount:
-        directReadErrors.size,
-      controlFileReadFailures:
-        Array.from(
-          directReadErrors.entries(),
-        ).map(
-          ([relativePath, error]) => ({
-            relativePath,
-            error,
-          }),
-        ),
       duplicateGroups:
         duplicateGroups.map(
           (result) => ({

@@ -4,6 +4,8 @@ import {
 } from "@/lib/backstage-auth";
 import {
   beginCuratedImportFileStaging,
+  createCuratedImportPreflightIndexDownloadUrl,
+  createCuratedImportPreflightIndexUploadUrl,
   createCuratedImportUploadUrl,
   deleteCuratedImportArchive,
   finalizeCuratedImportFiles,
@@ -31,8 +33,24 @@ export async function POST(
     /*
      * Browser uploads never pass file bodies through
      * Vercel. Vercel performs authentication and signs
-     * a short-lived R2 PUT URL only.
+     * short-lived R2 URLs only.
      */
+    if (directAction === "preflight-index-upload") {
+      return Response.json({
+        ok: true,
+        url:
+          await createCuratedImportPreflightIndexUploadUrl(),
+      });
+    }
+
+    if (directAction === "preflight-index-read") {
+      return Response.json({
+        ok: true,
+        url:
+          await createCuratedImportPreflightIndexDownloadUrl(),
+      });
+    }
+
     if (directAction === "presign") {
       const relativePath =
         String(
@@ -174,6 +192,37 @@ export async function POST(
           ? "replace"
           : "additive";
 
+      const expectedFinalSelectionCount =
+        Number.parseInt(
+          String(
+            formData.get(
+              "expectedFinalSelectionCount",
+            ) ?? "",
+          ),
+          10,
+        );
+
+      const actualFinalSelectionCount =
+        relativePaths.filter(
+          (relativePath) =>
+            /(^|\/)final-selection\.json$/i.test(
+              relativePath,
+            ),
+        ).length;
+
+      if (
+        Number.isInteger(
+          expectedFinalSelectionCount,
+        ) &&
+        expectedFinalSelectionCount >= 0 &&
+        actualFinalSelectionCount !==
+          expectedFinalSelectionCount
+      ) {
+        throw new Error(
+          `Curated collection count mismatch before finalization: expected ${expectedFinalSelectionCount} final selections but received ${actualFinalSelectionCount}.`,
+        );
+      }
+
       const manifest =
         await finalizeCuratedImportFiles(
           relativePaths,
@@ -186,6 +235,13 @@ export async function POST(
           "Curated folder staged successfully.",
         stagedFileCount:
           manifest.files.length,
+        finalSelectionCount:
+          manifest.files.filter(
+            (relativePath) =>
+              /(^|\/)final-selection\.json$/i.test(
+                relativePath,
+              ),
+          ).length,
       });
     }
 
