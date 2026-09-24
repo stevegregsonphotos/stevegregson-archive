@@ -247,7 +247,8 @@ export default function ArchiveExplorer({
 
           @media (max-width: 900px) {
             .archive-search-compact {
-              width: min(100%, 25rem);
+              width: min(72vw, 18rem);
+              margin-left: auto;
             }
 
             input {
