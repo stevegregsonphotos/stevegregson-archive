@@ -171,13 +171,17 @@ export default async function ArchivePage() {
 
         @media (max-width: 900px) {
   .archive-page {
-    padding: 8.5rem 1.4rem 5rem;
+    position: relative;
+    padding: 2.5rem 1.4rem 5rem;
   }
 
   .archive-search-position {
+    position: absolute;
+    top: 2.25rem;
+    right: 1.4rem;
     justify-content: flex-end;
     min-height: auto;
-    margin-bottom: 1.5rem;
+    margin: 0;
   }
 
   .archive-intro {
@@ -188,7 +192,7 @@ export default async function ArchivePage() {
 
   .archive-intro h1 {
     max-width: 21rem;
-    margin-top: 1.25rem;
+    margin-top: 2.5rem;
     font-size: clamp(2.8rem, 12vw, 4rem);
     line-height: 0.92;
   }

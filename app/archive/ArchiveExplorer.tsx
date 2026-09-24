@@ -145,7 +145,7 @@ export default function ArchiveExplorer({
               onChange={(event) =>
                 setQuery(event.target.value)
               }
-              placeholder="Search productions, venues, people or years"
+              placeholder="Search archive"
               autoComplete="off"
               spellCheck={false}
             />
@@ -247,7 +247,7 @@ export default function ArchiveExplorer({
 
           @media (max-width: 900px) {
             .archive-search-compact {
-              width: 10rem;
+              width: 9.5rem;
             }
 
             input {
