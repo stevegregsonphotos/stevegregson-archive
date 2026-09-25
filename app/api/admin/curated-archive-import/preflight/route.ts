@@ -120,6 +120,7 @@ type CuratedOverride = {
   description?: string;
   credits?: CuratedCredit[];
   images?: CuratedImageOverride;
+  excluded?: boolean;
 };
 
 type CuratedPreflightIndexImage = {
@@ -632,7 +633,7 @@ export async function GET(
         production,
       );
 
-    const excluded =
+    const legacyExcluded =
       exclusions.has(
         normalisedProduction,
       );
@@ -670,6 +671,10 @@ export async function GET(
 
     const curatedOverride =
       curatedOverrides[production] ?? {};
+
+    const excluded =
+      curatedOverride.excluded ??
+      legacyExcluded;
 
     const title =
       curatedOverride.title ??

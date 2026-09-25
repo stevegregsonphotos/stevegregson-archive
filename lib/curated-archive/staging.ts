@@ -816,6 +816,225 @@ export async function finalizeCuratedImportFiles(
   return manifest;
 }
 
+export async function deleteCuratedImportFolder(
+  folder: string,
+) {
+  const safeFolder =
+    safeCuratedRelativePath(
+      folder.trim(),
+    );
+
+  if (
+    !safeFolder ||
+    safeFolder.includes("/")
+  ) {
+    throw new Error(
+      "A valid curated production folder is required.",
+    );
+  }
+
+  const currentFiles =
+    await getCuratedImportDirectFiles();
+
+  if (!currentFiles) {
+    throw new Error(
+      "There is no curated staging manifest.",
+    );
+  }
+
+  const prefix =
+    `${safeFolder}/`;
+
+  const filesToDelete =
+    currentFiles.filter(
+      (relativePath) =>
+        relativePath.startsWith(
+          prefix,
+        ),
+    );
+
+  if (filesToDelete.length === 0) {
+    throw new Error(
+      `Curated folder "${safeFolder}" was not found in staging.`,
+    );
+  }
+
+  const client =
+    getClient();
+
+  const bucket =
+    getBucket();
+
+  for (
+    let index = 0;
+    index < filesToDelete.length;
+    index += 1000
+  ) {
+    const batch =
+      filesToDelete.slice(
+        index,
+        index + 1000,
+      );
+
+    await withR2Retry(
+      () =>
+        client.send(
+          new DeleteObjectsCommand({
+            Bucket: bucket,
+            Delete: {
+              Objects:
+                batch.map(
+                  (relativePath) => ({
+                    Key:
+                      `${DIRECT_STAGING_PREFIX}${relativePath}`,
+                  }),
+                ),
+              Quiet: true,
+            },
+          }),
+        ),
+      `Deleting curated staged folder "${safeFolder}"`,
+    );
+  }
+
+  const remainingFiles =
+    currentFiles.filter(
+      (relativePath) =>
+        !relativePath.startsWith(
+          prefix,
+        ),
+    );
+
+  if (remainingFiles.length > 0) {
+    await withR2Retry(
+      () =>
+        client.send(
+          new PutObjectCommand({
+            Bucket: bucket,
+            Key:
+              DIRECT_MANIFEST_KEY,
+            Body:
+              JSON.stringify(
+                {
+                  version: 1,
+                  generatedAt:
+                    new Date().toISOString(),
+                  files:
+                    remainingFiles,
+                },
+                null,
+                2,
+              ) + "\n",
+            ContentType:
+              "application/json",
+            CacheControl:
+              "no-store",
+          }),
+        ),
+      "Updating curated staging manifest",
+    );
+  } else {
+    await withR2Retry(
+      () =>
+        client.send(
+          new DeleteObjectCommand({
+            Bucket: bucket,
+            Key:
+              DIRECT_MANIFEST_KEY,
+          }),
+        ),
+      "Deleting empty curated staging manifest",
+    );
+  }
+
+  try {
+    const response =
+      await client.send(
+        new GetObjectCommand({
+          Bucket: bucket,
+          Key:
+            DIRECT_PREFLIGHT_INDEX_KEY,
+        }),
+      );
+
+    if (response.Body) {
+      const parsed =
+        JSON.parse(
+          Buffer.from(
+            await response.Body.transformToByteArray(),
+          ).toString("utf8"),
+        ) as {
+          version?: unknown;
+          productions?: Array<{
+            folder?: unknown;
+            [key: string]: unknown;
+          }>;
+        };
+
+      if (
+        parsed.version === 1 &&
+        Array.isArray(
+          parsed.productions,
+        )
+      ) {
+        const productions =
+          parsed.productions.filter(
+            (production) =>
+              production.folder !==
+              safeFolder,
+          );
+
+        await withR2Retry(
+          () =>
+            client.send(
+              new PutObjectCommand({
+                Bucket: bucket,
+                Key:
+                  DIRECT_PREFLIGHT_INDEX_KEY,
+                Body:
+                  JSON.stringify({
+                    ...parsed,
+                    generatedAt:
+                      new Date().toISOString(),
+                    productions,
+                  }),
+                ContentType:
+                  "application/json",
+                CacheControl:
+                  "no-store",
+              }),
+            ),
+          "Updating curated preflight index",
+        );
+      }
+    }
+  } catch (error) {
+    const status =
+      typeof error === "object" &&
+      error !== null &&
+      "$metadata" in error
+        ? (error as {
+            $metadata?: {
+              httpStatusCode?: number;
+            };
+          }).$metadata?.httpStatusCode
+        : undefined;
+
+    if (status !== 404) {
+      throw error;
+    }
+  }
+
+  directManifestCache = null;
+  await clearLocalCache();
+
+  return {
+    folder: safeFolder,
+    deletedFileCount:
+      filesToDelete.length,
+  };
+}
+
 export async function deleteCuratedImportArchive() {
   /*
    * Clear both staging formats while the legacy ZIP

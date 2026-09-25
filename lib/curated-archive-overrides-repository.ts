@@ -35,6 +35,7 @@ export type CuratedArchiveOverride = {
   description?: string;
   credits?: CuratedArchiveCredit[];
   images?: CuratedArchiveImageOverride;
+  excluded?: boolean;
 };
 
 function getSql() {
@@ -117,6 +118,39 @@ export async function setCuratedArchiveAccessOverride(
       AND access IS NULL
       AND curated_override IS NULL
   `;
+}
+
+export async function setCuratedArchiveExclusionOverride(
+  production: string,
+  excluded: boolean | null,
+) {
+  const overrides =
+    await getCuratedArchiveOverrides();
+
+  const existing =
+    overrides[production] ?? {};
+
+  const next =
+    excluded === null
+      ? (() => {
+          const {
+            excluded: _excluded,
+            ...remaining
+          } = existing;
+
+          return remaining;
+        })()
+      : {
+          ...existing,
+          excluded,
+        };
+
+  await setCuratedArchiveOverride(
+    production,
+    Object.keys(next).length > 0
+      ? next
+      : null,
+  );
 }
 
 export async function setCuratedArchiveOverride(

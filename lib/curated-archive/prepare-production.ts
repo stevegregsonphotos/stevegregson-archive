@@ -1078,12 +1078,16 @@ export async function prepareCuratedProduction(
         year,
       );
 
-    const excluded =
+    const legacyExcluded =
       exclusions.has(
         normaliseProductionName(
           production,
         ),
       );
+
+    const excluded =
+      override.excluded ??
+      legacyExcluded;
 
     const normalisedProduction =
       normaliseProductionName(

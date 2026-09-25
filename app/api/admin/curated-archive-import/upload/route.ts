@@ -8,8 +8,14 @@ import {
   createCuratedImportPreflightIndexUploadUrl,
   createCuratedImportUploadUrl,
   deleteCuratedImportArchive,
+  deleteCuratedImportFolder,
   finalizeCuratedImportFiles,
 } from "@/lib/curated-archive/staging";
+import {
+  setCuratedArchiveAccessOverride,
+  setCuratedArchiveExclusionOverride,
+  setCuratedArchiveOverride,
+} from "@/lib/curated-archive-overrides-repository";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -48,6 +54,108 @@ export async function POST(
         ok: true,
         url:
           await createCuratedImportPreflightIndexDownloadUrl(),
+      });
+    }
+
+    if (
+      directAction === "include" ||
+      directAction === "exclude" ||
+      directAction === "delete-folder"
+    ) {
+      let body: {
+        production?: unknown;
+        folder?: unknown;
+      };
+
+      try {
+        body =
+          (await request.json()) as typeof body;
+      } catch {
+        return Response.json(
+          {
+            ok: false,
+            message:
+              "Invalid request.",
+          },
+          {
+            status: 400,
+          },
+        );
+      }
+
+      const production =
+        typeof body.production === "string"
+          ? body.production.trim()
+          : "";
+
+      const folder =
+        typeof body.folder === "string"
+          ? body.folder.trim()
+          : "";
+
+      if (!production) {
+        return Response.json(
+          {
+            ok: false,
+            message:
+              "Production is required.",
+          },
+          {
+            status: 400,
+          },
+        );
+      }
+
+      if (
+        directAction === "include" ||
+        directAction === "exclude"
+      ) {
+        await setCuratedArchiveExclusionOverride(
+          production,
+          directAction === "exclude",
+        );
+
+        return Response.json({
+          ok: true,
+          production,
+          excluded:
+            directAction === "exclude",
+        });
+      }
+
+      if (!folder) {
+        return Response.json(
+          {
+            ok: false,
+            message:
+              "Curated folder is required.",
+          },
+          {
+            status: 400,
+          },
+        );
+      }
+
+      const deleted =
+        await deleteCuratedImportFolder(
+          folder,
+        );
+
+      await Promise.all([
+        setCuratedArchiveOverride(
+          production,
+          null,
+        ),
+        setCuratedArchiveAccessOverride(
+          production,
+          null,
+        ),
+      ]);
+
+      return Response.json({
+        ok: true,
+        production,
+        ...deleted,
       });
     }
 

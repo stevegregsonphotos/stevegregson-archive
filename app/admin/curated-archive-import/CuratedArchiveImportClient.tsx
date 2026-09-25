@@ -2120,6 +2120,199 @@ export default function CuratedArchiveImportClient({
     }
   }
 
+  async function changeExclusion(
+    production: PreflightProduction,
+    excluded: boolean,
+  ) {
+    const action =
+      excluded
+        ? "exclude"
+        : "include";
+
+    if (
+      !window.confirm(
+        excluded
+          ? `Exclude "${production.title || production.production}" from this curated import?`
+          : `Include "${production.title || production.production}" in this curated import?`,
+      )
+    ) {
+      return;
+    }
+
+    setError("");
+
+    try {
+      const response =
+        await fetch(
+          `/api/admin/curated-archive-import/upload?action=${action}`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify({
+              production:
+                production.production,
+              folder:
+                production.folder,
+            }),
+          },
+        );
+
+      const result =
+        (await response.json()) as {
+          ok?: boolean;
+          message?: string;
+        };
+
+      if (
+        !response.ok ||
+        !result.ok
+      ) {
+        throw new Error(
+          result.message ||
+            `Could not ${action} production.`,
+        );
+      }
+
+      const preflightResponse =
+        await fetch(
+          "/api/admin/curated-archive-import/preflight",
+          {
+            cache: "no-store",
+          },
+        );
+
+      const preflightResult =
+        (await preflightResponse.json()) as
+          | PreflightResponse
+          | {
+              ok?: boolean;
+              message?: string;
+            };
+
+      if (
+        !preflightResponse.ok ||
+        !preflightResult.ok ||
+        !("summary" in preflightResult) ||
+        !("productions" in preflightResult)
+      ) {
+        throw new Error(
+          "message" in preflightResult &&
+            preflightResult.message
+            ? preflightResult.message
+            : `Production ${action}d, but preflight refresh failed.`,
+        );
+      }
+
+      setData(preflightResult);
+    } catch (actionError) {
+      setError(
+        actionError instanceof Error
+          ? actionError.message
+          : `Could not ${action} production.`,
+      );
+    }
+  }
+
+  async function deleteStagedProduction(
+    production: PreflightProduction,
+  ) {
+    if (
+      !window.confirm(
+        `Delete "${production.title || production.production}" from the current curated upload? This removes its staged files from R2 but does not delete an existing live website production.`,
+      )
+    ) {
+      return;
+    }
+
+    setError("");
+
+    try {
+      const response =
+        await fetch(
+          "/api/admin/curated-archive-import/upload?action=delete-folder",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify({
+              production:
+                production.production,
+              folder:
+                production.folder,
+            }),
+          },
+        );
+
+      const result =
+        (await response.json()) as {
+          ok?: boolean;
+          message?: string;
+        };
+
+      if (
+        !response.ok ||
+        !result.ok
+      ) {
+        throw new Error(
+          result.message ||
+            "Could not delete the staged production.",
+        );
+      }
+
+      setSelectedReadyFolders(
+        (current) =>
+          current.filter(
+            (folder) =>
+              folder !==
+              production.folder,
+          ),
+      );
+
+      const preflightResponse =
+        await fetch(
+          "/api/admin/curated-archive-import/preflight",
+          {
+            cache: "no-store",
+          },
+        );
+
+      const preflightResult =
+        (await preflightResponse.json()) as
+          | PreflightResponse
+          | {
+              ok?: boolean;
+              message?: string;
+            };
+
+      if (
+        !preflightResponse.ok ||
+        !preflightResult.ok ||
+        !("summary" in preflightResult) ||
+        !("productions" in preflightResult)
+      ) {
+        throw new Error(
+          "message" in preflightResult &&
+            preflightResult.message
+            ? preflightResult.message
+            : "Production deleted, but preflight refresh failed.",
+        );
+      }
+
+      setData(preflightResult);
+    } catch (deleteError) {
+      setError(
+        deleteError instanceof Error
+          ? deleteError.message
+          : "Could not delete the staged production.",
+      );
+    }
+  }
+
   function toggleReadySelection(
     folder: string,
   ) {
@@ -3051,6 +3244,41 @@ export default function CuratedArchiveImportClient({
                               : "Import"}
                           </button>
                         ) : null}
+
+                        <button
+                          type="button"
+                          className="backstage-button"
+                          onClick={() =>
+                            void changeExclusion(
+                              production,
+                              production.status !==
+                                "excluded",
+                            )
+                          }
+                        >
+                          {production.status ===
+                          "excluded"
+                            ? "Include"
+                            : "Exclude"}
+                        </button>
+
+                        <button
+                          type="button"
+                          className="backstage-button"
+                          onClick={() =>
+                            void deleteStagedProduction(
+                              production,
+                            )
+                          }
+                          style={{
+                            borderColor:
+                              "rgba(220, 100, 100, 0.35)",
+                            color:
+                              "#f0b2aa",
+                          }}
+                        >
+                          Delete from upload
+                        </button>
 
                         <a
                           className="backstage-button"
