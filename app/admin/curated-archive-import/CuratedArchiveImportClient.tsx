@@ -1432,13 +1432,41 @@ export default function CuratedArchiveImportClient({
           [];
 
         if (signingResult.url) {
-          const existingResponse =
-            await fetch(
+          try {
+            new URL(
               signingResult.url,
-              {
-                cache: "no-store",
-              },
             );
+          } catch (error) {
+            throw new Error(
+              `Invalid signed R2 preflight-index URL: ${
+                error instanceof Error
+                  ? error.message
+                  : String(error)
+              }`,
+            );
+          }
+
+          let existingResponse:
+            | Response
+            | null = null;
+
+          try {
+            existingResponse =
+              await fetch(
+                signingResult.url,
+                {
+                  cache: "no-store",
+                },
+              );
+          } catch (error) {
+            throw new Error(
+              `Browser could not fetch the signed R2 preflight index: ${
+                error instanceof Error
+                  ? `${error.name}: ${error.message}`
+                  : String(error)
+              }`,
+            );
+          }
 
           if (
             existingResponse.ok
@@ -1867,10 +1895,38 @@ export default function CuratedArchiveImportClient({
                 );
               }
 
-              const sourceResponse =
-                await fetch(
+              let sourceResponse:
+                | Response
+                | null = null;
+
+              try {
+                new URL(
                   signed.sourceUrl,
                 );
+              } catch (error) {
+                throw new Error(
+                  `Invalid signed R2 source URL for ${job.sourceFilepath}: ${
+                    error instanceof Error
+                      ? error.message
+                      : String(error)
+                  }`,
+                );
+              }
+
+              try {
+                sourceResponse =
+                  await fetch(
+                    signed.sourceUrl,
+                  );
+              } catch (error) {
+                throw new Error(
+                  `Browser could not fetch ${job.sourceFilepath} from its signed R2 source URL: ${
+                    error instanceof Error
+                      ? `${error.name}: ${error.message}`
+                      : String(error)
+                  }`,
+                );
+              }
 
               if (!sourceResponse.ok) {
                 throw new Error(
