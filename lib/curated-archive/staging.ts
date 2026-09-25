@@ -1056,12 +1056,16 @@ export async function deleteCuratedImportArchive() {
 async function getDirectManifestEtag() {
   try {
     const response =
-      await getClient().send(
-        new HeadObjectCommand({
-          Bucket: getBucket(),
-          Key:
-            DIRECT_MANIFEST_KEY,
-        }),
+      await withR2Retry(
+        () =>
+          getClient().send(
+            new HeadObjectCommand({
+              Bucket: getBucket(),
+              Key:
+                DIRECT_MANIFEST_KEY,
+            }),
+          ),
+        "Reading curated staging manifest metadata",
       );
 
     return response.ETag ?? "present";
@@ -1087,13 +1091,17 @@ async function getDirectManifestEtag() {
 
 async function readDirectManifest() {
   const response =
-    await getClient().send(
-      new GetObjectCommand({
-        Bucket:
-          getBucket(),
-        Key:
-          DIRECT_MANIFEST_KEY,
-      }),
+    await withR2Retry(
+      () =>
+        getClient().send(
+          new GetObjectCommand({
+            Bucket:
+              getBucket(),
+            Key:
+              DIRECT_MANIFEST_KEY,
+          }),
+        ),
+      "Reading curated staging manifest",
     );
 
   if (!response.Body) {
