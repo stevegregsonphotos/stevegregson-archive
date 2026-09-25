@@ -865,38 +865,6 @@ export async function deleteCuratedImportFolder(
   const bucket =
     getBucket();
 
-  for (
-    let index = 0;
-    index < filesToDelete.length;
-    index += 1000
-  ) {
-    const batch =
-      filesToDelete.slice(
-        index,
-        index + 1000,
-      );
-
-    await withR2Retry(
-      () =>
-        client.send(
-          new DeleteObjectsCommand({
-            Bucket: bucket,
-            Delete: {
-              Objects:
-                batch.map(
-                  (relativePath) => ({
-                    Key:
-                      `${DIRECT_STAGING_PREFIX}${relativePath}`,
-                  }),
-                ),
-              Quiet: true,
-            },
-          }),
-        ),
-      `Deleting curated staged folder "${safeFolder}"`,
-    );
-  }
-
   const remainingFiles =
     currentFiles.filter(
       (relativePath) =>
@@ -1023,6 +991,44 @@ export async function deleteCuratedImportFolder(
     if (status !== 404) {
       throw error;
     }
+  }
+
+  /*
+   * Remove the folder from the control metadata before
+   * deleting its R2 objects. If object deletion fails,
+   * orphaned bytes are safer than manifest/index entries
+   * that point at missing objects.
+   */
+  for (
+    let index = 0;
+    index < filesToDelete.length;
+    index += 1000
+  ) {
+    const batch =
+      filesToDelete.slice(
+        index,
+        index + 1000,
+      );
+
+    await withR2Retry(
+      () =>
+        client.send(
+          new DeleteObjectsCommand({
+            Bucket: bucket,
+            Delete: {
+              Objects:
+                batch.map(
+                  (relativePath) => ({
+                    Key:
+                      `${DIRECT_STAGING_PREFIX}${relativePath}`,
+                  }),
+                ),
+              Quiet: true,
+            },
+          }),
+        ),
+      `Deleting curated staged folder "${safeFolder}"`,
+    );
   }
 
   directManifestCache = null;

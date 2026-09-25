@@ -141,16 +141,15 @@ export async function POST(
           folder,
         );
 
-      await Promise.all([
-        setCuratedArchiveOverride(
-          production,
-          null,
-        ),
-        setCuratedArchiveAccessOverride(
-          production,
-          null,
-        ),
-      ]);
+      await setCuratedArchiveOverride(
+        production,
+        null,
+      );
+
+      await setCuratedArchiveAccessOverride(
+        production,
+        null,
+      );
 
       return Response.json({
         ok: true,
