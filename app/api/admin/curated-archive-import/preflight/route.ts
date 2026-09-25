@@ -253,6 +253,38 @@ export async function GET(
     });
   }
 
+  /*
+   * Preflight checks staged-image existence thousands of times.
+   * Build every slash-delimited suffix once so those checks are
+   * O(1) while preserving the previous endsWith("/suffix")
+   * behaviour for collection-root-prefixed paths.
+   */
+  const directFileSuffixes =
+    new Set<string>();
+
+  for (const relativePath of directFiles) {
+    directFileSuffixes.add(
+      relativePath,
+    );
+
+    let separatorIndex =
+      relativePath.indexOf("/");
+
+    while (separatorIndex !== -1) {
+      directFileSuffixes.add(
+        relativePath.slice(
+          separatorIndex + 1,
+        ),
+      );
+
+      separatorIndex =
+        relativePath.indexOf(
+          "/",
+          separatorIndex + 1,
+        );
+    }
+  }
+
   const manifestFolderNames =
     Array.from(
       new Set(
@@ -811,12 +843,24 @@ export async function GET(
     if (directFiles) {
       missingFiles =
         expectedFiles.filter(
-          (filename) =>
-            !findCuratedImportStagedImage(
+          (filename) => {
+            const suffix =
+              `${entry.name}/selected-web-staging/${filename}`;
+
+            if (
+              directFileSuffixes.has(
+                suffix,
+              )
+            ) {
+              return false;
+            }
+
+            return !findCuratedImportStagedImage(
               directFiles,
               entry.name,
               filename,
-            ),
+            );
+          },
         );
     } else {
       let stagingFiles:
