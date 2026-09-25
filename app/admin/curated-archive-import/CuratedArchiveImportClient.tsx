@@ -1886,25 +1886,78 @@ export default function CuratedArchiveImportClient({
                   job.editSettings,
                 );
 
-              const uploadResponse =
-                await fetch(
-                  signed.uploadUrl,
-                  {
-                    method: "PUT",
-                    headers: {
-                      "Content-Type":
-                        "image/webp",
-                      "Cache-Control":
-                        "public, max-age=31536000, immutable",
-                    },
-                    body:
-                      processed.blob,
-                  },
-                );
+              let uploadResponse:
+                | Response
+                | null = null;
 
-              if (!uploadResponse.ok) {
+              let uploadError:
+                unknown = null;
+
+              for (
+                let attempt = 1;
+                attempt <= 4;
+                attempt += 1
+              ) {
+                try {
+                  uploadResponse =
+                    await fetch(
+                      signed.uploadUrl,
+                      {
+                        method: "PUT",
+                        headers: {
+                          "Content-Type":
+                            "image/webp",
+                          "Cache-Control":
+                            "public, max-age=31536000, immutable",
+                        },
+                        body:
+                          processed.blob,
+                      },
+                    );
+
+                  if (
+                    uploadResponse.ok ||
+                    (
+                      uploadResponse.status < 500 &&
+                      uploadResponse.status !== 429
+                    )
+                  ) {
+                    break;
+                  }
+
+                  uploadError =
+                    new Error(
+                      `HTTP ${uploadResponse.status}`,
+                    );
+                } catch (error) {
+                  uploadResponse = null;
+                  uploadError = error;
+                }
+
+                if (attempt < 4) {
+                  await new Promise(
+                    (resolve) =>
+                      setTimeout(
+                        resolve,
+                        500 *
+                          2 ** (attempt - 1),
+                      ),
+                  );
+                }
+              }
+
+              if (
+                !uploadResponse ||
+                !uploadResponse.ok
+              ) {
                 throw new Error(
-                  `Could not upload ${job.outputFilename} directly to production R2 (HTTP ${uploadResponse.status}).`,
+                  `Could not upload ${job.outputFilename} directly to production R2 after 4 attempts${
+                    uploadResponse
+                      ? ` (HTTP ${uploadResponse.status})`
+                      : uploadError instanceof Error
+                        ? ` (${uploadError.message})`
+                        : ""
+                  }.`,
                 );
               }
 
