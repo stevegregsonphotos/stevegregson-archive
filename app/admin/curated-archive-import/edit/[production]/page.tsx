@@ -778,6 +778,8 @@ export default function CuratedProductionEditPage() {
             body: JSON.stringify({
               production:
                 original.production,
+              folder:
+                folderName,
               title: title.trim(),
               venue: venue.trim(),
               month: parsedMonth,

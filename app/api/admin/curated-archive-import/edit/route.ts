@@ -36,6 +36,7 @@ type CuratedOverride =
 
 type EditPayload = {
   production?: unknown;
+  folder?: unknown;
   title?: unknown;
   venue?: unknown;
   month?: unknown;
@@ -1408,20 +1409,6 @@ export async function POST(
     return createUnauthorizedResponse();
   }
 
-  const curationRoot =
-    await materializeCuratedImport();
-
-  if (!curationRoot) {
-    return NextResponse.json(
-      {
-        ok: false,
-        message:
-          "Choose a curated folder before using Curated Archive Import.",
-      },
-      { status: 409 },
-    );
-  }
-
   let body: EditPayload;
 
   try {
@@ -1442,6 +1429,11 @@ export async function POST(
   const production =
     typeof body.production === "string"
       ? body.production.trim()
+      : "";
+
+  const folder =
+    typeof body.folder === "string"
+      ? body.folder.trim()
       : "";
 
   const title =
@@ -1600,22 +1592,50 @@ export async function POST(
     });
   }
 
-  if (
-    !(await curatedProductionExists(
-      production,
-      curationRoot,
-    ))
-  ) {
-    return NextResponse.json(
-      {
-        ok: false,
-        message:
-          "Curated production was not found.",
-      },
-      {
-        status: 404,
-      },
-    );
+  if (folder) {
+    const directProduction =
+      await loadDirectCuratedProduction(
+        folder,
+      );
+
+    if (
+      !directProduction ||
+      directProduction.production !==
+        production
+    ) {
+      return NextResponse.json(
+        {
+          ok: false,
+          message:
+            "Curated production was not found.",
+        },
+        {
+          status: 404,
+        },
+      );
+    }
+  } else {
+    const curationRoot =
+      await materializeCuratedImport();
+
+    if (
+      !curationRoot ||
+      !(await curatedProductionExists(
+        production,
+        curationRoot,
+      ))
+    ) {
+      return NextResponse.json(
+        {
+          ok: false,
+          message:
+            "Curated production was not found.",
+        },
+        {
+          status: 404,
+        },
+      );
+    }
   }
 
   const overrides =
