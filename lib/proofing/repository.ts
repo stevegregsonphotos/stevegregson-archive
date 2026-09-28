@@ -147,6 +147,74 @@ export async function getProofingGalleries():
   });
 }
 
+export async function getProofingGalleryImageBySlug(
+  slug: string,
+  imageId: string,
+): Promise<
+  | {
+      gallery: ProofingGallery;
+      image: ProofingImage;
+    }
+  | undefined
+> {
+  const normalisedSlug =
+    decodeURIComponent(slug)
+      .trim()
+      .toLowerCase();
+
+  const cleanImageId =
+    imageId.trim();
+
+  if (
+    !normalisedSlug ||
+    !cleanImageId
+  ) {
+    return undefined;
+  }
+
+  const sql = getSql();
+
+  const rows = await sql`
+    SELECT
+      pg.data,
+      pi.id,
+      pi.gallery_id,
+      pi.original_filename,
+      pi.web_filename,
+      pi.width,
+      pi.height,
+      pi.alt,
+      pi.sort_order,
+      pi.created_at,
+      pi.blur_data_url
+    FROM proofing_galleries pg
+    JOIN proofing_images pi
+      ON pi.gallery_id = pg.id::text
+    WHERE LOWER(pg.slug) = ${normalisedSlug}
+      AND pi.id = ${cleanImageId}
+    LIMIT 1
+  `;
+
+  const row = rows[0];
+
+  if (!row) {
+    return undefined;
+  }
+
+  return {
+    gallery: {
+      ...mapGallery(
+        row as GalleryRow,
+      ),
+      images: [],
+    },
+    image:
+      mapProofingImage(
+        row as unknown as ProofingImageRow,
+      ),
+  };
+}
+
 export async function getProofingGallery(
   id: string,
 ): Promise<ProofingGallery | undefined> {

@@ -5,7 +5,7 @@ import {
 } from "next/server";
 
 import {
-  getProofingGalleryBySlug,
+  getProofingGalleryImageBySlug,
 } from "../../../../lib/proofing/repository";
 import {
   createProofingImageDownloadUrl,
@@ -50,20 +50,27 @@ export async function GET(
     );
   }
 
-  const gallery =
-    await getProofingGalleryBySlug(
+  const resolved =
+    await getProofingGalleryImageBySlug(
       gallerySlug,
+      imageId,
     );
 
-  if (!gallery) {
+  if (!resolved) {
     return NextResponse.json(
       {
         ok: false,
-        message: "Gallery not found.",
+        message:
+          "Gallery or image not found.",
       },
       { status: 404 },
     );
   }
+
+  const {
+    gallery,
+    image,
+  } = resolved;
 
   const hasExpiredByDate =
     Boolean(gallery.expiresAt) &&
@@ -109,22 +116,6 @@ export async function GET(
           "Please enter the gallery to view this photograph.",
       },
       { status: 401 },
-    );
-  }
-
-  const image =
-    gallery.images.find(
-      (candidate) =>
-        candidate.id === imageId,
-    );
-
-  if (!image) {
-    return NextResponse.json(
-      {
-        ok: false,
-        message: "Image not found.",
-      },
-      { status: 404 },
     );
   }
 

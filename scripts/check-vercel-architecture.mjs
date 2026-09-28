@@ -34,6 +34,16 @@ const checks = [
   () => assertNotContains("app/api/admin/proofing/upload/route.ts", ["request.formData()", "arrayBuffer()", "from \"sharp\"", "putProofingImage("]),
   () => assertContains("app/admin/proofing/[id]/ProofingUpload.tsx", ["uploadUrl", "method: \"PUT\"", "const concurrency"]),
 
+  // Public proofing image delivery must query only the requested image.
+  () => assertContains(
+    "app/api/proofing/image/route.ts",
+    ["getProofingGalleryImageBySlug"],
+  ),
+  () => assertNotContains(
+    "app/api/proofing/image/route.ts",
+    ["getProofingGalleryBySlug("],
+  ),
+
   // Proofing delivery/downloads: signed R2 URLs; no image/ZIP proxy through Vercel.
   () => assertContains("app/api/proofing/image/route.ts", ["createProofingImageDownloadUrl", "NextResponse.redirect"]),
   () => assertNotContains("app/api/proofing/image/route.ts", ["from \"sharp\"", "getProofingImage(", "putRenderedProof("]),
