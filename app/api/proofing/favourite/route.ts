@@ -4,7 +4,7 @@ import {
 } from "next/server";
 
 import {
-  getProofingGalleryBySlug,
+  getProofingGalleryImageBySlug,
   updateProofingGallery,
 } from "../../../../lib/proofing/repository";
 
@@ -55,20 +55,26 @@ export async function POST(
     );
   }
 
-  const gallery =
-    await getProofingGalleryBySlug(gallerySlug);
+  const resolved =
+    await getProofingGalleryImageBySlug(
+      gallerySlug,
+      imageId,
+    );
 
-  if (!gallery) {
+  if (!resolved) {
     return NextResponse.json(
       {
         ok: false,
-        message: "Gallery not found.",
+        message:
+          "Gallery or image not found.",
       },
       {
         status: 404,
       },
     );
   }
+
+  const { gallery } = resolved;
 
   /*
    * Identify the visitor from the secure
@@ -132,23 +138,6 @@ export async function POST(
       },
       {
         status: 401,
-      },
-    );
-  }
-
-  const imageExists =
-    gallery.images.some(
-      (image) => image.id === imageId,
-    );
-
-  if (!imageExists) {
-    return NextResponse.json(
-      {
-        ok: false,
-        message: "Image not found.",
-      },
-      {
-        status: 404,
       },
     );
   }
