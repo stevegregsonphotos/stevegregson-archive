@@ -432,6 +432,8 @@ export default function CuratedProductionEditPage() {
             body: JSON.stringify({
               production:
                 original.production,
+              folder:
+                folderName,
               reset: "images",
             }),
           },
@@ -457,6 +459,8 @@ export default function CuratedProductionEditPage() {
         await fetch(
           `/api/admin/curated-archive-import/edit?production=${encodeURIComponent(
             original.production,
+          )}&folder=${encodeURIComponent(
+            folderName,
           )}`,
           {
             cache: "no-store",
@@ -530,6 +534,8 @@ export default function CuratedProductionEditPage() {
             body: JSON.stringify({
               production:
                 original.production,
+              folder:
+                folderName,
               heroIndex,
               selectedIndexes:
                 images.map(
@@ -626,6 +632,8 @@ export default function CuratedProductionEditPage() {
         await fetch(
           `/api/admin/curated-archive-import/edit?production=${encodeURIComponent(
             original.production,
+          )}&folder=${encodeURIComponent(
+            folderName,
           )}`,
           {
             method: "DELETE",
@@ -652,6 +660,8 @@ export default function CuratedProductionEditPage() {
         await fetch(
           `/api/admin/curated-archive-import/edit?production=${encodeURIComponent(
             original.production,
+          )}&folder=${encodeURIComponent(
+            folderName,
           )}`,
           {
             cache: "no-store",

@@ -734,6 +734,51 @@ async function loadDirectCuratedProduction(
   }
 }
 
+async function getDirectCuratedSourceIndexes(
+  folder: string,
+  production: string,
+) {
+  try {
+    const finalSelection =
+      JSON.parse(
+        (
+          await readCuratedImportDirectFile(
+            `${folder}/final-selection.json`,
+          )
+        ).toString("utf8"),
+      ) as {
+        production?: unknown;
+        images?: Array<{
+          index?: unknown;
+        }>;
+      };
+
+    if (
+      typeof finalSelection.production !==
+        "string" ||
+      finalSelection.production.trim() !==
+        production
+    ) {
+      return null;
+    }
+
+    return new Set(
+      (
+        Array.isArray(finalSelection.images)
+          ? finalSelection.images
+          : []
+      ).flatMap(
+        (image) =>
+          typeof image.index === "number"
+            ? [image.index]
+            : [],
+      ),
+    );
+  } catch {
+    return null;
+  }
+}
+
 export async function GET(
   request: Request,
 ) {
@@ -823,26 +868,17 @@ export async function DELETE(
     return createUnauthorizedResponse();
   }
 
-  const curationRoot =
-    await materializeCuratedImport();
-
-  if (!curationRoot) {
-    return NextResponse.json(
-      {
-        ok: false,
-        message:
-          "Choose a curated folder before using Curated Archive Import.",
-      },
-      { status: 409 },
-    );
-  }
-
   const url =
     new URL(request.url);
 
   const production =
     url.searchParams
       .get("production")
+      ?.trim() ?? "";
+
+  const folder =
+    url.searchParams
+      .get("folder")
       ?.trim() ?? "";
 
   if (!production) {
@@ -858,22 +894,46 @@ export async function DELETE(
     );
   }
 
-  if (
-    !(await curatedProductionExists(
-      production,
-      curationRoot,
-    ))
-  ) {
-    return NextResponse.json(
-      {
-        ok: false,
-        message:
-          "Curated production was not found.",
-      },
-      {
-        status: 404,
-      },
-    );
+  if (folder) {
+    const directProduction =
+      await loadDirectCuratedProduction(
+        folder,
+      );
+
+    if (
+      !directProduction ||
+      directProduction.production !==
+        production
+    ) {
+      return NextResponse.json(
+        {
+          ok: false,
+          message:
+            "Curated production was not found.",
+        },
+        { status: 404 },
+      );
+    }
+  } else {
+    const curationRoot =
+      await materializeCuratedImport();
+
+    if (
+      !curationRoot ||
+      !(await curatedProductionExists(
+        production,
+        curationRoot,
+      ))
+    ) {
+      return NextResponse.json(
+        {
+          ok: false,
+          message:
+            "Curated production was not found.",
+        },
+        { status: 404 },
+      );
+    }
   }
 
   const overrides =
@@ -946,22 +1006,9 @@ export async function PATCH(
     return createUnauthorizedResponse();
   }
 
-  const curationRoot =
-    await materializeCuratedImport();
-
-  if (!curationRoot) {
-    return NextResponse.json(
-      {
-        ok: false,
-        message:
-          "Choose a curated folder before using Curated Archive Import.",
-      },
-      { status: 409 },
-    );
-  }
-
   let body: {
     production?: unknown;
+    folder?: unknown;
     reset?: unknown;
   };
 
@@ -985,6 +1032,11 @@ export async function PATCH(
       ? body.production.trim()
       : "";
 
+  const folder =
+    typeof body.folder === "string"
+      ? body.folder.trim()
+      : "";
+
   if (
     !production ||
     body.reset !== "images"
@@ -1001,22 +1053,46 @@ export async function PATCH(
     );
   }
 
-  if (
-    !(await curatedProductionExists(
-      production,
-      curationRoot,
-    ))
-  ) {
-    return NextResponse.json(
-      {
-        ok: false,
-        message:
-          "Curated production was not found.",
-      },
-      {
-        status: 404,
-      },
-    );
+  if (folder) {
+    const directProduction =
+      await loadDirectCuratedProduction(
+        folder,
+      );
+
+    if (
+      !directProduction ||
+      directProduction.production !==
+        production
+    ) {
+      return NextResponse.json(
+        {
+          ok: false,
+          message:
+            "Curated production was not found.",
+        },
+        { status: 404 },
+      );
+    }
+  } else {
+    const curationRoot =
+      await materializeCuratedImport();
+
+    if (
+      !curationRoot ||
+      !(await curatedProductionExists(
+        production,
+        curationRoot,
+      ))
+    ) {
+      return NextResponse.json(
+        {
+          ok: false,
+          message:
+            "Curated production was not found.",
+        },
+        { status: 404 },
+      );
+    }
   }
 
   const overrides =
@@ -1070,22 +1146,9 @@ export async function PUT(
     return createUnauthorizedResponse();
   }
 
-  const curationRoot =
-    await materializeCuratedImport();
-
-  if (!curationRoot) {
-    return NextResponse.json(
-      {
-        ok: false,
-        message:
-          "Choose a curated folder before using Curated Archive Import.",
-      },
-      { status: 409 },
-    );
-  }
-
   let body: {
     production?: unknown;
+    folder?: unknown;
     heroIndex?: unknown;
     selectedIndexes?: unknown;
     imageEdits?: unknown;
@@ -1110,6 +1173,11 @@ export async function PUT(
   const production =
     typeof body.production === "string"
       ? body.production.trim()
+      : "";
+
+  const folder =
+    typeof body.folder === "string"
+      ? body.folder.trim()
       : "";
 
   const heroIndex =
@@ -1257,70 +1325,82 @@ export async function PUT(
     );
   }
 
-  const entries =
-    await fs.readdir(
-      curationRoot,
-      {
-        withFileTypes: true,
-      },
-    );
-
   let allowedIndexes:
     Set<number> | null = null;
 
-  for (const entry of entries) {
-    if (!entry.isDirectory()) {
-      continue;
-    }
+  if (folder) {
+    allowedIndexes =
+      await getDirectCuratedSourceIndexes(
+        folder,
+        production,
+      );
+  } else {
+    const curationRoot =
+      await materializeCuratedImport();
 
-    try {
-      const finalSelection =
-        JSON.parse(
-          await fs.readFile(
-            path.join(
-              curationRoot,
-              entry.name,
-              "final-selection.json",
-            ),
-            "utf8",
-          ),
-        ) as {
-          production?: unknown;
-          images?: Array<{
-            index?: unknown;
-          }>;
-        };
-
-      if (
-        typeof finalSelection.production !==
-          "string" ||
-        (production &&
-          finalSelection.production.trim() !==
-            production)
-      ) {
-        continue;
-      }
-
-      allowedIndexes =
-        new Set(
-          (
-            Array.isArray(
-              finalSelection.images,
-            )
-              ? finalSelection.images
-              : []
-          ).flatMap(
-            (image) =>
-              typeof image.index ===
-              "number"
-                ? [image.index]
-                : [],
-          ),
+    if (curationRoot) {
+      const entries =
+        await fs.readdir(
+          curationRoot,
+          {
+            withFileTypes: true,
+          },
         );
 
-      break;
-    } catch {
-      continue;
+      for (const entry of entries) {
+        if (!entry.isDirectory()) {
+          continue;
+        }
+
+        try {
+          const finalSelection =
+            JSON.parse(
+              await fs.readFile(
+                path.join(
+                  curationRoot,
+                  entry.name,
+                  "final-selection.json",
+                ),
+                "utf8",
+              ),
+            ) as {
+              production?: unknown;
+              images?: Array<{
+                index?: unknown;
+              }>;
+            };
+
+          if (
+            typeof finalSelection.production !==
+              "string" ||
+            finalSelection.production.trim() !==
+              production
+          ) {
+            continue;
+          }
+
+          allowedIndexes =
+            new Set(
+              (
+                Array.isArray(
+                  finalSelection.images,
+                )
+                  ? finalSelection.images
+                  : []
+              ).flatMap(
+                (image) =>
+                  typeof image.index ===
+                    "number"
+                    ? [image.index]
+                    : [],
+              ),
+            );
+
+          break;
+        } catch {
+          continue;
+        }
+      }
     }
   }
 

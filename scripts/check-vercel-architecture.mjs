@@ -58,6 +58,25 @@ const checks = [
   () => assertNotContains("lib/curated-archive/prepare-production.ts", ["from \"sharp\"", "readCuratedImportDirectFile(\n                  image.stagedRelativePath"]),
   () => assertContains("lib/curated-archive/prepare-production.ts", ["readCuratedImportDirectFileRange"]),
 
+  // Curated Archive editor: normal folder-based editing must stay on direct R2 paths.
+  () => assertContains(
+    "app/api/admin/curated-archive-import/edit/route.ts",
+    [
+      "loadDirectCuratedProduction",
+      "getDirectCuratedSourceIndexes",
+      "typeof body.folder === \"string\"",
+    ],
+  ),
+  () => assertContains(
+    "app/admin/curated-archive-import/edit/[production]/page.tsx",
+    [
+      "folderName",
+      "reset: \"images\"",
+      "selectedIndexes:",
+      "&folder=${encodeURIComponent(",
+    ],
+  ),
+
   // Curated publish: browser does source GET + transform + destination PUT; Vercel signs/finalises only.
   () => assertContains("app/api/admin/curated-archive-import/publish/route.ts", ["sign-image", "createProductionImageUploadUrl", "finalizePublishedProduction"]),
   () => assertNotContains("app/api/admin/curated-archive-import/publish/route.ts", ["publishCuratedProduction(", "publishImageBuffer(", "from \"sharp\""]),
