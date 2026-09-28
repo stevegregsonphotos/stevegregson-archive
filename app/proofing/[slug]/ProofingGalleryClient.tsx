@@ -295,9 +295,14 @@ export default function ProofingGalleryClient({
     const intervalId =
       window.setInterval(
         () => {
-          void refreshDefinitiveSelection();
+          if (
+            document.visibilityState ===
+            "visible"
+          ) {
+            void refreshDefinitiveSelection();
+          }
         },
-        3000,
+        30000,
       );
 
     return () => {
