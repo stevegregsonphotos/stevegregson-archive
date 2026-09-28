@@ -833,6 +833,12 @@ export default function ProductionUpload() {
     useState("");
 
   const [
+    publishSucceeded,
+    setPublishSucceeded,
+  ] =
+    useState(false);
+
+  const [
     isPublishing,
     setIsPublishing,
   ] =
@@ -916,6 +922,7 @@ export default function ProductionUpload() {
 
     setError("");
     setPublishedUrl("");
+    setPublishSucceeded(false);
     setDetailsFileName("");
 
     const detailsFile =
@@ -1071,6 +1078,7 @@ export default function ProductionUpload() {
   async function publish() {
     setError("");
     setPublishedUrl("");
+    setPublishSucceeded(false);
 
     const parsedMonth =
       Number.parseInt(
@@ -1495,6 +1503,10 @@ export default function ProductionUpload() {
         "Published successfully.",
       );
 
+      setPublishSucceeded(
+        true,
+      );
+
       setPublishedUrl(
         finalized.production
           ?.url ?? "",
@@ -1613,14 +1625,59 @@ export default function ProductionUpload() {
                 display:
                   "grid",
                 gridTemplateColumns:
-                  "repeat(2, minmax(0,1fr))",
-                gap:
-                  "1rem",
+                  "repeat(auto-fit, minmax(260px, 1fr))",
+                columnGap:
+                  "2rem",
+                rowGap:
+                  "1.5rem",
               }}
             >
-              <label>
+              <label
+                style={{
+                  display:
+                    "grid",
+                  gap:
+                    ".5rem",
+                  color:
+                    "rgba(242,238,230,.68)",
+                  fontSize:
+                    ".68rem",
+                  fontWeight:
+                    700,
+                  letterSpacing:
+                    ".08em",
+                  textTransform:
+                    "uppercase",
+                }}
+              >
                 Production
                 <input
+                  style={{
+                    width:
+                      "100%",
+                    boxSizing:
+                      "border-box",
+                    minHeight:
+                      "2.8rem",
+                    padding:
+                      ".75rem .9rem",
+                    border:
+                      "1px solid rgba(242,238,230,.24)",
+                    borderRadius:
+                      "2px",
+                    background:
+                      "rgba(255,255,255,.035)",
+                    color:
+                      "#f2eee6",
+                    fontSize:
+                      ".95rem",
+                    fontWeight:
+                      400,
+                    letterSpacing:
+                      "normal",
+                    textTransform:
+                      "none",
+                  }}
                   value={
                     title
                   }
@@ -1636,9 +1693,52 @@ export default function ProductionUpload() {
                 />
               </label>
 
-              <label>
+              <label
+                style={{
+                  display:
+                    "grid",
+                  gap:
+                    ".5rem",
+                  color:
+                    "rgba(242,238,230,.68)",
+                  fontSize:
+                    ".68rem",
+                  fontWeight:
+                    700,
+                  letterSpacing:
+                    ".08em",
+                  textTransform:
+                    "uppercase",
+                }}
+              >
                 Venue
                 <input
+                  style={{
+                    width:
+                      "100%",
+                    boxSizing:
+                      "border-box",
+                    minHeight:
+                      "2.8rem",
+                    padding:
+                      ".75rem .9rem",
+                    border:
+                      "1px solid rgba(242,238,230,.24)",
+                    borderRadius:
+                      "2px",
+                    background:
+                      "rgba(255,255,255,.035)",
+                    color:
+                      "#f2eee6",
+                    fontSize:
+                      ".95rem",
+                    fontWeight:
+                      400,
+                    letterSpacing:
+                      "normal",
+                    textTransform:
+                      "none",
+                  }}
                   value={
                     venue
                   }
@@ -1654,9 +1754,52 @@ export default function ProductionUpload() {
                 />
               </label>
 
-              <label>
+              <label
+                style={{
+                  display:
+                    "grid",
+                  gap:
+                    ".5rem",
+                  color:
+                    "rgba(242,238,230,.68)",
+                  fontSize:
+                    ".68rem",
+                  fontWeight:
+                    700,
+                  letterSpacing:
+                    ".08em",
+                  textTransform:
+                    "uppercase",
+                }}
+              >
                 Month
                 <select
+                  style={{
+                    width:
+                      "100%",
+                    boxSizing:
+                      "border-box",
+                    minHeight:
+                      "2.8rem",
+                    padding:
+                      ".75rem .9rem",
+                    border:
+                      "1px solid rgba(242,238,230,.24)",
+                    borderRadius:
+                      "2px",
+                    background:
+                      "#11100f",
+                    color:
+                      "#f2eee6",
+                    fontSize:
+                      ".95rem",
+                    fontWeight:
+                      400,
+                    letterSpacing:
+                      "normal",
+                    textTransform:
+                      "none",
+                  }}
                   value={
                     month
                   }
@@ -1696,9 +1839,52 @@ export default function ProductionUpload() {
                 </select>
               </label>
 
-              <label>
+              <label
+                style={{
+                  display:
+                    "grid",
+                  gap:
+                    ".5rem",
+                  color:
+                    "rgba(242,238,230,.68)",
+                  fontSize:
+                    ".68rem",
+                  fontWeight:
+                    700,
+                  letterSpacing:
+                    ".08em",
+                  textTransform:
+                    "uppercase",
+                }}
+              >
                 Year
                 <input
+                  style={{
+                    width:
+                      "100%",
+                    boxSizing:
+                      "border-box",
+                    minHeight:
+                      "2.8rem",
+                    padding:
+                      ".75rem .9rem",
+                    border:
+                      "1px solid rgba(242,238,230,.24)",
+                    borderRadius:
+                      "2px",
+                    background:
+                      "rgba(255,255,255,.035)",
+                    color:
+                      "#f2eee6",
+                    fontSize:
+                      ".95rem",
+                    fontWeight:
+                      400,
+                    letterSpacing:
+                      "normal",
+                    textTransform:
+                      "none",
+                  }}
                   inputMode="numeric"
                   value={
                     year
@@ -1715,9 +1901,52 @@ export default function ProductionUpload() {
                 />
               </label>
 
-              <label>
+              <label
+                style={{
+                  display:
+                    "grid",
+                  gap:
+                    ".5rem",
+                  color:
+                    "rgba(242,238,230,.68)",
+                  fontSize:
+                    ".68rem",
+                  fontWeight:
+                    700,
+                  letterSpacing:
+                    ".08em",
+                  textTransform:
+                    "uppercase",
+                }}
+              >
                 Director
                 <input
+                  style={{
+                    width:
+                      "100%",
+                    boxSizing:
+                      "border-box",
+                    minHeight:
+                      "2.8rem",
+                    padding:
+                      ".75rem .9rem",
+                    border:
+                      "1px solid rgba(242,238,230,.24)",
+                    borderRadius:
+                      "2px",
+                    background:
+                      "rgba(255,255,255,.035)",
+                    color:
+                      "#f2eee6",
+                    fontSize:
+                      ".95rem",
+                    fontWeight:
+                      400,
+                    letterSpacing:
+                      "normal",
+                    textTransform:
+                      "none",
+                  }}
                   value={
                     director
                   }
@@ -1733,9 +1962,52 @@ export default function ProductionUpload() {
                 />
               </label>
 
-              <label>
+              <label
+                style={{
+                  display:
+                    "grid",
+                  gap:
+                    ".5rem",
+                  color:
+                    "rgba(242,238,230,.68)",
+                  fontSize:
+                    ".68rem",
+                  fontWeight:
+                    700,
+                  letterSpacing:
+                    ".08em",
+                  textTransform:
+                    "uppercase",
+                }}
+              >
                 Writer
                 <input
+                  style={{
+                    width:
+                      "100%",
+                    boxSizing:
+                      "border-box",
+                    minHeight:
+                      "2.8rem",
+                    padding:
+                      ".75rem .9rem",
+                    border:
+                      "1px solid rgba(242,238,230,.24)",
+                    borderRadius:
+                      "2px",
+                    background:
+                      "rgba(255,255,255,.035)",
+                    color:
+                      "#f2eee6",
+                    fontSize:
+                      ".95rem",
+                    fontWeight:
+                      400,
+                    letterSpacing:
+                      "normal",
+                    textTransform:
+                      "none",
+                  }}
                   value={writer}
                   onChange={(event) =>
                     setWriter(event.target.value)
@@ -1743,9 +2015,52 @@ export default function ProductionUpload() {
                 />
               </label>
 
-              <label>
+              <label
+                style={{
+                  display:
+                    "grid",
+                  gap:
+                    ".5rem",
+                  color:
+                    "rgba(242,238,230,.68)",
+                  fontSize:
+                    ".68rem",
+                  fontWeight:
+                    700,
+                  letterSpacing:
+                    ".08em",
+                  textTransform:
+                    "uppercase",
+                }}
+              >
                 Cast
                 <input
+                  style={{
+                    width:
+                      "100%",
+                    boxSizing:
+                      "border-box",
+                    minHeight:
+                      "2.8rem",
+                    padding:
+                      ".75rem .9rem",
+                    border:
+                      "1px solid rgba(242,238,230,.24)",
+                    borderRadius:
+                      "2px",
+                    background:
+                      "rgba(255,255,255,.035)",
+                    color:
+                      "#f2eee6",
+                    fontSize:
+                      ".95rem",
+                    fontWeight:
+                      400,
+                    letterSpacing:
+                      "normal",
+                    textTransform:
+                      "none",
+                  }}
                   value={cast}
                   onChange={(event) =>
                     setCast(event.target.value)
@@ -1753,9 +2068,52 @@ export default function ProductionUpload() {
                 />
               </label>
 
-              <label>
+              <label
+                style={{
+                  display:
+                    "grid",
+                  gap:
+                    ".5rem",
+                  color:
+                    "rgba(242,238,230,.68)",
+                  fontSize:
+                    ".68rem",
+                  fontWeight:
+                    700,
+                  letterSpacing:
+                    ".08em",
+                  textTransform:
+                    "uppercase",
+                }}
+              >
                 Associate Director
                 <input
+                  style={{
+                    width:
+                      "100%",
+                    boxSizing:
+                      "border-box",
+                    minHeight:
+                      "2.8rem",
+                    padding:
+                      ".75rem .9rem",
+                    border:
+                      "1px solid rgba(242,238,230,.24)",
+                    borderRadius:
+                      "2px",
+                    background:
+                      "rgba(255,255,255,.035)",
+                    color:
+                      "#f2eee6",
+                    fontSize:
+                      ".95rem",
+                    fontWeight:
+                      400,
+                    letterSpacing:
+                      "normal",
+                    textTransform:
+                      "none",
+                  }}
                   value={associateDirector}
                   onChange={(event) =>
                     setAssociateDirector(event.target.value)
@@ -1763,9 +2121,52 @@ export default function ProductionUpload() {
                 />
               </label>
 
-              <label>
+              <label
+                style={{
+                  display:
+                    "grid",
+                  gap:
+                    ".5rem",
+                  color:
+                    "rgba(242,238,230,.68)",
+                  fontSize:
+                    ".68rem",
+                  fontWeight:
+                    700,
+                  letterSpacing:
+                    ".08em",
+                  textTransform:
+                    "uppercase",
+                }}
+              >
                 Musical Director
                 <input
+                  style={{
+                    width:
+                      "100%",
+                    boxSizing:
+                      "border-box",
+                    minHeight:
+                      "2.8rem",
+                    padding:
+                      ".75rem .9rem",
+                    border:
+                      "1px solid rgba(242,238,230,.24)",
+                    borderRadius:
+                      "2px",
+                    background:
+                      "rgba(255,255,255,.035)",
+                    color:
+                      "#f2eee6",
+                    fontSize:
+                      ".95rem",
+                    fontWeight:
+                      400,
+                    letterSpacing:
+                      "normal",
+                    textTransform:
+                      "none",
+                  }}
                   value={musicalDirector}
                   onChange={(event) =>
                     setMusicalDirector(event.target.value)
@@ -1773,9 +2174,52 @@ export default function ProductionUpload() {
                 />
               </label>
 
-              <label>
+              <label
+                style={{
+                  display:
+                    "grid",
+                  gap:
+                    ".5rem",
+                  color:
+                    "rgba(242,238,230,.68)",
+                  fontSize:
+                    ".68rem",
+                  fontWeight:
+                    700,
+                  letterSpacing:
+                    ".08em",
+                  textTransform:
+                    "uppercase",
+                }}
+              >
                 Choreographer
                 <input
+                  style={{
+                    width:
+                      "100%",
+                    boxSizing:
+                      "border-box",
+                    minHeight:
+                      "2.8rem",
+                    padding:
+                      ".75rem .9rem",
+                    border:
+                      "1px solid rgba(242,238,230,.24)",
+                    borderRadius:
+                      "2px",
+                    background:
+                      "rgba(255,255,255,.035)",
+                    color:
+                      "#f2eee6",
+                    fontSize:
+                      ".95rem",
+                    fontWeight:
+                      400,
+                    letterSpacing:
+                      "normal",
+                    textTransform:
+                      "none",
+                  }}
                   value={choreographer}
                   onChange={(event) =>
                     setChoreographer(event.target.value)
@@ -1783,9 +2227,52 @@ export default function ProductionUpload() {
                 />
               </label>
 
-              <label>
+              <label
+                style={{
+                  display:
+                    "grid",
+                  gap:
+                    ".5rem",
+                  color:
+                    "rgba(242,238,230,.68)",
+                  fontSize:
+                    ".68rem",
+                  fontWeight:
+                    700,
+                  letterSpacing:
+                    ".08em",
+                  textTransform:
+                    "uppercase",
+                }}
+              >
                 Movement Director
                 <input
+                  style={{
+                    width:
+                      "100%",
+                    boxSizing:
+                      "border-box",
+                    minHeight:
+                      "2.8rem",
+                    padding:
+                      ".75rem .9rem",
+                    border:
+                      "1px solid rgba(242,238,230,.24)",
+                    borderRadius:
+                      "2px",
+                    background:
+                      "rgba(255,255,255,.035)",
+                    color:
+                      "#f2eee6",
+                    fontSize:
+                      ".95rem",
+                    fontWeight:
+                      400,
+                    letterSpacing:
+                      "normal",
+                    textTransform:
+                      "none",
+                  }}
                   value={movementDirector}
                   onChange={(event) =>
                     setMovementDirector(event.target.value)
@@ -1793,9 +2280,52 @@ export default function ProductionUpload() {
                 />
               </label>
 
-              <label>
+              <label
+                style={{
+                  display:
+                    "grid",
+                  gap:
+                    ".5rem",
+                  color:
+                    "rgba(242,238,230,.68)",
+                  fontSize:
+                    ".68rem",
+                  fontWeight:
+                    700,
+                  letterSpacing:
+                    ".08em",
+                  textTransform:
+                    "uppercase",
+                }}
+              >
                 Lighting Design
                 <input
+                  style={{
+                    width:
+                      "100%",
+                    boxSizing:
+                      "border-box",
+                    minHeight:
+                      "2.8rem",
+                    padding:
+                      ".75rem .9rem",
+                    border:
+                      "1px solid rgba(242,238,230,.24)",
+                    borderRadius:
+                      "2px",
+                    background:
+                      "rgba(255,255,255,.035)",
+                    color:
+                      "#f2eee6",
+                    fontSize:
+                      ".95rem",
+                    fontWeight:
+                      400,
+                    letterSpacing:
+                      "normal",
+                    textTransform:
+                      "none",
+                  }}
                   value={lightingDesign}
                   onChange={(event) =>
                     setLightingDesign(event.target.value)
@@ -1803,9 +2333,52 @@ export default function ProductionUpload() {
                 />
               </label>
 
-              <label>
+              <label
+                style={{
+                  display:
+                    "grid",
+                  gap:
+                    ".5rem",
+                  color:
+                    "rgba(242,238,230,.68)",
+                  fontSize:
+                    ".68rem",
+                  fontWeight:
+                    700,
+                  letterSpacing:
+                    ".08em",
+                  textTransform:
+                    "uppercase",
+                }}
+              >
                 Set Design
                 <input
+                  style={{
+                    width:
+                      "100%",
+                    boxSizing:
+                      "border-box",
+                    minHeight:
+                      "2.8rem",
+                    padding:
+                      ".75rem .9rem",
+                    border:
+                      "1px solid rgba(242,238,230,.24)",
+                    borderRadius:
+                      "2px",
+                    background:
+                      "rgba(255,255,255,.035)",
+                    color:
+                      "#f2eee6",
+                    fontSize:
+                      ".95rem",
+                    fontWeight:
+                      400,
+                    letterSpacing:
+                      "normal",
+                    textTransform:
+                      "none",
+                  }}
                   value={setDesign}
                   onChange={(event) =>
                     setSetDesign(event.target.value)
@@ -1813,9 +2386,52 @@ export default function ProductionUpload() {
                 />
               </label>
 
-              <label>
+              <label
+                style={{
+                  display:
+                    "grid",
+                  gap:
+                    ".5rem",
+                  color:
+                    "rgba(242,238,230,.68)",
+                  fontSize:
+                    ".68rem",
+                  fontWeight:
+                    700,
+                  letterSpacing:
+                    ".08em",
+                  textTransform:
+                    "uppercase",
+                }}
+              >
                 Costume Design
                 <input
+                  style={{
+                    width:
+                      "100%",
+                    boxSizing:
+                      "border-box",
+                    minHeight:
+                      "2.8rem",
+                    padding:
+                      ".75rem .9rem",
+                    border:
+                      "1px solid rgba(242,238,230,.24)",
+                    borderRadius:
+                      "2px",
+                    background:
+                      "rgba(255,255,255,.035)",
+                    color:
+                      "#f2eee6",
+                    fontSize:
+                      ".95rem",
+                    fontWeight:
+                      400,
+                    letterSpacing:
+                      "normal",
+                    textTransform:
+                      "none",
+                  }}
                   value={costumeDesign}
                   onChange={(event) =>
                     setCostumeDesign(event.target.value)
@@ -1823,9 +2439,52 @@ export default function ProductionUpload() {
                 />
               </label>
 
-              <label>
+              <label
+                style={{
+                  display:
+                    "grid",
+                  gap:
+                    ".5rem",
+                  color:
+                    "rgba(242,238,230,.68)",
+                  fontSize:
+                    ".68rem",
+                  fontWeight:
+                    700,
+                  letterSpacing:
+                    ".08em",
+                  textTransform:
+                    "uppercase",
+                }}
+              >
                 Set &amp; Costume Design
                 <input
+                  style={{
+                    width:
+                      "100%",
+                    boxSizing:
+                      "border-box",
+                    minHeight:
+                      "2.8rem",
+                    padding:
+                      ".75rem .9rem",
+                    border:
+                      "1px solid rgba(242,238,230,.24)",
+                    borderRadius:
+                      "2px",
+                    background:
+                      "rgba(255,255,255,.035)",
+                    color:
+                      "#f2eee6",
+                    fontSize:
+                      ".95rem",
+                    fontWeight:
+                      400,
+                    letterSpacing:
+                      "normal",
+                    textTransform:
+                      "none",
+                  }}
                   value={setAndCostumeDesign}
                   onChange={(event) =>
                     setSetAndCostumeDesign(event.target.value)
@@ -1833,9 +2492,52 @@ export default function ProductionUpload() {
                 />
               </label>
 
-              <label>
+              <label
+                style={{
+                  display:
+                    "grid",
+                  gap:
+                    ".5rem",
+                  color:
+                    "rgba(242,238,230,.68)",
+                  fontSize:
+                    ".68rem",
+                  fontWeight:
+                    700,
+                  letterSpacing:
+                    ".08em",
+                  textTransform:
+                    "uppercase",
+                }}
+              >
                 Sound Design
                 <input
+                  style={{
+                    width:
+                      "100%",
+                    boxSizing:
+                      "border-box",
+                    minHeight:
+                      "2.8rem",
+                    padding:
+                      ".75rem .9rem",
+                    border:
+                      "1px solid rgba(242,238,230,.24)",
+                    borderRadius:
+                      "2px",
+                    background:
+                      "rgba(255,255,255,.035)",
+                    color:
+                      "#f2eee6",
+                    fontSize:
+                      ".95rem",
+                    fontWeight:
+                      400,
+                    letterSpacing:
+                      "normal",
+                    textTransform:
+                      "none",
+                  }}
                   value={soundDesign}
                   onChange={(event) =>
                     setSoundDesign(event.target.value)
@@ -1843,9 +2545,52 @@ export default function ProductionUpload() {
                 />
               </label>
 
-              <label>
+              <label
+                style={{
+                  display:
+                    "grid",
+                  gap:
+                    ".5rem",
+                  color:
+                    "rgba(242,238,230,.68)",
+                  fontSize:
+                    ".68rem",
+                  fontWeight:
+                    700,
+                  letterSpacing:
+                    ".08em",
+                  textTransform:
+                    "uppercase",
+                }}
+              >
                 Commissioned by
                 <input
+                  style={{
+                    width:
+                      "100%",
+                    boxSizing:
+                      "border-box",
+                    minHeight:
+                      "2.8rem",
+                    padding:
+                      ".75rem .9rem",
+                    border:
+                      "1px solid rgba(242,238,230,.24)",
+                    borderRadius:
+                      "2px",
+                    background:
+                      "rgba(255,255,255,.035)",
+                    color:
+                      "#f2eee6",
+                    fontSize:
+                      ".95rem",
+                    fontWeight:
+                      400,
+                    letterSpacing:
+                      "normal",
+                    textTransform:
+                      "none",
+                  }}
                   value={
                     commissionedBy
                   }
@@ -1869,11 +2614,49 @@ export default function ProductionUpload() {
                 gap:
                   ".5rem",
                 marginTop:
-                  "1rem",
+                  "1.5rem",
+                color:
+                  "rgba(242,238,230,.68)",
+                fontSize:
+                  ".68rem",
+                fontWeight:
+                  700,
+                letterSpacing:
+                  ".08em",
+                textTransform:
+                  "uppercase",
               }}
             >
               Description
               <textarea
+                style={{
+                  width:
+                    "100%",
+                  boxSizing:
+                    "border-box",
+                  padding:
+                    ".9rem",
+                  border:
+                    "1px solid rgba(242,238,230,.24)",
+                  borderRadius:
+                    "2px",
+                  background:
+                    "rgba(255,255,255,.035)",
+                  color:
+                    "#f2eee6",
+                  fontSize:
+                    ".95rem",
+                  fontWeight:
+                    400,
+                  letterSpacing:
+                    "normal",
+                  lineHeight:
+                    1.6,
+                  textTransform:
+                    "none",
+                  resize:
+                    "vertical",
+                }}
                 rows={
                   7
                 }
@@ -2030,20 +2813,87 @@ export default function ProductionUpload() {
           </section>
 
           <section className="backstage-section">
-            <button
-              type="button"
-              className="backstage-button"
-              disabled={
-                isPublishing
-              }
-              onClick={() =>
-                void publish()
-              }
+            {publishSucceeded ? (
+              <div
+                role="status"
+                style={{
+                  marginBottom:
+                    "1.5rem",
+                  padding:
+                    "1.25rem 1.4rem",
+                  border:
+                    "1px solid rgba(199,163,105,.55)",
+                  background:
+                    "rgba(199,163,105,.08)",
+                }}
+              >
+                <strong
+                  style={{
+                    display:
+                      "block",
+                    marginBottom:
+                      ".4rem",
+                    color:
+                      "#c7a369",
+                    fontSize:
+                      ".78rem",
+                    letterSpacing:
+                      ".1em",
+                    textTransform:
+                      "uppercase",
+                  }}
+                >
+                  Production published successfully
+                </strong>
+
+                <span>
+                  {title.trim()} is now live in the archive.
+                </span>
+
+                {publishedUrl ? (
+                  <>
+                    {" "}
+                    <a
+                      href={
+                        publishedUrl
+                      }
+                      style={{
+                        color:
+                          "#c7a369",
+                        fontWeight:
+                          700,
+                      }}
+                    >
+                      View production
+                    </a>
+                  </>
+                ) : null}
+              </div>
+            ) : null}
+
+            <div
+              style={{
+                display:
+                  "flex",
+                justifyContent:
+                  "flex-end",
+              }}
             >
-              {isPublishing
-                ? "Publishing…"
-                : "Upload & Publish"}
-            </button>
+              <button
+                type="button"
+                className="backstage-button"
+                disabled={
+                  isPublishing
+                }
+                onClick={() =>
+                  void publish()
+                }
+              >
+                {isPublishing
+                  ? "Publishing…"
+                  : "Upload & Publish"}
+              </button>
+            </div>
           </section>
         </>
       ) : null}
