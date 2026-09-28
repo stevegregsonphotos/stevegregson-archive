@@ -4,6 +4,8 @@ import {
   getProductionIndex,
 } from "../lib/productions-repository";
 
+export const revalidate = 3600;
+
 const siteUrl = "https://www.stevegregson.com";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
