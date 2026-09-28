@@ -34,6 +34,30 @@ const checks = [
   () => assertNotContains("app/api/admin/proofing/upload/route.ts", ["request.formData()", "arrayBuffer()", "from \"sharp\"", "putProofingImage("]),
   () => assertContains("app/admin/proofing/[id]/ProofingUpload.tsx", ["uploadUrl", "method: \"PUT\"", "const concurrency"]),
 
+  // Proofing notes and annotations use metadata-only or single-image lookups.
+  () => assertContains(
+    "app/api/proofing/image-note/route.ts",
+    [
+      "getProofingGalleryBaseBySlug",
+      "getProofingGalleryImageBySlug",
+    ],
+  ),
+  () => assertNotContains(
+    "app/api/proofing/image-note/route.ts",
+    ["getProofingGalleryBySlug("],
+  ),
+  () => assertContains(
+    "app/api/proofing/image-annotation/route.ts",
+    [
+      "getProofingGalleryBaseBySlug",
+      "getProofingGalleryImageBySlug",
+    ],
+  ),
+  () => assertNotContains(
+    "app/api/proofing/image-annotation/route.ts",
+    ["getProofingGalleryBySlug("],
+  ),
+
   // Consolidated proofing polling/toggles must not load every gallery image.
   () => assertContains(
     "app/api/proofing/consolidated-favourite/route.ts",

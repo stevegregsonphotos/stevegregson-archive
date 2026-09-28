@@ -13,7 +13,8 @@ import {
 } from "@/lib/proofing/image-annotations-repository";
 
 import {
-  getProofingGalleryBySlug,
+  getProofingGalleryBaseBySlug,
+  getProofingGalleryImageBySlug,
 } from "@/lib/proofing/repository";
 
 export const runtime = "nodejs";
@@ -154,11 +155,22 @@ function parseAnnotationDocument(
 async function authenticatedContext(
   request: NextRequest,
   gallerySlug: string,
+  imageId?: string,
 ) {
+  const resolved =
+    imageId
+      ? await getProofingGalleryImageBySlug(
+          gallerySlug,
+          imageId,
+        )
+      : null;
+
   const gallery =
-    await getProofingGalleryBySlug(
-      gallerySlug,
-    );
+    imageId
+      ? resolved?.gallery
+      : await getProofingGalleryBaseBySlug(
+          gallerySlug,
+        );
 
   if (!gallery) {
     return {
@@ -342,29 +354,11 @@ export async function POST(
     await authenticatedContext(
       request,
       gallerySlug,
+      imageId,
     );
 
   if ("error" in context) {
     return context.error;
-  }
-
-  const imageExists =
-    context.gallery.images.some(
-      (image) =>
-        image.id === imageId,
-    );
-
-  if (!imageExists) {
-    return NextResponse.json(
-      {
-        ok: false,
-        message:
-          "Image not found.",
-      },
-      {
-        status: 404,
-      },
-    );
   }
 
   if (body.annotation === null) {
