@@ -9,7 +9,8 @@ import {
 } from "@/lib/proofing/consolidated-repository";
 
 import {
-  getProofingGalleryBySlug,
+  getProofingGalleryBaseBySlug,
+  getProofingGalleryImageBySlug,
 } from "@/lib/proofing/repository";
 
 export const runtime = "nodejs";
@@ -75,23 +76,26 @@ export async function POST(
     );
   }
 
-  const gallery =
-    await getProofingGalleryBySlug(
+  const resolved =
+    await getProofingGalleryImageBySlug(
       gallerySlug,
+      imageId,
     );
 
-  if (!gallery) {
+  if (!resolved) {
     return NextResponse.json(
       {
         ok: false,
         message:
-          "Gallery not found.",
+          "Gallery or photograph not found.",
       },
       {
         status: 404,
       },
     );
   }
+
+  const { gallery } = resolved;
 
   const hasExpiredByDate =
     Boolean(gallery.expiresAt) &&
@@ -199,25 +203,6 @@ export async function POST(
     );
   }
 
-  const imageExists =
-    gallery.images.some(
-      (image) =>
-        image.id === imageId,
-    );
-
-  if (!imageExists) {
-    return NextResponse.json(
-      {
-        ok: false,
-        message:
-          "Photograph not found.",
-      },
-      {
-        status: 404,
-      },
-    );
-  }
-
   const saved =
     await toggleProofingDefinitiveSelection(
       gallery.id,
@@ -257,7 +242,7 @@ export async function GET(
   }
 
   const gallery =
-    await getProofingGalleryBySlug(
+    await getProofingGalleryBaseBySlug(
       gallerySlug,
     );
 

@@ -34,6 +34,19 @@ const checks = [
   () => assertNotContains("app/api/admin/proofing/upload/route.ts", ["request.formData()", "arrayBuffer()", "from \"sharp\"", "putProofingImage("]),
   () => assertContains("app/admin/proofing/[id]/ProofingUpload.tsx", ["uploadUrl", "method: \"PUT\"", "const concurrency"]),
 
+  // Consolidated proofing polling/toggles must not load every gallery image.
+  () => assertContains(
+    "app/api/proofing/consolidated-favourite/route.ts",
+    [
+      "getProofingGalleryBaseBySlug",
+      "getProofingGalleryImageBySlug",
+    ],
+  ),
+  () => assertNotContains(
+    "app/api/proofing/consolidated-favourite/route.ts",
+    ["getProofingGalleryBySlug("],
+  ),
+
   // Proofing favourite toggles must not load every image in the gallery.
   () => assertContains(
     "app/api/proofing/favourite/route.ts",

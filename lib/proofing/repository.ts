@@ -147,6 +147,41 @@ export async function getProofingGalleries():
   });
 }
 
+export async function getProofingGalleryBaseBySlug(
+  slug: string,
+): Promise<ProofingGallery | undefined> {
+  const normalisedSlug =
+    decodeURIComponent(slug)
+      .trim()
+      .toLowerCase();
+
+  if (!normalisedSlug) {
+    return undefined;
+  }
+
+  const sql = getSql();
+
+  const rows = await sql`
+    SELECT data
+    FROM proofing_galleries
+    WHERE LOWER(slug) = ${normalisedSlug}
+    LIMIT 1
+  `;
+
+  const row = rows[0];
+
+  if (!row) {
+    return undefined;
+  }
+
+  return {
+    ...mapGallery(
+      row as GalleryRow,
+    ),
+    images: [],
+  };
+}
+
 export async function getProofingGalleryImageBySlug(
   slug: string,
   imageId: string,
