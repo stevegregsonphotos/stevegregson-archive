@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import {
+  useParams,
+  useRouter,
+} from "next/navigation";
 
 import DeleteProductionPanel from "../../../../components/admin/editor/DeleteProductionPanel";
 import CreditsEditor from "../../../../components/admin/editor/CreditsEditor";
@@ -87,12 +90,15 @@ type PresignResult = {
 
 export default function EditProductionPage() {
   const params = useParams<{ slug: string }>();
+  const router = useRouter();
   const slug = params.slug;
 
   const [production, setProduction] =
     useState<Production | null>(null);
   const [selectedHero, setSelectedHero] =
     useState<string | null>(null);
+  const [productionSlug, setProductionSlug] =
+    useState("");
   const [title, setTitle] = useState("");
   const [venue, setVenue] = useState("");
   const [month, setMonth] = useState("");
@@ -153,6 +159,7 @@ const [accessPassword, setAccessPassword] =
 
         setProduction(data.production);
         setSelectedHero(data.production.hero);
+        setProductionSlug(data.production.slug);
         setTitle(data.production.title);
         setVenue(data.production.venue);
         setMonth(
@@ -209,7 +216,8 @@ const [accessPassword, setAccessPassword] =
 
   const hasDetailChanges = Boolean(
   production &&
-  (title.trim() !== production.title ||
+  (productionSlug.trim() !== production.slug ||
+  title.trim() !== production.title ||
   venue.trim() !== production.venue ||
   parsedMonth !== (production.month ?? null) ||
   parsedYear !== production.year ||
@@ -583,6 +591,7 @@ const [accessPassword, setAccessPassword] =
           },
           body: JSON.stringify({
             slug: production.slug,
+            newSlug: productionSlug.trim(),
             hero: selectedHero,
             title: title.trim(),
             venue: venue.trim(),
@@ -611,6 +620,7 @@ accessPassword:
 
       setProduction(data.production);
       setSelectedHero(data.production.hero);
+      setProductionSlug(data.production.slug);
       setTitle(data.production.title);
       setVenue(data.production.venue);
       setMonth(
@@ -625,6 +635,17 @@ accessPassword:
 setAccessPassword("");
       setCredits(data.production.credits);
       setGalleryImages(data.production.images);
+
+      if (
+        data.production.slug !== slug
+      ) {
+        router.replace(
+          `/admin/edit-production/${encodeURIComponent(
+            data.production.slug,
+          )}`,
+        );
+      }
+
       setMessage(
         data.message ?? "Production updated successfully.",
       );
@@ -721,6 +742,103 @@ setAccessPassword("");
           {production.venue} · {production.year}
         </p>
       </header>
+
+      <section
+        style={{
+          maxWidth: "90rem",
+          margin: "3rem auto 0",
+          padding: "2rem",
+          border:
+            "1px solid rgba(242, 238, 230, 0.14)",
+          background:
+            "rgba(255, 255, 255, 0.02)",
+        }}
+      >
+        <p
+          style={{
+            margin: 0,
+            color: "#c7a369",
+            fontSize: "0.55rem",
+            fontWeight: 700,
+            letterSpacing: "0.16em",
+            textTransform: "uppercase",
+          }}
+        >
+          Production URL
+        </p>
+
+        <label
+          htmlFor="production-slug"
+          style={{
+            display: "block",
+            marginTop: "1.25rem",
+            maxWidth: "48rem",
+          }}
+        >
+          <span
+            style={{
+              display: "block",
+              marginBottom: "0.6rem",
+              color: "rgba(242, 238, 230, 0.58)",
+              fontSize: "0.55rem",
+              fontWeight: 700,
+              letterSpacing: "0.12em",
+              textTransform: "uppercase",
+            }}
+          >
+            Slug
+          </span>
+
+          <input
+            id="production-slug"
+            type="text"
+            value={productionSlug}
+            onChange={(event) => {
+              setProductionSlug(
+                event.target.value
+                  .trimStart()
+                  .toLowerCase(),
+              );
+              clearMessage();
+            }}
+            spellCheck={false}
+            autoCapitalize="none"
+            autoCorrect="off"
+            style={{
+              width: "100%",
+              padding: "0.9rem 1rem",
+              border:
+                "1px solid rgba(242, 238, 230, 0.18)",
+              background: "#11100f",
+              color: "#f2eee6",
+              font: "inherit",
+            }}
+          />
+        </label>
+
+        <p
+          style={{
+            margin: "0.75rem 0 0",
+            color: "rgba(242, 238, 230, 0.45)",
+            fontSize: "0.72rem",
+            lineHeight: 1.5,
+          }}
+        >
+          https://www.stevegregson.com/productions/{productionSlug}
+        </p>
+
+        <p
+          style={{
+            margin: "0.75rem 0 0",
+            color: "rgba(242, 238, 230, 0.45)",
+            fontSize: "0.72rem",
+            lineHeight: 1.5,
+          }}
+        >
+          Slugs are generated automatically when a production is created.
+          Change this only when the production URL needs correcting.
+        </p>
+      </section>
 
       <ProductionDetailsEditor
         title={title}

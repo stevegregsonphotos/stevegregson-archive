@@ -11,12 +11,16 @@ import {
 } from "@/lib/production-access";
 import {
   getProduction,
+  productionExists,
+  renameProductionSlug,
   replaceProduction,
 } from "@/lib/productions-repository";
 import {
   copyProductionImage,
+  copyProductionImagesToSlug,
   createProductionImageUploadUrl,
   deleteProductionImage,
+  deleteProductionImages,
   productionImageExists,
   uniqueProductionImageFilename,
 } from "@/lib/publishing/production-image-storage";
@@ -56,6 +60,7 @@ type ProductionCredit = {
 type UpdateRequest = {
   action?: unknown;
   slug?: unknown;
+  newSlug?: unknown;
   originalFilename?: unknown;
   hero?: unknown;
   title?: unknown;
@@ -232,6 +237,7 @@ export async function POST(request: Request) {
   }
   const copiedFilenames: string[] = [];
   let activeSlug: string | null = null;
+  let copiedSlugPrefix: string | null = null;
   try {
     const body = (await request.json()) as UpdateRequest;
     if (typeof body.slug !== "string" || !isSafeSlug(body.slug)) {
@@ -303,6 +309,47 @@ export async function POST(request: Request) {
       return Response.json(
         { ok: false, message: "The production could not be found." },
         { status: 404 },
+      );
+    }
+
+    const requestedNewSlug =
+      body.newSlug === undefined
+        ? slug
+        : typeof body.newSlug === "string"
+          ? body.newSlug.trim()
+          : "";
+
+    if (
+      !requestedNewSlug ||
+      !isSafeSlug(requestedNewSlug)
+    ) {
+      return Response.json(
+        {
+          ok: false,
+          message:
+            "The production URL must contain only lowercase letters, numbers and hyphens.",
+        },
+        { status: 400 },
+      );
+    }
+
+    const slugChanged =
+      requestedNewSlug.toLowerCase() !==
+      slug.toLowerCase();
+
+    if (
+      slugChanged &&
+      await productionExists(
+        requestedNewSlug,
+      )
+    ) {
+      return Response.json(
+        {
+          ok: false,
+          message:
+            `A production already exists for "${requestedNewSlug}".`,
+        },
+        { status: 409 },
       );
     }
 
@@ -593,10 +640,23 @@ export async function POST(request: Request) {
     }
 
     production.images = finalImages;
-    const saved = await replaceProduction(production);
+
+    let saved =
+      await replaceProduction(production);
+
     if (!saved) {
-      throw new Error("The production disappeared before the update could be committed.");
+      throw new Error(
+        "The production disappeared before the update could be committed.",
+      );
     }
+
+    /*
+     * The ordinary production update is now committed.
+     * Any newly copied image filenames are live data,
+     * so they must no longer be deleted by the outer
+     * rollback handler if the later slug migration fails.
+     */
+    copiedFilenames.length = 0;
 
     const deleteConcurrency = 8;
 
@@ -629,6 +689,36 @@ export async function POST(request: Request) {
       );
     }
 
+    if (slugChanged) {
+      await copyProductionImagesToSlug(
+        slug,
+        requestedNewSlug,
+      );
+
+      copiedSlugPrefix =
+        requestedNewSlug;
+
+      const renamed =
+        await renameProductionSlug(
+          slug,
+          requestedNewSlug,
+        );
+
+      if (!renamed) {
+        throw new Error(
+          "The production URL could not be updated.",
+        );
+      }
+
+      saved = renamed;
+
+      /*
+       * Neon now points at the new R2 prefix.
+       * Do not remove it in the outer error handler.
+       */
+      copiedSlugPrefix = null;
+    }
+
     let directorySync:
       Awaited<ReturnType<typeof rememberDirectoryCredits>> | null = null;
     let directoryWarning: string | null = null;
@@ -655,6 +745,19 @@ export async function POST(request: Request) {
       directoryWarning,
     });
   } catch (error) {
+    if (copiedSlugPrefix) {
+      await deleteProductionImages(
+        copiedSlugPrefix,
+      ).catch(
+        (cleanupError) => {
+          console.error(
+            "Failed slug-prefix rollback cleanup:",
+            cleanupError,
+          );
+        },
+      );
+    }
+
     if (activeSlug) {
       const rollbackConcurrency = 8;
 

@@ -269,6 +269,197 @@ export async function copyProductionImage(
   );
 }
 
+export async function copyProductionImagesToSlug(
+  sourceSlug: string,
+  destinationSlug: string,
+) {
+  const sourceKeys =
+    await listProductionImages(
+      sourceSlug,
+    );
+
+  if (sourceKeys.length === 0) {
+    throw new Error(
+      `No production images were found for "${sourceSlug}".`,
+    );
+  }
+
+  const existingDestinationKeys =
+    await listProductionImages(
+      destinationSlug,
+    );
+
+  if (existingDestinationKeys.length > 0) {
+    throw new Error(
+      `The destination production image prefix "${destinationSlug}" is not empty.`,
+    );
+  }
+
+  const bucket = getBucket();
+  const client = getClient();
+
+  const copyPlan =
+    sourceKeys.map((sourceKey) => {
+      const filename =
+        sourceKey.slice(
+          sourceSlug.length + 1,
+        );
+
+      return {
+        sourceKey,
+        destinationKey:
+          getProductionImageObjectKey(
+            destinationSlug,
+            filename,
+          ),
+      };
+    });
+
+  try {
+    const concurrency = 8;
+
+    for (
+      let index = 0;
+      index < copyPlan.length;
+      index += concurrency
+    ) {
+      const batch =
+        copyPlan.slice(
+          index,
+          index + concurrency,
+        );
+
+      await Promise.all(
+        batch.map(
+          async ({
+            sourceKey,
+            destinationKey,
+          }) => {
+            const encodedSource =
+              sourceKey
+                .split("/")
+                .map((part) =>
+                  encodeURIComponent(part),
+                )
+                .join("/");
+
+            await client.send(
+              new CopyObjectCommand({
+                Bucket: bucket,
+                Key: destinationKey,
+                CopySource:
+                  `${bucket}/${encodedSource}`,
+              }),
+            );
+          },
+        ),
+      );
+    }
+
+    const verificationConcurrency = 12;
+
+    for (
+      let index = 0;
+      index < copyPlan.length;
+      index += verificationConcurrency
+    ) {
+      const batch =
+        copyPlan.slice(
+          index,
+          index + verificationConcurrency,
+        );
+
+      const results =
+        await Promise.all(
+          batch.map(
+            async ({
+              destinationKey,
+            }) => {
+              try {
+                await client.send(
+                  new HeadObjectCommand({
+                    Bucket: bucket,
+                    Key: destinationKey,
+                  }),
+                );
+
+                return {
+                  destinationKey,
+                  exists: true,
+                };
+              } catch {
+                return {
+                  destinationKey,
+                  exists: false,
+                };
+              }
+            },
+          ),
+        );
+
+      const missing =
+        results.filter(
+          (result) =>
+            !result.exists,
+        );
+
+      if (missing.length > 0) {
+        throw new Error(
+          `Production image migration verification failed for ${missing.length} object(s).`,
+        );
+      }
+    }
+
+    const destinationKeys =
+      await listProductionImages(
+        destinationSlug,
+      );
+
+    if (
+      destinationKeys.length !==
+      sourceKeys.length
+    ) {
+      throw new Error(
+        `Production image migration count mismatch: expected ${sourceKeys.length}, found ${destinationKeys.length}.`,
+      );
+    }
+
+    return {
+      copied: sourceKeys.length,
+      sourceKeys,
+      destinationKeys,
+    };
+  } catch (error) {
+    const cleanupConcurrency = 12;
+
+    for (
+      let index = 0;
+      index < copyPlan.length;
+      index += cleanupConcurrency
+    ) {
+      const batch =
+        copyPlan.slice(
+          index,
+          index + cleanupConcurrency,
+        );
+
+      await Promise.all(
+        batch.map(
+          ({ destinationKey }) =>
+            client.send(
+              new DeleteObjectCommand({
+                Bucket: bucket,
+                Key: destinationKey,
+              }),
+            ).catch(() => undefined),
+        ),
+      );
+    }
+
+    throw error;
+  }
+}
+
 export async function uniqueProductionImageFilename(
   productionSlug: string,
   proposedFilename: string,

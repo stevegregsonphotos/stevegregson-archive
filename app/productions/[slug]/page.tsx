@@ -2,7 +2,10 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import Image from "next/image";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import {
+  notFound,
+  permanentRedirect,
+} from "next/navigation";
 
 import ProductionAccessGate from "../../../components/ProductionAccessGate";
 import { ProductionGallery } from "../../../components/ProductionGallery";
@@ -20,6 +23,7 @@ import {
   getNextProductionFromData,
   getProduction,
   getProductionIndex,
+  getProductionSlugRedirect,
   getPublicProductionNavigation,
 } from "../../../lib/productions-repository";
 
@@ -128,6 +132,17 @@ export default async function ProductionPage({
   ]);
 
   if (!production) {
+    const redirectSlug =
+      await getProductionSlugRedirect(
+        slug,
+      );
+
+    if (redirectSlug) {
+      permanentRedirect(
+        `/productions/${redirectSlug}`,
+      );
+    }
+
     notFound();
   }
 

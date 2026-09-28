@@ -947,6 +947,171 @@ export async function productionExists(
   return Boolean(rows[0]);
 }
 
+export async function getProductionSlugRedirect(
+  oldSlug: string,
+) {
+  const normalisedSlug =
+    decodeURIComponent(oldSlug)
+      .trim()
+      .toLowerCase();
+
+  if (!normalisedSlug) {
+    return null;
+  }
+
+  const sql = getSql();
+
+  const rows = await sql`
+    SELECT p.slug
+    FROM production_slug_redirects r
+    INNER JOIN productions p
+      ON p.id = r.production_id
+      AND p.deleted_at IS NULL
+    WHERE lower(r.old_slug) = ${normalisedSlug}
+    LIMIT 1
+  `;
+
+  const slug = rows[0]?.slug;
+
+  return typeof slug === "string"
+    ? slug
+    : null;
+}
+
+export async function renameProductionSlug(
+  currentSlug: string,
+  newSlug: string,
+) {
+  const sql = getSql();
+
+  const sourceRows = await sql`
+    SELECT
+      id,
+      slug,
+      hero_display_filename
+    FROM productions
+    WHERE lower(slug) = lower(${currentSlug})
+      AND deleted_at IS NULL
+    LIMIT 1
+  `;
+
+  const source =
+    sourceRows[0] as
+      | {
+          id: string;
+          slug: string;
+          hero_display_filename: string;
+        }
+      | undefined;
+
+  if (!source) {
+    throw new Error(
+      "The production could not be found.",
+    );
+  }
+
+  if (
+    source.slug.toLowerCase() ===
+    newSlug.toLowerCase()
+  ) {
+    return getProduction(source.slug);
+  }
+
+  const targetRows = await sql`
+    SELECT id
+    FROM productions
+    WHERE lower(slug) = lower(${newSlug})
+      AND deleted_at IS NULL
+      AND id <> ${source.id}
+    LIMIT 1
+  `;
+
+  if (targetRows[0]) {
+    throw new Error(
+      `A production already exists for "${newSlug}".`,
+    );
+  }
+
+  const redirectRows = await sql`
+    SELECT production_id
+    FROM production_slug_redirects
+    WHERE lower(old_slug) = lower(${newSlug})
+    LIMIT 1
+  `;
+
+  if (redirectRows[0]) {
+    throw new Error(
+      `The URL "${newSlug}" is already reserved by a previous production URL.`,
+    );
+  }
+
+  const existingOldRedirect = await sql`
+    SELECT id
+    FROM production_slug_redirects
+    WHERE lower(old_slug) = lower(${source.slug})
+    LIMIT 1
+  `;
+
+  if (existingOldRedirect[0]) {
+    throw new Error(
+      `The current URL "${source.slug}" is already recorded as a redirect.`,
+    );
+  }
+
+  const results = await sql.transaction([
+    sql`
+      UPDATE productions
+      SET
+        slug = ${newSlug},
+        hero_storage_key = ${productionStorageKey(
+          newSlug,
+          source.hero_display_filename,
+        )},
+        version = version + 1,
+        updated_at = now()
+      WHERE id = ${source.id}
+        AND deleted_at IS NULL
+        AND lower(slug) = lower(${source.slug})
+      RETURNING id
+    `,
+    sql`
+      UPDATE production_images
+      SET
+        storage_key =
+          ${newSlug} || '/' || display_filename,
+        updated_at = now()
+      WHERE production_id = ${source.id}
+        AND deleted_at IS NULL
+    `,
+    sql`
+      INSERT INTO production_slug_redirects (
+        id,
+        production_id,
+        old_slug,
+        created_at
+      )
+      VALUES (
+        ${randomUUID()},
+        ${source.id},
+        ${source.slug},
+        now()
+      )
+      RETURNING id
+    `,
+  ]);
+
+  if (
+    results[0].length !== 1 ||
+    results[2].length !== 1
+  ) {
+    throw new Error(
+      "The production URL could not be updated in Neon.",
+    );
+  }
+
+  return getProduction(newSlug);
+}
+
 function productionInsertQueries(
   sql: ReturnType<typeof getSql>,
   production: ProductionWriteData,
