@@ -2,7 +2,9 @@ import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 
 import {
+  getProofingGalleryBaseBySlug,
   getProofingGalleryBySlug,
+  getProofingGalleryImageBySlug,
 } from "../../../lib/proofing/repository";
 
 import {
@@ -30,38 +32,36 @@ export default async function ProofingClientPage({
   const { slug } = await params;
   const { welcome } = await searchParams;
 
-  const gallery =
-    await getProofingGalleryBySlug(slug);
+  const galleryBase =
+    await getProofingGalleryBaseBySlug(
+      slug,
+    );
 
-  if (!gallery) {
+  if (!galleryBase) {
     notFound();
   }
 
-  const consolidatedSelection =
-    await getProofingConsolidatedSelection(
-      gallery.id,
-    );
-
   const hasExpiredByDate =
-    Boolean(gallery.expiresAt) &&
-    new Date(gallery.expiresAt as string).getTime() <
-      Date.now();
+    Boolean(galleryBase.expiresAt) &&
+    new Date(
+      galleryBase.expiresAt as string,
+    ).getTime() < Date.now();
 
   const unavailableReason =
-    gallery.status === "draft"
+    galleryBase.status === "draft"
       ? {
           title: "This gallery is not yet available.",
           message:
             "The gallery is still being prepared. Please check back later, or contact me if you were expecting access.",
         }
-      : gallery.status === "expired" ||
+      : galleryBase.status === "expired" ||
           hasExpiredByDate
         ? {
             title: "This gallery has expired.",
             message:
               "If you need access again, please get in touch and I can reopen the gallery for you.",
           }
-        : gallery.status === "archived"
+        : galleryBase.status === "archived"
           ? {
               title: "This gallery is no longer available.",
               message:
@@ -78,7 +78,7 @@ export default async function ProofingClientPage({
               Private Client Gallery
             </p>
 
-            <h1>{gallery.title}</h1>
+            <h1>{galleryBase.title}</h1>
 
             <h2>{unavailableReason.title}</h2>
 
@@ -98,74 +98,101 @@ export default async function ProofingClientPage({
     );
   }
 
-  const orderedImages = [...gallery.images].sort(
-  (a, b) => a.sortOrder - b.sortOrder,
-);
-
-  const cookieStore = await cookies();
+  const cookieStore =
+    await cookies();
 
   const visitorId =
     cookieStore.get(
-      `proofing_${gallery.id}`,
+      `proofing_${galleryBase.id}`,
     )?.value;
 
-  const visitor = visitorId
-    ? gallery.visitors?.find(
-        (candidate) =>
-          candidate.id === visitorId,
-      )
-    : undefined;
+  const visitor =
+    visitorId
+      ? galleryBase.visitors?.find(
+          (candidate) =>
+            candidate.id === visitorId,
+        )
+      : undefined;
 
   const watermarkUrl =
-    gallery.watermarkEnabled &&
-    gallery.watermarkId
+    galleryBase.watermarkEnabled &&
+    galleryBase.watermarkId
       ? `/api/proofing/watermark?gallery=${encodeURIComponent(
-          gallery.slug,
+          galleryBase.slug,
         )}`
       : undefined;
 
   /*
    * No valid visitor session:
-   * show the cover + email entry screen.
+   * do not load every gallery photograph.
+   * Resolve only the configured cover image.
    */
   if (!visitor) {
-    const coverImage = gallery.coverImageId
-      ? gallery.images.find(
-          (image) =>
-            image.id === gallery.coverImageId,
-        )
-      : undefined;
+    const coverImage =
+      galleryBase.coverImageId
+        ? (
+            await getProofingGalleryImageBySlug(
+              galleryBase.slug,
+              galleryBase.coverImageId,
+            )
+          )?.image
+        : undefined;
 
-    const coverImageUrl = coverImage
-      ? `/api/proofing/image?gallery=${encodeURIComponent(
-          gallery.slug,
-        )}&image=${encodeURIComponent(
-          coverImage.id,
-        )}`
-      : undefined;
+    const coverImageUrl =
+      coverImage
+        ? `/api/proofing/image?gallery=${encodeURIComponent(
+            galleryBase.slug,
+          )}&image=${encodeURIComponent(
+            coverImage.id,
+          )}`
+        : undefined;
 
     return (
       <main className="proofing-client-page">
         <ProofingGalleryEntry
-          gallerySlug={gallery.slug}
-          title={gallery.title}
-          clientName={gallery.clientName}
-          venue={gallery.venue}
+          gallerySlug={galleryBase.slug}
+          title={galleryBase.title}
+          clientName={galleryBase.clientName}
+          venue={galleryBase.venue}
           coverImageUrl={coverImageUrl}
           watermarkUrl={watermarkUrl}
           watermarkPosition={
-            gallery.watermarkPosition
+            galleryBase.watermarkPosition
           }
           watermarkSize={
-            gallery.watermarkSize
+            galleryBase.watermarkSize
           }
           watermarkOpacity={
-            gallery.watermarkOpacity
+            galleryBase.watermarkOpacity
           }
         />
       </main>
     );
   }
+
+  /*
+   * Only authenticated gallery visitors need
+   * the complete ordered image collection.
+   */
+  const gallery =
+    await getProofingGalleryBySlug(
+      slug,
+    );
+
+  if (!gallery) {
+    notFound();
+  }
+
+  const orderedImages =
+    [...gallery.images].sort(
+      (a, b) =>
+        a.sortOrder - b.sortOrder,
+    );
+
+  const consolidatedSelection =
+    await getProofingConsolidatedSelection(
+      gallery.id,
+    );
 
   /*
    * Older submitted selections were created

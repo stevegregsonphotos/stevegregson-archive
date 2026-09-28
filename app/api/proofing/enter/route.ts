@@ -6,7 +6,7 @@ import {
 } from "next/server";
 
 import {
-  getProofingGalleryBySlug,
+  getProofingGalleryBaseBySlug,
   updateProofingGallery,
 } from "../../../../lib/proofing/repository";
 
@@ -69,7 +69,9 @@ export async function POST(
   }
 
   const gallery =
-    await getProofingGalleryBySlug(gallerySlug);
+    await getProofingGalleryBaseBySlug(
+      gallerySlug,
+    );
 
   if (!gallery) {
     return NextResponse.json(

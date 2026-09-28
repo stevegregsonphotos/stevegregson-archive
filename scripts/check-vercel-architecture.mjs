@@ -34,6 +34,32 @@ const checks = [
   () => assertNotContains("app/api/admin/proofing/upload/route.ts", ["request.formData()", "arrayBuffer()", "from \"sharp\"", "putProofingImage("]),
   () => assertContains("app/admin/proofing/[id]/ProofingUpload.tsx", ["uploadUrl", "method: \"PUT\"", "const concurrency"]),
 
+  // Proofing entry/watermark/pre-entry page must avoid full gallery image loads.
+  () => assertContains(
+    "app/api/proofing/enter/route.ts",
+    ["getProofingGalleryBaseBySlug"],
+  ),
+  () => assertNotContains(
+    "app/api/proofing/enter/route.ts",
+    ["getProofingGalleryBySlug("],
+  ),
+  () => assertContains(
+    "app/api/proofing/watermark/route.ts",
+    ["getProofingGalleryBaseBySlug"],
+  ),
+  () => assertNotContains(
+    "app/api/proofing/watermark/route.ts",
+    ["getProofingGalleryBySlug("],
+  ),
+  () => assertContains(
+    "app/proofing/[slug]/page.tsx",
+    [
+      "getProofingGalleryBaseBySlug",
+      "getProofingGalleryImageBySlug",
+      "Only authenticated gallery visitors need",
+    ],
+  ),
+
   // Proofing notes and annotations use metadata-only or single-image lookups.
   () => assertContains(
     "app/api/proofing/image-note/route.ts",
@@ -88,6 +114,16 @@ const checks = [
   ),
   () => assertNotContains(
     "app/api/proofing/image/route.ts",
+    ["getProofingGalleryBySlug("],
+  ),
+
+  // Single proofing downloads must query only the requested image.
+  () => assertContains(
+    "app/api/proofing/download/route.ts",
+    ["getProofingGalleryImageBySlug"],
+  ),
+  () => assertNotContains(
+    "app/api/proofing/download/route.ts",
     ["getProofingGalleryBySlug("],
   ),
 

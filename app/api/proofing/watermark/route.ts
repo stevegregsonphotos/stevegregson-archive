@@ -4,7 +4,7 @@ import {
 } from "next/server";
 
 import {
-  getProofingGalleryBySlug,
+  getProofingGalleryBaseBySlug,
 } from "../../../../lib/proofing/repository";
 import {
   getProofingWatermark,
@@ -35,7 +35,7 @@ export async function GET(
   }
 
   const gallery =
-    await getProofingGalleryBySlug(
+    await getProofingGalleryBaseBySlug(
       gallerySlug,
     );
 

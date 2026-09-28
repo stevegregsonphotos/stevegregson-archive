@@ -9,7 +9,7 @@ import {
 } from "next/server";
 
 import {
-  getProofingGalleryBySlug,
+  getProofingGalleryImageBySlug,
 } from "../../../../lib/proofing/repository";
 
 export const runtime = "nodejs";
@@ -65,18 +65,27 @@ export async function GET(
     );
   }
 
-  const gallery =
-    await getProofingGalleryBySlug(gallerySlug);
+  const resolved =
+    await getProofingGalleryImageBySlug(
+      gallerySlug,
+      imageId,
+    );
 
-  if (!gallery) {
+  if (!resolved) {
     return NextResponse.json(
       {
         ok: false,
-        message: "Gallery not found.",
+        message:
+          "Gallery or image not found.",
       },
       { status: 404 },
     );
   }
+
+  const {
+    gallery,
+    image,
+  } = resolved;
 
   /*
    * Downloads must not bypass gallery
@@ -154,21 +163,6 @@ export async function GET(
           "Your gallery session could not be found.",
       },
       { status: 401 },
-    );
-  }
-
-  const image = gallery.images.find(
-    (candidate) =>
-      candidate.id === imageId,
-  );
-
-  if (!image) {
-    return NextResponse.json(
-      {
-        ok: false,
-        message: "Image not found.",
-      },
-      { status: 404 },
     );
   }
 
