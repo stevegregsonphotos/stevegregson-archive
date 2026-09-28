@@ -11,7 +11,24 @@ const nextConfig: NextConfig = {
       },
     ];
 
+    const contentSecurityPolicy = [
+      "default-src 'self'",
+      "base-uri 'self'",
+      "object-src 'none'",
+      "frame-ancestors 'none'",
+      "form-action 'self'",
+      "script-src 'self' 'unsafe-inline'",
+      "style-src 'self' 'unsafe-inline'",
+      "font-src 'self' data:",
+      "img-src 'self' data: blob: https://images.stevegregson.com https://selected-work-images.stevegregson.com",
+      "connect-src 'self' https://*.r2.cloudflarestorage.com",
+    ].join("; ");
+
     const securityHeaders = [
+      {
+        key: "Content-Security-Policy-Report-Only",
+        value: contentSecurityPolicy,
+      },
       {
         key: "X-Frame-Options",
         value: "DENY",
