@@ -1,33 +1,28 @@
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
-import Image from "next/image";
-import Link from "next/link";
 import {
   notFound,
   permanentRedirect,
 } from "next/navigation";
 
-import ProductionAccessGate from "../../../components/ProductionAccessGate";
-import { ProductionGallery } from "../../../components/ProductionGallery";
+import ProductionContent from "../../../components/ProductionContent";
+import ProtectedProduction from "../../../components/ProtectedProduction";
 import {
   getDirectory,
-  getDirectoryUrlFromData,
 } from "../../../lib/directory-repository";
 import { getProductionImageUrl } from "../../../lib/production-image-url";
 import {
-  createProductionAccessToken,
-  productionAccessCookieName,
-  productionAccessTokenMatches,
-} from "../../../lib/production-access";
-import {
   getNextProductionFromData,
   getProduction,
-  getProductionIndex,
+  getProductionAccessSummary,
   getProductionSlugRedirect,
   getPublicProductionNavigation,
 } from "../../../lib/productions-repository";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 3600;
+
+export async function generateStaticParams() {
+  return [];
+}
 
 type ProductionPageProps = {
   params: Promise<{
@@ -35,21 +30,15 @@ type ProductionPageProps = {
   }>;
 };
 
-export async function generateStaticParams() {
-  const productions =
-    await getProductionIndex();
-
-  return productions.map((production) => ({
-    slug: production.slug,
-  }));
-}
-
 export async function generateMetadata({
   params,
 }: ProductionPageProps): Promise<Metadata> {
   const { slug } = await params;
+
   const production =
-    await getProduction(slug);
+    await getProductionAccessSummary(
+      slug,
+    );
 
   if (!production) {
     return {
@@ -121,15 +110,8 @@ export default async function ProductionPage({
 }: ProductionPageProps) {
   const { slug } = await params;
 
-  const [
-    production,
-    navigation,
-    directory,
-  ] = await Promise.all([
-    getProduction(slug),
-    getPublicProductionNavigation(),
-    getDirectory(),
-  ]);
+  const production =
+    await getProduction(slug);
 
   if (!production) {
     const redirectSlug =
@@ -149,330 +131,45 @@ export default async function ProductionPage({
   if (
     production.access === "password"
   ) {
-    const encryptedPassword =
-      production.accessPasswordEncrypted;
-
-    let hasAccess = false;
-
-    if (encryptedPassword) {
-      const cookieStore =
-        await cookies();
-
-      const storedToken =
-        cookieStore.get(
-          productionAccessCookieName(production.slug),
-        )?.value;
-
-      if (storedToken) {
-        const expectedToken =
-          createProductionAccessToken(
-            production.slug,
-            encryptedPassword,
-          );
-
-        hasAccess = productionAccessTokenMatches(
-          storedToken,
-          expectedToken,
-        );
-      }
-    }
-
-    if (!hasAccess) {
-      return (
-        <ProductionAccessGate
-          slug={production.slug}
-          title={production.title}
-          hero={
-            production.showHeroWhenLocked
-              ? production.hero
-              : undefined
-          }
-          heroAlt={
-            production.showHeroWhenLocked
-              ? production.heroAlt
-              : undefined
-          }
-          venue={production.venue}
-          year={production.year}
-        />
-      );
-    }
+    return (
+      <ProtectedProduction
+        slug={production.slug}
+        title={production.title}
+        venue={production.venue}
+        year={production.year}
+        hero={
+          production.showHeroWhenLocked
+            ? production.hero
+            : undefined
+        }
+        heroAlt={
+          production.showHeroWhenLocked
+            ? production.heroAlt
+            : undefined
+        }
+      />
+    );
   }
+
+  const [
+    navigation,
+    directory,
+  ] = await Promise.all([
+    getPublicProductionNavigation(),
+    getDirectory(),
+  ]);
 
   const nextProduction =
     getNextProductionFromData(
       navigation,
-      slug,
-    );
-
-  const productionUrl =
-    `https://www.stevegregson.com/productions/${production.slug}`;
-
-  const heroImageUrl =
-    getProductionImageUrl(
       production.slug,
-      production.hero,
     );
-
-  const structuredData = {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "CreativeWork",
-        "@id": `${productionUrl}#production`,
-        url: productionUrl,
-        name: production.title,
-        ...(production.description
-          ? {
-              description:
-                production.description,
-            }
-          : {}),
-        dateCreated:
-          production.month
-            ? `${production.year}-${String(
-                production.month,
-              ).padStart(2, "0")}`
-            : String(production.year),
-        locationCreated: {
-          "@type": "Place",
-          name: production.venue,
-        },
-        image: {
-          "@id": `${productionUrl}#hero-image`,
-        },
-        mainEntityOfPage: productionUrl,
-      },
-      {
-        "@type": "ImageObject",
-        "@id": `${productionUrl}#hero-image`,
-        contentUrl: heroImageUrl,
-        url: heroImageUrl,
-        caption: production.heroAlt,
-        creator: {
-          "@id":
-            "https://www.stevegregson.com/#steve-gregson",
-        },
-        creditText: "Steve Gregson",
-        copyrightNotice:
-          "© Steve Gregson Photography",
-        license:
-          "https://www.stevegregson.com/policies/terms",
-        acquireLicensePage:
-          "https://www.stevegregson.com/contact",
-      },
-      {
-        "@type": "BreadcrumbList",
-        "@id": `${productionUrl}#breadcrumb`,
-        itemListElement: [
-          {
-            "@type": "ListItem",
-            position: 1,
-            name: "Home",
-            item:
-              "https://www.stevegregson.com/",
-          },
-          {
-            "@type": "ListItem",
-            position: 2,
-            name: "Archive",
-            item:
-              "https://www.stevegregson.com/archive",
-          },
-          {
-            "@type": "ListItem",
-            position: 3,
-            name: production.title,
-            item: productionUrl,
-          },
-        ],
-      },
-    ],
-  };
 
   return (
-    <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(
-            structuredData,
-          ).replace(/</g, "\\u003c"),
-        }}
-      />
-
-      <main className="curated-production-page">
-      <section className="curated-production-hero">
-        <Image
-          src={getProductionImageUrl(
-            production.slug,
-            production.hero,
-          )}
-          alt={production.heroAlt}
-          fill
-          priority
-          sizes="100vw"
-          className="curated-production-hero-image"
-          placeholder={
-            production.heroBlurDataURL
-              ? "blur"
-              : "empty"
-          }
-          blurDataURL={
-            production.heroBlurDataURL
-          }
-        />
-
-        <div className="curated-production-hero-overlay" />
-
-        <div className="curated-production-hero-title">
-          <p>
-            {production.venue}
-            <span aria-hidden="true">
-              {" "}
-              ·{" "}
-            </span>
-            {production.year}
-          </p>
-
-          <h1>
-            {production.title}
-          </h1>
-        </div>
-      </section>
-
-      <section className="curated-production-summary">
-        <div className="curated-production-summary-copy">
-          <p className="curated-production-label">
-            The Production
-          </p>
-
-          <p className="curated-production-description">
-            {production.description}
-          </p>
-
-          <p className="curated-production-count">
-            {production.images.length + 1}{" "}
-            photographs in the curated edit
-          </p>
-        </div>
-
-        <dl className="curated-production-credits">
-          {production.credits.map(
-            (credit) => {
-              const creditUrl =
-                credit.website ??
-                getDirectoryUrlFromData(
-                  directory,
-                  credit.name,
-                );
-
-              return (
-                <div
-                  key={`${credit.role}-${credit.name}`}
-                >
-                  <dt>
-                    {credit.role}
-                  </dt>
-
-                  <dd>
-                    {creditUrl ? (
-                      <a
-                        href={creditUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        {credit.name}{" "}
-                        <span
-                          aria-hidden="true"
-                        >
-                          ↗
-                        </span>
-                      </a>
-                    ) : (
-                      credit.name
-                    )}
-                  </dd>
-                </div>
-              );
-            },
-          )}
-        </dl>
-      </section>
-
-      <ProductionGallery
-        title={production.title}
-        productionSlug={
-          production.slug
-        }
-        hero={{
-          src: production.hero,
-          alt: production.heroAlt,
-        }}
-        images={production.images}
-      />
-
-      {nextProduction ? (
-        <Link
-          href={`/productions/${nextProduction.slug}`}
-          className="curated-production-next"
-          style={{
-            backgroundImage: `
-              linear-gradient(
-                90deg,
-                rgba(8, 7, 6, 0.84),
-                rgba(8, 7, 6, 0.12)
-              ),
-              url("${getProductionImageUrl(
-                nextProduction.slug,
-                nextProduction.hero,
-              )}")
-            `,
-          }}
-        >
-          <span>
-            Continue exploring
-          </span>
-
-          <h2>
-            {nextProduction.title}
-          </h2>
-
-          <p>
-            {nextProduction.venue}
-            <span aria-hidden="true">
-              {" "}
-              ·{" "}
-            </span>
-            {nextProduction.year}
-            <b aria-hidden="true">
-              {" "}
-              ↗
-            </b>
-          </p>
-        </Link>
-      ) : (
-        <section className="production-archive-return">
-          <p>
-            Continue exploring
-          </p>
-
-          <Link href="/archive">
-            Return to archive
-            <span aria-hidden="true">
-              →
-            </span>
-          </Link>
-        </section>
-      )}
-      <div className="production-service-link">
-        <Link href="/production">
-          Explore production photography
-          <span aria-hidden="true">→</span>
-        </Link>
-      </div>
-
-    </main>
-    </>
+    <ProductionContent
+      production={production}
+      directory={directory}
+      nextProduction={nextProduction}
+    />
   );
 }

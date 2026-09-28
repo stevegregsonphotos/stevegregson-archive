@@ -4,7 +4,6 @@ import {
   FormEvent,
   useState,
 } from "react";
-import { useRouter } from "next/navigation";
 
 import { getProductionImageUrl } from "../lib/production-image-url";
 
@@ -15,6 +14,7 @@ type ProductionAccessGateProps = {
   year: number;
   hero?: string;
   heroAlt?: string;
+  onUnlocked?: () => void;
 };
 
 type UnlockResponse = {
@@ -29,8 +29,8 @@ export default function ProductionAccessGate({
   year,
   hero,
   heroAlt,
+  onUnlocked,
 }: ProductionAccessGateProps) {
-  const router = useRouter();
 
   const [password, setPassword] =
     useState("");
@@ -83,7 +83,12 @@ export default function ProductionAccessGate({
       }
 
       setPassword("");
-      router.refresh();
+
+      if (onUnlocked) {
+        onUnlocked();
+      } else {
+        window.location.reload();
+      }
     } catch {
       setMessage(
         "The production could not be unlocked. Please try again.",

@@ -738,6 +738,51 @@ export function getProductionFromData(
   );
 }
 
+export type ProductionAccessSummary = {
+  slug: string;
+  title: string;
+  venue: string;
+  year: number;
+  access: "public" | "password" | null;
+  showHeroWhenLocked: boolean | null;
+  hero: string;
+  heroAlt: string;
+};
+
+export async function getProductionAccessSummary(
+  slug: string,
+): Promise<ProductionAccessSummary | undefined> {
+  const normalisedSlug =
+    decodeURIComponent(slug)
+      .trim()
+      .toLowerCase();
+
+  if (!normalisedSlug) {
+    return undefined;
+  }
+
+  const sql = getSql();
+  const rows = await sql`
+    SELECT
+      slug,
+      title,
+      venue,
+      year,
+      access,
+      show_hero_when_locked AS "showHeroWhenLocked",
+      hero_display_filename AS hero,
+      hero_alt AS "heroAlt"
+    FROM productions
+    WHERE deleted_at IS NULL
+      AND lower(slug) = ${normalisedSlug}
+    LIMIT 1
+  `;
+
+  return (
+    rows as ProductionAccessSummary[]
+  )[0];
+}
+
 export async function getProduction(
   slug: string,
 ) {
