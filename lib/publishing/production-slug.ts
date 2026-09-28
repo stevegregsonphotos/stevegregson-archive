@@ -3,6 +3,8 @@ export function createProductionSlug(
 ) {
   return value
     .trim()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .replace(/&/g, "and")
     .replace(/['’]/g, "")

@@ -96,6 +96,28 @@ const nextConfig: NextConfig = {
         statusCode: 301,
       },
       {
+        source: "/productions/g-tterd-mmerung",
+        destination: "/productions/gotterdammerung",
+        statusCode: 301,
+      },
+      {
+        source: "/productions/die-walk-re",
+        destination: "/productions/die-walkure",
+        statusCode: 301,
+      },
+      {
+        source:
+          "/productions/die-walk-re-york-hall-bethnal-green-london-february-2025",
+        destination:
+          "/productions/die-walkure-york-hall-bethnal-green-london-february-2025",
+        statusCode: 301,
+      },
+      {
+        source: "/productions/lonely-londoners",
+        destination: "/productions/the-lonely-londoners",
+        statusCode: 301,
+      },
+      {
         source: "/theatrephotographer",
         destination: "/production",
         permanent: true,
