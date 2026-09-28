@@ -128,7 +128,7 @@ export async function POST(
       secure:
         process.env.NODE_ENV ===
         "production",
-      path: `/productions/${production.slug}`,
+      path: "/",
       maxAge: 60 * 60 * 24 * 30,
     },
   );
