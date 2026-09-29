@@ -112,6 +112,25 @@ export async function POST(request: Request) {
       );
     }
 
+    if (
+      name.length > 120 ||
+      email.length > 254 ||
+      company.length > 160 ||
+      projectType.length > 120 ||
+      date.length > 80 ||
+      location.length > 160 ||
+      message.length > 5000
+    ) {
+      return NextResponse.json(
+        {
+          ok: false,
+          message:
+            "One or more fields are too long.",
+        },
+        { status: 400 },
+      );
+    }
+
     const emailPattern =
       /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 

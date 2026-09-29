@@ -8,6 +8,11 @@ import {
 import {
   getProduction,
 } from "../../../../../lib/productions-repository";
+import {
+  clearProductionUnlockFailures,
+  isProductionUnlockRateLimited,
+  recordProductionUnlockFailure,
+} from "../../../../../lib/production-unlock-rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -85,6 +90,27 @@ export async function POST(
   const password =
     payload.password?.trim() ?? "";
 
+  if (
+    await isProductionUnlockRateLimited(
+      request,
+      production.slug,
+    )
+  ) {
+    return Response.json(
+      {
+        ok: false,
+        message:
+          "Too many incorrect password attempts. Please try again later.",
+      },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": "900",
+        },
+      },
+    );
+  }
+
   if (!password) {
     return Response.json(
       {
@@ -103,6 +129,11 @@ export async function POST(
       production.accessPasswordEncrypted,
     )
   ) {
+    await recordProductionUnlockFailure(
+      request,
+      production.slug,
+    );
+
     return Response.json(
       {
         ok: false,
@@ -113,6 +144,11 @@ export async function POST(
       },
     );
   }
+
+  await clearProductionUnlockFailures(
+    request,
+    production.slug,
+  );
 
   const cookieStore = await cookies();
 

@@ -138,6 +138,11 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
       {
+        source: "/portraitphotography",
+        destination: "/people",
+        permanent: true,
+      },
+      {
         source: "/mens-headshots",
         destination: "/contact",
         permanent: true,

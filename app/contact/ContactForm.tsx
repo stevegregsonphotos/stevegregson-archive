@@ -118,6 +118,7 @@ export default function ContactForm() {
           name="name"
           type="text"
           autoComplete="name"
+          maxLength={120}
           required
         />
       </div>
@@ -132,6 +133,7 @@ export default function ContactForm() {
           name="email"
           type="email"
           autoComplete="email"
+          maxLength={254}
           required
         />
       </div>
@@ -146,6 +148,7 @@ export default function ContactForm() {
           name="company"
           type="text"
           autoComplete="organization"
+          maxLength={160}
         />
       </div>
 
@@ -196,6 +199,7 @@ export default function ContactForm() {
             id="date"
             name="date"
             type="text"
+            maxLength={80}
             placeholder="If known"
           />
         </div>
@@ -209,6 +213,7 @@ export default function ContactForm() {
             id="location"
             name="location"
             type="text"
+            maxLength={160}
           />
         </div>
       </div>
@@ -222,6 +227,7 @@ export default function ContactForm() {
           id="message"
           name="message"
           rows={7}
+          maxLength={5000}
           required
         />
       </div>
