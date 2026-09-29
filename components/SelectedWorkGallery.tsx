@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  getSelectedWorkDisplayUrl,
   getSelectedWorkImageUrl,
   getSelectedWorkPreviewUrl,
 } from "@/lib/selected-work-image-url";
@@ -75,19 +76,31 @@ export default function SelectedWorkGallery({
                 onClick={() => setViewerIndex(index)}
                 aria-label={`Open photograph ${index + 1} fullscreen`}
               >
-                <Image
-                  src={getSelectedWorkPreviewUrl("production", image.filename)}
-                  alt={image.alt}
-                  width={image.width}
-                  height={image.height}
-                  sizes={
-                    isFeatured
-                      ? "(max-width: 760px) 100vw, 94vw"
-                      : "(max-width: 760px) 100vw, 46vw"
-                  }
-                  className={imageClassName}
-                  priority={index === 0}
-                />
+                <picture>
+                  <source
+                    media="(min-width: 901px)"
+                    srcSet={getSelectedWorkDisplayUrl(
+                      "production",
+                      image.filename,
+                    )}
+                  />
+                  <Image
+                    src={getSelectedWorkPreviewUrl(
+                      "production",
+                      image.filename,
+                    )}
+                    alt={image.alt}
+                    width={image.width}
+                    height={image.height}
+                    sizes={
+                      isFeatured
+                        ? "(max-width: 760px) 100vw, 94vw"
+                        : "(max-width: 760px) 100vw, 46vw"
+                    }
+                    className={imageClassName}
+                    priority={index === 0}
+                  />
+                </picture>
               </button>
             </figure>
           );

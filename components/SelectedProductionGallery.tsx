@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  getSelectedWorkDisplayUrl,
   getSelectedWorkImageUrl,
   getSelectedWorkPreviewUrl,
 } from "@/lib/selected-work-image-url";
@@ -78,17 +79,26 @@ export default function SelectedProductionGallery({
               className={imageFrameClassName}
               style={imageFrameStyle(openingImage)}
             >
-              <Image
-                src={getSelectedWorkPreviewUrl(
-                  "production",
-                  openingImage.filename,
-                )}
-                alt={openingImage.alt}
-                fill
-                sizes="(max-width: 900px) calc(100vw - 2.8rem), 88vw"
-                className={imageClassName}
-                priority
-              />
+              <picture>
+                <source
+                  media="(min-width: 901px)"
+                  srcSet={getSelectedWorkDisplayUrl(
+                    "production",
+                    openingImage.filename,
+                  )}
+                />
+                <Image
+                  src={getSelectedWorkPreviewUrl(
+                    "production",
+                    openingImage.filename,
+                  )}
+                  alt={openingImage.alt}
+                  fill
+                  sizes="(max-width: 900px) calc(100vw - 2.8rem), 88vw"
+                  className={imageClassName}
+                  priority
+                />
+              </picture>
             </div>
           </button>
         </article>
@@ -111,13 +121,25 @@ export default function SelectedProductionGallery({
                   className={imageFrameClassName}
                   style={imageFrameStyle(image)}
                 >
-                  <Image
-                    src={getSelectedWorkPreviewUrl("production", image.filename)}
-                    alt={image.alt}
-                    fill
-                    sizes="(max-width: 900px) calc(100vw - 2.8rem), 88vw"
-                    className={imageClassName}
-                  />
+                  <picture>
+                    <source
+                      media="(min-width: 901px)"
+                      srcSet={getSelectedWorkDisplayUrl(
+                        "production",
+                        image.filename,
+                      )}
+                    />
+                    <Image
+                      src={getSelectedWorkPreviewUrl(
+                        "production",
+                        image.filename,
+                      )}
+                      alt={image.alt}
+                      fill
+                      sizes="(max-width: 900px) calc(100vw - 2.8rem), 88vw"
+                      className={imageClassName}
+                    />
+                  </picture>
                 </div>
               </button>
             </article>

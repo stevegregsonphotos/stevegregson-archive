@@ -18,6 +18,7 @@ import {
   createSelectedWorkUploadUrl,
   deleteSelectedWorkObject,
   selectedWorkObjectExists,
+  selectedWorkDisplayStorageKey,
   selectedWorkPreviewStorageKey,
   selectedWorkStorageKey,
   uniqueSelectedWorkFilename,
@@ -418,6 +419,18 @@ export async function POST(
           "image/webp",
         );
 
+      const displayStorageKey =
+        selectedWorkDisplayStorageKey(
+          category,
+          filename,
+        );
+
+      const displayUploadUrl =
+        await createSelectedWorkUploadUrl(
+          displayStorageKey,
+          "image/webp",
+        );
+
       return Response.json({
         ok: true,
         filename,
@@ -425,6 +438,8 @@ export async function POST(
         uploadUrl,
         previewStorageKey,
         previewUploadUrl,
+        displayStorageKey,
+        displayUploadUrl,
       });
     }
 
@@ -549,6 +564,12 @@ export async function POST(
           nextFilename,
         );
 
+      const nextDisplayStorageKey =
+        selectedWorkDisplayStorageKey(
+          category,
+          nextFilename,
+        );
+
       if (
         !(
           await selectedWorkObjectExists(
@@ -559,13 +580,18 @@ export async function POST(
           await selectedWorkObjectExists(
             nextPreviewStorageKey,
           )
+        ) ||
+        !(
+          await selectedWorkObjectExists(
+            nextDisplayStorageKey,
+          )
         )
       ) {
         return Response.json(
           {
             ok: false,
             message:
-              "The edited image and its public preview were not both verified in R2.",
+              "The edited image and its public derivatives were not all verified in R2.",
           },
           { status: 409 },
         );
@@ -605,6 +631,12 @@ export async function POST(
           ),
           deleteSelectedWorkObject(
             selectedWorkPreviewStorageKey(
+              category,
+              currentImage.filename,
+            ),
+          ),
+          deleteSelectedWorkObject(
+            selectedWorkDisplayStorageKey(
               category,
               currentImage.filename,
             ),
@@ -682,6 +714,18 @@ export async function POST(
           "image/webp",
         );
 
+      const displayStorageKey =
+        selectedWorkDisplayStorageKey(
+          category,
+          filename,
+        );
+
+      const displayUploadUrl =
+        await createSelectedWorkUploadUrl(
+          displayStorageKey,
+          "image/webp",
+        );
+
       return Response.json({
         ok: true,
         filename,
@@ -689,6 +733,8 @@ export async function POST(
         uploadUrl,
         previewStorageKey,
         previewUploadUrl,
+        displayStorageKey,
+        displayUploadUrl,
       });
     }
 
@@ -769,6 +815,14 @@ export async function POST(
           !(
             await selectedWorkObjectExists(
               selectedWorkPreviewStorageKey(
+                category,
+                filename,
+              ),
+            )
+          ) ||
+          !(
+            await selectedWorkObjectExists(
+              selectedWorkDisplayStorageKey(
                 category,
                 filename,
               ),
@@ -1378,6 +1432,32 @@ const applyFilenameChanges =
             nextPreviewStorageKey,
           );
         }
+
+        const currentDisplayStorageKey =
+          selectedWorkDisplayStorageKey(
+            body.category,
+            item.currentImage.filename,
+          );
+
+        const nextDisplayStorageKey =
+          selectedWorkDisplayStorageKey(
+            body.category,
+            item.nextImage.filename,
+          );
+
+        if (
+          currentDisplayStorageKey !==
+          nextDisplayStorageKey
+        ) {
+          await copySelectedWorkObject(
+            currentDisplayStorageKey,
+            nextDisplayStorageKey,
+          );
+
+          copiedKeys.push(
+            nextDisplayStorageKey,
+          );
+        }
       }
 
       const savedData =
@@ -1413,6 +1493,12 @@ const applyFilenameChanges =
             ),
             deleteSelectedWorkObject(
               selectedWorkPreviewStorageKey(
+                body.category,
+                item.currentImage.filename,
+              ),
+            ),
+            deleteSelectedWorkObject(
+              selectedWorkDisplayStorageKey(
                 body.category,
                 item.currentImage.filename,
               ),
@@ -1534,6 +1620,12 @@ export async function DELETE(
         ),
         deleteSelectedWorkObject(
           selectedWorkPreviewStorageKey(
+            body.category,
+            body.filename,
+          ),
+        ),
+        deleteSelectedWorkObject(
+          selectedWorkDisplayStorageKey(
             body.category,
             body.filename,
           ),

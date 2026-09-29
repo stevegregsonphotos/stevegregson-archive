@@ -64,6 +64,13 @@ export function selectedWorkPreviewStorageKey(
   return `selected-work/${category}/__previews/${filename}`;
 }
 
+export function selectedWorkDisplayStorageKey(
+  category: string,
+  filename: string,
+) {
+  return `selected-work/${category}/__display/${filename}`;
+}
+
 export async function selectedWorkObjectExists(
   storageKey: string,
 ) {

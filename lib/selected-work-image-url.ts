@@ -77,5 +77,35 @@ export function getSelectedWorkPreviewUrl(
         "filename",
       ),
     ),
-  ].join("/") + "?v=2";
+  ].join("/") + "?v=3";
+}
+
+export function getSelectedWorkDisplayUrl(
+  category: string,
+  filename: string,
+) {
+  const baseUrl =
+    process.env
+      .NEXT_PUBLIC_SELECTED_WORK_IMAGE_BASE_URL
+      ?.trim()
+      .replace(/\/+$/, "") ||
+    DEFAULT_SELECTED_WORK_IMAGE_BASE_URL;
+
+  return [
+    baseUrl,
+    "selected-work",
+    encodeURIComponent(
+      safeSegment(
+        category,
+        "category",
+      ),
+    ),
+    "__display",
+    encodeURIComponent(
+      safeSegment(
+        filename,
+        "filename",
+      ),
+    ),
+  ].join("/") + "?v=1";
 }

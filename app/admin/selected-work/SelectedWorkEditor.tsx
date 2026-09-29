@@ -253,15 +253,15 @@ function categoryLabel(
   }
 }
 
-async function createSelectedWorkPreviewBlob(
+async function createSelectedWorkDerivativeBlob(
   source: Blob,
+  maximumWidth: number,
+  quality: number,
 ) {
   const bitmap =
     await createImageBitmap(source);
 
   try {
-    const maximumWidth = 1800;
-
     const scale =
       Math.min(
         1,
@@ -324,13 +324,33 @@ async function createSelectedWorkPreviewBlob(
             }
           },
           "image/webp",
-          0.80,
+          quality,
         );
       },
     );
   } finally {
     bitmap.close();
   }
+}
+
+async function createSelectedWorkPreviewBlob(
+  source: Blob,
+) {
+  return createSelectedWorkDerivativeBlob(
+    source,
+    1000,
+    0.75,
+  );
+}
+
+async function createSelectedWorkDisplayBlob(
+  source: Blob,
+) {
+  return createSelectedWorkDerivativeBlob(
+    source,
+    1800,
+    0.80,
+  );
 }
 
 
@@ -1170,6 +1190,8 @@ setCategorySaveState(
           uploadUrl?: string;
           previewStorageKey?: string;
           previewUploadUrl?: string;
+          displayStorageKey?: string;
+          displayUploadUrl?: string;
         };
 
       if (
@@ -1179,7 +1201,9 @@ setCategorySaveState(
         !signed.storageKey ||
         !signed.uploadUrl ||
         !signed.previewStorageKey ||
-        !signed.previewUploadUrl
+        !signed.previewUploadUrl ||
+        !signed.displayStorageKey ||
+        !signed.displayUploadUrl
       ) {
         throw new Error(
           signed.message ??
@@ -1229,6 +1253,32 @@ setCategorySaveState(
       if (!previewUploadResponse.ok) {
         throw new Error(
           `Direct R2 preview upload failed (HTTP ${previewUploadResponse.status}).`,
+        );
+      }
+
+      const displayBlob =
+        await createSelectedWorkDisplayBlob(
+          result.blob,
+        );
+
+      const displayUploadResponse =
+        await fetch(
+          signed.displayUploadUrl,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type":
+                "image/webp",
+              "Cache-Control":
+                "public, max-age=31536000, immutable",
+            },
+            body: displayBlob,
+          },
+        );
+
+      if (!displayUploadResponse.ok) {
+        throw new Error(
+          `Direct R2 display upload failed (HTTP ${displayUploadResponse.status}).`,
         );
       }
 
@@ -1478,6 +1528,8 @@ setCategorySaveState(
                     uploadUrl?: string;
                     previewStorageKey?: string;
                     previewUploadUrl?: string;
+                    displayStorageKey?: string;
+                    displayUploadUrl?: string;
                   };
 
                 if (
@@ -1487,7 +1539,9 @@ setCategorySaveState(
                   !signed.storageKey ||
                   !signed.uploadUrl ||
                   !signed.previewStorageKey ||
-                  !signed.previewUploadUrl
+                  !signed.previewUploadUrl ||
+                  !signed.displayStorageKey ||
+                  !signed.displayUploadUrl
                 ) {
                   throw new Error(
                     signed.message ||
@@ -1541,6 +1595,33 @@ setCategorySaveState(
                 if (!previewResponse.ok) {
                   throw new Error(
                     `Direct R2 preview upload failed for ${file.name} (HTTP ${previewResponse.status}).`,
+                  );
+                }
+
+                const displayBlob =
+                  await createSelectedWorkDisplayBlob(
+                    webpBlob,
+                  );
+
+                const displayResponse =
+                  await fetch(
+                    signed.displayUploadUrl,
+                    {
+                      method: "PUT",
+                      headers: {
+                        "Content-Type":
+                          "image/webp",
+                        "Cache-Control":
+                          "public, max-age=31536000, immutable",
+                      },
+                      body:
+                        displayBlob,
+                    },
+                  );
+
+                if (!displayResponse.ok) {
+                  throw new Error(
+                    `Direct R2 display upload failed for ${file.name} (HTTP ${displayResponse.status}).`,
                   );
                 }
 

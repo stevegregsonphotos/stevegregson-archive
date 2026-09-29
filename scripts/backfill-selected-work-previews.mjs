@@ -63,6 +63,13 @@ function previewKey(
   return `selected-work/${category}/__previews/${filename}`;
 }
 
+function displayKey(
+  category,
+  filename,
+) {
+  return `selected-work/${category}/__display/${filename}`;
+}
+
 async function exists(key) {
   try {
     await client.send(
@@ -85,13 +92,29 @@ async function exists(key) {
   }
 }
 
-async function backfill(row) {
-  const destination =
-    previewKey(
-      row.category,
-      row.display_filename,
-    );
+async function putDerivative(
+  key,
+  bytes,
+) {
+  await client.send(
+    new PutObjectCommand({
+      Bucket: bucket,
+      Key: key,
+      Body: bytes,
+      ContentType: "image/webp",
+      CacheControl:
+        "public, max-age=31536000, immutable",
+    }),
+  );
 
+  if (!(await exists(key))) {
+    throw new Error(
+      `Derivative verification failed: ${key}`,
+    );
+  }
+}
+
+async function backfill(row) {
   const source =
     await client.send(
       new GetObjectCommand({
@@ -116,6 +139,19 @@ async function backfill(row) {
     await sharp(bytes)
       .rotate()
       .resize({
+        width: 1000,
+        withoutEnlargement: true,
+      })
+      .webp({
+        quality: 75,
+        effort: 4,
+      })
+      .toBuffer();
+
+  const display =
+    await sharp(bytes)
+      .rotate()
+      .resize({
         width: 1800,
         withoutEnlargement: true,
       })
@@ -125,38 +161,40 @@ async function backfill(row) {
       })
       .toBuffer();
 
-  await client.send(
-    new PutObjectCommand({
-      Bucket: bucket,
-      Key: destination,
-      Body: preview,
-      ContentType: "image/webp",
-      CacheControl:
-        "public, max-age=31536000, immutable",
-    }),
-  );
-
-  if (
-    !(await exists(destination))
-  ) {
-    throw new Error(
-      `Preview verification failed: ${destination}`,
+  const previewDestination =
+    previewKey(
+      row.category,
+      row.display_filename,
     );
-  }
+
+  const displayDestination =
+    displayKey(
+      row.category,
+      row.display_filename,
+    );
+
+  await Promise.all([
+    putDerivative(
+      previewDestination,
+      preview,
+    ),
+    putDerivative(
+      displayDestination,
+      display,
+    ),
+  ]);
 
   return {
-    status: "created",
-    key: destination,
-    bytes: preview.length,
+    previewBytes: preview.length,
+    displayBytes: display.length,
   };
 }
 
 console.log(
-  `\n=== SELECTED WORK PREVIEW BACKFILL: ${rows.length} IMAGES ===\n`,
+  `\n=== SELECTED WORK RESPONSIVE DERIVATIVE BACKFILL: ${rows.length} IMAGES ===\n`,
 );
 
-let created = 0;
-let existing = 0;
+let processed = 0;
 
 const concurrency = 4;
 
@@ -187,21 +225,16 @@ for (
     const row =
       batch[offset];
 
-    if (
-      result.status === "created"
-    ) {
-      created += 1;
+    processed += 1;
 
-      console.log(
-        `${row.category}/${row.display_filename}: ${(result.bytes / 1024).toFixed(0)} KB`,
-      );
-    } else {
-      existing += 1;
-    }
+    console.log(
+      `${row.category}/${row.display_filename}: preview ${(result.previewBytes / 1024).toFixed(0)} KB | display ${(result.displayBytes / 1024).toFixed(0)} KB`,
+    );
   }
 }
 
-let missing = 0;
+let missingPreview = 0;
+let missingDisplay = 0;
 
 for (
   let index = 0;
@@ -217,36 +250,53 @@ for (
   const checks =
     await Promise.all(
       batch.map(
-        async (row) =>
-          exists(
-            previewKey(
-              row.category,
-              row.display_filename,
+        async (row) => ({
+          preview:
+            await exists(
+              previewKey(
+                row.category,
+                row.display_filename,
+              ),
             ),
-          ),
+          display:
+            await exists(
+              displayKey(
+                row.category,
+                row.display_filename,
+              ),
+            ),
+        }),
       ),
     );
 
-  missing +=
+  missingPreview +=
     checks.filter(
-      (value) => !value,
+      (value) => !value.preview,
+    ).length;
+
+  missingDisplay +=
+    checks.filter(
+      (value) => !value.display,
     ).length;
 }
 
 console.log(
-  `\nCreated: ${created}`,
+  `\nProcessed: ${processed}`,
 );
 console.log(
-  `Already existed: ${existing}`,
+  `Missing previews: ${missingPreview}`,
 );
 console.log(
-  `Missing after verification: ${missing}`,
+  `Missing display derivatives: ${missingDisplay}`,
 );
 
-if (missing !== 0) {
+if (
+  missingPreview !== 0 ||
+  missingDisplay !== 0
+) {
   process.exitCode = 1;
 } else {
   console.log(
-    "\nSELECTED WORK PREVIEW BACKFILL PASS.",
+    "\nSELECTED WORK RESPONSIVE DERIVATIVE BACKFILL PASS.",
   );
 }

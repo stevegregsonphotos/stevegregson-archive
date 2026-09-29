@@ -26,18 +26,40 @@ function assertNotContains(relativePath, patterns) {
 }
 
 const checks = [
-  // Selected Work public galleries must render lightweight preview objects.
+  // Selected Work public galleries use responsive R2 derivatives:
+  // lightweight preview on mobile and sharper display image on desktop.
   () => assertContains(
     "components/SelectedWorkGallery.tsx",
-    ["getSelectedWorkPreviewUrl"],
+    [
+      "getSelectedWorkPreviewUrl",
+      "getSelectedWorkDisplayUrl",
+      'media="(min-width: 901px)"',
+    ],
   ),
   () => assertContains(
     "components/SelectedProductionGallery.tsx",
-    ["getSelectedWorkPreviewUrl"],
+    [
+      "getSelectedWorkPreviewUrl",
+      "getSelectedWorkDisplayUrl",
+      'media="(min-width: 901px)"',
+    ],
   ),
   () => assertContains(
     "lib/selected-work-storage.ts",
-    ["selectedWorkPreviewStorageKey", "__previews"],
+    [
+      "selectedWorkPreviewStorageKey",
+      "selectedWorkDisplayStorageKey",
+      "__previews",
+      "__display",
+    ],
+  ),
+  () => assertContains(
+    "app/api/admin/selected-work/route.ts",
+    [
+      "selectedWorkPreviewStorageKey",
+      "selectedWorkDisplayStorageKey",
+      "displayUploadUrl",
+    ],
   ),
 
   // Public photography policy: browser-facing photographic uploads
