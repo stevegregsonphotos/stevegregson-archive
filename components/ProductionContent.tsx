@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 
 import type { Production } from "../content/productions/types";
@@ -132,22 +131,23 @@ export default function ProductionContent({
 
       <main className="curated-production-page">
         <section className="curated-production-hero">
-          <Image
-            src={heroImageUrl}
-            alt={production.heroAlt}
-            fill
-            priority
-            sizes="100vw"
-            className="curated-production-hero-image"
-            placeholder={
-              production.heroBlurDataURL
-                ? "blur"
-                : "empty"
-            }
-            blurDataURL={
-              production.heroBlurDataURL
-            }
-          />
+          <picture className="curated-production-hero-picture">
+            <source
+              media="(max-width: 760px)"
+              srcSet={getProductionCardImageUrl(
+                production.slug,
+                production.hero,
+              )}
+            />
+            <img
+              src={heroImageUrl}
+              alt={production.heroAlt}
+              fetchPriority="high"
+              loading="eager"
+              decoding="async"
+              className="curated-production-hero-image"
+            />
+          </picture>
 
           <div className="curated-production-hero-overlay" />
 

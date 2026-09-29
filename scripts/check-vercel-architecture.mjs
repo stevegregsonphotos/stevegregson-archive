@@ -269,6 +269,17 @@ const checks = [
     ],
   ),
 
+  // Production-page mobile hero uses the existing lightweight
+  // derivative while desktop retains the original hero.
+  () => assertContains(
+    "components/ProductionContent.tsx",
+    [
+      "curated-production-hero-picture",
+      "getProductionCardImageUrl",
+      'fetchPriority="high"',
+    ],
+  ),
+
   // Individual production galleries use lightweight derivatives
   // in the page grid while fullscreen viewing keeps originals.
   () => assertContains(
