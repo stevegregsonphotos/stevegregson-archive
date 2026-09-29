@@ -92,15 +92,6 @@ async function backfill(row) {
       row.display_filename,
     );
 
-  if (
-    await exists(destination)
-  ) {
-    return {
-      status: "existing",
-      key: destination,
-    };
-  }
-
   const source =
     await client.send(
       new GetObjectCommand({
@@ -125,11 +116,11 @@ async function backfill(row) {
     await sharp(bytes)
       .rotate()
       .resize({
-        width: 1000,
+        width: 1800,
         withoutEnlargement: true,
       })
       .webp({
-        quality: 75,
+        quality: 80,
         effort: 4,
       })
       .toBuffer();

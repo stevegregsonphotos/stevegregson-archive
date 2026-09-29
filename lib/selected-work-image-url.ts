@@ -77,5 +77,5 @@ export function getSelectedWorkPreviewUrl(
         "filename",
       ),
     ),
-  ].join("/");
+  ].join("/") + "?v=2";
 }

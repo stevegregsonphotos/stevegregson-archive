@@ -260,7 +260,7 @@ async function createSelectedWorkPreviewBlob(
     await createImageBitmap(source);
 
   try {
-    const maximumWidth = 1000;
+    const maximumWidth = 1800;
 
     const scale =
       Math.min(
@@ -324,7 +324,7 @@ async function createSelectedWorkPreviewBlob(
             }
           },
           "image/webp",
-          0.75,
+          0.80,
         );
       },
     );
