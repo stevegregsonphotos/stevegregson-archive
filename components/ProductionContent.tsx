@@ -25,6 +25,8 @@ type ProductionContentProps = {
   personSlugs?: Record<string, string>;
   /** Set when the venue has its own /venues/<slug> page. */
   venueSlug?: string;
+  /** A sector page (drama schools, opera) that fits this production better than /production. */
+  serviceLink?: { href: string; label: string };
 };
 
 export default function ProductionContent({
@@ -33,6 +35,7 @@ export default function ProductionContent({
   nextProduction,
   personSlugs = {},
   venueSlug,
+  serviceLink = { href: "/production", label: "Explore production photography" },
 }: ProductionContentProps) {
   const productionUrl =
     `https://www.stevegregson.com/productions/${production.slug}`;
@@ -313,8 +316,8 @@ export default function ProductionContent({
         )}
 
         <div className="production-service-link">
-          <Link href="/production">
-            Explore production photography
+          <Link href={serviceLink.href}>
+            {serviceLink.label}
             <span aria-hidden="true">
               →
             </span>

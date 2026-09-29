@@ -1,0 +1,221 @@
+/* Commissions, drama school and opera pages. Builds on directory.css. */
+
+.svc-points {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  margin: 5.5rem 0 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid rgba(242, 238, 230, 0.18);
+  border-bottom: 1px solid rgba(242, 238, 230, 0.18);
+}
+
+.svc-points li {
+  padding: 2.6rem 2.2rem 2.8rem 0;
+}
+
+.svc-points li + li {
+  padding-left: 2.2rem;
+  border-left: 1px solid rgba(242, 238, 230, 0.18);
+}
+
+.svc-points h2,
+.svc-points h3 {
+  margin: 1.4rem 0 0.9rem;
+  font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  font-size: clamp(1.45rem, 2.2vw, 1.9rem);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+.svc-points p {
+  margin: 0;
+  color: rgba(242, 238, 230, 0.7);
+  line-height: 1.7;
+}
+
+/* Tiles linking to each kind of work */
+
+.svc-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
+  gap: 1px;
+  margin: 2rem 0 0;
+  padding: 0;
+  list-style: none;
+  background: rgba(242, 238, 230, 0.14);
+  border: 1px solid rgba(242, 238, 230, 0.14);
+}
+
+.svc-tiles a {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 2.5rem;
+  height: 100%;
+  min-height: 15rem;
+  padding: 2rem;
+  background: #11100f;
+  transition: background 180ms ease;
+}
+
+.svc-tiles a:hover,
+.svc-tiles a:focus-visible {
+  background: #1a1917;
+}
+
+.svc-tiles h3 {
+  margin: 0.9rem 0 0.7rem;
+  font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  font-size: 1.9rem;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+}
+
+.svc-tiles p {
+  margin: 0;
+  color: rgba(242, 238, 230, 0.66);
+  line-height: 1.6;
+}
+
+.svc-tile-go {
+  color: #c7a369;
+  font-size: 0.68rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+/* Numbered steps */
+
+.svc-steps {
+  counter-reset: step;
+  margin: 2rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.svc-steps li {
+  counter-increment: step;
+  display: grid;
+  grid-template-columns: 4rem minmax(0, 14rem) minmax(0, 1fr);
+  gap: 1.5rem 2rem;
+  padding: 2rem 0;
+  border-bottom: 1px solid rgba(242, 238, 230, 0.1);
+}
+
+.svc-steps li::before {
+  content: counter(step, decimal-leading-zero);
+  color: #c7a369;
+  font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  font-size: 1.6rem;
+}
+
+.svc-steps h3 {
+  margin: 0;
+  font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  font-size: 1.6rem;
+  font-weight: 400;
+}
+
+.svc-steps p {
+  margin: 0;
+  max-width: 44rem;
+  color: rgba(242, 238, 230, 0.72);
+  line-height: 1.7;
+}
+
+/* Questions */
+
+.svc-faq {
+  margin: 2rem 0 0;
+}
+
+.svc-faq details {
+  border-bottom: 1px solid rgba(242, 238, 230, 0.12);
+}
+
+.svc-faq summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 2rem;
+  padding: 1.5rem 0;
+  cursor: pointer;
+  font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  font-size: 1.4rem;
+  list-style: none;
+}
+
+.svc-faq summary::-webkit-details-marker {
+  display: none;
+}
+
+.svc-faq summary::after {
+  content: "+";
+  flex: none;
+  color: #c7a369;
+}
+
+.svc-faq details[open] summary::after {
+  content: "–";
+}
+
+.svc-faq summary:hover,
+.svc-faq summary:focus-visible {
+  color: #c7a369;
+}
+
+.svc-faq-answer {
+  max-width: 48rem;
+  padding: 0 0 1.8rem;
+  color: rgba(242, 238, 230, 0.72);
+  line-height: 1.75;
+}
+
+.svc-faq-answer p {
+  margin: 0 0 1rem;
+}
+
+.svc-faq-answer a {
+  color: #c7a369 !important;
+  text-decoration: underline !important;
+  text-underline-offset: 0.2em;
+}
+
+/* Wording Steve still needs to confirm. Only ever seen on a review branch. */
+
+.svc-confirm {
+  padding: 0.05em 0.3em;
+  background: #f5d76e;
+  color: #11100f;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+.svc-confirm::before {
+  content: "Steve to confirm: ";
+  font-size: 0.7em;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 700px) {
+  .svc-points li,
+  .svc-points li + li {
+    padding: 2rem 0;
+    border-left: 0;
+  }
+
+  .svc-points li + li {
+    border-top: 1px solid rgba(242, 238, 230, 0.18);
+  }
+
+  .svc-steps li {
+    grid-template-columns: 3rem minmax(0, 1fr);
+  }
+
+  .svc-steps p {
+    grid-column: 2;
+  }
+}

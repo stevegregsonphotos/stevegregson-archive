@@ -23,6 +23,7 @@ import {
   splitCreditNames,
 } from "../../../lib/people-directory";
 import { canonicalVenue } from "../../../lib/venues";
+import { serviceLinkFor } from "../../../lib/sectors";
 
 export const revalidate = 3600;
 
@@ -195,6 +196,7 @@ export default async function ProductionPage({
       nextProduction={nextProduction}
       personSlugs={personSlugs}
       venueSlug={venueSlug}
+      serviceLink={serviceLinkFor(production)}
     />
   );
 }

@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import Link from "next/link";
+
 import ContactForm from "./ContactForm";
 
 export const metadata: Metadata = {
@@ -81,6 +83,10 @@ export default function ContactPage() {
             A few details are useful to get us started.
             If you don&apos;t know everything yet,
             that&apos;s absolutely fine.
+            <br />
+            <Link href="/commissions" className="contact-commissions-link">
+              How a commission works, licensing &amp; FAQs →
+            </Link>
           </p>
         </div>
 
@@ -226,6 +232,20 @@ export default function ContactPage() {
           color: rgba(242, 238, 230, 0.58);
           font-size: 0.9rem;
           line-height: 1.75;
+        }
+
+        .contact-commissions-link {
+          display: inline-block;
+          margin-top: 1rem;
+          color: #c7a369;
+          font-size: 0.62rem;
+          font-weight: 700;
+          letter-spacing: 0.16em;
+          text-transform: uppercase;
+        }
+
+        .contact-commissions-link:hover {
+          opacity: 0.6;
         }
 
         .contact-form {

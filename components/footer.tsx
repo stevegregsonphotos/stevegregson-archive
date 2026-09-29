@@ -42,6 +42,7 @@ export default function Footer() {
           <Link href="/selected-work">Work</Link>
           <Link href="/archive">Archive</Link>
           <Link href="/people">People</Link>
+          <Link href="/commissions">Commissions</Link>
           <Link href="/about">About</Link>
           <Link href="/contact">Contact</Link>
         </nav>

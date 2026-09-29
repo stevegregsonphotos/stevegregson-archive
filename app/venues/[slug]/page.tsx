@@ -19,6 +19,7 @@ import {
   productionCountLabel,
   yearRange,
 } from "../../../lib/people-directory";
+import { isDramaSchoolVenue } from "../../../lib/sectors";
 
 export const revalidate = 3600;
 
@@ -214,13 +215,27 @@ export default async function VenuePage({ params }: VenuePageProps) {
           ) : null}
 
           <section className="dir-cta" style={{ marginTop: 0, alignSelf: "start" }}>
-            <div>
-              <h2>Producing at {venue.name}?</h2>
-              <p>
-                Production, rehearsal and press photography for companies playing{" "}
-                {venue.name}.
-              </p>
-            </div>
+            {isDramaSchoolVenue(venue.name) ? (
+              <div>
+                <h2>Planning your next season?</h2>
+                <p>
+                  Production and rehearsal photography for drama schools and
+                  conservatoires.{" "}
+                  <Link href="/drama-school-photography" style={{ textDecoration: "underline" }}>
+                    How I work with schools
+                  </Link>
+                  .
+                </p>
+              </div>
+            ) : (
+              <div>
+                <h2>Producing at {venue.name}?</h2>
+                <p>
+                  Production, rehearsal and press photography for companies playing{" "}
+                  {venue.name}.
+                </p>
+              </div>
+            )}
             <Link className="dir-button" href="/contact">
               Start a conversation →
             </Link>

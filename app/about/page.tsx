@@ -107,9 +107,10 @@ export default function AboutPage() {
             </p>
 
             <p>
-              Whether photographing a major production, a drama-school
-              showcase or performers taking to the stage for the first time, I
-              give every project the same care, energy and attention.
+              Whether photographing a major production, a{" "}
+              <Link href="/drama-school-photography">drama-school showcase</Link>{" "}
+              or performers taking to the stage for the first time, I give every
+              project the same care, energy and attention.
             </p>
           </div>
         </section>
@@ -246,6 +247,16 @@ export default function AboutPage() {
 
         .copy p {
           margin: 0 0 1.75rem;
+        }
+
+        .copy a {
+          text-decoration: underline;
+          text-decoration-color: rgba(199, 163, 105, 0.7);
+          text-underline-offset: 0.22em;
+        }
+
+        .copy a:hover {
+          color: #c7a369;
         }
 
         .copy p:last-child {

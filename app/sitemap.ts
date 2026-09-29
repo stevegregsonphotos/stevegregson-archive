@@ -54,6 +54,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.7,
     },
     {
+      url: `${siteUrl}/commissions`,
+      changeFrequency: "monthly",
+      priority: 0.8,
+    },
+    {
+      url: `${siteUrl}/drama-school-photography`,
+      changeFrequency: "monthly",
+      priority: 0.8,
+    },
+    {
+      url: `${siteUrl}/opera-photography`,
+      changeFrequency: "monthly",
+      priority: 0.8,
+    },
+    {
       url: `${siteUrl}/about`,
       changeFrequency: "yearly",
       priority: 0.7,
