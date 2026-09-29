@@ -18,6 +18,7 @@ import {
   createSelectedWorkUploadUrl,
   deleteSelectedWorkObject,
   selectedWorkObjectExists,
+  selectedWorkPreviewStorageKey,
   selectedWorkStorageKey,
   uniqueSelectedWorkFilename,
 } from "@/lib/selected-work-storage";
@@ -405,11 +406,25 @@ export async function POST(
           "image/webp",
         );
 
+      const previewStorageKey =
+        selectedWorkPreviewStorageKey(
+          category,
+          filename,
+        );
+
+      const previewUploadUrl =
+        await createSelectedWorkUploadUrl(
+          previewStorageKey,
+          "image/webp",
+        );
+
       return Response.json({
         ok: true,
         filename,
         storageKey,
         uploadUrl,
+        previewStorageKey,
+        previewUploadUrl,
       });
     }
 
@@ -528,10 +543,21 @@ export async function POST(
           nextFilename,
         );
 
+      const nextPreviewStorageKey =
+        selectedWorkPreviewStorageKey(
+          category,
+          nextFilename,
+        );
+
       if (
         !(
           await selectedWorkObjectExists(
             nextStorageKey,
+          )
+        ) ||
+        !(
+          await selectedWorkObjectExists(
+            nextPreviewStorageKey,
           )
         )
       ) {
@@ -539,7 +565,7 @@ export async function POST(
           {
             ok: false,
             message:
-              "The edited image was not verified in R2.",
+              "The edited image and its public preview were not both verified in R2.",
           },
           { status: 409 },
         );
@@ -573,9 +599,17 @@ export async function POST(
         currentImage.filename !==
         originalFilename
       ) {
-        await deleteSelectedWorkObject(
-          currentImage.storageKey,
-        ).catch((cleanupError) => {
+        await Promise.all([
+          deleteSelectedWorkObject(
+            currentImage.storageKey,
+          ),
+          deleteSelectedWorkObject(
+            selectedWorkPreviewStorageKey(
+              category,
+              currentImage.filename,
+            ),
+          ),
+        ]).catch((cleanupError) => {
           console.error(
             "Old Selected Work derivative cleanup failed:",
             cleanupError,
@@ -636,11 +670,25 @@ export async function POST(
           "image/webp",
         );
 
+      const previewStorageKey =
+        selectedWorkPreviewStorageKey(
+          category,
+          filename,
+        );
+
+      const previewUploadUrl =
+        await createSelectedWorkUploadUrl(
+          previewStorageKey,
+          "image/webp",
+        );
+
       return Response.json({
         ok: true,
         filename,
         storageKey,
         uploadUrl,
+        previewStorageKey,
+        previewUploadUrl,
       });
     }
 
@@ -717,7 +765,15 @@ export async function POST(
           !Number.isInteger(height) ||
           height <= 0 ||
           !uploadedAt ||
-          !(await selectedWorkObjectExists(storageKey))
+          !(await selectedWorkObjectExists(storageKey)) ||
+          !(
+            await selectedWorkObjectExists(
+              selectedWorkPreviewStorageKey(
+                category,
+                filename,
+              ),
+            )
+          )
         ) {
           return Response.json(
             {
@@ -1296,6 +1352,32 @@ const applyFilenameChanges =
         copiedKeys.push(
           item.nextStorageKey,
         );
+
+        const currentPreviewStorageKey =
+          selectedWorkPreviewStorageKey(
+            body.category,
+            item.currentImage.filename,
+          );
+
+        const nextPreviewStorageKey =
+          selectedWorkPreviewStorageKey(
+            body.category,
+            item.nextImage.filename,
+          );
+
+        if (
+          currentPreviewStorageKey !==
+          nextPreviewStorageKey
+        ) {
+          await copySelectedWorkObject(
+            currentPreviewStorageKey,
+            nextPreviewStorageKey,
+          );
+
+          copiedKeys.push(
+            nextPreviewStorageKey,
+          );
+        }
       }
 
       const savedData =
@@ -1325,9 +1407,17 @@ const applyFilenameChanges =
         }
 
         try {
-          await deleteSelectedWorkObject(
-            item.currentStorageKey,
-          );
+          await Promise.all([
+            deleteSelectedWorkObject(
+              item.currentStorageKey,
+            ),
+            deleteSelectedWorkObject(
+              selectedWorkPreviewStorageKey(
+                body.category,
+                item.currentImage.filename,
+              ),
+            ),
+          ]);
         } catch (cleanupError) {
           console.error(
             "Selected Work old R2 object cleanup failed:",
@@ -1438,9 +1528,17 @@ export async function DELETE(
       string | null = null;
 
     try {
-      await deleteSelectedWorkObject(
-        deleted.storageKey,
-      );
+      await Promise.all([
+        deleteSelectedWorkObject(
+          deleted.storageKey,
+        ),
+        deleteSelectedWorkObject(
+          selectedWorkPreviewStorageKey(
+            body.category,
+            body.filename,
+          ),
+        ),
+      ]);
     } catch (error) {
       console.error(
         "Selected Work R2 delete cleanup failed:",

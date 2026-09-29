@@ -26,6 +26,20 @@ function assertNotContains(relativePath, patterns) {
 }
 
 const checks = [
+  // Selected Work public galleries must render lightweight preview objects.
+  () => assertContains(
+    "components/SelectedWorkGallery.tsx",
+    ["getSelectedWorkPreviewUrl"],
+  ),
+  () => assertContains(
+    "components/SelectedProductionGallery.tsx",
+    ["getSelectedWorkPreviewUrl"],
+  ),
+  () => assertContains(
+    "lib/selected-work-storage.ts",
+    ["selectedWorkPreviewStorageKey", "__previews"],
+  ),
+
   // Public photography policy: browser-facing photographic uploads
   // must be WebP before they reach R2.
   () => assertContains(

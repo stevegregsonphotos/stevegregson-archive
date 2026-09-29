@@ -1,6 +1,9 @@
 "use client";
 
-import { getSelectedWorkImageUrl } from "@/lib/selected-work-image-url";
+import {
+  getSelectedWorkImageUrl,
+  getSelectedWorkPreviewUrl,
+} from "@/lib/selected-work-image-url";
 import type { CSSProperties } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
@@ -76,7 +79,7 @@ export default function SelectedProductionGallery({
               style={imageFrameStyle(openingImage)}
             >
               <Image
-                src={getSelectedWorkImageUrl(
+                src={getSelectedWorkPreviewUrl(
                   "production",
                   openingImage.filename,
                 )}
@@ -109,7 +112,7 @@ export default function SelectedProductionGallery({
                   style={imageFrameStyle(image)}
                 >
                   <Image
-                    src={getSelectedWorkImageUrl("production", image.filename)}
+                    src={getSelectedWorkPreviewUrl("production", image.filename)}
                     alt={image.alt}
                     fill
                     sizes="(max-width: 900px) calc(100vw - 2.8rem), 88vw"

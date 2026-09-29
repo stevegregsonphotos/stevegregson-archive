@@ -253,6 +253,87 @@ function categoryLabel(
   }
 }
 
+async function createSelectedWorkPreviewBlob(
+  source: Blob,
+) {
+  const bitmap =
+    await createImageBitmap(source);
+
+  try {
+    const maximumWidth = 1000;
+
+    const scale =
+      Math.min(
+        1,
+        maximumWidth / bitmap.width,
+      );
+
+    const width =
+      Math.max(
+        1,
+        Math.round(
+          bitmap.width * scale,
+        ),
+      );
+
+    const height =
+      Math.max(
+        1,
+        Math.round(
+          bitmap.height * scale,
+        ),
+      );
+
+    const canvas =
+      document.createElement(
+        "canvas",
+      );
+
+    canvas.width = width;
+    canvas.height = height;
+
+    const context =
+      canvas.getContext("2d");
+
+    if (!context) {
+      throw new Error(
+        "Could not prepare the Selected Work preview.",
+      );
+    }
+
+    context.drawImage(
+      bitmap,
+      0,
+      0,
+      width,
+      height,
+    );
+
+    return await new Promise<Blob>(
+      (resolve, reject) => {
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              resolve(blob);
+            } else {
+              reject(
+                new Error(
+                  "Could not create the Selected Work preview.",
+                ),
+              );
+            }
+          },
+          "image/webp",
+          0.75,
+        );
+      },
+    );
+  } finally {
+    bitmap.close();
+  }
+}
+
+
 export default function SelectedWorkEditor() {
   const [data, setData] =
     useState<SelectedWorkData>(
@@ -1087,6 +1168,8 @@ setCategorySaveState(
           filename?: string;
           storageKey?: string;
           uploadUrl?: string;
+          previewStorageKey?: string;
+          previewUploadUrl?: string;
         };
 
       if (
@@ -1094,7 +1177,9 @@ setCategorySaveState(
         !signed.ok ||
         !signed.filename ||
         !signed.storageKey ||
-        !signed.uploadUrl
+        !signed.uploadUrl ||
+        !signed.previewStorageKey ||
+        !signed.previewUploadUrl
       ) {
         throw new Error(
           signed.message ??
@@ -1118,6 +1203,32 @@ setCategorySaveState(
       if (!uploadResponse.ok) {
         throw new Error(
           `Direct R2 upload failed (HTTP ${uploadResponse.status}).`,
+        );
+      }
+
+      const previewBlob =
+        await createSelectedWorkPreviewBlob(
+          result.blob,
+        );
+
+      const previewUploadResponse =
+        await fetch(
+          signed.previewUploadUrl,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type":
+                "image/webp",
+              "Cache-Control":
+                "public, max-age=31536000, immutable",
+            },
+            body: previewBlob,
+          },
+        );
+
+      if (!previewUploadResponse.ok) {
+        throw new Error(
+          `Direct R2 preview upload failed (HTTP ${previewUploadResponse.status}).`,
         );
       }
 
@@ -1365,6 +1476,8 @@ setCategorySaveState(
                     filename?: string;
                     storageKey?: string;
                     uploadUrl?: string;
+                    previewStorageKey?: string;
+                    previewUploadUrl?: string;
                   };
 
                 if (
@@ -1372,7 +1485,9 @@ setCategorySaveState(
                   !signed.ok ||
                   !signed.filename ||
                   !signed.storageKey ||
-                  !signed.uploadUrl
+                  !signed.uploadUrl ||
+                  !signed.previewStorageKey ||
+                  !signed.previewUploadUrl
                 ) {
                   throw new Error(
                     signed.message ||
@@ -1399,6 +1514,33 @@ setCategorySaveState(
                 if (!r2Response.ok) {
                   throw new Error(
                     `Direct R2 upload failed for ${file.name} (HTTP ${r2Response.status}).`,
+                  );
+                }
+
+                const previewBlob =
+                  await createSelectedWorkPreviewBlob(
+                    webpBlob,
+                  );
+
+                const previewResponse =
+                  await fetch(
+                    signed.previewUploadUrl,
+                    {
+                      method: "PUT",
+                      headers: {
+                        "Content-Type":
+                          "image/webp",
+                        "Cache-Control":
+                          "public, max-age=31536000, immutable",
+                      },
+                      body:
+                        previewBlob,
+                    },
+                  );
+
+                if (!previewResponse.ok) {
+                  throw new Error(
+                    `Direct R2 preview upload failed for ${file.name} (HTTP ${previewResponse.status}).`,
                   );
                 }
 
