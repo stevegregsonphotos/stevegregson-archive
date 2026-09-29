@@ -8,8 +8,12 @@ import {
 
 import styles from "../selected-work/selected-work.module.css";
 
+const REHEARSALS_DESCRIPTION =
+  "Rehearsal and backstage photography by\u00a0London theatre photographer Steve Gregson, documenting collaboration, experimentation and the making of theatre.";
+
 export const metadata: Metadata = {
   title: "Rehearsal & Backstage Photography",
+  description: REHEARSALS_DESCRIPTION,
   alternates: {
     canonical: "/rehearsals",
   },
@@ -17,7 +21,7 @@ export const metadata: Metadata = {
     type: "website",
     url: "/rehearsals",
     title: "Rehearsal & Backstage Photography | Steve Gregson",
-    description: "Rehearsal and backstage photography by London theatre photographer Steve Gregson, documenting collaboration, experimentation and the making of theatre.",
+    description: REHEARSALS_DESCRIPTION,
     images: [
       {
         url: "/images/homepage-hero.webp",
@@ -30,11 +34,9 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Rehearsal & Backstage Photography | Steve Gregson",
-    description: "Rehearsal and backstage photography by London theatre photographer Steve Gregson, documenting collaboration, experimentation and the making of theatre.",
+    description: REHEARSALS_DESCRIPTION,
     images: ["/images/homepage-hero.webp"],
   },
-  description:
-    "Rehearsal and backstage photography by London theatre photographer Steve Gregson, documenting collaboration, experimentation and the making of theatre.",
 };
 
 type CategoryId =
