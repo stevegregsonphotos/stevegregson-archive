@@ -44,9 +44,16 @@ export default function BackToTop() {
       className="site-back-to-top"
       aria-label="Back to top"
       onClick={() => {
+        const reducedMotion =
+          window.matchMedia(
+            "(prefers-reduced-motion: reduce)",
+          ).matches;
+
         window.scrollTo({
           top: 0,
-          behavior: "smooth",
+          behavior: reducedMotion
+            ? "auto"
+            : "smooth",
         });
       }}
     >
