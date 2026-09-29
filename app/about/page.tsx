@@ -118,12 +118,18 @@ export default function AboutPage() {
         <section className="credentials">
           <article>
             <span>Professional accreditation</span>
-            <h2>British Institute of Professional Photography</h2>
+            <h2>
+              Qualified &amp; endorsed by the British Institute of
+              Professional Photography
+            </h2>
           </article>
 
           <article>
             <span>International recognition</span>
-            <h2>Federation of European Photographers</h2>
+            <h2>
+              Award-winning theatrical photography recognised by the
+              Federation of European Photographers
+            </h2>
           </article>
 
           <article>

@@ -269,6 +269,63 @@ const checks = [
     ],
   ),
 
+  // Production-page mobile hero uses the existing lightweight
+  // derivative while desktop retains the original hero.
+  () => assertContains(
+    "components/ProductionContent.tsx",
+    [
+      "curated-production-hero-picture",
+      "getProductionCardImageUrl",
+      'fetchPriority="high"',
+    ],
+  ),
+
+  // Individual production galleries use lightweight derivatives
+  // in the page grid while fullscreen viewing keeps originals.
+  () => assertContains(
+    "components/ProductionGallery.tsx",
+    [
+      "getProductionCardImageUrl",
+      "getProductionImageUrl",
+    ],
+  ),
+  () => assertContains(
+    "app/api/admin/new-production-r2/route.ts",
+    [
+      "createProductionCardImageUploadUrl",
+      "cardUploadUrl",
+    ],
+  ),
+  () => assertContains(
+    "app/api/admin/curated-archive-import/publish/route.ts",
+    [
+      "createProductionCardImageUploadUrl",
+      "cardUploadUrl",
+    ],
+  ),
+  () => assertContains(
+    "app/api/admin/edit-production/route.ts",
+    [
+      "createProductionCardImageUploadUrl",
+      "cardUploadUrl",
+    ],
+  ),
+  () => assertContains(
+    "app/admin/edit-production/[slug]/page.tsx",
+    [
+      "createProductionCardBlob",
+      "cardUploadUrl",
+    ],
+  ),
+  () => assertContains(
+    "app/page.tsx",
+    [
+      "homepage-hero-mobile.webp",
+      'fetchPriority="high"',
+      "homepage-credentials",
+    ],
+  ),
+
   // Public production cards use dedicated lightweight WebP derivatives.
   () => assertContains(
     "lib/publishing/production-image-storage.ts",
