@@ -92,7 +92,12 @@ export default function MarketingPrGallery({
                         : "(max-width: 760px) 100vw, 46vw"
                     }
                     className={imageClassName}
-                    priority={index === 0}
+                    priority={index < 2}
+                    fetchPriority={
+                      index < 2
+                        ? "high"
+                        : undefined
+                    }
                   />
                 </picture>
               </button>
