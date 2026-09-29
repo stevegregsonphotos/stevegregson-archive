@@ -122,12 +122,17 @@ export default function ProtectedProduction({
 
   if (checking) {
     return (
-      <p
-        aria-live="polite"
-        className="sr-only"
+      <main
+        className="production-access-page"
+        aria-busy="true"
       >
-        Checking gallery access…
-      </p>
+        <p
+          aria-live="polite"
+          className="sr-only"
+        >
+          Checking gallery access…
+        </p>
+      </main>
     );
   }
 
