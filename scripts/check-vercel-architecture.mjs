@@ -45,6 +45,22 @@ const checks = [
     ],
   ),
   () => assertContains(
+    "components/RehearsalGallery.tsx",
+    [
+      "getSelectedWorkPreviewUrl",
+      "getSelectedWorkDisplayUrl",
+      'media="(min-width: 901px)"',
+    ],
+  ),
+  () => assertContains(
+    "components/MarketingPrGallery.tsx",
+    [
+      "getSelectedWorkPreviewUrl",
+      "getSelectedWorkDisplayUrl",
+      'media="(min-width: 901px)"',
+    ],
+  ),
+  () => assertContains(
     "lib/selected-work-storage.ts",
     [
       "selectedWorkPreviewStorageKey",

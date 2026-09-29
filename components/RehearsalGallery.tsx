@@ -1,6 +1,10 @@
 "use client";
 
-import { getSelectedWorkImageUrl } from "@/lib/selected-work-image-url";
+import {
+  getSelectedWorkDisplayUrl,
+  getSelectedWorkImageUrl,
+  getSelectedWorkPreviewUrl,
+} from "@/lib/selected-work-image-url";
 import Image from "next/image";
 import { useState } from "react";
 
@@ -66,19 +70,31 @@ export default function RehearsalGallery({
                 onClick={() => setViewerIndex(index)}
                 aria-label={`Open rehearsal photograph ${index + 1} fullscreen`}
               >
-                <Image
-                  src={getSelectedWorkImageUrl("rehearsal", image.filename)}
-                  alt={image.alt}
-                  width={image.width}
-                  height={image.height}
-                  sizes={
-                    isFeatured
-                      ? "(max-width: 760px) 100vw, 94vw"
-                      : "(max-width: 760px) 100vw, 46vw"
-                  }
-                  className={imageClassName}
-                  priority={index === 0}
-                />
+                <picture>
+                  <source
+                    media="(min-width: 901px)"
+                    srcSet={getSelectedWorkDisplayUrl(
+                      "rehearsal",
+                      image.filename,
+                    )}
+                  />
+                  <Image
+                    src={getSelectedWorkPreviewUrl(
+                      "rehearsal",
+                      image.filename,
+                    )}
+                    alt={image.alt}
+                    width={image.width}
+                    height={image.height}
+                    sizes={
+                      isFeatured
+                        ? "(max-width: 760px) 100vw, 94vw"
+                        : "(max-width: 760px) 100vw, 46vw"
+                    }
+                    className={imageClassName}
+                    priority={index === 0}
+                  />
+                </picture>
               </button>
             </figure>
           );
