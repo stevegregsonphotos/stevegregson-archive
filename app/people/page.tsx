@@ -1,407 +1,161 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import "../directory.css";
 import {
-  getDirectory,
-  getDirectoryUrlFromData,
-  type DirectoryData,
-} from "../../lib/directory-repository";
+  NameRow,
+} from "../../components/directory/DirectoryParts";
+import PeopleSearch from "../../components/directory/PeopleSearch";
 import {
-  getPeopleProductions,
-} from "../../lib/productions-repository";
+  getDirectoryData,
+  MIN_VENUE_PRODUCTIONS,
+  primaryRoleLabel,
+  ROLE_GROUPS,
+} from "../../lib/people-directory";
+
+export const revalidate = 3600;
+
+const DESCRIPTION =
+  "Directors, designers, choreographers and theatre-makers photographed by London theatre photographer Steve Gregson, with every production they worked on.";
 
 export const metadata: Metadata = {
-  title: "People in the Theatre Archive",
-  alternates: {
-    canonical: "/people",
-  },
+  title: "People in the Archive",
+  description: DESCRIPTION,
+  alternates: { canonical: "/people" },
   openGraph: {
     type: "website",
     url: "/people",
-    title: "People in the Theatre Archive | Steve Gregson",
-    description: "Directors, designers and theatre-makers represented throughout the Steve Gregson photography archive.",
-    images: [
-      {
-        url: "/images/homepage-hero.webp",
-        width: 2048,
-        height: 1365,
-        alt: "Theatre production photography by Steve Gregson",
-      },
-    ],
+    title: "People in the Archive | Steve Gregson",
+    description: DESCRIPTION,
+    images: [{ url: "/images/homepage-hero.webp", width: 2048, height: 1365, alt: "Theatre production photography by Steve Gregson" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "People in the Theatre Archive | Steve Gregson",
-    description: "Directors, designers and theatre-makers represented throughout the Steve Gregson photography archive.",
+    title: "People in the Archive | Steve Gregson",
+    description: DESCRIPTION,
     images: ["/images/homepage-hero.webp"],
   },
-  description:
-    "Directors, designers and theatre-makers represented throughout the Steve Gregson photography archive.",
 };
 
-type Person = {
-  name: string;
-  role: string;
-  url?: string;
-  productions: {
-    slug: string;
-    title: string;
-    year: number;
-  }[];
-};
-
-const excludedRoles = new Set([
-  "Venue",
-  "Commissioned by",
-  "Photography",
-]);
-
-const roleOrder = [
-  "Director",
-  "Associate Director",
-  "Writer",
-  "Musical Director",
-  "Choreographer",
-  "Movement Director",
-  "Lighting Design",
-  "Set Design",
-  "Costume Design",
-  "Set & Costume Design",
-  "Sound Design",
-  "Cast",
-];
-
-function normaliseRole(role: string) {
-  const aliases: Record<string, string> = {
-    Lighting: "Lighting Design",
-    "Lighting Designer": "Lighting Design",
-  };
-
-  return aliases[role] ?? role;
-}
-
-function createPeopleDirectory(
-  directory: DirectoryData,
-  productions: Awaited<
-    ReturnType<typeof getPeopleProductions>
-  >,
-) {
-  const people = new Map<string, Person>();
-
-  productions.forEach((production) => {
-    production.credits.forEach((credit) => {
-      const role = normaliseRole(credit.role);
-
-      if (excludedRoles.has(role)) {
-        return;
-      }
-
-      const key = `${role}::${credit.name}`;
-      const existingPerson = people.get(key);
-
-      if (existingPerson) {
-        const alreadyIncluded = existingPerson.productions.some(
-          (item) => item.slug === production.slug,
-        );
-
-        if (!alreadyIncluded) {
-          existingPerson.productions.push({
-            slug: production.slug,
-            title: production.title,
-            year: production.year,
-          });
-        }
-
-        return;
-      }
-
-      people.set(key, {
-        name: credit.name,
-        role,
-        url:
-          credit.website ??
-          getDirectoryUrlFromData(
-            directory,
-            credit.name,
-          ),
-        productions: [
-          {
-            slug: production.slug,
-            title: production.title,
-            year: production.year,
-          },
-        ],
-      });
-    });
-  });
-
-  return [...people.values()].sort((a, b) =>
-    a.name.localeCompare(b.name),
-  );
-}
+const TOP_PER_GROUP = 6;
 
 export default async function PeoplePage() {
-  const [
-    directory,
-    productions,
-  ] = await Promise.all([
-    getDirectory(),
-    getPeopleProductions(),
-  ]);
+  const { people, venues, productionCount } = await getDirectoryData();
 
-  const people =
-    createPeopleDirectory(
-      directory,
-      productions,
+  const groups = ROLE_GROUPS.map((group) => {
+    const members = people.filter((person) =>
+      person.groups.includes(group.key),
     );
+    const top = [...members]
+      .sort(
+        (a, b) =>
+          b.productions.length - a.productions.length ||
+          a.name.localeCompare(b.name),
+      )
+      .slice(0, TOP_PER_GROUP);
+    return { ...group, count: members.length, top };
+  }).filter((group) => group.count > 0);
 
-  const roles = [...new Set(people.map((person) => person.role))].sort(
-    (a, b) => {
-      const aIndex = roleOrder.indexOf(a);
-      const bIndex = roleOrder.indexOf(b);
+  const searchIndex = people.map((person) => ({
+    n: person.name,
+    s: person.slug,
+    r: primaryRoleLabel(person),
+    c: person.productions.length,
+  }));
 
-      if (aIndex === -1 && bIndex === -1) {
-        return a.localeCompare(b);
-      }
-
-      if (aIndex === -1) return 1;
-      if (bIndex === -1) return -1;
-
-      return aIndex - bIndex;
-    },
-  );
+  const venueLinks = venues
+    .filter((venue) => venue.productions.length >= MIN_VENUE_PRODUCTIONS)
+    .slice(0, 6);
 
   return (
-    <>
-      <main className="people-page">
-        <section className="people-intro">
-          <p className="people-eyebrow">The creative community</p>
+    <main className="dir-page">
+      <div className="dir-wrap">
+        <section className="dir-intro">
+          <div className="dir-intro-copy">
+            <p className="dir-eyebrow">The creative community</p>
+            <h1>People</h1>
+            <p className="dir-lead">
+              The directors, designers, choreographers and musicians behind the
+              productions in this archive. Each has a page gathering every show
+              photographed with them.
+            </p>
+          </div>
 
-          <h1>People</h1>
+          <dl className="dir-stats">
+            <div>
+              <dt>People</dt>
+              <dd>{people.length}</dd>
+            </div>
+            <div>
+              <dt>Productions</dt>
+              <dd>{productionCount}</dd>
+            </div>
+          </dl>
+        </section>
 
-          <p className="people-lead">
-            Directors, designers, choreographers, musicians and theatre-makers
-            represented throughout the photographic archive.
+        <section className="dir-tools" aria-label="Find people">
+          <PeopleSearch people={searchIndex} />
+
+          <ul className="dir-chips">
+            <li>
+              <Link href="/people" aria-current="page">
+                All
+              </Link>
+            </li>
+            {groups.map((group) => (
+              <li key={group.key}>
+                <Link href={`/people/roles/${group.key}`}>
+                  {group.plural} · {group.count}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <div className="dir-columns">
+          {groups.map((group) => (
+            <section className="dir-list" key={group.key} aria-labelledby={`group-${group.key}`}>
+              <div className="dir-list-heading">
+                <h2 className="dir-label" id={`group-${group.key}`}>
+                  {group.plural}
+                </h2>
+                <span className="dir-label">{group.count}</span>
+              </div>
+              <ul>
+                {group.top.map((person) => (
+                  <NameRow
+                    key={person.slug}
+                    href={`/people/${person.slug}`}
+                    name={person.name}
+                    meta={String(person.productions.length)}
+                  />
+                ))}
+              </ul>
+              {group.count > group.top.length ? (
+                <Link className="dir-more" href={`/people/roles/${group.key}`}>
+                  All {group.count} {group.plural.toLowerCase()} →
+                </Link>
+              ) : null}
+            </section>
+          ))}
+        </div>
+
+        {venueLinks.length > 0 ? (
+          <p className="dir-section dir-muted">
+            Venues:{" "}
+            {venueLinks.map((venue, index) => (
+              <span key={venue.slug}>
+                {index > 0 ? " · " : ""}
+                <Link href={`/venues/${venue.slug}`}>{venue.name}</Link>
+              </span>
+            ))}
+            {" · "}
+            <Link className="dir-more" href="/venues">
+              All venues →
+            </Link>
           </p>
-        </section>
-
-        <section className="people-directory">
-          {roles.map((role) => {
-            const rolePeople = people.filter(
-              (person) => person.role === role,
-            );
-
-            return (
-              <section className="people-group" key={role}>
-                <header className="people-group-heading">
-                  <p>{role}</p>
-                  <span>{String(rolePeople.length).padStart(2, "0")}</span>
-                </header>
-
-                <div className="people-list">
-                  {rolePeople.map((person) => (
-                    <article
-                      className="person-entry"
-                      key={`${person.role}-${person.name}`}
-                    >
-                      <div className="person-name">
-                        {person.url ? (
-                          <a
-                            href={person.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            {person.name}
-                            <span aria-hidden="true">↗</span>
-                          </a>
-                        ) : (
-                          <h2>{person.name}</h2>
-                        )}
-                      </div>
-
-                      <div className="person-productions">
-                        {person.productions
-                          .sort((a, b) => b.year - a.year)
-                          .map((production) => (
-                            <Link
-                              href={`/productions/${production.slug}`}
-                              key={production.slug}
-                            >
-                              <span>{production.title}</span>
-                              <small>{production.year}</small>
-                            </Link>
-                          ))}
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              </section>
-            );
-          })}
-        </section>
-      </main>
-
-      <style>{`
-        .people-page {
-          min-height: 100vh;
-          padding: 10rem 6vw 9rem;
-          background: #11100f;
-          color: #f2eee6;
-        }
-
-        .people-intro {
-          max-width: 76rem;
-          margin-bottom: 9rem;
-        }
-
-        .people-eyebrow {
-          margin: 0;
-          color: #c7a369;
-          font-size: 0.55rem;
-          font-weight: 700;
-          letter-spacing: 0.21em;
-          text-transform: uppercase;
-        }
-
-        .people-intro h1 {
-          margin: 1.5rem 0 0;
-          font-family:
-            "Iowan Old Style",
-            "Palatino Linotype",
-            Georgia,
-            serif;
-          font-size: clamp(5rem, 11vw, 11rem);
-          font-weight: 400;
-          letter-spacing: -0.065em;
-          line-height: 0.85;
-        }
-
-        .people-lead {
-          max-width: 43rem;
-          margin: 3rem 0 0;
-          color: rgba(242, 238, 230, 0.66);
-          font-size: 1.05rem;
-          line-height: 1.75;
-        }
-
-        .people-directory {
-          max-width: 100rem;
-          margin: 0 auto;
-        }
-
-        .people-group {
-          margin-bottom: 9rem;
-        }
-
-        .people-group-heading {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          border-bottom: 1px solid rgba(242, 238, 230, 0.24);
-          padding-bottom: 1rem;
-        }
-
-        .people-group-heading p,
-        .people-group-heading span {
-          margin: 0;
-          color: #c7a369;
-          font-size: 0.53rem;
-          font-weight: 700;
-          letter-spacing: 0.19em;
-          text-transform: uppercase;
-        }
-
-        .people-list {
-          display: grid;
-        }
-
-        .person-entry {
-          display: grid;
-          grid-template-columns: minmax(15rem, 0.85fr) minmax(0, 1.15fr);
-          gap: 5vw;
-          padding: 2rem 0;
-          border-bottom: 1px solid rgba(242, 238, 230, 0.13);
-        }
-
-        .person-name h2,
-        .person-name a {
-          display: flex;
-          width: fit-content;
-          margin: 0;
-          gap: 0.8rem;
-          align-items: flex-start;
-          font-family:
-            "Iowan Old Style",
-            "Palatino Linotype",
-            Georgia,
-            serif;
-          font-size: clamp(1.8rem, 3.2vw, 3.8rem);
-          font-weight: 400;
-          letter-spacing: -0.045em;
-          line-height: 1;
-        }
-
-        .person-name a span {
-          padding-top: 0.2rem;
-          font-family: sans-serif;
-          font-size: 0.8rem;
-          transition: transform 180ms ease;
-        }
-
-        .person-name a:hover span {
-          transform: translate(0.18rem, -0.18rem);
-        }
-
-        .person-productions {
-          display: grid;
-          align-content: start;
-        }
-
-        .person-productions a {
-          display: flex;
-          gap: 2rem;
-          justify-content: space-between;
-          padding: 0.65rem 0;
-          color: rgba(242, 238, 230, 0.66);
-          font-size: 0.72rem;
-          letter-spacing: 0.08em;
-          text-transform: uppercase;
-          transition: color 180ms ease;
-        }
-
-        .person-productions a:hover {
-          color: #f2eee6;
-        }
-
-        .person-productions small {
-          color: rgba(242, 238, 230, 0.5);
-          font: inherit;
-        }
-
-        @media (max-width: 800px) {
-          .people-page {
-            padding: 9rem 1.4rem 6rem;
-          }
-
-          .people-intro {
-            margin-bottom: 6rem;
-          }
-
-          .people-intro h1 {
-            font-size: clamp(4.5rem, 24vw, 8rem);
-          }
-
-          .people-group {
-            margin-bottom: 6rem;
-          }
-
-          .person-entry {
-            grid-template-columns: 1fr;
-            gap: 1.5rem;
-            padding: 2rem 0;
-          }
-        }
-      `}</style>
-    </>
+        ) : null}
+      </div>
+    </main>
   );
 }

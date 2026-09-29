@@ -1,6 +1,11 @@
 import type { MetadataRoute } from "next";
 
 import {
+  getDirectoryData,
+  MIN_VENUE_PRODUCTIONS,
+  ROLE_GROUPS,
+} from "../lib/people-directory";
+import {
   getProductionIndex,
 } from "../lib/productions-repository";
 
@@ -74,8 +79,38 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8,
     }));
 
+  const { people, venues } = await getDirectoryData();
+
+  const directoryRoutes: MetadataRoute.Sitemap = [
+    {
+      url: `${siteUrl}/venues`,
+      changeFrequency: "monthly" as const,
+      priority: 0.6,
+    },
+    ...ROLE_GROUPS
+      .filter((group) => people.some((person) => person.groups.includes(group.key)))
+      .map((group) => ({
+        url: `${siteUrl}/people/roles/${group.key}`,
+        changeFrequency: "monthly" as const,
+        priority: 0.5,
+      })),
+    ...venues
+      .filter((venue) => venue.productions.length >= MIN_VENUE_PRODUCTIONS)
+      .map((venue) => ({
+        url: `${siteUrl}/venues/${venue.slug}`,
+        changeFrequency: "monthly" as const,
+        priority: 0.6,
+      })),
+    ...people.map((person) => ({
+      url: `${siteUrl}/people/${person.slug}`,
+      changeFrequency: "monthly" as const,
+      priority: person.productions.length > 1 ? 0.5 : 0.3,
+    })),
+  ];
+
   return [
     ...staticRoutes,
     ...productionRoutes,
+    ...directoryRoutes,
   ];
 }

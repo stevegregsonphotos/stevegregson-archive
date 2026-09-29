@@ -13,6 +13,7 @@ import {
 import type {
   ProductionNavigationEntry,
 } from "../lib/productions-repository";
+import { splitCreditNames } from "../lib/credit-names";
 
 import { ProductionGallery } from "./ProductionGallery";
 
@@ -20,12 +21,18 @@ type ProductionContentProps = {
   production: Production;
   directory: DirectoryData;
   nextProduction?: ProductionNavigationEntry;
+  /** Credited name → /people/<slug>, for names that have a person page. */
+  personSlugs?: Record<string, string>;
+  /** Set when the venue has its own /venues/<slug> page. */
+  venueSlug?: string;
 };
 
 export default function ProductionContent({
   production,
   directory,
   nextProduction,
+  personSlugs = {},
+  venueSlug,
 }: ProductionContentProps) {
   const productionUrl =
     `https://www.stevegregson.com/productions/${production.slug}`;
@@ -146,7 +153,13 @@ export default function ProductionContent({
 
           <div className="curated-production-hero-title">
             <p>
-              {production.venue}
+              {venueSlug ? (
+                <Link href={`/venues/${venueSlug}`}>
+                  {production.venue}
+                </Link>
+              ) : (
+                production.venue
+              )}
               <span aria-hidden="true">
                 {" · "}
               </span>
@@ -190,7 +203,38 @@ export default function ProductionContent({
                     <dt>{credit.role}</dt>
 
                     <dd>
-                      {creditUrl ? (
+                      {(() => {
+                        const names = splitCreditNames(credit.name);
+                        const linked = names.length > 0 && names.every((name) => personSlugs[name]);
+
+                        if (!linked) return null;
+
+                        return (
+                          <>
+                            {names.map((name, index) => (
+                              <span key={name}>
+                                {index > 0 ? ", " : ""}
+                                <Link href={`/people/${personSlugs[name]}`}>
+                                  {name}
+                                </Link>
+                              </span>
+                            ))}
+                            {creditUrl && names.length === 1 ? (
+                              <>
+                                {" "}
+                                <a
+                                  href={creditUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  aria-label={`${names[0]}’s website`}
+                                >
+                                  <span aria-hidden="true">↗</span>
+                                </a>
+                              </>
+                            ) : null}
+                          </>
+                        );
+                      })() ?? (creditUrl ? (
                         <a
                           href={creditUrl}
                           target="_blank"
@@ -203,7 +247,7 @@ export default function ProductionContent({
                         </a>
                       ) : (
                         credit.name
-                      )}
+                      ))}
                     </dd>
                   </div>
                 );

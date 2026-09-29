@@ -17,6 +17,12 @@ import {
   getProductionSlugRedirect,
   getPublicProductionNavigation,
 } from "../../../lib/productions-repository";
+import {
+  getDirectoryData,
+  MIN_VENUE_PRODUCTIONS,
+  splitCreditNames,
+} from "../../../lib/people-directory";
+import { canonicalVenue } from "../../../lib/venues";
 
 export const revalidate = 3600;
 
@@ -154,10 +160,27 @@ export default async function ProductionPage({
   const [
     navigation,
     directory,
+    peopleDirectory,
   ] = await Promise.all([
     getPublicProductionNavigation(),
     getDirectory(),
+    getDirectoryData(),
   ]);
+
+  const personSlugs: Record<string, string> = {};
+  production.credits.forEach((credit) => {
+    splitCreditNames(credit.name).forEach((name) => {
+      const personSlug = peopleDirectory.slugForName(name);
+      if (personSlug) personSlugs[name] = personSlug;
+    });
+  });
+
+  const venue = canonicalVenue(production.venue);
+  const venueSlug = venue && peopleDirectory.venues.some(
+    (item) => item.slug === venue.slug && item.productions.length >= MIN_VENUE_PRODUCTIONS,
+  )
+    ? venue.slug
+    : undefined;
 
   const nextProduction =
     getNextProductionFromData(
@@ -170,6 +193,8 @@ export default async function ProductionPage({
       production={production}
       directory={directory}
       nextProduction={nextProduction}
+      personSlugs={personSlugs}
+      venueSlug={venueSlug}
     />
   );
 }
