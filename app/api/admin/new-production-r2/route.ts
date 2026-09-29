@@ -4,6 +4,7 @@ import {
 } from "@/lib/backstage-auth";
 
 import {
+  createProductionCardImageUploadUrl,
   createProductionImageUploadUrl,
 } from "@/lib/publishing/production-image-storage";
 
@@ -21,6 +22,9 @@ import {
   productionExists,
 } from "@/lib/productions-repository";
 
+import {
+  revalidateProductionContent,
+} from "@/lib/revalidate-public-content";
 import {
   NextResponse,
 } from "next/server";
@@ -354,6 +358,17 @@ export async function POST(
             slug,
             filename,
           ),
+        ...(filename.startsWith(
+          "hero-",
+        )
+          ? {
+              cardUploadUrl:
+                await createProductionCardImageUploadUrl(
+                  slug,
+                  filename,
+                ),
+            }
+          : {}),
       });
     }
 
@@ -472,6 +487,10 @@ export async function POST(
           body.heroAsset,
           galleryAssets,
         );
+
+      revalidateProductionContent(
+        payload.slug,
+      );
 
       return NextResponse.json({
         ok: true,

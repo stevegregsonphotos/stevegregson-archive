@@ -1248,9 +1248,96 @@ setCategorySaveState(
                   );
                 }
 
-                const dimensions =
-                  await readImageDimensions(
+                const bitmap =
+                  await createImageBitmap(
                     file,
+                  );
+
+                const maximumWidth =
+                  2400;
+
+                const scale =
+                  Math.min(
+                    1,
+                    maximumWidth /
+                      bitmap.width,
+                  );
+
+                const outputWidth =
+                  Math.max(
+                    1,
+                    Math.round(
+                      bitmap.width *
+                        scale,
+                    ),
+                  );
+
+                const outputHeight =
+                  Math.max(
+                    1,
+                    Math.round(
+                      bitmap.height *
+                        scale,
+                    ),
+                  );
+
+                const canvas =
+                  document.createElement(
+                    "canvas",
+                  );
+
+                canvas.width =
+                  outputWidth;
+                canvas.height =
+                  outputHeight;
+
+                const context =
+                  canvas.getContext(
+                    "2d",
+                  );
+
+                if (!context) {
+                  bitmap.close();
+
+                  throw new Error(
+                    `Could not prepare ${file.name} for WebP upload.`,
+                  );
+                }
+
+                context.drawImage(
+                  bitmap,
+                  0,
+                  0,
+                  outputWidth,
+                  outputHeight,
+                );
+
+                bitmap.close();
+
+                const webpBlob =
+                  await new Promise<Blob>(
+                    (
+                      resolve,
+                      reject,
+                    ) => {
+                      canvas.toBlob(
+                        (blob) => {
+                          if (blob) {
+                            resolve(
+                              blob,
+                            );
+                          } else {
+                            reject(
+                              new Error(
+                                `Could not convert ${file.name} to WebP.`,
+                              ),
+                            );
+                          }
+                        },
+                        "image/webp",
+                        0.82,
+                      );
+                    },
                   );
 
                 const signingResponse =
@@ -1300,9 +1387,12 @@ setCategorySaveState(
                       method: "PUT",
                       headers: {
                         "Content-Type":
-                          "image/jpeg",
+                          "image/webp",
+                        "Cache-Control":
+                          "public, max-age=31536000, immutable",
                       },
-                      body: file,
+                      body:
+                        webpBlob,
                     },
                   );
 
@@ -1318,9 +1408,9 @@ setCategorySaveState(
                   storageKey:
                     signed.storageKey,
                   width:
-                    dimensions.width,
+                    outputWidth,
                   height:
-                    dimensions.height,
+                    outputHeight,
                   uploadedAt:
                     new Date().toISOString(),
                 };

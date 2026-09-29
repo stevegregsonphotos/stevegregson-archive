@@ -1586,6 +1586,16 @@ a {
  * before the client ArchiveExplorer styles hydrate, otherwise the
  * absolutely-positioned images can briefly escape their cards on refresh.
  */
+.archive-grid {
+  display: grid;
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr));
+  gap:
+    clamp(5.5rem, 7vw, 7.5rem)
+    clamp(1.8rem, 3vw, 3.25rem);
+  width: 100%;
+}
+
 .archive-card,
 .archive-card-main {
   min-width: 0;
@@ -1611,6 +1621,13 @@ a {
   width: 100% !important;
   height: 100% !important;
   object-fit: cover !important;
+}
+
+@media (max-width: 1100px) {
+  .archive-grid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 700px) {

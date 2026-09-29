@@ -92,7 +92,7 @@ export async function selectedWorkObjectExists(
 
 export async function createSelectedWorkUploadUrl(
   storageKey: string,
-  contentType = "image/jpeg",
+  contentType = "image/webp",
 ) {
   return getSignedUrl(
     getClient(),
@@ -109,7 +109,7 @@ export async function createSelectedWorkUploadUrl(
 export async function putSelectedWorkObject(
   storageKey: string,
   bytes: Buffer,
-  contentType = "image/jpeg",
+  contentType = "image/webp",
 ) {
   const client =
     getClient();
@@ -120,6 +120,8 @@ export async function putSelectedWorkObject(
       Key: storageKey,
       Body: bytes,
       ContentType: contentType,
+      CacheControl:
+        "public, max-age=31536000, immutable",
     }),
   );
 }
@@ -173,7 +175,9 @@ export async function copySelectedWorkObject(
       Key: destinationStorageKey,
       CopySource:
         `${bucket}/${encodedSource}`,
-      ContentType: "image/jpeg",
+      ContentType: "image/webp",
+      CacheControl:
+        "public, max-age=31536000, immutable",
       MetadataDirective: "REPLACE",
     }),
   );
@@ -208,7 +212,7 @@ export async function uniqueSelectedWorkFilename(
   const extension =
     extensionMatch
       ? extensionMatch[1].toLowerCase()
-      : ".jpg";
+      : ".webp";
 
   const rawBase =
     extensionMatch
@@ -237,9 +241,7 @@ export async function uniqueSelectedWorkFilename(
     "selected-work-image";
 
   const normalisedExtension =
-    extension === ".jpeg"
-      ? ".jpg"
-      : extension;
+    ".webp";
 
   let candidate =
     `${base}${normalisedExtension}`;

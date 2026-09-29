@@ -47,3 +47,33 @@ export function getProductionImageUrl(
     ),
   ].join("/");
 }
+
+
+export function getProductionCardImageUrl(
+  productionSlug: string,
+  filename: string,
+) {
+  const baseUrl =
+    process.env
+      .NEXT_PUBLIC_PRODUCTION_IMAGE_BASE_URL
+      ?.trim()
+      .replace(/\/+$/, "") ||
+    DEFAULT_PRODUCTION_IMAGE_BASE_URL;
+
+  return [
+    baseUrl,
+    encodeURIComponent(
+      safeSegment(
+        productionSlug,
+        "production slug",
+      ),
+    ),
+    "__cards",
+    encodeURIComponent(
+      safeSegment(
+        filename,
+        "filename",
+      ),
+    ),
+  ].join("/");
+}

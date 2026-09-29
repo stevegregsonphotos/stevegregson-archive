@@ -1,4 +1,8 @@
 import {
+  revalidateSelectedWorkContent,
+} from "@/lib/revalidate-public-content";
+
+import {
   createUnauthorizedResponse,
   isBackstageRequestAuthenticated,
 } from "@/lib/backstage-auth";
@@ -579,6 +583,8 @@ export async function POST(
         });
       }
 
+      revalidateSelectedWorkContent();
+
       return Response.json({
         ok: true,
         data:
@@ -606,10 +612,16 @@ export async function POST(
         );
       }
 
+      const webpOriginalFilename =
+        originalFilename.replace(
+          /\.(?:jpe?g)$/i,
+          ".webp",
+        );
+
       const filename =
         await uniqueSelectedWorkFilename(
           category,
-          originalFilename,
+          webpOriginalFilename,
         );
 
       const storageKey =
@@ -621,7 +633,7 @@ export async function POST(
       const uploadUrl =
         await createSelectedWorkUploadUrl(
           storageKey,
-          "image/jpeg",
+          "image/webp",
         );
 
       return Response.json({
@@ -745,6 +757,8 @@ export async function POST(
       }
 
       await insertSelectedWorkItems(uploads);
+
+      revalidateSelectedWorkContent();
 
       return Response.json({
         ok: true,
@@ -1093,6 +1107,8 @@ const applyFilenameChanges =
           updates,
         );
 
+      revalidateSelectedWorkContent();
+
       return Response.json({
         ok: true,
         data: savedData,
@@ -1320,6 +1336,8 @@ const applyFilenameChanges =
         }
       }
 
+      revalidateSelectedWorkContent();
+
       return Response.json({
         ok: true,
         data: savedData,
@@ -1435,6 +1453,8 @@ export async function DELETE(
 
     const data =
       await getSelectedWork();
+
+    revalidateSelectedWorkContent();
 
     return Response.json({
       ok: true,

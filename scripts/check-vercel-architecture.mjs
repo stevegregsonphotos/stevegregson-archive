@@ -26,6 +26,45 @@ function assertNotContains(relativePath, patterns) {
 }
 
 const checks = [
+  // Public photography policy: browser-facing photographic uploads
+  // must be WebP before they reach R2.
+  () => assertContains(
+    "lib/selected-work-storage.ts",
+    [
+      'contentType = "image/webp"',
+      'ContentType: "image/webp"',
+    ],
+  ),
+  () => assertNotContains(
+    "lib/selected-work-storage.ts",
+    [
+      'contentType = "image/jpeg"',
+      'ContentType: "image/jpeg"',
+    ],
+  ),
+  () => assertContains(
+    "app/admin/selected-work/SelectedWorkEditor.tsx",
+    [
+      '"image/webp"',
+      "webpBlob",
+      "maximumWidth",
+    ],
+  ),
+  () => assertNotContains(
+    "app/admin/selected-work/SelectedWorkEditor.tsx",
+    [
+      '"Content-Type":\n                          "image/jpeg"',
+      "body: file,",
+    ],
+  ),
+  () => assertContains(
+    "lib/publishing/production-image-storage.ts",
+    [
+      'ContentType: "image/webp"',
+      "max-age=31536000",
+    ],
+  ),
+
   () => assertContains("next.config.ts", ["unoptimized: true"]),
   () => assertContains(".vercelignore", ["public/images/productions/", "public/images/selected-work/"]),
 
@@ -167,6 +206,36 @@ const checks = [
       "reset: \"images\"",
       "selectedIndexes:",
       "&folder=${encodeURIComponent(",
+    ],
+  ),
+
+  // Public production cards use dedicated lightweight WebP derivatives.
+  () => assertContains(
+    "lib/publishing/production-image-storage.ts",
+    [
+      "createProductionCardImageUploadUrl",
+      "__cards",
+      'ContentType: "image/webp"',
+    ],
+  ),
+  () => assertContains(
+    "app/admin/new-production/ProductionUpload.tsx",
+    [
+      "createProductionCardBlob",
+      "cardUploadUrl",
+    ],
+  ),
+  () => assertContains(
+    "app/admin/curated-archive-import/CuratedArchiveImportClient.tsx",
+    [
+      "createProductionCardBlob",
+      "cardUploadUrl",
+    ],
+  ),
+  () => assertContains(
+    "app/archive/ArchiveExplorer.tsx",
+    [
+      "getProductionCardImageUrl",
     ],
   ),
 

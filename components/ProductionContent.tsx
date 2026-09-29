@@ -6,7 +6,10 @@ import {
   getDirectoryUrlFromData,
   type DirectoryData,
 } from "../lib/directory-data";
-import { getProductionImageUrl } from "../lib/production-image-url";
+import {
+  getProductionCardImageUrl,
+  getProductionImageUrl,
+} from "../lib/production-image-url";
 import type {
   ProductionNavigationEntry,
 } from "../lib/productions-repository";
@@ -230,7 +233,7 @@ export default function ProductionContent({
                   rgba(8, 7, 6, 0.84),
                   rgba(8, 7, 6, 0.12)
                 ),
-                url("${getProductionImageUrl(
+                url("${getProductionCardImageUrl(
                   nextProduction.slug,
                   nextProduction.hero,
                 )}")

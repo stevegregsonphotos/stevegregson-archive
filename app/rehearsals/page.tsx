@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     description: "Rehearsal and backstage photography by London theatre photographer Steve Gregson, documenting collaboration, experimentation and the making of theatre.",
     images: [
       {
-        url: "/images/homepage-hero.jpg",
+        url: "/images/homepage-hero.webp",
         width: 2048,
         height: 1365,
         alt: "Theatre production photography by Steve Gregson",
@@ -31,7 +31,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Rehearsal & Backstage Photography | Steve Gregson",
     description: "Rehearsal and backstage photography by London theatre photographer Steve Gregson, documenting collaboration, experimentation and the making of theatre.",
-    images: ["/images/homepage-hero.jpg"],
+    images: ["/images/homepage-hero.webp"],
   },
   description:
     "Rehearsal and backstage photography by London theatre photographer Steve Gregson, documenting collaboration, experimentation and the making of theatre.",

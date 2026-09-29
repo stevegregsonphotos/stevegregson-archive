@@ -22,7 +22,7 @@ export const metadata: Metadata = {
     description: "Directors, designers and theatre-makers represented throughout the Steve Gregson photography archive.",
     images: [
       {
-        url: "/images/homepage-hero.jpg",
+        url: "/images/homepage-hero.webp",
         width: 2048,
         height: 1365,
         alt: "Theatre production photography by Steve Gregson",
@@ -33,7 +33,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "People in the Theatre Archive | Steve Gregson",
     description: "Directors, designers and theatre-makers represented throughout the Steve Gregson photography archive.",
-    images: ["/images/homepage-hero.jpg"],
+    images: ["/images/homepage-hero.webp"],
   },
   description:
     "Directors, designers and theatre-makers represented throughout the Steve Gregson photography archive.",

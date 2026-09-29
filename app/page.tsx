@@ -28,7 +28,7 @@ export const metadata: Metadata = {
     url: "/",
     images: [
       {
-        url: "/images/homepage-hero.jpg",
+        url: "/images/homepage-hero.webp",
         width: 2048,
         height: 1365,
         alt: "Theatre production photography by Steve Gregson",
@@ -40,7 +40,7 @@ export const metadata: Metadata = {
     title: "Steve Gregson | London Theatre Photographer",
     description:
       "London theatre photographer Steve Gregson creates production, rehearsal, backstage, marketing and PR photography for theatre and the performing arts.",
-    images: ["/images/homepage-hero.jpg"],
+    images: ["/images/homepage-hero.webp"],
   },
 };
 
@@ -120,7 +120,7 @@ export default async function Home() {
     <main className="homepage">
       <section className="homepage-hero">
         <Image
-          src="/images/homepage-hero.jpg"
+          src="/images/homepage-hero.webp"
           alt="A dramatic theatre production photographed by Steve Gregson"
           fill
           priority
@@ -244,12 +244,12 @@ export default async function Home() {
                     "godspell-05.jpg",
                   )
                 : item.id === "rehearsal"
-                  ? "/images/rehearsals/voice-of-the-turtle.jpg"
+                  ? "/images/rehearsals/voice-of-the-turtle.webp"
                   : item.id === "campaign"
                     ? "/images/Marketing-PR/alice-in-wonderland.webp"
                     : image
                       ? getSelectedWorkImageUrl(item.id, image.filename)
-                      : "/images/homepage-hero.jpg";
+                      : "/images/homepage-hero.webp";
 
             const imageAlt =
               item.id === "production"

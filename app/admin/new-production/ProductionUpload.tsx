@@ -685,6 +685,129 @@ async function prepareImage(
   }
 }
 
+
+async function createProductionCardBlob(
+  source: Blob,
+) {
+  const objectUrl =
+    URL.createObjectURL(
+      source,
+    );
+
+  try {
+    const image =
+      new Image();
+
+    await new Promise<void>(
+      (
+        resolve,
+        reject,
+      ) => {
+        image.onload =
+          () =>
+            resolve();
+
+        image.onerror =
+          () =>
+            reject(
+              new Error(
+                "The production card image could not be decoded.",
+              ),
+            );
+
+        image.src =
+          objectUrl;
+      },
+    );
+
+    const maximumWidth =
+      1000;
+
+    const scale =
+      Math.min(
+        1,
+        maximumWidth /
+          image.naturalWidth,
+      );
+
+    const width =
+      Math.max(
+        1,
+        Math.round(
+          image.naturalWidth *
+            scale,
+        ),
+      );
+
+    const height =
+      Math.max(
+        1,
+        Math.round(
+          image.naturalHeight *
+            scale,
+        ),
+      );
+
+    const canvas =
+      document.createElement(
+        "canvas",
+      );
+
+    canvas.width =
+      width;
+    canvas.height =
+      height;
+
+    const context =
+      canvas.getContext(
+        "2d",
+      );
+
+    if (!context) {
+      throw new Error(
+        "The production card canvas could not be created.",
+      );
+    }
+
+    context.drawImage(
+      image,
+      0,
+      0,
+      width,
+      height,
+    );
+
+    return await new Promise<Blob>(
+      (
+        resolve,
+        reject,
+      ) => {
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              resolve(
+                blob,
+              );
+            } else {
+              reject(
+                new Error(
+                  "The production card WebP could not be created.",
+                ),
+              );
+            }
+          },
+          "image/webp",
+          0.75,
+        );
+      },
+    );
+  } finally {
+    URL.revokeObjectURL(
+      objectUrl,
+    );
+  }
+}
+
 export default function ProductionUpload() {
   const [
     images,
@@ -1295,6 +1418,7 @@ export default function ProductionUpload() {
           (await signedResponse.json()) as {
             ok?: boolean;
             uploadUrl?: string;
+            cardUploadUrl?: string;
             message?: string;
           };
 
@@ -1338,6 +1462,40 @@ export default function ProductionUpload() {
           throw new Error(
             `R2 upload failed for ${job.image.file.name} (HTTP ${uploadResponse.status}).`,
           );
+        }
+
+        if (
+          signed.cardUploadUrl
+        ) {
+          const cardBlob =
+            await createProductionCardBlob(
+              prepared.blob,
+            );
+
+          const cardResponse =
+            await fetch(
+              signed.cardUploadUrl,
+              {
+                method:
+                  "PUT",
+                headers: {
+                  "Content-Type":
+                    "image/webp",
+                  "Cache-Control":
+                    "public, max-age=31536000, immutable",
+                },
+                body:
+                  cardBlob,
+              },
+            );
+
+          if (
+            !cardResponse.ok
+          ) {
+            throw new Error(
+              `R2 card upload failed for ${job.image.file.name} (HTTP ${cardResponse.status}).`,
+            );
+          }
         }
 
         assets.push(

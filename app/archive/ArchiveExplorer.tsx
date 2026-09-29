@@ -2,11 +2,12 @@
 
 import Image from "next/image";
 
-import { getProductionImageUrl } from "../../lib/production-image-url";
+import { getProductionCardImageUrl } from "../../lib/production-image-url";
 import Link from "next/link";
 import {
   createContext,
   useContext,
+  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -122,6 +123,19 @@ export default function ArchiveExplorer({
 
   const trimmedQuery = query.trim();
   const hasQuery = trimmedQuery.length > 0;
+
+  const [visibleCount, setVisibleCount] =
+    useState(18);
+
+  useEffect(() => {
+    setVisibleCount(18);
+  }, [query]);
+
+  const visibleProductions =
+    filteredProductions.slice(
+      0,
+      visibleCount,
+    );
 
   if (mode === "search") {
     return (
@@ -285,7 +299,7 @@ export default function ArchiveExplorer({
           className="archive-grid"
           aria-label="Production archive"
         >
-          {filteredProductions.map(
+          {visibleProductions.map(
             (production, index) => (
               <article
                 className="archive-card"
@@ -300,7 +314,7 @@ export default function ArchiveExplorer({
                       <>
                         {production.showHeroWhenLocked ? (
                           <Image
-                            src={getProductionImageUrl(
+                            src={getProductionCardImageUrl(
                               production.slug,
                               production.hero,
                             )}
@@ -340,7 +354,7 @@ export default function ArchiveExplorer({
                       </>
                     ) : (
                       <Image
-                        src={getProductionImageUrl(
+                        src={getProductionCardImageUrl(
                           production.slug,
                           production.hero,
                         )}
@@ -377,6 +391,23 @@ export default function ArchiveExplorer({
               </article>
             ),
           )}
+
+          {visibleCount <
+          filteredProductions.length ? (
+            <div className="archive-load-more">
+              <button
+                type="button"
+                onClick={() =>
+                  setVisibleCount(
+                    (current) =>
+                      current + 18,
+                  )
+                }
+              >
+                Load more productions
+              </button>
+            </div>
+          ) : null}
         </section>
       ) : (
         <section
@@ -425,6 +456,33 @@ export default function ArchiveExplorer({
             repeat(3, minmax(0, 1fr));
           gap: clamp(5.5rem, 7vw, 7.5rem)
             clamp(1.8rem, 3vw, 3.25rem);
+        }
+
+        .archive-load-more {
+          grid-column: 1 / -1;
+          display: flex;
+          justify-content: center;
+          padding-top: 1rem;
+        }
+
+        .archive-load-more button {
+          border: 0;
+          border-bottom: 1px solid
+            rgba(199, 163, 105, 0.7);
+          padding: 0 0 0.5rem;
+          background: transparent;
+          color: #c7a369;
+          cursor: pointer;
+          font: inherit;
+          font-size: 0.54rem;
+          font-weight: 700;
+          letter-spacing: 0.16em;
+          text-transform: uppercase;
+        }
+
+        .archive-load-more button:focus-visible {
+          outline: 1px solid #c7a369;
+          outline-offset: 0.45rem;
         }
 
         .archive-card {

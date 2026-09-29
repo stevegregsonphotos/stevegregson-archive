@@ -14,7 +14,7 @@ export const metadata: Metadata = {
     description: "Steve Gregson is a London theatre photographer specialising in production, rehearsal, backstage, marketing and PR photography for the performing arts.",
     images: [
       {
-        url: "/images/homepage-hero.jpg",
+        url: "/images/homepage-hero.webp",
         width: 2048,
         height: 1365,
         alt: "Theatre production photography by Steve Gregson",
@@ -25,7 +25,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "About Steve Gregson | Theatre Photographer",
     description: "Steve Gregson is a London theatre photographer specialising in production, rehearsal, backstage, marketing and PR photography for the performing arts.",
-    images: ["/images/homepage-hero.jpg"],
+    images: ["/images/homepage-hero.webp"],
   },
   description:
     "Steve Gregson is a London theatre photographer specialising in production, rehearsal, backstage, marketing and PR photography for the performing arts.",
@@ -54,7 +54,7 @@ export default function AboutPage() {
 
           <div className="portrait">
             <Image
-              src="/images/portrait/steve-gregson.jpg"
+              src="/images/portrait/steve-gregson.webp"
               alt="Steve Gregson, theatre and performing arts photographer"
               fill
               priority

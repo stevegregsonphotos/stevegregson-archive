@@ -79,6 +79,36 @@ export function getProductionImageObjectKey(
   ].join("/");
 }
 
+export async function createProductionCardImageUploadUrl(
+  productionSlug: string,
+  filename: string,
+) {
+  return getSignedUrl(
+    getClient(),
+    new PutObjectCommand({
+      Bucket:
+        getBucket(),
+      Key:
+        `${safeSegment(
+          productionSlug,
+          "production slug",
+        )}/__cards/${safeSegment(
+          filename,
+          "filename",
+        )}`,
+      ContentType:
+        "image/webp",
+      CacheControl:
+        "public, max-age=31536000, immutable",
+    }),
+    {
+      expiresIn:
+        15 * 60,
+    },
+  );
+}
+
+
 export async function createProductionImageUploadUrl(
   productionSlug: string,
   filename: string,
@@ -113,6 +143,8 @@ export async function putProductionImage(
       ),
       Body: body,
       ContentType: "image/webp",
+      CacheControl:
+        "public, max-age=31536000, immutable",
     }),
   );
 }

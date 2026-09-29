@@ -10,6 +10,7 @@ import {
   materializeCuratedImportFolder,
 } from "@/lib/curated-archive/staging";
 import {
+  createProductionCardImageUploadUrl,
   createProductionImageUploadUrl,
 } from "@/lib/publishing/production-image-storage";
 import {
@@ -22,6 +23,9 @@ import {
   productionExists,
 } from "@/lib/productions-repository";
 
+import {
+  revalidateProductionContent,
+} from "@/lib/revalidate-public-content";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
@@ -318,6 +322,17 @@ export async function POST(
             slug,
             outputFilename,
           ),
+        ...(outputFilename.startsWith(
+          "hero-",
+        )
+          ? {
+              cardUploadUrl:
+                await createProductionCardImageUploadUrl(
+                  slug,
+                  outputFilename,
+                ),
+            }
+          : {}),
       });
     }
 
@@ -435,6 +450,10 @@ export async function POST(
           heroAsset,
           galleryAssets,
         );
+
+      revalidateProductionContent(
+        payload.slug,
+      );
 
       return NextResponse.json({
         ok: true,
