@@ -86,6 +86,7 @@ type PresignResult = {
   message?: string;
   filename?: string;
   uploadUrl?: string;
+  cardUploadUrl?: string;
 };
 
 export default function EditProductionPage() {
@@ -303,7 +304,89 @@ const [accessPassword, setAccessPassword] =
         result.filename,
       uploadUrl:
         result.uploadUrl,
+      cardUploadUrl:
+        result.cardUploadUrl,
     };
+  }
+
+  async function createProductionCardBlob(
+    source: Blob,
+  ) {
+    const bitmap =
+      await createImageBitmap(source);
+
+    try {
+      const maximumWidth = 1000;
+      const scale =
+        Math.min(
+          1,
+          maximumWidth / bitmap.width,
+        );
+
+      const width =
+        Math.max(
+          1,
+          Math.round(
+            bitmap.width * scale,
+          ),
+        );
+
+      const height =
+        Math.max(
+          1,
+          Math.round(
+            bitmap.height * scale,
+          ),
+        );
+
+      const canvas =
+        document.createElement(
+          "canvas",
+        );
+
+      canvas.width = width;
+      canvas.height = height;
+
+      const context =
+        canvas.getContext("2d");
+
+      if (!context) {
+        throw new Error(
+          "Could not prepare production gallery derivative.",
+        );
+      }
+
+      context.drawImage(
+        bitmap,
+        0,
+        0,
+        width,
+        height,
+      );
+
+      return await new Promise<Blob>(
+        (resolve, reject) => {
+          canvas.toBlob(
+            (blob) => {
+              if (!blob) {
+                reject(
+                  new Error(
+                    "Could not create production gallery derivative.",
+                  ),
+                );
+                return;
+              }
+
+              resolve(blob);
+            },
+            "image/webp",
+            0.75,
+          );
+        },
+      );
+    } finally {
+      bitmap.close();
+    }
   }
 
   async function putImageToR2(
@@ -402,6 +485,22 @@ const [accessPassword, setAccessPassword] =
                   prepared.blob,
                 );
 
+                if (!signed.cardUploadUrl) {
+                  throw new Error(
+                    "The production gallery derivative upload was not prepared.",
+                  );
+                }
+
+                const cardBlob =
+                  await createProductionCardBlob(
+                    prepared.blob,
+                  );
+
+                await putImageToR2(
+                  signed.cardUploadUrl,
+                  cardBlob,
+                );
+
                 return {
                   src: signed.filename,
                   alt:
@@ -493,6 +592,22 @@ const [accessPassword, setAccessPassword] =
       await putImageToR2(
         signed.uploadUrl,
         result.blob,
+      );
+
+      if (!signed.cardUploadUrl) {
+        throw new Error(
+          "The production gallery derivative upload was not prepared.",
+        );
+      }
+
+      const cardBlob =
+        await createProductionCardBlob(
+          result.blob,
+        );
+
+      await putImageToR2(
+        signed.cardUploadUrl,
+        cardBlob,
       );
 
       const oldSrc =

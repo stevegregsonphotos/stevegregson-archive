@@ -120,14 +120,20 @@ export default async function Home() {
   return (
     <main className="homepage">
       <section className="homepage-hero">
-        <Image
-          src="/images/homepage-hero.webp"
-          alt="A dramatic theatre production photographed by Steve Gregson"
-          fill
-          priority
-          sizes="100vw"
-          className="homepage-hero-image"
-        />
+        <picture className="homepage-hero-picture">
+          <source
+            media="(max-width: 900px)"
+            srcSet="/images/homepage-hero-mobile.webp"
+          />
+          <img
+            src="/images/homepage-hero.webp"
+            alt="A dramatic theatre production photographed by Steve Gregson"
+            fetchPriority="high"
+            loading="eager"
+            decoding="async"
+            className="homepage-hero-image"
+          />
+        </picture>
 
         <div className="homepage-hero-overlay" />
 
@@ -223,6 +229,27 @@ export default async function Home() {
                 </div>
               </div>
             </section>
+
+      <section
+        className="homepage-credentials"
+        aria-label="Professional credentials"
+      >
+        <div>
+          <span>Professional accreditation</span>
+          <p>
+            Qualified &amp; endorsed by the British Institute of
+            Professional Photography
+          </p>
+        </div>
+
+        <div>
+          <span>International recognition</span>
+          <p>
+            Award-winning theatrical photography recognised by the
+            Federation of European Photographers
+          </p>
+        </div>
+      </section>
 
       <section className="homepage-work">
         <header className="homepage-work-heading">

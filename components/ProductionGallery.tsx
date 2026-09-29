@@ -3,7 +3,10 @@
 import Image from "next/image";
 import { useState } from "react";
 
-import { getProductionImageUrl } from "../lib/production-image-url";
+import {
+  getProductionCardImageUrl,
+  getProductionImageUrl,
+} from "../lib/production-image-url";
 import type { ProductionImage } from "../lib/productions";
 
 import ImageViewer from "./ImageViewer";
@@ -65,7 +68,7 @@ export function ProductionGallery({
                 aria-label={`Open photograph ${index + 2} from ${title} fullscreen`}
               >
                 <Image
-                  src={getProductionImageUrl(
+                  src={getProductionCardImageUrl(
                     productionSlug,
                     image.src,
                   )}

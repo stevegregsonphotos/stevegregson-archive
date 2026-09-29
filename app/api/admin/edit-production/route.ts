@@ -18,6 +18,7 @@ import {
 import {
   copyProductionImage,
   copyProductionImagesToSlug,
+  createProductionCardImageUploadUrl,
   createProductionImageUploadUrl,
   deleteProductionImage,
   deleteProductionImages,
@@ -301,6 +302,11 @@ export async function POST(request: Request) {
         ok: true,
         filename,
         uploadUrl,
+        cardUploadUrl:
+          await createProductionCardImageUploadUrl(
+            slug,
+            filename,
+          ),
       });
     }
 

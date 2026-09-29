@@ -358,17 +358,11 @@ export async function POST(
             slug,
             filename,
           ),
-        ...(filename.startsWith(
-          "hero-",
-        )
-          ? {
-              cardUploadUrl:
-                await createProductionCardImageUploadUrl(
-                  slug,
-                  filename,
-                ),
-            }
-          : {}),
+        cardUploadUrl:
+          await createProductionCardImageUploadUrl(
+            slug,
+            filename,
+          ),
       });
     }
 

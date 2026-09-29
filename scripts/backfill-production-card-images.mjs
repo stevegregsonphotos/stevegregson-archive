@@ -11,6 +11,9 @@ import {
 
 import sharp from "sharp";
 
+const APPLY =
+  process.argv.includes("--apply");
+
 const CACHE_CONTROL =
   "public, max-age=31536000, immutable";
 
@@ -26,6 +29,19 @@ function required(name) {
 
   return value;
 }
+
+const databaseUrl =
+  process.env.DATABASE_URL_UNPOOLED ||
+  process.env.DATABASE_URL;
+
+if (!databaseUrl) {
+  throw new Error(
+    "DATABASE_URL is not configured.",
+  );
+}
+
+const sql =
+  neon(databaseUrl);
 
 const client =
   new S3Client({
@@ -47,19 +63,6 @@ const bucket =
   required(
     "R2_PRODUCTIONS_BUCKET_NAME",
   );
-
-const databaseUrl =
-  process.env.DATABASE_URL_UNPOOLED ||
-  process.env.DATABASE_URL;
-
-if (!databaseUrl) {
-  throw new Error(
-    "DATABASE_URL is not configured.",
-  );
-}
-
-const sql =
-  neon(databaseUrl);
 
 async function head(key) {
   try {
@@ -102,67 +105,289 @@ async function read(key) {
   );
 }
 
-function cardKey(
+function derivativeKey(
   slug,
-  filename,
+  displayFilename,
 ) {
-  return `${slug}/__cards/${filename}`;
+  return [
+    slug,
+    "__cards",
+    displayFilename,
+  ].join("/");
 }
 
 const productions =
   await sql`
     SELECT
+      id,
       slug,
       hero_storage_key,
       hero_display_filename
     FROM productions
     WHERE deleted_at IS NULL
-      AND hero_storage_key IS NOT NULL
-      AND hero_display_filename IS NOT NULL
     ORDER BY lower(slug)
   `;
 
+const productionImages =
+  await sql`
+    SELECT
+      production_id,
+      storage_key,
+      display_filename,
+      position
+    FROM production_images
+    WHERE deleted_at IS NULL
+    ORDER BY production_id, position, id
+  `;
+
+const imagesByProduction =
+  new Map();
+
+for (const image of productionImages) {
+  const key =
+    String(image.production_id);
+
+  const existing =
+    imagesByProduction.get(key) ??
+    [];
+
+  existing.push(image);
+  imagesByProduction.set(
+    key,
+    existing,
+  );
+}
+
+const authoritative = [];
+
+for (const production of productions) {
+  if (
+    production.hero_storage_key &&
+    production.hero_display_filename
+  ) {
+    authoritative.push({
+      slug: production.slug,
+      sourceKey:
+        production.hero_storage_key,
+      displayFilename:
+        production.hero_display_filename,
+      type: "hero",
+    });
+  }
+
+  const images =
+    imagesByProduction.get(
+      String(production.id),
+    ) ?? [];
+
+  for (const image of images) {
+    authoritative.push({
+      slug: production.slug,
+      sourceKey:
+        image.storage_key,
+      displayFilename:
+        image.display_filename,
+      type: "gallery",
+    });
+  }
+}
+
+/*
+ * De-duplicate by final derivative path.
+ * This also protects against a hero image
+ * appearing in production_images.
+ */
+const unique =
+  new Map();
+
+for (const image of authoritative) {
+  const destination =
+    derivativeKey(
+      image.slug,
+      image.displayFilename,
+    );
+
+  if (!unique.has(destination)) {
+    unique.set(
+      destination,
+      {
+        ...image,
+        destination,
+      },
+    );
+  }
+}
+
+const items =
+  [...unique.values()];
+
 console.log(
-  `\n=== PRODUCTION CARD BACKFILL: ${productions.length} PRODUCTIONS ===\n`,
+  `\n=== AUTHORITATIVE PRODUCTION DERIVATIVE BACKFILL ===`,
 );
 
-let created = 0;
-let existing = 0;
+console.log(
+  `Mode: ${APPLY ? "APPLY" : "DRY RUN"}`,
+);
 
-const concurrency = 4;
+console.log(
+  `Active productions: ${productions.length}`,
+);
+
+console.log(
+  `Active production image rows: ${productionImages.length}`,
+);
+
+console.log(
+  `Unique authoritative assets: ${items.length}`,
+);
+
+let existing = 0;
+let missing = 0;
+let missingSource = 0;
+let created = 0;
+
+const missingItems = [];
+
+const checkConcurrency = 12;
 
 for (
   let index = 0;
-  index < productions.length;
-  index += concurrency
+  index < items.length;
+  index += checkConcurrency
 ) {
   const batch =
-    productions.slice(
+    items.slice(
       index,
-      index + concurrency,
+      index + checkConcurrency,
+    );
+
+  const results =
+    await Promise.all(
+      batch.map(
+        async (item) => {
+          const destinationExists =
+            await head(
+              item.destination,
+            );
+
+          if (destinationExists) {
+            return {
+              type: "existing",
+              item,
+            };
+          }
+
+          const sourceExists =
+            await head(
+              item.sourceKey,
+            );
+
+          if (!sourceExists) {
+            return {
+              type: "missing-source",
+              item,
+            };
+          }
+
+          return {
+            type: "missing",
+            item,
+          };
+        },
+      ),
+    );
+
+  for (const result of results) {
+    if (result.type === "existing") {
+      existing += 1;
+    } else if (
+      result.type ===
+      "missing-source"
+    ) {
+      missingSource += 1;
+
+      console.log(
+        `MISSING SOURCE: ${result.item.sourceKey}`,
+      );
+    } else {
+      missing += 1;
+      missingItems.push(
+        result.item,
+      );
+    }
+  }
+
+  process.stdout.write(
+    `Checked ${Math.min(
+      index + checkConcurrency,
+      items.length,
+    )}/${items.length}\r`,
+  );
+}
+
+console.log("\n");
+
+console.log(
+  `Existing derivatives: ${existing}`,
+);
+
+console.log(
+  `Derivatives to create: ${missing}`,
+);
+
+console.log(
+  `Missing authoritative source images: ${missingSource}`,
+);
+
+if (missingSource !== 0) {
+  throw new Error(
+    `${missingSource} authoritative source image(s) are missing from R2. No backfill will run.`,
+  );
+}
+
+if (!APPLY) {
+  console.log(
+    "\nDRY RUN PASS: no R2 objects were written.",
+  );
+
+  process.exit(0);
+}
+
+console.log(
+  "\n=== APPLYING BACKFILL ===\n",
+);
+
+const writeConcurrency = 4;
+
+for (
+  let index = 0;
+  index < missingItems.length;
+  index += writeConcurrency
+) {
+  const batch =
+    missingItems.slice(
+      index,
+      index + writeConcurrency,
     );
 
   await Promise.all(
     batch.map(
-      async (production) => {
-        const destination =
-          cardKey(
-            production.slug,
-            production.hero_display_filename,
-          );
-
+      async (item) => {
+        /*
+         * Check again immediately before
+         * writing so reruns remain safe.
+         */
         if (
           await head(
-            destination,
+            item.destination,
           )
         ) {
-          existing += 1;
           return;
         }
 
         const source =
           await read(
-            production.hero_storage_key,
+            item.sourceKey,
           );
 
         const output =
@@ -188,8 +413,10 @@ for (
         await client.send(
           new PutObjectCommand({
             Bucket: bucket,
-            Key: destination,
-            Body: output,
+            Key:
+              item.destination,
+            Body:
+              output,
             ContentType:
               "image/webp",
             CacheControl:
@@ -199,7 +426,7 @@ for (
 
         const verified =
           await head(
-            destination,
+            item.destination,
           );
 
         if (
@@ -209,70 +436,65 @@ for (
             "image/webp"
         ) {
           throw new Error(
-            `Card derivative verification failed: ${destination}`,
+            `Derivative verification failed: ${item.destination}`,
           );
         }
 
         created += 1;
 
         console.log(
-          `${production.slug}: ${(output.length / 1024).toFixed(0)} KB`,
+          `Created ${created}/${missingItems.length}: ${item.destination} (${Math.round(
+            output.length / 1024,
+          )} KB)`,
         );
       },
     ),
   );
 }
 
-console.log(
-  `\nCreated: ${created}`,
-);
-console.log(
-  `Already existed: ${existing}`,
-);
-
-let missing = 0;
+let verificationMissing = 0;
 
 for (
   let index = 0;
-  index < productions.length;
-  index += 12
+  index < items.length;
+  index += checkConcurrency
 ) {
   const batch =
-    productions.slice(
+    items.slice(
       index,
-      index + 12,
+      index + checkConcurrency,
     );
 
   const results =
     await Promise.all(
       batch.map(
-        (production) =>
+        (item) =>
           head(
-            cardKey(
-              production.slug,
-              production.hero_display_filename,
-            ),
+            item.destination,
           ),
       ),
     );
 
-  missing +=
+  verificationMissing +=
     results.filter(
-      (result) =>
-        !result,
+      (result) => !result,
     ).length;
 }
 
 console.log(
-  `Missing after verification: ${missing}`,
+  `\nCreated this run: ${created}`,
 );
 
-if (missing !== 0) {
+console.log(
+  `Missing after verification: ${verificationMissing}`,
+);
+
+if (verificationMissing !== 0) {
   throw new Error(
-    `${missing} production card derivative(s) are missing.`,
+    `${verificationMissing} authoritative derivative(s) are missing after backfill.`,
   );
 }
 
 console.log(
-  "\nPRODUCTION CARD BACKFILL PASS.",
+  "\nAUTHORITATIVE PRODUCTION DERIVATIVE BACKFILL PASS.",
 );
