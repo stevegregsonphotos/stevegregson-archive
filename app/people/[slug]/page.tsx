@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 
 import "../../directory.css";
 import {
@@ -35,7 +35,8 @@ type PersonPageProps = {
 async function findPerson(slug: string) {
   const { people, venues } = await getDirectoryData();
   const person = people.find((item) => item.slug === slug);
-  return { person, venues };
+  const movedTo = person ? undefined : people.find((item) => item.altSlugs.includes(slug))?.slug;
+  return { person, venues, movedTo };
 }
 
 function roleLabels(person: PersonEntry) {
@@ -102,8 +103,9 @@ export async function generateMetadata({
 
 export default async function PersonPage({ params }: PersonPageProps) {
   const { slug } = await params;
-  const { person, venues } = await findPerson(slug);
+  const { person, venues, movedTo } = await findPerson(slug);
 
+  if (!person && movedTo) permanentRedirect(`/people/${movedTo}`);
   if (!person) notFound();
 
   const roles = roleLabels(person);

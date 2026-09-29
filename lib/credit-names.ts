@@ -13,6 +13,28 @@ export const PERSON_ALIASES: Record<string, string> = {
   "Nicola T. Chang": "Nicola Chang",
   "Cory Shipp": "Cory Anne Shipp",
   "Laura Price": "Laura Ann Price",
+  // Misspellings in credits, confirmed by Steve.
+  "Alex Musgraves": "Alex Musgrave",
+  "Louie Whitmore": "Louie Whitemore",
+  "Philippa Brockelhurst": "Philippa Brocklehurst",
+  "Zach Fils": "Zach Flis",
+  "Gabi Nimo": "Gaby Nimo",
+};
+
+/**
+ * People who genuinely use both a short and a full first name. Both spellings
+ * stay as credited; they share one page, named after whichever spelling is
+ * used most (the full name on a tie).
+ */
+export const SAME_PERSON: Record<string, string> = {
+  "Matt Hockley": "Matthew Hockley",
+  "Steve Grihault": "Steven Grihault",
+  "Rog Ness": "Roger Ness",
+  "Ebe Bamgboye": "Ebenezer Bamgboye",
+  "Ellie Isherwood": "Eleanor Isherwood",
+  "Jo Goodwin": "Joanna Goodwin",
+  "Andy Johnson": "Andrew Johnson",
+  "Ryan Littler": "Ryan Jones Littler",
 };
 
 /** Credits that are not people and never get a page. */
@@ -28,6 +50,12 @@ export function personKey(name: string) {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
+}
+
+/** The key that decides which page a credited name belongs to. */
+export function personIdentity(name: string) {
+  const display = PERSON_ALIASES[name] ?? name;
+  return personKey(SAME_PERSON[display] ?? display);
 }
 
 const NAME_PART = /^[\p{Lu}][\p{L}'’.-]*$/u;

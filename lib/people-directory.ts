@@ -6,8 +6,8 @@ import {
   type ArchiveProduction,
 } from "./productions-repository";
 import {
-  personKey,
   PERSON_ALIASES,
+  personIdentity,
   splitCreditNames,
 } from "./credit-names";
 import { canonicalVenue, slugify } from "./venues";
@@ -59,6 +59,8 @@ export type DirectoryProduction = {
 
 export type PersonEntry = {
   slug: string;
+  /** Slugs of other spellings of this person, which redirect here. */
+  altSlugs: string[];
   name: string;
   website?: string;
   roles: string[];
@@ -149,7 +151,7 @@ export function buildDirectory(productions: ArchiveProduction[]) {
         if (EXCLUDED_ROLES.has(role.toLowerCase())) continue;
 
         for (const name of splitCreditNames(credit.name)) {
-          const key = personKey(name);
+          const key = personIdentity(name);
           const draft = drafts.get(key) ?? {
             spellings: new Map(),
             websites: new Set(),
@@ -219,8 +221,18 @@ export function buildDirectory(productions: ArchiveProduction[]) {
       }
     }
 
+    const slug = slugByKey.get(key)!;
+    const spellings = [...draft.spellings.keys()];
+    const misspellings = Object.entries(PERSON_ALIASES)
+      .filter(([, target]) => spellings.includes(target))
+      .map(([typo]) => typo);
+    const altSlugs = [...new Set([...spellings, ...misspellings].map((name) => slugify(name)))].filter(
+      (value) => value && value !== slug,
+    );
+
     return {
-      slug: slugByKey.get(key)!,
+      slug,
+      altSlugs,
       name: nameByKey.get(key)!,
       website: [...draft.websites][0],
       roles,
@@ -253,7 +265,7 @@ export function buildDirectory(productions: ArchiveProduction[]) {
     const directorCounts = new Map<string, number>();
     draft.productions.forEach((production) => {
       if (production.director) {
-        const key = personKey(production.director);
+        const key = personIdentity(production.director);
         directorCounts.set(key, (directorCounts.get(key) ?? 0) + 1);
       }
     });
@@ -273,7 +285,7 @@ export function buildDirectory(productions: ArchiveProduction[]) {
     people: people.sort((a, b) => a.name.localeCompare(b.name)),
     venues: venues.sort((a, b) => b.productions.length - a.productions.length || a.name.localeCompare(b.name)),
     productionCount: publicProductions.length,
-    slugForName: (name: string) => slugByKey.get(personKey(PERSON_ALIASES[name] ?? name)),
+    slugForName: (name: string) => slugByKey.get(personIdentity(name)),
   };
 }
 
