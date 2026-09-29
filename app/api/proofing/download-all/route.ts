@@ -35,7 +35,7 @@ function safeFilename(
     .replace(/[\r\n"\\/]/g, "")
     .trim();
 
-  return `${safeBase || "photograph"}.webp`;
+  return `${safeBase || "photograph"}.jpg`;
 }
 
 function safeZipFilename(value: string) {
@@ -194,8 +194,8 @@ export async function GET(
       previousCount === 0
         ? initialName
         : initialName.replace(
-            /\.webp$/,
-            `-${previousCount + 1}.webp`,
+            /\.jpg$/,
+            `-${previousCount + 1}.jpg`,
           );
 
     files.push({

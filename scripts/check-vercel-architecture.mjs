@@ -208,6 +208,14 @@ const checks = [
   () => assertContains("app/api/proofing/download/route.ts", ["createProofingImageDownloadUrl", "NextResponse.redirect"]),
   () => assertContains("app/api/proofing/download-all/route.ts", ["createProofingImageDownloadUrl"]),
   () => assertNotContains("app/api/proofing/download-all/route.ts", ["archiver", "getProofingImage("]),
+  () => assertContains(
+    "app/proofing/[slug]/ProofingGalleryClient.tsx",
+    [
+      "convertProofingDownloadBlobToJpeg",
+      '"image/jpeg"',
+      "0.95",
+    ],
+  ),
 
   // Proofing watermark administration: direct R2.
   () => assertContains("app/api/admin/proofing/watermarks/upload/route.ts", ["createProofingWatermarkUploadUrl"]),

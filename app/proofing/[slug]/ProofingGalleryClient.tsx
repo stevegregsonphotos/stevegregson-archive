@@ -1388,7 +1388,7 @@ export default function ProofingGalleryClient({
         )
         .trim();
 
-    return `${safeBase || "photograph"}.webp`;
+    return `${safeBase || "photograph"}.jpg`;
   }
 
   function saveBrowserBlob(
@@ -1422,6 +1422,68 @@ export default function ProofingGalleryClient({
       },
       60_000,
     );
+  }
+
+  async function convertProofingDownloadBlobToJpeg(
+    sourceBlob: Blob,
+  ) {
+    const bitmap =
+      await createImageBitmap(
+        sourceBlob,
+      );
+
+    try {
+      const canvas =
+        document.createElement(
+          "canvas",
+        );
+
+      canvas.width =
+        bitmap.width;
+
+      canvas.height =
+        bitmap.height;
+
+      const context =
+        canvas.getContext(
+          "2d",
+        );
+
+      if (!context) {
+        throw new Error(
+          "The photograph could not be prepared for download.",
+        );
+      }
+
+      context.drawImage(
+        bitmap,
+        0,
+        0,
+      );
+
+      return await new Promise<Blob>(
+        (resolve, reject) => {
+          canvas.toBlob(
+            (blob) => {
+              if (!blob) {
+                reject(
+                  new Error(
+                    "The photograph could not be converted for download.",
+                  ),
+                );
+                return;
+              }
+
+              resolve(blob);
+            },
+            "image/jpeg",
+            0.95,
+          );
+        },
+      );
+    } finally {
+      bitmap.close();
+    }
   }
 
   function openImageNoteEditor(
@@ -1892,89 +1954,24 @@ export default function ProofingGalleryClient({
       const sourceBlob =
         await response.blob();
 
-      const bitmap =
-        await createImageBitmap(
+      const jpegBlob =
+        await convertProofingDownloadBlobToJpeg(
           sourceBlob,
         );
 
-      try {
-        const canvas =
-          document.createElement(
-            "canvas",
-          );
+      saveBrowserBlob(
+        jpegBlob,
+        browserDownloadFilename(
+          image.originalFilename,
+        ),
+      );
 
-        canvas.width =
-          bitmap.width;
-
-        canvas.height =
-          bitmap.height;
-
-        const context =
-          canvas.getContext(
-            "2d",
-          );
-
-        if (!context) {
-          throw new Error(
-            "The photograph could not be prepared for download.",
-          );
-        }
-
-        context.drawImage(
-          bitmap,
-          0,
-          0,
-        );
-
-        const jpegBlob =
-          await new Promise<Blob>(
-            (resolve, reject) => {
-              canvas.toBlob(
-                (blob) => {
-                  if (!blob) {
-                    reject(
-                      new Error(
-                        "The photograph could not be converted for download.",
-                      ),
-                    );
-                    return;
-                  }
-
-                  resolve(blob);
-                },
-                "image/jpeg",
-                0.95,
-              );
-            },
-          );
-
-        const jpegFilename =
-          image.originalFilename
-            .replace(
-              /\.[^.]+$/,
-              "",
-            )
-            .replace(
-              /[\\/\r\n"]/g,
-              "",
-            )
-            .trim() ||
-          "photograph";
-
-        saveBrowserBlob(
-          jpegBlob,
-          `${jpegFilename}.jpg`,
-        );
-
-        await recordDownloadSuccess(
-          "single",
-          [
-            image.id,
-          ],
-        );
-      } finally {
-        bitmap.close();
-      }
+      await recordDownloadSuccess(
+        "single",
+        [
+          image.id,
+        ],
+      );
     } catch (error) {
       setDownloadError(
         error instanceof Error
@@ -2089,9 +2086,15 @@ export default function ProofingGalleryClient({
               );
             }
 
+            const sourceBlob =
+              await fileResponse.blob();
+
             return {
               filename: file.filename,
-              blob: await fileResponse.blob(),
+              blob:
+                await convertProofingDownloadBlobToJpeg(
+                  sourceBlob,
+                ),
             };
           }),
         );
