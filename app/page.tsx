@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import {
+  getProductionCardImageUrl,
   getProductionImageUrl,
 } from "../lib/production-image-url";
 import {
@@ -239,9 +240,9 @@ export default async function Home() {
 
             const imageSrc =
               item.id === "production"
-                ? getProductionImageUrl(
+                ? getProductionCardImageUrl(
                     "godspell",
-                    "godspell-05.jpg",
+                    "GODSPELL-Genesis-58.webp",
                   )
                 : item.id === "rehearsal"
                   ? "/images/rehearsals/voice-of-the-turtle.webp"
