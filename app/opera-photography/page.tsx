@@ -177,8 +177,10 @@ export default async function OperaPhotographyPage() {
             <h2>Timed to the score</h2>
             <p>
               The strongest opera photographs land on the musical moment, not just
-              the stage picture. I work with the creative team to know where those
-              moments fall.
+              the stage picture.{" "}
+              <ToConfirm>
+                I work with the creative team to know where those moments fall.
+              </ToConfirm>
             </p>
           </li>
           <li>

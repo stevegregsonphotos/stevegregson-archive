@@ -171,7 +171,11 @@ export const getSectorData = cache(async () => {
     if (!isOpera(production)) continue;
     operaProductions.push(toEntry(production));
 
-    commissionedBy(production).forEach((name) => companies.set(name, (companies.get(name) ?? 0) + 1));
+    // "UCOpera (University College Opera)" and "UCOpera" are one company.
+    commissionedBy(production)
+      .map((name) => name.replace(/\s*\([^)]*\)\s*/g, " ").trim())
+      .filter(Boolean)
+      .forEach((name) => companies.set(name, (companies.get(name) ?? 0) + 1));
 
     const venue = canonicalVenue(production.venue);
     if (venue) {

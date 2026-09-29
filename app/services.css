@@ -35,6 +35,10 @@
   line-height: 1.7;
 }
 
+.svc-points .dir-label {
+  color: #c7a369;
+}
+
 /* Tiles linking to each kind of work */
 
 .svc-tiles {
