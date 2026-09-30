@@ -175,9 +175,8 @@ export default async function PersonPage({ params }: PersonPageProps) {
                 rel="noopener"
                 aria-label={`${person.name}’s website (opens in a new tab)`}
               >
-                <span className="dir-person-site-label">Website</span>
-                <span className="dir-person-site-domain">{displayDomain(person.website)}</span>
-                <span className="dir-person-site-arrow" aria-hidden="true">↗</span>
+                <span>{displayDomain(person.website)}</span>
+                <span className="dir-person-site-arrow" aria-hidden="true">→</span>
               </a>
             ) : null}
           </div>
