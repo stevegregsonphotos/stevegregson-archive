@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 
 import "../directory.css";
@@ -16,6 +17,33 @@ import {
 } from "../../components/services/ServiceParts";
 import { getSectorData } from "../../lib/sectors";
 import { getDirectoryData } from "../../lib/people-directory";
+import { getProductionCardImageUrl } from "../../lib/production-image-url";
+import {
+  getSelectedWorkDisplayUrl,
+  getSelectedWorkPreviewUrl,
+} from "../../lib/selected-work-image-url";
+import {
+  getSelectedWork,
+  type SelectedWorkCategory,
+  type SelectedWorkData,
+} from "../../lib/selected-work-repository";
+
+type Picture = { src: string; alt: string };
+
+/** The nth landscape image Steve chose for a Selected Work category. */
+function selectedPicture(
+  portfolio: SelectedWorkData,
+  category: SelectedWorkCategory,
+  index: number,
+  size: "preview" | "display" = "preview",
+): Picture | undefined {
+  const images = portfolio[category] ?? [];
+  const landscape = images.filter((image) => !image.width || !image.height || image.width > image.height);
+  const image = landscape[index] ?? images[index];
+  if (!image) return undefined;
+  const url = size === "display" ? getSelectedWorkDisplayUrl : getSelectedWorkPreviewUrl;
+  return { src: url(category, image.filename), alt: image.alt };
+}
 
 export const revalidate = 3600;
 
@@ -180,10 +208,23 @@ const QUESTIONS: Question[] = [
 ];
 
 export default async function CommissionsPage() {
-  const [{ dramaSchools, opera, totalProductions }, directory] = await Promise.all([
+  const [{ dramaSchools, opera, totalProductions }, directory, portfolio] = await Promise.all([
     getSectorData(),
     getDirectoryData(),
+    getSelectedWork().catch(() => ({ production: [], rehearsal: [], campaign: [] }) as SelectedWorkData),
   ]);
+
+  const productionCover = (production?: { slug: string; hero: string; heroAlt: string; title: string }): Picture | undefined =>
+    production
+      ? { src: getProductionCardImageUrl(production.slug, production.hero), alt: production.heroAlt || production.title }
+      : undefined;
+
+  const hero = {
+    main: selectedPicture(portfolio, "production", 1, "display"),
+    side: [selectedPicture(portfolio, "rehearsal", 1), selectedPicture(portfolio, "campaign", 1)],
+  };
+  const stepsPicture = selectedPicture(portfolio, "rehearsal", 2, "display");
+  const ctaPicture = selectedPicture(portfolio, "production", 3, "display");
 
   const tiles = [
     {
@@ -191,18 +232,21 @@ export default async function CommissionsPage() {
       label: "Production",
       title: "Production photography",
       body: "Performance and dress-rehearsal photography that captures the production as audiences experience it.",
+      picture: selectedPicture(portfolio, "production", 0),
     },
     {
       href: "/rehearsals",
       label: "Rehearsals",
       title: "Rehearsal photography",
       body: "The making of the work, from the first rehearsal-room days to the technical rehearsal.",
+      picture: selectedPicture(portfolio, "rehearsal", 0),
     },
     {
       href: "/marketing-pr",
       label: "Marketing & PR",
       title: "Campaign photography",
       body: "Publicity and campaign images created to sell the show before it opens.",
+      picture: selectedPicture(portfolio, "campaign", 0),
     },
     ...(dramaSchools.productions.length > 0
       ? [{
@@ -210,6 +254,7 @@ export default async function CommissionsPage() {
           label: `${dramaSchools.productions.length} productions`,
           title: "Drama schools",
           body: "Production and rehearsal photography for drama schools and conservatoires, season after season.",
+          picture: productionCover(dramaSchools.productions.find((production) => !/summer school/i.test(production.title)) ?? dramaSchools.productions[0]),
         }]
       : []),
     ...(opera.productions.length > 0
@@ -218,6 +263,7 @@ export default async function CommissionsPage() {
           label: `${opera.productions.length} productions`,
           title: "Opera",
           body: "Opera and music theatre, from full stagings to new work in unexpected spaces.",
+          picture: productionCover(opera.productions[0]),
         }]
       : []),
     {
@@ -225,6 +271,7 @@ export default async function CommissionsPage() {
       label: `${totalProductions} productions`,
       title: "The archive",
       body: `Every production photographed, searchable by venue, year and the ${directory.people.length} people who made them.`,
+      picture: selectedPicture(portfolio, "production", 2),
     },
   ];
 
@@ -263,6 +310,21 @@ export default async function CommissionsPage() {
           </div>
         </section>
 
+        {hero.main ? (
+          <div className="svc-mosaic">
+            <div className="svc-mosaic-main">
+              <Image src={hero.main.src} alt={hero.main.alt} fill priority sizes="(max-width: 900px) 100vw, 62vw" />
+            </div>
+            {hero.side.map((picture, index) =>
+              picture ? (
+                <div key={picture.src} className={`svc-mosaic-side svc-mosaic-side-${index + 1}`}>
+                  <Image src={picture.src} alt={picture.alt} fill sizes="(max-width: 900px) 50vw, 30vw" />
+                </div>
+              ) : null,
+            )}
+          </div>
+        ) : null}
+
         <section className="dir-section" aria-labelledby="work-heading">
           <div className="dir-section-head">
             <h2 id="work-heading">What I photograph</h2>
@@ -270,8 +332,13 @@ export default async function CommissionsPage() {
           <ul className="svc-tiles">
             {tiles.map((tile) => (
               <li key={tile.href}>
-                <Link href={tile.href}>
-                  <span>
+                <Link href={tile.href} className={tile.picture ? "svc-tile-has-image" : undefined}>
+                  {tile.picture ? (
+                    <span className="svc-tile-image" aria-hidden="true">
+                      <Image src={tile.picture.src} alt="" fill sizes="(max-width: 700px) 100vw, (max-width: 1100px) 50vw, 33vw" />
+                    </span>
+                  ) : null}
+                  <span className="svc-tile-copy">
                     <span className="dir-label">{tile.label}</span>
                     <h3>{tile.title}</h3>
                     <p>{tile.body}</p>
@@ -287,14 +354,21 @@ export default async function CommissionsPage() {
           <div className="dir-section-head">
             <h2 id="steps-heading">How a commission works</h2>
           </div>
-          <ol className="svc-steps">
-            {STEPS.map((step) => (
-              <li key={step.title}>
-                <h3>{step.title}</h3>
-                <p>{step.body}</p>
-              </li>
-            ))}
-          </ol>
+          <div className={stepsPicture ? "svc-steps-layout" : undefined}>
+            <ol className="svc-steps">
+              {STEPS.map((step) => (
+                <li key={step.title}>
+                  <h3>{step.title}</h3>
+                  <p>{step.body}</p>
+                </li>
+              ))}
+            </ol>
+            {stepsPicture ? (
+              <div className="svc-steps-image">
+                <Image src={stepsPicture.src} alt={stepsPicture.alt} fill sizes="(max-width: 1000px) 100vw, 34vw" />
+              </div>
+            ) : null}
+          </div>
         </section>
 
         <section className="dir-section" id="questions" aria-labelledby="faq-heading">
@@ -307,7 +381,12 @@ export default async function CommissionsPage() {
           <Questions items={QUESTIONS} />
         </section>
 
-        <section className="dir-cta">
+        <section className={ctaPicture ? "dir-cta svc-cta-image" : "dir-cta"}>
+          {ctaPicture ? (
+            <span className="svc-cta-bg" aria-hidden="true">
+              <Image src={ctaPicture.src} alt="" fill sizes="100vw" />
+            </span>
+          ) : null}
           <div>
             <h2>Have a production in mind?</h2>
             <p>Tell me about it — even if the details are still taking shape.</p>
