@@ -61,7 +61,7 @@ export const metadata: Metadata = {
 };
 
 /** The Selected Work photograph behind the page title: mostly black, high contrast. */
-const HERO_FILENAME = "stage-performer-profile-vertical-light-minimalist-darkness.jpg";
+const HERO_IMAGE = "stage-performer-profile-vertical-light-minimalist-darkness";
 
 const STEPS = [
   {
@@ -222,7 +222,7 @@ export default async function CommissionsPage() {
       ? { src: getProductionCardImageUrl(production.slug, production.hero), alt: production.heroAlt || production.title }
       : undefined;
 
-  const heroImage = portfolio.production?.find((image) => image.filename === HERO_FILENAME);
+  const heroImage = portfolio.production?.find((image) => image.filename.replace(/\.[a-z0-9]+$/i, "") === HERO_IMAGE);
   const hero: Picture | undefined = heroImage
     ? { src: getSelectedWorkDisplayUrl("production", heroImage.filename), alt: heroImage.alt }
     : selectedPicture(portfolio, "production", 1, "display");
