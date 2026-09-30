@@ -441,7 +441,7 @@ export default function ContactPage() {
     2.25rem;
 }
 
-          ..contact-intro h1 {
+          .contact-intro h1 {
   font-size: clamp(3rem, 14vw, 4.6rem);
   line-height: 0.9;
 }
