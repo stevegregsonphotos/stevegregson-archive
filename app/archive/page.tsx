@@ -213,8 +213,8 @@ export default async function ArchivePage() {
           display: flex;
           flex-wrap: wrap;
           justify-content: center;
-          gap: 1.6rem 3.4rem;
-          max-width: 52rem;
+          gap: 1.6rem 0;
+          max-width: 56rem;
           margin: 2.2rem auto 0;
         }
 
@@ -223,6 +223,13 @@ export default async function ArchivePage() {
           flex-direction: column-reverse;
           align-items: center;
           gap: 0.45rem;
+          padding: 0.3rem 2.6rem;
+        }
+
+        /* A fine rule between each figure. */
+        .archive-stats div + div {
+          border-left: 1px solid
+            rgba(242, 238, 230, 0.14);
         }
 
         .archive-stats dt {
@@ -250,8 +257,16 @@ export default async function ArchivePage() {
           .archive-stats {
             display: grid;
             grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 1.4rem 0.8rem;
+            gap: 1.4rem 0;
             margin-top: 1.8rem;
+          }
+
+          .archive-stats div {
+            padding: 0.2rem 0.6rem;
+          }
+
+          .archive-stats div:nth-child(3n + 1) {
+            border-left: 0;
           }
 
           .archive-stats dd {
