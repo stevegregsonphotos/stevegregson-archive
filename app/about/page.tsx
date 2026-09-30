@@ -74,7 +74,9 @@ export default function AboutPage() {
               I am a London-based theatre photographer specialising in
               production and live arts photography. My work is
               shaped by almost two decades inside theatre and the performing
-              arts, alongside more than a decade working in education.
+              arts, alongside more than a decade working in education. I am a
+              Licentiate of the British Institute of Professional Photography
+              (LBIPP) and a Fellow of the Royal Society of Arts (FRSA).
             </p>
 
             <p>

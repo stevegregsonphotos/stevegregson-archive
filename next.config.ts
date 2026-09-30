@@ -117,6 +117,72 @@ const nextConfig: NextConfig = {
         destination: "/productions/the-lonely-londoners",
         statusCode: 301,
       },
+      // Old stevegregsonphotos.com pages still in search results.
+      {
+        source: "/theatrephotography",
+        destination: "/production",
+        permanent: true,
+      },
+      {
+        source: "/rehearsalphotographer",
+        destination: "/rehearsals",
+        permanent: true,
+      },
+      {
+        source: "/rehearsal",
+        destination: "/rehearsals",
+        permanent: true,
+      },
+      {
+        source: "/theatre",
+        destination: "/production",
+        permanent: true,
+      },
+      {
+        source: "/dance",
+        destination: "/production",
+        permanent: true,
+      },
+      {
+        source: "/opera",
+        destination: "/opera-photography",
+        permanent: true,
+      },
+      {
+        source: "/faq",
+        destination: "/commissions",
+        permanent: true,
+      },
+      {
+        source: "/services",
+        destination: "/commissions",
+        permanent: true,
+      },
+      {
+        source: "/packages",
+        destination: "/commissions",
+        permanent: true,
+      },
+      {
+        source: "/portfolio",
+        destination: "/selected-work",
+        permanent: true,
+      },
+      {
+        source: "/personal-projects",
+        destination: "/selected-work",
+        permanent: true,
+      },
+      {
+        source: "/headshots",
+        destination: "/contact",
+        permanent: true,
+      },
+      {
+        source: "/headshotslondon",
+        destination: "/contact",
+        permanent: true,
+      },
       {
         source: "/theatrephotographer",
         destination: "/production",

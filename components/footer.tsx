@@ -140,7 +140,7 @@ export default function Footer() {
         .site-footer-contact a:first-child {
           color: rgba(17, 16, 15, 0.88);
         }
-\n
+
         .site-footer-contact a:hover {
           opacity: 0.5;
         }
@@ -230,7 +230,7 @@ export default function Footer() {
 
         @media (max-width: 680px) {
           .site-footer {
-            padding: 0.75rem 0.85rem 0.5rem;
+            padding: 1.5rem 1.2rem 1rem;
           }
 
           .site-footer-main {
@@ -246,7 +246,13 @@ export default function Footer() {
           }
 
           .site-footer-logo {
-            width: 5.25rem;
+            width: 6.5rem;
+          }
+
+          .site-footer-contact a {
+            display: inline-flex;
+            align-items: center;
+            min-height: 24px;
           }
 
           .site-footer-contact {
@@ -263,13 +269,16 @@ export default function Footer() {
             order: 2;
             width: 100%;
             justify-content: center;
-            gap: 0.3rem 0.65rem;
+            gap: 0 0.9rem;
             text-align: center;
           }
 
           .site-footer-main > nav a {
-            font-size: 0.38rem;
-            letter-spacing: 0.08em;
+            display: inline-flex;
+            align-items: center;
+            min-height: 24px;
+            font-size: 0.56rem;
+            letter-spacing: 0.1em;
           }
 
           .site-footer-description {
@@ -294,13 +303,16 @@ export default function Footer() {
           .site-footer-legal {
             width: 100%;
             justify-content: center;
-            gap: 0.25rem 0.55rem;
+            gap: 0 0.8rem;
             text-align: center;
           }
 
           .site-footer-legal a {
-            font-size: 0.35rem;
-            letter-spacing: 0.06em;
+            display: inline-flex;
+            align-items: center;
+            min-height: 24px;
+            font-size: 0.5rem;
+            letter-spacing: 0.08em;
           }
         }
       `}</style>

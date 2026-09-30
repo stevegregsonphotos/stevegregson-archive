@@ -52,6 +52,16 @@ type RootLayoutProps = Readonly<{
   children: React.ReactNode;
 }>;
 
+/** Every profile that is Steve, so search engines and AI tools join them up. */
+const SAME_AS = [
+  "https://www.instagram.com/stevegregsonphotos/",
+  "https://www.linkedin.com/in/stevegregsonphotos/",
+  "https://www.facebook.com/stevegregsonphotos/",
+  "https://x.com/stevegregson_",
+  "https://www.thealpd.org.uk/photographer/steve-gregson",
+  "https://www.europeanphotographers.eu/members/stevegregson/",
+];
+
 const structuredData = {
   "@context": "https://schema.org",
   "@graph": [
@@ -74,13 +84,53 @@ const structuredData = {
       url: "https://www.stevegregson.com/",
       image:
         "https://www.stevegregson.com/images/portrait/steve-gregson.jpg",
+      honorificSuffix: "FRSA LBIPP",
       jobTitle: "Theatre Photographer",
+      worksFor: {
+        "@id": "https://www.stevegregson.com/#business",
+      },
+      hasCredential: [
+        {
+          "@type": "EducationalOccupationalCredential",
+          name: "Licentiate of the British Institute of Professional Photography (LBIPP)",
+          credentialCategory: "Professional qualification",
+          recognizedBy: {
+            "@type": "Organization",
+            name: "British Institute of Professional Photography",
+            url: "https://www.bipp.com/",
+          },
+        },
+        {
+          "@type": "EducationalOccupationalCredential",
+          name: "Fellow of the Royal Society of Arts (FRSA)",
+          credentialCategory: "Fellowship",
+          recognizedBy: {
+            "@type": "Organization",
+            name: "Royal Society of Arts",
+            url: "https://www.thersa.org/",
+          },
+        },
+      ],
+      memberOf: [
+        {
+          "@type": "Organization",
+          name: "British Institute of Professional Photography",
+          url: "https://www.bipp.com/",
+        },
+        {
+          "@type": "Organization",
+          name: "Federation of European Photographers",
+          url: "https://www.europeanphotographers.eu/",
+        },
+        {
+          "@type": "Organization",
+          name: "Royal Society of Arts",
+          url: "https://www.thersa.org/",
+        },
+      ],
       description:
         "London-based theatre and performing arts photographer specialising in production, rehearsal, backstage, marketing and PR photography.",
-      sameAs: [
-        "https://www.instagram.com/stevegregsonphotos/",
-        "https://www.linkedin.com/in/stevegregsonphotos",
-      ],
+      sameAs: SAME_AS,
       homeLocation: {
         "@type": "Place",
         name: "London, United Kingdom",
@@ -99,6 +149,34 @@ const structuredData = {
       mainEntityOfPage: {
         "@id": "https://www.stevegregson.com/#website",
       },
+    },
+    {
+      "@type": "ProfessionalService",
+      "@id": "https://www.stevegregson.com/#business",
+      name: "Steve Gregson Photography",
+      description:
+        "London theatre photographer. Production, rehearsal, backstage, marketing and PR photography for theatres, producers, drama schools and opera companies.",
+      url: "https://www.stevegregson.com/",
+      image: "https://www.stevegregson.com/images/homepage-hero.webp",
+      logo: "https://www.stevegregson.com/icon.png",
+      email: "info@stevegregson.com",
+      telephone: "+447729435728",
+      founder: {
+        "@id": "https://www.stevegregson.com/#steve-gregson",
+      },
+      areaServed: [
+        { "@type": "City", name: "London" },
+        { "@type": "Country", name: "United Kingdom" },
+      ],
+      knowsAbout: [
+        "Theatre photography",
+        "Production photography",
+        "Rehearsal photography",
+        "Drama school photography",
+        "Opera photography",
+        "Theatre marketing photography",
+      ],
+      sameAs: SAME_AS,
     },
   ],
 };
