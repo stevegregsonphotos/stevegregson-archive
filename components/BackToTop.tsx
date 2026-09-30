@@ -8,6 +8,8 @@ import {
 export default function BackToTop() {
   const [visible, setVisible] =
     useState(false);
+  const [footerVisible, setFooterVisible] =
+    useState(false);
 
   useEffect(() => {
     function handleScroll() {
@@ -26,15 +28,43 @@ export default function BackToTop() {
       },
     );
 
+    const footer =
+      document.querySelector(
+        ".site-footer",
+      );
+
+    const observer =
+      footer
+        ? new IntersectionObserver(
+            ([entry]) => {
+              setFooterVisible(
+                entry.isIntersecting,
+              );
+            },
+            {
+              threshold: 0,
+            },
+          )
+        : null;
+
+    if (footer && observer) {
+      observer.observe(footer);
+    }
+
     return () => {
       window.removeEventListener(
         "scroll",
         handleScroll,
       );
+
+      observer?.disconnect();
     };
   }, []);
 
-  if (!visible) {
+  if (
+    !visible ||
+    footerVisible
+  ) {
     return null;
   }
 
