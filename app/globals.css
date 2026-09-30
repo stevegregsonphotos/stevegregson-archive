@@ -820,7 +820,7 @@ a {
   grid-template-columns: minmax(9rem, 0.35fr) minmax(0, 1fr) auto;
   gap: 4rem;
   align-items: center;
-  padding: clamp(3.75rem, 5vw, 5.25rem) 6vw;
+  padding: clamp(2.25rem, 3vw, 3.25rem) 6vw;
   background: #c7a369;
   color: #11100f;
 }
