@@ -246,7 +246,7 @@ export default async function CommissionsPage() {
       label: "Marketing & PR",
       title: "Campaign photography",
       body: "Publicity and campaign images created to sell the show before it opens.",
-      picture: selectedPicture(portfolio, "campaign", 0),
+      picture: selectedPicture(portfolio, "campaign", 2),
     },
     ...(dramaSchools.productions.length > 0
       ? [{
