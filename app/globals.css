@@ -147,6 +147,19 @@ a {
   padding: 0.9rem 1.2rem;
 }
 
+/* The section you're in, in the same gold as the Selected Work sub-menu. */
+.desktop-navigation a.is-current {
+  color: #c7a369;
+}
+
+.desktop-navigation a.is-current:hover {
+  opacity: 1;
+}
+
+.enquire-link.is-current {
+  border-color: #c7a369;
+}
+
 /* Homepage hero */
 
 .homepage {
