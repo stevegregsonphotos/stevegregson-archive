@@ -1281,10 +1281,72 @@ function productionInsertQueries(
   ];
 }
 
+function explicitYearFromSlug(
+  slug: string,
+) {
+  const matches = [
+    ...slug.matchAll(
+      /(?:^|-)(20\d{2})(?=-|$)/g,
+    ),
+  ];
+
+  if (matches.length !== 1) {
+    return null;
+  }
+
+  return Number(matches[0][1]);
+}
+
+async function assertProductionCanBeCreated(
+  sql: ReturnType<typeof getSql>,
+  production: ProductionWriteData,
+) {
+  const slugYear =
+    explicitYearFromSlug(production.slug);
+
+  if (
+    slugYear !== null &&
+    slugYear !== production.year
+  ) {
+    throw new Error(
+      `Production URL year ${slugYear} does not match production year ${production.year}.`,
+    );
+  }
+
+  const duplicateRows = await sql`
+    SELECT slug
+    FROM productions
+    WHERE deleted_at IS NULL
+      AND lower(trim(title)) =
+        lower(trim(${production.title}))
+      AND lower(trim(venue)) =
+        lower(trim(${production.venue}))
+      AND year = ${production.year}
+      AND month IS NOT DISTINCT FROM
+        ${production.month ?? null}
+    LIMIT 1
+  `;
+
+  const duplicateSlug =
+    duplicateRows[0]?.slug;
+
+  if (typeof duplicateSlug === "string") {
+    throw new Error(
+      `A production with the same title, venue and date already exists as "${duplicateSlug}".`,
+    );
+  }
+}
+
 export async function createProduction(
   production: ProductionWriteData,
 ) {
   const sql = getSql();
+
+  await assertProductionCanBeCreated(
+    sql,
+    production,
+  );
+
   const productionId = randomUUID();
   const queries = productionInsertQueries(
     sql,

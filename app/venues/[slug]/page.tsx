@@ -79,8 +79,9 @@ export default async function VenuePage({ params }: VenuePageProps) {
 
   if (!venue) notFound();
 
-  const [feature] = venue.productions;
+  const [feature, ...rest] = venue.productions;
   const years = [...new Set(venue.productions.map((production) => production.year))];
+  const restYears = [...new Set(rest.map((production) => production.year))];
   const crumbs = [
     { name: "Archive", href: "/archive" },
     { name: "Venues", href: "/venues" },
@@ -166,10 +167,10 @@ export default async function VenuePage({ params }: VenuePageProps) {
             <h2 id="productions-heading">Productions</h2>
             {years.length > 1 ? (
               <ul className="dir-chips" style={{ marginTop: 0 }}>
-                {years.map((year) => (
+                {restYears.map((year) => (
                   <li key={year}>
                     <a href={`#year-${year}`}>
-                      {year} · {venue.productions.filter((production) => production.year === year).length}
+                      {year} · {rest.filter((production) => production.year === year).length}
                     </a>
                   </li>
                 ))}
@@ -177,11 +178,11 @@ export default async function VenuePage({ params }: VenuePageProps) {
             ) : null}
           </div>
 
-          {years.map((year) => (
+          {restYears.map((year) => (
             <div key={year} id={`year-${year}`}>
-              {years.length > 1 ? <h3 className="dir-label dir-letter">{year}</h3> : null}
+              {restYears.length > 1 ? <h3 className="dir-label dir-letter">{year}</h3> : null}
               <ul className="dir-cards">
-                {venue.productions
+                {rest
                   .filter((production) => production.year === year)
                   .map((production) => (
                     <ProductionCard
