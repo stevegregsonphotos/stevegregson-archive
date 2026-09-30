@@ -22,7 +22,7 @@ export const metadata: Metadata = {
     description: "Selected theatre photography by London photographer Steve Gregson, including production, rehearsal, backstage, marketing and PR photography.",
     images: [
       {
-        url: "/images/homepage-hero.jpg",
+        url: "/images/homepage-hero.webp",
         width: 2048,
         height: 1365,
         alt: "Theatre production photography by Steve Gregson",
@@ -33,7 +33,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Selected Work | Steve Gregson",
     description: "Selected theatre photography by London photographer Steve Gregson, including production, rehearsal, backstage, marketing and PR photography.",
-    images: ["/images/homepage-hero.jpg"],
+    images: ["/images/homepage-hero.webp"],
   },
 };
 
