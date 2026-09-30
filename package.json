@@ -7,7 +7,9 @@
     "build": "node scripts/check-vercel-architecture.mjs && next build",
     "start": "next start",
     "lint": "eslint",
-    "check:vercel-architecture": "node scripts/check-vercel-architecture.mjs"
+    "check:vercel-architecture": "node scripts/check-vercel-architecture.mjs",
+    "curate": "node scripts/production-curator.mjs",
+    "curate:prepare": "node scripts/production-curator.mjs --prepare-only"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1126.0",
