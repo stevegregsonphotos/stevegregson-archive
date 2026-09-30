@@ -824,6 +824,16 @@ export default function PrivacyPolicyPage() {
               introduced, appropriate information and
               consent controls will be provided.
             </p>
+
+            <p>
+              When you send an enquiry through the
+              contact form, it also includes the
+              pages of this website you viewed during
+              that visit and the website that referred
+              you, so I can understand how people find
+              my work. This is held only while the page
+              is open and is not stored in your browser.
+            </p>
           </PolicySection>
 
           <PolicySection

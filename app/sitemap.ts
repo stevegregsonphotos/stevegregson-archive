@@ -5,8 +5,10 @@ import {
   MIN_VENUE_PRODUCTIONS,
   ROLE_GROUPS,
 } from "../lib/people-directory";
+import { getProductionImageUrl } from "../lib/production-image-url";
 import {
   getProductionIndex,
+  getProductions,
 } from "../lib/productions-repository";
 
 export const revalidate = 3600;
@@ -14,8 +16,30 @@ export const revalidate = 3600;
 const siteUrl = "https://www.stevegregson.com";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const productions =
-    await getProductionIndex();
+  const [productions, fullProductions] = await Promise.all([
+    getProductionIndex(),
+    getProductions(),
+  ]);
+
+  // Every public photograph, listed under its production page, so Google
+  // Images can find the whole archive (Google reads up to 1,000 per page).
+  const imagesBySlug = new Map<string, string[]>();
+  for (const production of fullProductions) {
+    if (production.access === "password") continue;
+    const files = [
+      production.hero,
+      ...production.images.map((image) => image.src),
+    ].filter(Boolean);
+    const urls: string[] = [];
+    for (const file of new Set(files)) {
+      try {
+        urls.push(getProductionImageUrl(production.slug, file));
+      } catch {
+        // Skip a malformed filename rather than break the sitemap.
+      }
+    }
+    imagesBySlug.set(production.slug, urls.slice(0, 1000));
+  }
 
   const staticRoutes: MetadataRoute.Sitemap = [
     {
@@ -90,6 +114,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: new Date(
         production.updatedAt,
       ),
+      images: imagesBySlug.get(production.slug) ?? [],
       changeFrequency: "yearly" as const,
       priority: 0.8,
     }));

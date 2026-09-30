@@ -7,10 +7,13 @@ import {
   useState,
 } from "react";
 
+import { track } from "@vercel/analytics";
+
 import {
   HONEYPOT_FIELD,
   STARTED_FIELD,
 } from "../../lib/contact-spam";
+import { getVisitTrail } from "../../lib/visit-trail";
 
 type ContactResponse = {
   ok: boolean;
@@ -51,6 +54,11 @@ export default function ContactForm() {
     const formData = new FormData(form);
     formData.set(STARTED_FIELD, String(startedAtRef.current));
 
+    // What brought them here, for the enquiry email.
+    const visit = getVisitTrail();
+    formData.set("visitReferrer", visit.referrer);
+    formData.set("visitPages", visit.pages.join("\n"));
+
     setIsSubmitting(true);
     setError(null);
 
@@ -75,6 +83,15 @@ export default function ContactForm() {
 
       form.reset();
       setSubmitted(true);
+
+      try {
+        track("Enquiry sent", {
+          source: visit.referrer || "direct",
+          landing: visit.landing || "/contact",
+        });
+      } catch {
+        // Analytics is optional.
+      }
     } catch (error) {
       setError(
         error instanceof Error

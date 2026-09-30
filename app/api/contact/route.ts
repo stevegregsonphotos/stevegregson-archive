@@ -33,6 +33,33 @@ function escapeHtml(value: string) {
     .replaceAll("'", "&#039;");
 }
 
+/** Which website sent them, e.g. "google.com"; empty for direct visits. */
+function readReferrer(formData: FormData) {
+  const value = readField(formData, "visitReferrer").toLowerCase();
+  return /^[a-z0-9.-]{1,100}$/.test(value) ? value : "";
+}
+
+/** The pages of this site they viewed before enquiring, oldest first. */
+function readPages(formData: FormData) {
+  return readField(formData, "visitPages")
+    .split("\n")
+    .map((page) => page.trim())
+    .filter((page) => /^\/[A-Za-z0-9\-_/%.]{0,150}$/.test(page))
+    .slice(-12);
+}
+
+function describeSource(referrer: string) {
+  if (!referrer) return "Direct visit or unknown";
+  if (/(^|\.)google\./.test(referrer)) return `Google (${referrer})`;
+  if (/(^|\.)bing\.com$/.test(referrer)) return "Bing";
+  if (/chatgpt\.com|openai\.com/.test(referrer)) return "ChatGPT";
+  if (/perplexity\.ai/.test(referrer)) return "Perplexity";
+  if (/instagram\.com/.test(referrer)) return "Instagram";
+  if (/facebook\.com/.test(referrer)) return "Facebook";
+  if (/linkedin\.com/.test(referrer)) return "LinkedIn";
+  return referrer;
+}
+
 export async function POST(request: Request) {
   try {
     if (
@@ -167,6 +194,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true });
     }
 
+    const source = describeSource(readReferrer(formData));
+    const pages = readPages(formData);
+    const siteOrigin = "https://www.stevegregson.com";
+
     const resend =
       new Resend(apiKey);
 
@@ -218,6 +249,12 @@ export async function POST(request: Request) {
           "",
           "Message:",
           message,
+          "",
+          "How they found you",
+          `Arrived from: ${source}`,
+          `Pages viewed: ${
+            pages.length ? pages.join(" → ") : "Not recorded"
+          }`,
         ].join("\n"),
         html: `
           <div
@@ -454,6 +491,45 @@ export async function POST(request: Request) {
                   "
                 >
                   ${safeMessage}
+                </p>
+              </div>
+
+              <div
+                style="
+                  margin-top:36px;
+                  padding-top:24px;
+                  border-top:1px solid rgba(242,238,230,0.18);
+                  font-size:13px;
+                  line-height:1.7;
+                  color:rgba(242,238,230,0.75);
+                "
+              >
+                <p
+                  style="
+                    margin:0 0 12px;
+                    color:#c7a369;
+                    font-size:10px;
+                    font-weight:700;
+                    letter-spacing:1.5px;
+                    text-transform:uppercase;
+                  "
+                >
+                  How they found you
+                </p>
+                <p style="margin:0 0 6px;">
+                  Arrived from: ${escapeHtml(source)}
+                </p>
+                <p style="margin:0;">
+                  Pages viewed: ${
+                    pages.length
+                      ? pages
+                          .map(
+                            (page) =>
+                              `<a href="${siteOrigin}${escapeHtml(page)}" style="color:#c7a369;">${escapeHtml(page)}</a>`,
+                          )
+                          .join(" → ")
+                      : "Not recorded"
+                  }
                 </p>
               </div>
 

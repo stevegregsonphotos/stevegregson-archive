@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import BackToTop from "./BackToTop";
 import Footer from "./footer";
 import Header from "./Header";
+import VisitTracker from "./VisitTracker";
 
 type PublicChromeProps = {
   children: ReactNode;
@@ -31,6 +32,8 @@ export default function PublicChrome({
       >
         Skip to main content
       </a>
+
+      <VisitTracker />
 
       <Header />
 
