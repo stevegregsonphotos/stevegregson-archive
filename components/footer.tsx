@@ -73,7 +73,7 @@ export default function Footer() {
 
       <style>{`
         .site-footer {
-          padding: 1.25rem 4vw 0.8rem;
+          padding: 1.8rem 4vw 1rem;
           border-top: 1px solid rgba(17, 16, 15, 0.14);
           background: #f2f0eb;
           color: #11100f;
@@ -108,7 +108,7 @@ export default function Footer() {
 
         .site-footer-logo {
           display: block;
-          width: 9rem;
+          width: 11rem;
         }
 
         .site-footer-logo img {
@@ -128,7 +128,7 @@ export default function Footer() {
 
         .site-footer-contact a {
           color: rgba(17, 16, 15, 0.72);
-          font-size: 0.46rem;
+          font-size: 0.5rem;
           font-weight: 700;
           letter-spacing: 0.1em;
           line-height: 1.25;
@@ -153,7 +153,7 @@ export default function Footer() {
         }
 
         .site-footer-main > nav a {
-          font-size: 0.48rem;
+          font-size: 0.51rem;
           font-weight: 700;
           letter-spacing: 0.11em;
           text-transform: uppercase;
@@ -170,15 +170,15 @@ export default function Footer() {
           align-items: center;
           justify-content: space-between;
           gap: 1rem;
-          margin-top: 0.4rem;
-          padding-top: 0.35rem;
+          margin-top: 0.85rem;
+          padding-top: 0.65rem;
           border-top: 1px solid rgba(17, 16, 15, 0.12);
         }
 
         .site-footer-lower p {
           margin: 0;
           color: rgba(17, 16, 15, 0.62);
-          font-size: 0.43rem;
+          font-size: 0.46rem;
           letter-spacing: 0.09em;
           text-transform: uppercase;
           white-space: nowrap;
@@ -193,7 +193,7 @@ export default function Footer() {
 
         .site-footer-legal a {
           color: rgba(17, 16, 15, 0.62);
-          font-size: 0.43rem;
+          font-size: 0.46rem;
           font-weight: 700;
           letter-spacing: 0.09em;
           text-transform: uppercase;
