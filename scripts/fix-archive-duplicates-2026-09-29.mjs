@@ -38,7 +38,7 @@ const repairs = [
     expectedRemoveYear: 2024,
   },
   {
-    label: "The Choir of Man wrong-year duplicate",
+    label: "The Choir of Man duplicate",
     keepId: "1ceee4b4-5625-4c79-b77e-6b01b821be3e",
     keepSlug: "the-choir-of-man",
     removeId: "0eba52dd-f572-41c5-94e8-1f9417958c58",
@@ -48,7 +48,6 @@ const repairs = [
     expectedMonth: 12,
     expectedKeepYear: 2024,
     expectedRemoveYear: 2022,
-    setKeepYear: 2026,
   },
 ];
 
