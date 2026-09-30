@@ -203,7 +203,8 @@ export const getSectorData = cache(async () => {
         .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)),
       venues: [...operaVenues.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)),
     } satisfies OperaData,
-    totalProductions: publicProductions.length,
+    // Everything listed in the archive, including private client galleries.
+    totalProductions: productions.length,
   };
 });
 

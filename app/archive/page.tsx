@@ -47,22 +47,18 @@ export default async function ArchivePage() {
       getDirectoryData(),
     ]);
 
-  // Headline numbers for the archive, counting only public galleries.
-  const publicProductions = productions.filter(
-    (production) => production.access !== "password",
+  // Headline numbers for the archive: everything listed below, including
+  // private client galleries, so the totals match the list.
+  const photographCount = summaries.reduce(
+    (total, summary) => total + summary.imageCount,
+    0,
   );
-  const publicSlugs = new Set(
-    publicProductions.map((production) => production.slug),
-  );
-  const photographCount = summaries
-    .filter((summary) => publicSlugs.has(summary.slug))
-    .reduce((total, summary) => total + summary.imageCount, 0);
-  const years = publicProductions.map((production) => production.year);
+  const years = productions.map((production) => production.year);
   const firstYear = years.length ? Math.min(...years) : null;
   const latestYear = years.length ? Math.max(...years) : null;
 
   const stats = [
-    { label: "Productions", value: publicProductions.length.toLocaleString("en-GB") },
+    { label: "Productions", value: productions.length.toLocaleString("en-GB") },
     { label: "Photographs", value: photographCount.toLocaleString("en-GB") },
     { label: "People", value: directory.people.length.toLocaleString("en-GB") },
     { label: "Venues", value: directory.venues.length.toLocaleString("en-GB") },
