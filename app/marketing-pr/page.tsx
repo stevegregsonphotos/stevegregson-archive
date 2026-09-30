@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     description: "Marketing, campaign and publicity photography by London theatre photographer Steve Gregson, created for theatres, producers and audiences.",
     images: [
       {
-        url: "/images/homepage-hero.jpg",
+        url: "/images/homepage-hero.webp",
         width: 2048,
         height: 1365,
         alt: "Theatre production photography by Steve Gregson",
@@ -31,7 +31,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Theatre Marketing & PR Photography | Steve Gregson",
     description: "Marketing, campaign and publicity photography by London theatre photographer Steve Gregson, created for theatres, producers and audiences.",
-    images: ["/images/homepage-hero.jpg"],
+    images: ["/images/homepage-hero.webp"],
   },
   description:
     "Marketing, campaign and publicity photography by London theatre photographer Steve Gregson, created for theatres, producers and audiences.",
