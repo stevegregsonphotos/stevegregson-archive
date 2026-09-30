@@ -493,10 +493,19 @@ export default function TermsPage() {
                 does not permit commercial use, sale or
                 sublicensing, or any alteration
                 described in section 2.7, and section
-                3.7 continues to apply. Use after the
-                student has left the institution
-                requires the written agreement of Steve
-                Gregson Photography.
+                3.7 continues to apply.
+              </p>
+
+              <p>
+                After leaving the institution, a former
+                student may continue to use those
+                Photographs on their own Spotlight page
+                and personal website as part of their
+                professional portfolio, on the same
+                credit and link terms. Any other use
+                after leaving requires the written
+                agreement of Steve Gregson
+                Photography.
               </p>
             </Subsection>
           </PolicySection>
