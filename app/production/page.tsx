@@ -30,7 +30,7 @@ export const metadata: Metadata = {
     description: "London theatre photographer Steve Gregson creates production photography for theatres, producers and performing arts organisations across the UK and internationally.",
     images: [
       {
-        url: "/images/homepage-hero.jpg",
+        url: "/images/homepage-hero.webp",
         width: 2048,
         height: 1365,
         alt: "Theatre production photography by Steve Gregson",
@@ -41,7 +41,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Theatre Production Photography | Steve Gregson",
     description: "London theatre photographer Steve Gregson creates production photography for theatres, producers and performing arts organisations across the UK and internationally.",
-    images: ["/images/homepage-hero.jpg"],
+    images: ["/images/homepage-hero.webp"],
   },
   description:
     "London theatre photographer Steve Gregson creates production photography for theatres, producers and performing arts organisations across the UK and internationally.",
