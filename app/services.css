@@ -43,7 +43,9 @@
 
 .svc-tiles {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
+  /* Six tiles: 3 × 2 on wide screens, 2 × 3 on tablets, stacked on phones,
+     so a row is never left with empty boxes. */
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1px;
   margin: 2rem 0 0;
   padding: 0;
@@ -88,6 +90,18 @@
   font-size: 0.68rem;
   letter-spacing: 0.16em;
   text-transform: uppercase;
+}
+
+@media (max-width: 1000px) {
+  .svc-tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .svc-tiles {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Numbered steps */

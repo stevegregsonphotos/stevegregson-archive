@@ -101,6 +101,15 @@ export async function generateMetadata({
   };
 }
 
+/** "https://www.alexmusgrave.co.uk/lighting" → "alexmusgrave.co.uk" */
+function displayDomain(url: string) {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url.replace(/^https?:\/\/(www\.)?/, "").replace(/\/.*$/, "");
+  }
+}
+
 export default async function PersonPage({ params }: PersonPageProps) {
   const { slug } = await params;
   const { person, venues, movedTo } = await findPerson(slug);
@@ -159,11 +168,17 @@ export default async function PersonPage({ params }: PersonPageProps) {
             <h1>{person.name}</h1>
             <p className="dir-lead">{summary(person)}</p>
             {person.website ? (
-              <p className="dir-lead">
-                <a href={person.website} target="_blank" rel="noopener noreferrer">
-                  {person.name}’s website <span aria-hidden="true">↗</span>
-                </a>
-              </p>
+              <a
+                className="dir-person-site"
+                href={person.website}
+                target="_blank"
+                rel="noopener"
+                aria-label={`${person.name}’s website (opens in a new tab)`}
+              >
+                <span className="dir-person-site-label">Website</span>
+                <span className="dir-person-site-domain">{displayDomain(person.website)}</span>
+                <span className="dir-person-site-arrow" aria-hidden="true">↗</span>
+              </a>
             ) : null}
           </div>
 

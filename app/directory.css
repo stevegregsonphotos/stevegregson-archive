@@ -124,6 +124,50 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* A person's own website, on their page */
+
+.dir-person-site {
+  display: inline-flex;
+  align-items: center;
+  gap: 1.1rem;
+  margin-top: 2.2rem;
+  padding: 0.95rem 1.25rem;
+  border: 1px solid rgba(242, 238, 230, 0.22);
+  color: #f2eee6;
+  transition: border-color 180ms ease, background 180ms ease;
+}
+
+.dir-person-site:hover,
+.dir-person-site:focus-visible {
+  border-color: #c7a369;
+  background: rgba(199, 163, 105, 0.08);
+}
+
+.dir-person-site-label {
+  color: #c7a369;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.dir-person-site-domain {
+  font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  font-size: 1.15rem;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+
+.dir-person-site-arrow {
+  color: #c7a369;
+  transition: transform 180ms ease;
+}
+
+.dir-person-site:hover .dir-person-site-arrow,
+.dir-person-site:focus-visible .dir-person-site-arrow {
+  transform: translate(2px, -2px);
+}
+
 /* Search and role filters */
 
 .dir-tools {

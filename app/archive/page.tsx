@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 
 import {
+  getAdminProductionSummaries,
   getArchiveProductions,
 } from "../../lib/productions-repository";
+import { getDirectoryData } from "../../lib/people-directory";
 
 import ArchiveExplorer from "./ArchiveExplorer";
 
@@ -38,8 +40,41 @@ export const metadata: Metadata = {
 };
 
 export default async function ArchivePage() {
-  const productions =
-    await getArchiveProductions();
+  const [productions, summaries, directory] =
+    await Promise.all([
+      getArchiveProductions(),
+      getAdminProductionSummaries(),
+      getDirectoryData(),
+    ]);
+
+  // Headline numbers for the archive, counting only public galleries.
+  const publicProductions = productions.filter(
+    (production) => production.access !== "password",
+  );
+  const publicSlugs = new Set(
+    publicProductions.map((production) => production.slug),
+  );
+  const photographCount = summaries
+    .filter((summary) => publicSlugs.has(summary.slug))
+    .reduce((total, summary) => total + summary.imageCount, 0);
+  const years = publicProductions.map((production) => production.year);
+  const firstYear = years.length ? Math.min(...years) : null;
+  const latestYear = years.length ? Math.max(...years) : null;
+
+  const stats = [
+    { label: "Productions", value: publicProductions.length.toLocaleString("en-GB") },
+    { label: "Photographs", value: photographCount.toLocaleString("en-GB") },
+    { label: "People", value: directory.people.length.toLocaleString("en-GB") },
+    { label: "Venues", value: directory.venues.length.toLocaleString("en-GB") },
+    ...(firstYear && latestYear
+      ? [{
+          label: "Years",
+          value: firstYear === latestYear
+            ? String(firstYear)
+            : `${firstYear}–${String(latestYear).slice(-2)}`,
+        }]
+      : []),
+  ];
 
   const sortedProductions =
     productions;
@@ -78,6 +113,15 @@ export default async function ArchivePage() {
             previously unseen work will be added regularly.
           </p>
         </div>
+
+        <dl className="archive-stats" aria-label="The archive in numbers">
+          {stats.map((stat) => (
+            <div key={stat.label}>
+              <dt>{stat.label}</dt>
+              <dd>{stat.value}</dd>
+            </div>
+          ))}
+        </dl>
       </section>
 
       <ArchiveExplorer
@@ -167,6 +211,56 @@ export default async function ArchivePage() {
           font-size: 0.76rem;
           line-height: 1.65;
           text-wrap: pretty;
+        }
+
+        .archive-stats {
+          display: flex;
+          flex-wrap: wrap;
+          justify-content: center;
+          gap: 1.6rem 3.4rem;
+          max-width: 52rem;
+          margin: 2.2rem auto 0;
+        }
+
+        .archive-stats div {
+          display: flex;
+          flex-direction: column-reverse;
+          align-items: center;
+          gap: 0.45rem;
+        }
+
+        .archive-stats dt {
+          color: rgba(242, 238, 230, 0.55);
+          font-size: 0.55rem;
+          font-weight: 700;
+          letter-spacing: 0.2em;
+          text-transform: uppercase;
+        }
+
+        .archive-stats dd {
+          margin: 0;
+          font-family:
+            "Iowan Old Style",
+            "Palatino Linotype",
+            Georgia,
+            serif;
+          font-size: clamp(1.9rem, 2.8vw, 2.7rem);
+          font-variant-numeric: tabular-nums;
+          letter-spacing: -0.03em;
+          line-height: 1;
+        }
+
+        @media (max-width: 900px) {
+          .archive-stats {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 1.4rem 0.8rem;
+            margin-top: 1.8rem;
+          }
+
+          .archive-stats dd {
+            font-size: 1.7rem;
+          }
         }
 
         @media (max-width: 900px) {
