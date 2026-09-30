@@ -43,8 +43,8 @@ const QUESTIONS: Question[] = [
     answer: (
       <p>
         Yes. I photograph both live performances and dress rehearsals, always with a
-        silent shutter, so nothing is heard from the stage or the pit. My equipment
-        is the newest available, so there is no compromise on quality in low light.
+        silent shutter, so nothing is heard from the stage or the pit. I’ve invested
+        in the best and newest equipment, so there is no compromise for my clients.
       </p>
     ),
     answerText:
