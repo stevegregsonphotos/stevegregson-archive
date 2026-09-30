@@ -826,7 +826,8 @@ a {
 }
 
 .homepage-enquiry > p {
-  color: rgba(17, 16, 15, 0.62);
+  /* Dark enough to read on the gold (WCAG AA contrast). */
+  color: rgba(17, 16, 15, 0.86);
 }
 
 .homepage-enquiry h2 {

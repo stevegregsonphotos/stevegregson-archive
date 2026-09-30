@@ -127,12 +127,17 @@ export default function Footer() {
           display: flex;
           flex-direction: column;
           align-items: center;
-          gap: 0.4rem;
+          gap: 0;
           margin-top: 1.1rem;
           text-align: center;
         }
 
         .site-footer-contact a {
+          /* At least 24px tall so each link is easy to tap on a phone. */
+          display: inline-flex;
+          align-items: center;
+          min-height: 24px;
+          padding: 0.2rem 0.5rem;
           color: rgba(17, 16, 15, 0.72);
           font-size: 0.52rem;
           font-weight: 700;
