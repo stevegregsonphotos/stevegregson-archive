@@ -7,6 +7,11 @@ import {
   useState,
 } from "react";
 
+import {
+  HONEYPOT_FIELD,
+  STARTED_FIELD,
+} from "../../lib/contact-spam";
+
 type ContactResponse = {
   ok: boolean;
   message?: string;
@@ -24,6 +29,13 @@ export default function ContactForm() {
 
   const successRef = useRef<HTMLDivElement | null>(null);
 
+  // When the form appeared, so the server can tell a person from a bot.
+  const startedAtRef = useRef(0);
+
+  useEffect(() => {
+    if (!submitted) startedAtRef.current = Date.now();
+  }, [submitted]);
+
   useEffect(() => {
     if (submitted) {
       successRef.current?.focus();
@@ -37,6 +49,7 @@ export default function ContactForm() {
 
     const form = event.currentTarget;
     const formData = new FormData(form);
+    formData.set(STARTED_FIELD, String(startedAtRef.current));
 
     setIsSubmitting(true);
     setError(null);
@@ -108,6 +121,28 @@ export default function ContactForm() {
       className="contact-form"
       onSubmit={handleSubmit}
     >
+      {/* Left empty by people (they never see it); bots fill it in. */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          left: "-10000px",
+          width: "1px",
+          height: "1px",
+          overflow: "hidden",
+        }}
+      >
+        <label htmlFor={HONEYPOT_FIELD}>Leave this field empty</label>
+        <input
+          id={HONEYPOT_FIELD}
+          name={HONEYPOT_FIELD}
+          type="text"
+          tabIndex={-1}
+          autoComplete="off"
+          defaultValue=""
+        />
+      </div>
+
       <div className="contact-field">
         <label htmlFor="name">
           Name

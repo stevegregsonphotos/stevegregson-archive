@@ -5,6 +5,11 @@ import {
   isContactRateLimited,
   recordContactSubmission,
 } from "../../../lib/contact-rate-limit";
+import {
+  checkContactSpam,
+  HONEYPOT_FIELD,
+  STARTED_FIELD,
+} from "../../../lib/contact-spam";
 
 export const runtime = "nodejs";
 
@@ -143,6 +148,23 @@ export async function POST(request: Request) {
         },
         { status: 400 },
       );
+    }
+
+    const verdict = checkContactSpam({
+      honeypot: readField(formData, HONEYPOT_FIELD),
+      startedAt: readField(formData, STARTED_FIELD),
+      name,
+      email,
+      company,
+      date,
+      location,
+      message,
+    });
+
+    if (verdict.spam) {
+      // Tell the sender it worked so bots don't adapt; nothing is emailed.
+      console.warn(`Contact form: dropped likely spam (${verdict.reason}).`);
+      return NextResponse.json({ ok: true });
     }
 
     const resend =
