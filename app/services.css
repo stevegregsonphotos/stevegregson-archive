@@ -386,10 +386,14 @@
   isolation: isolate;
 }
 
+/* The photograph fills the right of the hero; its black background meets the
+   black of the page, so the title sits on darkness beside the subject. */
 .svc-hero-image {
   z-index: -2;
+  left: auto !important;
+  width: 72% !important;
   object-fit: cover;
-  object-position: 62% center;
+  object-position: 45% center;
 }
 
 .svc-hero::after {
@@ -398,7 +402,7 @@
   inset: 0;
   z-index: -1;
   background:
-    linear-gradient(90deg, rgba(0, 0, 0, 0.78) 0%, rgba(0, 0, 0, 0.35) 45%, rgba(0, 0, 0, 0) 70%),
+    linear-gradient(90deg, #000 0%, #000 28%, rgba(0, 0, 0, 0.55) 40%, rgba(0, 0, 0, 0) 60%),
     linear-gradient(0deg, #11100f 0%, rgba(17, 16, 15, 0) 28%);
 }
 
@@ -449,6 +453,7 @@
   }
 
   .svc-hero-image {
+    width: 100% !important;
     object-position: 58% center;
   }
 
