@@ -16,7 +16,6 @@ import {
   listSentence,
   Questions,
   serviceJsonLd,
-  ToConfirm,
   type Question,
 } from "../../components/services/ServiceParts";
 import { getProductionImageUrl } from "../../lib/production-image-url";
@@ -43,12 +42,13 @@ const QUESTIONS: Question[] = [
     question: "Can you photograph during a performance?",
     answer: (
       <p>
-        <ToConfirm>
-          Say whether you shoot live performances, dress rehearsals or both, and that
-          you use a silent shutter so nothing is heard from the stage or the pit.
-        </ToConfirm>
+        Yes. I photograph both live performances and dress rehearsals, always with a
+        silent shutter, so nothing is heard from the stage or the pit. My equipment
+        is the newest available, so there is no compromise on quality in low light.
       </p>
     ),
+    answerText:
+      "Yes. Steve photographs both live performances and dress rehearsals, always with a silent shutter, so nothing is heard from the stage or the pit.",
   },
   {
     question: "Do you photograph rehearsals as well?",
@@ -66,11 +66,9 @@ const QUESTIONS: Question[] = [
     question: "Can the singers use the photographs?",
     answer: (
       <p>
-        <ToConfirm>
-          Explain how singers and creative teams can license images for their own
-          websites and publicity.
-        </ToConfirm>{" "}
-        All use is licensed under my <Link href="/policies/terms">terms and conditions</Link>.
+        This is agreed production by production, so{" "}
+        <Link href="/contact">get in touch</Link> about what you need. All use is
+        licensed under my <Link href="/policies/terms">terms and conditions</Link>.
       </p>
     ),
   },
@@ -173,14 +171,13 @@ export default async function OperaPhotographyPage() {
             </p>
           </li>
           <li>
-            <p className="dir-label">The music</p>
-            <h2>Timed to the score</h2>
+            <p className="dir-label">The creative team</p>
+            <h2>The moment and the whole story</h2>
             <p>
-              The strongest opera photographs land on the musical moment, not just
-              the stage picture.{" "}
-              <ToConfirm>
-                I work with the creative team to know where those moments fall.
-              </ToConfirm>
+              I always talk to the creative team about the standout moments they need,
+              and capture not only the emotion and action on stage but the scale of the
+              design and the story as a whole. It was my own design work in theatre that
+              led me to this profession.
             </p>
           </li>
           <li>

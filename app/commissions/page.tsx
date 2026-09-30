@@ -12,7 +12,6 @@ import {
 import {
   faqJsonLd,
   Questions,
-  ToConfirm,
   type Question,
 } from "../../components/services/ServiceParts";
 import { getSectorData } from "../../lib/sectors";
@@ -107,10 +106,9 @@ const STEPS = [
     title: "Delivery",
     body: (
       <>
-        <ToConfirm>
-          Finished images are delivered through a private online gallery within
-          [number] working days, with a faster press selection available on request.
-        </ToConfirm>
+        A press selection can be ready within 24 hours when agreed in advance. The
+        full edited set follows within five working days of the selection being
+        made, and usually much sooner.
       </>
     ),
   },
@@ -121,20 +119,25 @@ const QUESTIONS: Question[] = [
     question: "How much does it cost?",
     answer: (
       <p>
-        <ToConfirm>
-          Every commission is quoted individually, depending on the kind of shoot,
-          how long it takes and the licence you need. Send me the details for a quote.
-        </ToConfirm>
+        Every commission is quoted individually. There is no one-size-fits-all
+        price: fees are set on a sliding scale according to the needs and scale of
+        the production and the licence required. Send me the details for a quote.
       </p>
     ),
+    answerText:
+      "Every commission is quoted individually, on a sliding scale according to the needs and scale of the production and the licence required.",
   },
   {
     question: "How quickly will we receive the photographs?",
     answer: (
       <p>
-        <ToConfirm>State your usual turnaround, and whether a small press selection can be sent sooner.</ToConfirm>
+        Fast. A press selection can be supplied within 24 hours when agreed in
+        advance, and the full edited set within five working days of the selection
+        being made, usually much sooner.
       </p>
     ),
+    answerText:
+      "A press selection can be supplied within 24 hours when agreed in advance, and the full edited set within five working days of the selection being made, usually much sooner.",
   },
   {
     question: "Who owns the copyright?",
@@ -203,8 +206,8 @@ const QUESTIONS: Question[] = [
     question: "Do you work outside London?",
     answer: (
       <p>
-        Yes. I’m based in London and work across the UK and internationally.{" "}
-        <ToConfirm>Explain how travel and accommodation are charged.</ToConfirm>
+        Yes. I’m based in London and work across the UK and internationally. Travel
+        and accommodation outside London are agreed at the time of booking.
       </p>
     ),
   },

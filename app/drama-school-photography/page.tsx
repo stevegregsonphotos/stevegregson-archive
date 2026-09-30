@@ -16,7 +16,6 @@ import {
   listSentence,
   Questions,
   serviceJsonLd,
-  ToConfirm,
   type Question,
 } from "../../components/services/ServiceParts";
 import { getProductionImageUrl } from "../../lib/production-image-url";
@@ -44,8 +43,7 @@ const QUESTIONS: Question[] = [
     answer: (
       <p>
         Yes. Many schools book several productions across a term or a season, and
-        planning them together makes scheduling simpler for everyone.{" "}
-        <ToConfirm>Mention any season or multi-show rate here, or remove this sentence.</ToConfirm>
+        planning them together makes scheduling simpler for everyone.
       </p>
     ),
   },
@@ -53,10 +51,8 @@ const QUESTIONS: Question[] = [
     question: "Will every student be photographed?",
     answer: (
       <p>
-        <ToConfirm>
-          I make sure every member of the company is photographed, not only the leads,
-          so each student has images of their work.
-        </ToConfirm>
+        I always aim to capture everyone on stage, not only the leads, so every
+        student has photographs of their work.
       </p>
     ),
   },
@@ -64,13 +60,10 @@ const QUESTIONS: Question[] = [
     question: "Can students use the photographs?",
     answer: (
       <p>
-        <ToConfirm>
-          Explain how students can use images for their Spotlight page, website and
-          showreel, and whether this is included in the school’s licence.
-        </ToConfirm>{" "}
-        Every commission is licensed under my{" "}
-        <Link href="/policies/terms">terms and conditions</Link>, and the credit is
-        “Steve Gregson Photography”.
+        Yes. Students may use the photographs on their Spotlight page, website and
+        social media, as long as they are credited “Steve Gregson Photography” and,
+        on a website, the credit links to stevegregson.com. Everything else is
+        covered by my <Link href="/policies/terms">terms and conditions</Link>.
       </p>
     ),
   },
@@ -78,7 +71,8 @@ const QUESTIONS: Question[] = [
     question: "When should we book?",
     answer: (
       <p>
-        <ToConfirm>As early as possible once your season dates are set. Dress rehearsals across the sector cluster in the same weeks, so popular dates go first.</ToConfirm>
+        As soon as your dates are set. My calendar fills quickly, and some schools and
+        companies book more than a year ahead.
       </p>
     ),
   },
