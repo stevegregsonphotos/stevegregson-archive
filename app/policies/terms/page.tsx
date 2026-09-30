@@ -47,17 +47,17 @@ export default function TermsPage() {
           <div className={styles.documentMeta}>
             <div>
               <span>Version</span>
-              <strong>2.0</strong>
+              <strong>2.1</strong>
             </div>
 
             <div>
               <span>Last reviewed</span>
-              <strong>11 August 2026</strong>
+              <strong>30 September 2026</strong>
             </div>
 
             <div>
               <span>Effective from</span>
-              <strong>11 August 2026</strong>
+              <strong>30 September 2026</strong>
             </div>
           </div>
         </div>
@@ -462,6 +462,41 @@ export default function TermsPage() {
                 includes AI or machine-learning rights
                 unless those rights are expressly
                 stated in writing.
+              </p>
+            </Subsection>
+
+            <Subsection title="3.8 Use by Students">
+              <p>
+                Where Photographs are commissioned by a
+                drama school, college, university or
+                other educational institution, students
+                who appear in them may use those
+                Photographs, free of charge, on their
+                own Spotlight page, personal website and
+                social media to promote their own work,
+                while they are studying at the
+                institution where the Photographs were
+                taken.
+              </p>
+
+              <p>
+                Every such use must carry the credit
+                “Steve Gregson Photography”. Where a
+                Photograph is used on a website, the
+                credit must link to
+                www.stevegregson.com.
+              </p>
+
+              <p>
+                This permission is personal to each
+                student and may not be transferred. It
+                does not permit commercial use, sale or
+                sublicensing, or any alteration
+                described in section 2.7, and section
+                3.7 continues to apply. Use after the
+                student has left the institution
+                requires the written agreement of Steve
+                Gregson Photography.
               </p>
             </Subsection>
           </PolicySection>

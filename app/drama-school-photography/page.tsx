@@ -60,10 +60,11 @@ const QUESTIONS: Question[] = [
     question: "Can students use the photographs?",
     answer: (
       <p>
-        Yes. Students may use the photographs on their Spotlight page, website and
-        social media, as long as they are credited “Steve Gregson Photography” and,
-        on a website, the credit links to stevegregson.com. Everything else is
-        covered by my <Link href="/policies/terms">terms and conditions</Link>.
+        Yes. While they are studying at the school where the photographs were taken,
+        students may use them on their Spotlight page, website and social media, as
+        long as they are credited “Steve Gregson Photography” and, on a website, the
+        credit links to stevegregson.com. The details are in section 3.8 of my{" "}
+        <Link href="/policies/terms">terms and conditions</Link>.
       </p>
     ),
   },

@@ -106,9 +106,11 @@ const STEPS = [
     title: "Delivery",
     body: (
       <>
-        A press selection can be ready within 24 hours when agreed in advance. The
-        full edited set follows within five working days of the selection being
-        made, and usually much sooner.
+        A press selection can be ready within 24 hours when agreed in advance. When I
+        select and edit the images, the full set follows within five working days of
+        the shoot. When you choose your own from a proofing gallery, the five days
+        start from when you send your selection. Either way, it’s usually much
+        sooner.
       </>
     ),
   },
@@ -132,12 +134,14 @@ const QUESTIONS: Question[] = [
     answer: (
       <p>
         Fast. A press selection can be supplied within 24 hours when agreed in
-        advance, and the full edited set within five working days of the selection
-        being made, usually much sooner.
+        advance. When I select and edit the images, the full set follows within five
+        working days of the shoot; when you choose your own from a proofing gallery,
+        the five days start from when you send your selection. It’s usually much
+        sooner.
       </p>
     ),
     answerText:
-      "A press selection can be supplied within 24 hours when agreed in advance, and the full edited set within five working days of the selection being made, usually much sooner.",
+      "A press selection can be supplied within 24 hours when agreed in advance. When Steve selects and edits the images, the full set follows within five working days of the shoot; when the client chooses from a proofing gallery, the five days start from when the selection is sent.",
   },
   {
     question: "Who owns the copyright?",
