@@ -1,3 +1,4 @@
+import { revalidateProductionContent } from "@/lib/revalidate-public-content";
 import {
   createUnauthorizedResponse,
   isBackstageRequestAuthenticated,
@@ -59,6 +60,8 @@ export async function POST(request: Request) {
       cleanupWarning =
         "The production record was removed, but some old R2 objects could not be cleaned up.";
     }
+
+    revalidateProductionContent();
 
     return Response.json({
       ok: true,

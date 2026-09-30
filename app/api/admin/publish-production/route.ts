@@ -1,3 +1,4 @@
+import { revalidateProductionContent } from "@/lib/revalidate-public-content";
 import {
   createUnauthorizedResponse,
   isBackstageRequestAuthenticated,
@@ -381,6 +382,8 @@ export async function POST(
             destinationDirectory,
           ),
       );
+
+    revalidateProductionContent();
 
     return Response.json({
       ok: true,

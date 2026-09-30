@@ -1,3 +1,4 @@
+import { revalidateProductionContent } from "@/lib/revalidate-public-content";
 import {
   createUnauthorizedResponse,
   isBackstageRequestAuthenticated,
@@ -736,6 +737,8 @@ export async function POST(request: Request) {
         ? directoryError.message
         : "The global website directory could not be updated.";
     }
+
+    revalidateProductionContent(saved.slug);
 
     return Response.json({
       ok: true,
