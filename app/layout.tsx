@@ -83,7 +83,7 @@ const structuredData = {
       name: "Steve Gregson",
       url: "https://www.stevegregson.com/",
       image:
-        "https://www.stevegregson.com/images/homepage-hero.jpg",
+        "https://www.stevegregson.com/images/portrait/steve-gregson.jpg",
       honorificSuffix: "FRSA LBIPP",
       jobTitle: "Theatre Photographer",
       worksFor: {
@@ -157,8 +157,8 @@ const structuredData = {
       description:
         "London theatre photographer. Production, rehearsal, backstage, marketing and PR photography for theatres, producers, drama schools and opera companies.",
       url: "https://www.stevegregson.com/",
-      image: "https://www.stevegregson.com/images/homepage-hero.jpg",
-      logo: "https://www.stevegregson.com/images/homepage-hero.jpg",
+      image: "https://www.stevegregson.com/images/homepage-hero.webp",
+      logo: "https://www.stevegregson.com/icon.png",
       email: "info@stevegregson.com",
       telephone: "+447729435728",
       founder: {
