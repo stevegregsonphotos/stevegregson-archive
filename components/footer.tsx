@@ -73,7 +73,7 @@ export default function Footer() {
 
       <style>{`
         .site-footer {
-          padding: 0.7rem 3vw 0.5rem;
+          padding: 1.25rem 4vw 0.8rem;
           border-top: 1px solid rgba(17, 16, 15, 0.14);
           background: #f2f0eb;
           color: #11100f;
@@ -85,14 +85,14 @@ export default function Footer() {
             minmax(12rem, 0.9fr)
             auto
             minmax(24rem, 1.4fr);
-          gap: 1rem;
+          gap: 2rem;
           align-items: center;
         }
 
         .site-footer-description {
           margin: 0;
           color: rgba(17, 16, 15, 0.64);
-          font-size: 0.46rem;
+          font-size: 0.5rem;
           line-height: 1.45;
           letter-spacing: 0.12em;
           text-transform: uppercase;
@@ -108,7 +108,7 @@ export default function Footer() {
 
         .site-footer-logo {
           display: block;
-          width: 5.5rem;
+          width: 9rem;
         }
 
         .site-footer-logo img {
@@ -128,7 +128,7 @@ export default function Footer() {
 
         .site-footer-contact a {
           color: rgba(17, 16, 15, 0.72);
-          font-size: 0.4rem;
+          font-size: 0.46rem;
           font-weight: 700;
           letter-spacing: 0.1em;
           line-height: 1.25;
@@ -140,13 +140,7 @@ export default function Footer() {
         .site-footer-contact a:first-child {
           color: rgba(17, 16, 15, 0.88);
         }
-
-        .site-footer-contact a + a::before {
-          content: "·";
-          margin-right: 0.5rem;
-          color: rgba(17, 16, 15, 0.35);
-        }
-
+\n
         .site-footer-contact a:hover {
           opacity: 0.5;
         }
@@ -155,11 +149,11 @@ export default function Footer() {
           display: flex;
           flex-wrap: wrap;
           justify-content: flex-end;
-          gap: 0.35rem 0.8rem;
+          gap: 0.55rem 1.35rem;
         }
 
         .site-footer-main > nav a {
-          font-size: 0.4rem;
+          font-size: 0.48rem;
           font-weight: 700;
           letter-spacing: 0.11em;
           text-transform: uppercase;
@@ -184,7 +178,7 @@ export default function Footer() {
         .site-footer-lower p {
           margin: 0;
           color: rgba(17, 16, 15, 0.62);
-          font-size: 0.37rem;
+          font-size: 0.43rem;
           letter-spacing: 0.09em;
           text-transform: uppercase;
           white-space: nowrap;
@@ -194,12 +188,12 @@ export default function Footer() {
           display: flex;
           flex-wrap: wrap;
           justify-content: flex-end;
-          gap: 0.3rem 0.65rem;
+          gap: 0.55rem 1.1rem;
         }
 
         .site-footer-legal a {
           color: rgba(17, 16, 15, 0.62);
-          font-size: 0.37rem;
+          font-size: 0.43rem;
           font-weight: 700;
           letter-spacing: 0.09em;
           text-transform: uppercase;
