@@ -230,27 +230,6 @@ export default async function Home() {
               </div>
             </section>
 
-      <section
-        className="homepage-credentials"
-        aria-label="Professional credentials"
-      >
-        <div>
-          <span>Professional accreditation</span>
-          <p>
-            Qualified &amp; endorsed by the British Institute of
-            Professional Photography
-          </p>
-        </div>
-
-        <div>
-          <span>International recognition</span>
-          <p>
-            Award-winning theatrical photography recognised by the
-            Federation of European Photographers
-          </p>
-        </div>
-      </section>
-
       <section className="homepage-work">
         <header className="homepage-work-heading">
          
@@ -345,6 +324,27 @@ export default async function Home() {
               </Link>
             );
           })}
+        </div>
+      </section>
+
+      <section
+        className="homepage-credentials"
+        aria-label="Professional credentials"
+      >
+        <div>
+          <span>Professional accreditation</span>
+          <p>
+            Qualified &amp; endorsed by the British Institute of
+            Professional Photography
+          </p>
+        </div>
+
+        <div>
+          <span>International recognition</span>
+          <p>
+            Award-winning theatrical photography recognised by the
+            Federation of European Photographers
+          </p>
         </div>
       </section>
 
