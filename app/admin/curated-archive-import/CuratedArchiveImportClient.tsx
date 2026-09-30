@@ -1515,17 +1515,18 @@ export default function CuratedArchiveImportClient({
         ) as {
           ok: boolean;
           stagedFileCount?: number;
+          uploadedFinalSelectionCount?: number;
           finalSelectionCount?: number;
         };
 
       if (
-        finalizeResult.finalSelectionCount !==
+        finalizeResult.uploadedFinalSelectionCount !==
         finalSelections.length
       ) {
         throw new Error(
-          `Finalization safety check failed: browser expected ${finalSelections.length.toLocaleString()} final selections but R2 committed ${Number(
-            finalizeResult.finalSelectionCount ?? 0,
-          ).toLocaleString()}. The staged collection was not accepted.`,
+          `Finalization safety check failed: browser expected ${finalSelections.length.toLocaleString()} final selections and the server verified ${Number(
+            finalizeResult.uploadedFinalSelectionCount ?? 0,
+          ).toLocaleString()} from this upload. The staged collection was not accepted.`,
         );
       }
 

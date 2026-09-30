@@ -342,6 +342,8 @@ export async function POST(
           "Curated folder staged successfully.",
         stagedFileCount:
           manifest.files.length,
+        uploadedFinalSelectionCount:
+          actualFinalSelectionCount,
         finalSelectionCount:
           manifest.files.filter(
             (relativePath) =>
