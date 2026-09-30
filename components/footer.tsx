@@ -82,9 +82,9 @@ export default function Footer() {
         .site-footer-main {
           display: grid;
           grid-template-columns:
-            minmax(12rem, 0.9fr)
+            minmax(0, 1fr)
             auto
-            minmax(24rem, 1.4fr);
+            minmax(0, 1fr);
           gap: 2rem;
           align-items: center;
         }
