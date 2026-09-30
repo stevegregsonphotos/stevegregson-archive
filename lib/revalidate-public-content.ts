@@ -7,6 +7,15 @@ export function revalidateProductionContent(
   revalidatePath("/production");
   revalidatePath("/archive");
   revalidatePath("/sitemap.xml");
+  // Pages whose counts and lists come from the archive.
+  revalidatePath("/commissions");
+  revalidatePath("/drama-school-photography");
+  revalidatePath("/opera-photography");
+  revalidatePath("/people");
+  revalidatePath("/people/[slug]", "page");
+  revalidatePath("/venues");
+  revalidatePath("/venues/[slug]", "page");
+  revalidatePath("/llms.txt");
 
   if (slug) {
     revalidatePath(
