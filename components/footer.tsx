@@ -73,7 +73,7 @@ export default function Footer() {
 
       <style>{`
         .site-footer {
-          padding: 1.5rem 4vw 0.9rem;
+          padding: 0.7rem 3vw 0.5rem;
           border-top: 1px solid rgba(17, 16, 15, 0.14);
           background: #f2f0eb;
           color: #11100f;
@@ -83,18 +83,18 @@ export default function Footer() {
           display: grid;
           grid-template-columns:
             minmax(12rem, 0.9fr)
-            minmax(10rem, 0.65fr)
-            minmax(24rem, 1.35fr);
-          gap: 1.6rem;
+            auto
+            minmax(24rem, 1.4fr);
+          gap: 1rem;
           align-items: center;
         }
 
         .site-footer-description {
           margin: 0;
           color: rgba(17, 16, 15, 0.64);
-          font-size: 0.49rem;
-          line-height: 1.55;
-          letter-spacing: 0.13em;
+          font-size: 0.46rem;
+          line-height: 1.45;
+          letter-spacing: 0.12em;
           text-transform: uppercase;
         }
 
@@ -108,7 +108,7 @@ export default function Footer() {
 
         .site-footer-logo {
           display: block;
-          width: min(100%, 8rem);
+          width: 5.5rem;
         }
 
         .site-footer-logo img {
@@ -119,25 +119,32 @@ export default function Footer() {
 
         .site-footer-contact {
           display: flex;
-          flex-direction: column;
           align-items: center;
-          gap: 0.18rem;
-          margin-top: 0.4rem;
+          justify-content: center;
+          gap: 0.5rem;
+          margin-top: 0.15rem;
           text-align: center;
         }
 
         .site-footer-contact a {
           color: rgba(17, 16, 15, 0.72);
-          font-size: 0.45rem;
+          font-size: 0.4rem;
           font-weight: 700;
-          letter-spacing: 0.11em;
-          line-height: 1.35;
+          letter-spacing: 0.1em;
+          line-height: 1.25;
           text-transform: uppercase;
           transition: opacity 180ms ease;
+          white-space: nowrap;
         }
 
         .site-footer-contact a:first-child {
           color: rgba(17, 16, 15, 0.88);
+        }
+
+        .site-footer-contact a + a::before {
+          content: "·";
+          margin-right: 0.5rem;
+          color: rgba(17, 16, 15, 0.35);
         }
 
         .site-footer-contact a:hover {
@@ -148,15 +155,16 @@ export default function Footer() {
           display: flex;
           flex-wrap: wrap;
           justify-content: flex-end;
-          gap: 0.55rem 1.15rem;
+          gap: 0.35rem 0.8rem;
         }
 
         .site-footer-main > nav a {
-          font-size: 0.46rem;
+          font-size: 0.4rem;
           font-weight: 700;
-          letter-spacing: 0.13em;
+          letter-spacing: 0.11em;
           text-transform: uppercase;
           transition: opacity 180ms ease;
+          white-space: nowrap;
         }
 
         .site-footer-main > nav a:hover {
@@ -167,34 +175,36 @@ export default function Footer() {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 1.5rem;
-          margin-top: 0.85rem;
-          padding-top: 0.65rem;
+          gap: 1rem;
+          margin-top: 0.4rem;
+          padding-top: 0.35rem;
           border-top: 1px solid rgba(17, 16, 15, 0.12);
         }
 
         .site-footer-lower p {
           margin: 0;
           color: rgba(17, 16, 15, 0.62);
-          font-size: 0.42rem;
-          letter-spacing: 0.12em;
+          font-size: 0.37rem;
+          letter-spacing: 0.09em;
           text-transform: uppercase;
+          white-space: nowrap;
         }
 
         .site-footer-legal {
           display: flex;
           flex-wrap: wrap;
           justify-content: flex-end;
-          gap: 0.5rem 0.95rem;
+          gap: 0.3rem 0.65rem;
         }
 
         .site-footer-legal a {
           color: rgba(17, 16, 15, 0.62);
-          font-size: 0.42rem;
+          font-size: 0.37rem;
           font-weight: 700;
-          letter-spacing: 0.11em;
+          letter-spacing: 0.09em;
           text-transform: uppercase;
           transition: opacity 180ms ease;
+          white-space: nowrap;
         }
 
         .site-footer-legal a:hover {
@@ -204,7 +214,7 @@ export default function Footer() {
         @media (max-width: 900px) {
           .site-footer-main {
             grid-template-columns: 1fr auto;
-            gap: 1rem 1.5rem;
+            gap: 0.6rem 1rem;
           }
 
           .site-footer-description {
@@ -226,14 +236,14 @@ export default function Footer() {
 
         @media (max-width: 680px) {
           .site-footer {
-            padding: 0.95rem 1rem 0.7rem;
+            padding: 0.75rem 0.85rem 0.5rem;
           }
 
           .site-footer-main {
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 0.55rem;
+            gap: 0.4rem;
           }
 
           .site-footer-brand {
@@ -242,26 +252,30 @@ export default function Footer() {
           }
 
           .site-footer-logo {
-            width: 6.5rem;
+            width: 5.25rem;
           }
 
           .site-footer-contact {
-            gap: 0.16rem;
-            margin-top: 0.3rem;
+            flex-direction: column;
+            gap: 0.08rem;
+            margin-top: 0.12rem;
+          }
+
+          .site-footer-contact a + a::before {
+            content: none;
           }
 
           .site-footer-main > nav {
             order: 2;
             width: 100%;
-            flex-wrap: wrap;
             justify-content: center;
-            gap: 0.45rem 0.8rem;
+            gap: 0.3rem 0.65rem;
             text-align: center;
           }
 
           .site-footer-main > nav a {
-            font-size: 0.43rem;
-            letter-spacing: 0.09em;
+            font-size: 0.38rem;
+            letter-spacing: 0.08em;
           }
 
           .site-footer-description {
@@ -272,9 +286,9 @@ export default function Footer() {
 
           .site-footer-lower {
             flex-direction: column;
-            gap: 0.4rem;
-            margin-top: 0.55rem;
-            padding-top: 0.55rem;
+            gap: 0.25rem;
+            margin-top: 0.35rem;
+            padding-top: 0.3rem;
             text-align: center;
           }
 
@@ -286,13 +300,13 @@ export default function Footer() {
           .site-footer-legal {
             width: 100%;
             justify-content: center;
-            gap: 0.4rem 0.75rem;
+            gap: 0.25rem 0.55rem;
             text-align: center;
           }
 
           .site-footer-legal a {
-            font-size: 0.4rem;
-            letter-spacing: 0.07em;
+            font-size: 0.35rem;
+            letter-spacing: 0.06em;
           }
         }
       `}</style>
