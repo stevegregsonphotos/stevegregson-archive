@@ -60,6 +60,9 @@ export const metadata: Metadata = {
   twitter: { card: "summary_large_image", title: `${TITLE} | Steve Gregson`, description: DESCRIPTION },
 };
 
+/** The Selected Work photograph behind the page title: mostly black, high contrast. */
+const HERO_FILENAME = "stage-performer-profile-vertical-light-minimalist-darkness.jpg";
+
 const STEPS = [
   {
     title: "Enquiry",
@@ -219,12 +222,10 @@ export default async function CommissionsPage() {
       ? { src: getProductionCardImageUrl(production.slug, production.hero), alt: production.heroAlt || production.title }
       : undefined;
 
-  const hero = {
-    main: selectedPicture(portfolio, "production", 1, "display"),
-    side: [selectedPicture(portfolio, "rehearsal", 1), selectedPicture(portfolio, "campaign", 1)],
-  };
-  const stepsPicture = selectedPicture(portfolio, "rehearsal", 2, "display");
-  const ctaPicture = selectedPicture(portfolio, "production", 3, "display");
+  const heroImage = portfolio.production?.find((image) => image.filename === HERO_FILENAME);
+  const hero: Picture | undefined = heroImage
+    ? { src: getSelectedWorkDisplayUrl("production", heroImage.filename), alt: heroImage.alt }
+    : selectedPicture(portfolio, "production", 1, "display");
 
   const tiles = [
     {
@@ -278,7 +279,7 @@ export default async function CommissionsPage() {
   const crumbs = [{ name: "Commissions", href: PAGE_URL }];
 
   return (
-    <main className="dir-page">
+    <main className="dir-page svc-page">
       <JsonLd
         data={{
           "@context": "https://schema.org",
@@ -297,35 +298,38 @@ export default async function CommissionsPage() {
         }}
       />
 
-      <div className="dir-wrap">
-        <section className="dir-intro">
-          <div className="dir-intro-copy">
-            <p className="dir-eyebrow">Working together</p>
-            <h1>Commissions</h1>
-            <p className="dir-lead">
-              Production, rehearsal and campaign photography for theatres, producers,
-              drama schools and opera companies. Here is what I photograph, how a
-              commission works, and answers to the questions I’m asked most.
-            </p>
-          </div>
-        </section>
-
-        {hero.main ? (
-          <div className="svc-mosaic">
-            <div className="svc-mosaic-main">
-              <Image src={hero.main.src} alt={hero.main.alt} fill priority sizes="(max-width: 900px) 100vw, 62vw" />
-            </div>
-            {hero.side.map((picture, index) =>
-              picture ? (
-                <div key={picture.src} className={`svc-mosaic-side svc-mosaic-side-${index + 1}`}>
-                  <Image src={picture.src} alt={picture.alt} fill sizes="(max-width: 900px) 50vw, 30vw" />
-                </div>
-              ) : null,
-            )}
-          </div>
+      <section className="svc-hero">
+        {hero ? (
+          <Image
+            className="svc-hero-image"
+            src={hero.src}
+            alt={hero.alt}
+            fill
+            priority
+            sizes="100vw"
+          />
         ) : null}
+        <div className="svc-hero-copy">
+          <p className="dir-eyebrow">Working together</p>
+          <h1>Commissions</h1>
+          <p className="dir-lead">
+            Production, rehearsal and campaign photography for theatres, producers,
+            drama schools and opera companies — from the first rehearsal to the image
+            that sells the show.
+          </p>
+          <div className="svc-hero-actions">
+            <Link className="dir-button" href="/contact">
+              Start a conversation →
+            </Link>
+            <a className="dir-label" href="#questions">
+              How it works &amp; FAQs
+            </a>
+          </div>
+        </div>
+      </section>
 
-        <section className="dir-section" aria-labelledby="work-heading">
+      <div className="dir-wrap">
+        <section className="dir-section svc-first-section" aria-labelledby="work-heading">
           <div className="dir-section-head">
             <h2 id="work-heading">What I photograph</h2>
           </div>
@@ -350,43 +354,33 @@ export default async function CommissionsPage() {
           </ul>
         </section>
 
-        <section className="dir-section" id="how-it-works" aria-labelledby="steps-heading">
-          <div className="dir-section-head">
-            <h2 id="steps-heading">How a commission works</h2>
-          </div>
-          <div className={stepsPicture ? "svc-steps-layout" : undefined}>
-            <ol className="svc-steps">
-              {STEPS.map((step) => (
-                <li key={step.title}>
-                  <h3>{step.title}</h3>
-                  <p>{step.body}</p>
-                </li>
-              ))}
-            </ol>
-            {stepsPicture ? (
-              <div className="svc-steps-image">
-                <Image src={stepsPicture.src} alt={stepsPicture.alt} fill sizes="(max-width: 1000px) 100vw, 34vw" />
-              </div>
-            ) : null}
-          </div>
-        </section>
-
         <section className="dir-section" id="questions" aria-labelledby="faq-heading">
           <div className="dir-section-head">
-            <h2 id="faq-heading">Questions</h2>
+            <h2 id="faq-heading">Good to know</h2>
             <Link className="dir-label" href="/policies/terms">
               Terms &amp; conditions →
             </Link>
           </div>
-          <Questions items={QUESTIONS} />
+          <Questions
+            items={[
+              {
+                question: "How does a commission work?",
+                answer: (
+                  <ol className="svc-steps-list">
+                    {STEPS.map((step) => (
+                      <li key={step.title}>
+                        <strong>{step.title}.</strong> {step.body}
+                      </li>
+                    ))}
+                  </ol>
+                ),
+              },
+              ...QUESTIONS,
+            ]}
+          />
         </section>
 
-        <section className={ctaPicture ? "dir-cta svc-cta-image" : "dir-cta"}>
-          {ctaPicture ? (
-            <span className="svc-cta-bg" aria-hidden="true">
-              <Image src={ctaPicture.src} alt="" fill sizes="100vw" />
-            </span>
-          ) : null}
+        <section className="dir-cta">
           <div>
             <h2>Have a production in mind?</h2>
             <p>Tell me about it — even if the details are still taking shape.</p>

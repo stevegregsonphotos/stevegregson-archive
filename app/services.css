@@ -367,3 +367,92 @@
     min-height: 20rem;
   }
 }
+
+/* Full-bleed hero on the Commissions page */
+
+.svc-page {
+  padding-top: 0;
+}
+
+.svc-hero {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  min-height: min(92vh, 60rem);
+  margin: 0 -6vw;
+  padding: 10rem 6vw 6rem;
+  overflow: hidden;
+  background: #000;
+  isolation: isolate;
+}
+
+.svc-hero-image {
+  z-index: -2;
+  object-fit: cover;
+  object-position: 62% center;
+}
+
+.svc-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.78) 0%, rgba(0, 0, 0, 0.35) 45%, rgba(0, 0, 0, 0) 70%),
+    linear-gradient(0deg, #11100f 0%, rgba(17, 16, 15, 0) 28%);
+}
+
+.svc-hero-copy {
+  max-width: 44rem;
+}
+
+.svc-hero-copy h1 {
+  margin: 1.4rem 0 0;
+  font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  font-size: clamp(3.6rem, 9vw, 9.5rem);
+  font-weight: 400;
+  letter-spacing: -0.05em;
+  line-height: 0.92;
+}
+
+.svc-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1.2rem 2rem;
+  margin-top: 2.6rem;
+}
+
+.svc-first-section {
+  margin-top: 3rem;
+}
+
+.svc-steps-list {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.svc-steps-list li {
+  margin-bottom: 0.9rem;
+}
+
+.svc-steps-list strong {
+  color: #f2eee6;
+  font-weight: 600;
+}
+
+@media (max-width: 700px) {
+  .svc-hero {
+    min-height: 88vh;
+    margin: 0 -1.2rem;
+    padding: 8rem 1.2rem 3.5rem;
+  }
+
+  .svc-hero-image {
+    object-position: 58% center;
+  }
+
+  .svc-hero::after {
+    background: linear-gradient(0deg, #11100f 0%, rgba(0, 0, 0, 0.55) 45%, rgba(0, 0, 0, 0.1) 100%);
+  }
+}
