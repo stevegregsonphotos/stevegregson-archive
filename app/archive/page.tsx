@@ -226,7 +226,7 @@ export default async function ArchivePage() {
           align-items: center;
           gap: clamp(0.3rem, 0.8vw, 0.45rem);
           min-width: 0;
-          padding: 0.3rem clamp(0.4rem, 2.6vw, 2.6rem);
+          padding: 0.3rem clamp(0.4rem, 2.2vw, 1.75rem);
         }
 
         /* A fine rule between each figure. */
@@ -251,7 +251,7 @@ export default async function ArchivePage() {
             "Palatino Linotype",
             Georgia,
             serif;
-          font-size: clamp(1rem, 4.2vw, 2.7rem);
+          font-size: clamp(1rem, 4.2vw, 2.15rem);
           font-variant-numeric: tabular-nums;
           letter-spacing: -0.03em;
           line-height: 1;
