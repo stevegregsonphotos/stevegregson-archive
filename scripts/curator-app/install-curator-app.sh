@@ -1,5 +1,5 @@
 #!/bin/bash
-# Builds "Curate Production.app" in your Applications folder.
+# Builds "Curate Production.app" (with its icon) in your Applications folder.
 # Run once (and again if you move this website folder):
 #   npm run curator:install-app
 set -euo pipefail
@@ -10,8 +10,17 @@ if [[ "$(uname)" != "Darwin" ]]; then
 fi
 
 REPO="$(cd "$(dirname "$0")/../.." && pwd)"
-APP_DIR="$HOME/Applications"
-APP="$APP_DIR/Curate Production.app"
+APP_NAME="Curate Production.app"
+ICON_SRC="$REPO/scripts/curator-app/icon-1024.png"
+
+# Prefer the main Applications folder; fall back to the personal one if
+# this Mac account can't write there.
+if [[ -w "/Applications" ]]; then
+  APP_DIR="/Applications"
+else
+  APP_DIR="$HOME/Applications"
+fi
+APP="$APP_DIR/$APP_NAME"
 
 # Make the folder path safe to put inside an AppleScript string.
 ESCAPED="${REPO//\\/\\\\}"
@@ -40,6 +49,28 @@ if [[ -d "$APP" ]]; then
   rm -rf "$APP"
 fi
 osacompile -o "$APP" "$TMP/curate.applescript"
+
+# Give the app the SG spotlight icon.
+if [[ -f "$ICON_SRC" ]]; then
+  ICONSET="$TMP/Curate.iconset"
+  mkdir -p "$ICONSET"
+  for size in 16 32 128 256 512; do
+    sips -z "$size" "$size" "$ICON_SRC" --out "$ICONSET/icon_${size}x${size}.png" >/dev/null
+    double=$((size * 2))
+    sips -z "$double" "$double" "$ICON_SRC" --out "$ICONSET/icon_${size}x${size}@2x.png" >/dev/null
+  done
+  iconutil -c icns -o "$TMP/Curate.icns" "$ICONSET"
+  cp "$TMP/Curate.icns" "$APP/Contents/Resources/applet.icns"
+  touch "$APP"
+fi
+
+# Remove an older copy from the personal Applications folder, so there's
+# only ever one Curate Production.
+OLD="$HOME/Applications/$APP_NAME"
+if [[ "$APP_DIR" != "$HOME/Applications" && -d "$OLD" ]]; then
+  rm -rf "$OLD"
+  echo "Removed the older copy from your personal Applications folder."
+fi
 
 echo
 echo "Installed: $APP"
