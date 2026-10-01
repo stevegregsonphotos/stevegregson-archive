@@ -218,10 +218,11 @@ export default function SelectedWorkShowcase({
                     </span>
                   </>
                 ) : (
-                  <span>
-                    {viewerIndex! + 1} / {sequence.length}
-                  </span>
+                  <strong>Production to be named</strong>
                 )}
+                <span className={styles.viewerCount}>
+                  {viewerIndex! + 1} / {sequence.length}
+                </span>
               </p>
 
               <div className={styles.viewerControls}>

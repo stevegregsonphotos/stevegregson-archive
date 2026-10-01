@@ -241,6 +241,13 @@
   font-weight: 400;
 }
 
+.viewerCount {
+  margin-left: 1rem;
+  color: rgba(242, 238, 230, 0.38);
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+}
+
 .viewerControls {
   display: flex;
   gap: 0.5rem;
