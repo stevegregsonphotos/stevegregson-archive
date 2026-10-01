@@ -2218,12 +2218,48 @@ async function detectShootDate(
   return null;
 }
 
+async function askShootDate(rl, shootDate) {
+  if (shootDate?.month && shootDate?.year) {
+    return shootDate;
+  }
+  console.log();
+  console.log(
+    "The month and year this was photographed couldn't be found in the photos or the folder name.",
+  );
+  const answer = await ask(
+    rl,
+    "Month and year photographed (e.g. August 2026), or press Enter to skip",
+  );
+  if (!answer) {
+    return shootDate;
+  }
+  const typed = dateFromFolderName(answer);
+  const month = typed.month ?? shootDate?.month ?? null;
+  const year = typed.year ?? shootDate?.year ?? null;
+  if (!month && !year) {
+    console.log(
+      "Couldn't read that as a month and year, so it was skipped. You can enter it in Backstage.",
+    );
+    return shootDate;
+  }
+  return {
+    year,
+    month,
+    label: [month ? monthNames()[month - 1] : "", year ?? ""].join(" ").trim(),
+    source: "entered by you",
+    datedPhotos: 0,
+  };
+}
+
 function describeShootDate(shootDate) {
   if (!shootDate) {
     return "Shoot date: not found (no date in the photos or folder name).";
   }
   if (shootDate.source === "photo dates") {
     return `Shoot date: ${shootDate.label} (from the date taken on ${shootDate.matchingPhotos} of ${shootDate.datedPhotos} dated photos${shootDate.otherMonths ? `; ${shootDate.otherMonths} other month(s) also present` : ""}).`;
+  }
+  if (shootDate.source === "entered by you") {
+    return `Shoot date: ${shootDate.label} (entered by you).`;
   }
   return `Shoot date: ${shootDate.label} (from the folder name; the photos carry no date).`;
 }
@@ -2780,6 +2816,7 @@ Tell Steve in plain English how many photographs you chose and which is the hero
 
 async function finishClaudeCuration(
   outputDir,
+  rl = null,
 ) {
   outputDir =
     path.resolve(outputDir);
@@ -2876,12 +2913,20 @@ async function finishClaudeCuration(
     );
   }
 
-  const shootDate =
+  let shootDate =
     discovery.shootDate ??
     await detectShootDate(
       candidates,
       sourceFolder,
     );
+
+  if (rl) {
+    shootDate =
+      await askShootDate(
+        rl,
+        shootDate,
+      );
+  }
 
   console.log(
     describeShootDate(shootDate),
@@ -3110,6 +3155,7 @@ async function main() {
 
       await finishClaudeCuration(
         preparedFolder,
+        rl,
       );
       return;
     }
@@ -3186,9 +3232,12 @@ async function main() {
     }
 
     const shootDate =
-      await detectShootDate(
-        candidates,
-        sourceFolder,
+      await askShootDate(
+        rl,
+        await detectShootDate(
+          candidates,
+          sourceFolder,
+        ),
       );
 
     const outputRoot =
