@@ -11,7 +11,7 @@ import styles from "./selected-work-preview.module.css";
 export const metadata: Metadata = {
   title: "Selected Work",
   description:
-    "Selected theatre photography by London photographer Steve Gregson, including production, rehearsal, backstage, marketing and PR photography.",
+    "Selected theatre photography by London photographer Steve Gregson, including production, dress rehearsal, marketing, rehearsal and backstage photography.",
   alternates: {
     canonical: "/selected-work",
   },
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
     type: "website",
     url: "/selected-work",
     title: "Selected Work | Steve Gregson",
-    description: "Selected theatre photography by London photographer Steve Gregson, including production, rehearsal, backstage, marketing and PR photography.",
+    description: "Selected theatre photography by London photographer Steve Gregson, including production, dress rehearsal, marketing, rehearsal and backstage photography.",
     images: [
       {
         url: "/images/homepage-hero.webp",
@@ -32,7 +32,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Selected Work | Steve Gregson",
-    description: "Selected theatre photography by London photographer Steve Gregson, including production, rehearsal, backstage, marketing and PR photography.",
+    description: "Selected theatre photography by London photographer Steve Gregson, including production, dress rehearsal, marketing, rehearsal and backstage photography.",
     images: ["/images/homepage-hero.webp"],
   },
 };

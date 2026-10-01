@@ -13,11 +13,11 @@ export async function GET() {
 
   const body = `# Steve Gregson Photography
 
-> Steve Gregson FRSA LBIPP is a London theatre photographer. He photographs production, dress rehearsal, rehearsal, backstage, marketing and PR images for theatres, producers, drama schools and opera companies across London, the UK and internationally.
+> Steve Gregson FRSA is an award-winning London theatre photographer whose work includes productions at the Young Vic, Kiln Theatre, Orange Tree Theatre and in the West End. He photographs productions, dress rehearsals, marketing and PR campaigns, rehearsals and backstage for theatres, producers, drama schools and opera companies across London, the UK and internationally.
 
 - Based in London, United Kingdom. Works across the UK and internationally.
-- Licentiate of the British Institute of Professional Photography (LBIPP), Fellow of the Royal Society of Arts (FRSA), award-winning member of the Federation of European Photographers.
-- Almost two decades working inside theatre (performance, technical management, theatrical design, lighting and teaching) before photographing it.
+- Fellow of the Royal Society of Arts (FRSA), award-winning member of the Federation of European Photographers, Licentiate of the British Institute of Professional Photography (LBIPP).
+- Over 25 years working in theatre (performance, theatrical design, lighting, technical management and teaching), giving him an instinctive understanding of the moments, movement and visual language that make each production distinctive.
 - Photographs live performances and dress rehearsals with a silent shutter.
 - Press selections within 24 hours when agreed; full edited sets within 5 working days.
 - Clients include the Young Vic, Kiln Theatre, Orange Tree Theatre, Park Theatre, Jermyn Street Theatre, Arcola Theatre, Hackney Empire, Polka Theatre, Chickenshed, Glyndebourne, Waterperry Opera, Mountview, ArtsEd, Guildhall School of Music & Drama, Guildford School of Acting, Rose Bruford College and the London School of Musical Theatre.

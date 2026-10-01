@@ -12,7 +12,7 @@ export const metadata: Metadata = {
     template: "%s | Steve Gregson",
   },
   description:
-    "London theatre photographer Steve Gregson creates production, rehearsal, backstage, marketing and PR photography for theatres, producers and performing arts organisations across the UK and internationally.",
+    "Steve Gregson is an award-winning London theatre photographer whose work includes productions at the Young Vic, Kiln Theatre, Orange Tree Theatre and in the West End.",
   applicationName: "Steve Gregson Photography",
   authors: [
     {
@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     siteName: "Steve Gregson",
     title: "Steve Gregson | London Theatre Photographer",
     description:
-      "Production, rehearsal, backstage, marketing and PR photography for theatre and the performing arts.",
+      "Steve Gregson is an award-winning London theatre photographer whose work includes productions at the Young Vic, Kiln Theatre, Orange Tree Theatre and in the West End.",
     images: [
       {
         url: "/images/homepage-hero.jpg",
@@ -43,7 +43,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Steve Gregson | London Theatre Photographer",
     description:
-      "Production, rehearsal, backstage, marketing and PR photography for theatre and the performing arts.",
+      "Steve Gregson is an award-winning London theatre photographer whose work includes productions at the Young Vic, Kiln Theatre, Orange Tree Theatre and in the West End.",
     images: ["/images/homepage-hero.jpg"],
   },
 };
@@ -129,7 +129,7 @@ const structuredData = {
         },
       ],
       description:
-        "London-based theatre and performing arts photographer specialising in production, rehearsal, backstage, marketing and PR photography.",
+        "Steve Gregson is an award-winning London theatre photographer whose work includes productions at the Young Vic, Kiln Theatre, Orange Tree Theatre and in the West End. With over 25 years working in theatre across performance, design, lighting and technical management, he brings an instinctive understanding of the moments, movement and visual language that make each production distinctive. He has photographed more than 400 productions and works regularly with leading drama schools including Mountview, ArtsEd and Guildford School of Acting.",
       sameAs: SAME_AS,
       homeLocation: {
         "@type": "Place",
@@ -138,11 +138,12 @@ const structuredData = {
       knowsAbout: [
         "Theatre photography",
         "Production photography",
+        "Dress rehearsal photography",
+        "Marketing photography",
+        "PR photography",
         "Rehearsal photography",
         "Backstage photography",
         "Performing arts photography",
-        "Marketing photography",
-        "PR photography",
       ],
       email: "mailto:info@stevegregson.com",
       telephone: "+447729435728",
@@ -155,7 +156,7 @@ const structuredData = {
       "@id": "https://www.stevegregson.com/#business",
       name: "Steve Gregson Photography",
       description:
-        "London theatre photographer. Production, rehearsal, backstage, marketing and PR photography for theatres, producers, drama schools and opera companies.",
+        "Award-winning London theatre photography for theatres, producers and drama schools: production, dress rehearsal, marketing and PR, rehearsal and backstage photography.",
       url: "https://www.stevegregson.com/",
       image: "https://www.stevegregson.com/images/homepage-hero.webp",
       logo: "https://www.stevegregson.com/icon.png",
