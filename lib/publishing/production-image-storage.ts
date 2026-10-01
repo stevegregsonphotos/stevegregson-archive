@@ -79,6 +79,33 @@ export function getProductionImageObjectKey(
   ].join("/");
 }
 
+/*
+ * Builds an R2 key from a path relative to a production's prefix,
+ * e.g. "hero.webp" or "__cards/hero.webp". Each segment is checked
+ * separately, so the card thumbnails kept in the "__cards" sub-folder
+ * can be moved along with the full-size images.
+ */
+function getProductionObjectKeyFromRelativePath(
+  productionSlug: string,
+  relativePath: string,
+) {
+  const segments =
+    relativePath.split("/");
+
+  return [
+    safeSegment(
+      productionSlug,
+      "production slug",
+    ),
+    ...segments.map((segment) =>
+      safeSegment(
+        segment,
+        "filename",
+      ),
+    ),
+  ].join("/");
+}
+
 export async function createProductionCardImageUploadUrl(
   productionSlug: string,
   filename: string,
@@ -332,7 +359,7 @@ export async function copyProductionImagesToSlug(
 
   const copyPlan =
     sourceKeys.map((sourceKey) => {
-      const filename =
+      const relativePath =
         sourceKey.slice(
           sourceSlug.length + 1,
         );
@@ -340,9 +367,9 @@ export async function copyProductionImagesToSlug(
       return {
         sourceKey,
         destinationKey:
-          getProductionImageObjectKey(
+          getProductionObjectKeyFromRelativePath(
             destinationSlug,
-            filename,
+            relativePath,
           ),
       };
     });
