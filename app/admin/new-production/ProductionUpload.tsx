@@ -5,6 +5,9 @@ import {
   useState,
 } from "react";
 
+import PasteCreditsPanel from "../../../components/admin/editor/PasteCreditsPanel";
+import type { PastedCredit } from "../../../lib/parse-pasted-credits";
+
 type LocalImage = {
   id: string;
   file: File;
@@ -931,6 +934,13 @@ export default function ProductionUpload() {
   ] =
     useState("");
 
+  /** Pasted credits that have no box of their own (Producer, Composer…). */
+  const [
+    extraCredits,
+    setExtraCredits,
+  ] =
+    useState<PastedCredit[]>([]);
+
   const [
     progress,
     setProgress,
@@ -966,6 +976,104 @@ export default function ProductionUpload() {
     setIsPublishing,
   ] =
     useState(false);
+
+  const pasteCreditFields: Record<
+    string,
+    [string, (update: (current: string) => string) => void]
+  > = {
+    Director: [director, setDirector],
+    Writer: [writer, setWriter],
+    Cast: [cast, setCast],
+    "Associate Director": [associateDirector, setAssociateDirector],
+    "Musical Director": [musicalDirector, setMusicalDirector],
+    Choreographer: [choreographer, setChoreographer],
+    "Movement Director": [movementDirector, setMovementDirector],
+    "Lighting Design": [lightingDesign, setLightingDesign],
+    "Set Design": [setDesign, setSetDesign],
+    "Costume Design": [costumeDesign, setCostumeDesign],
+    "Set & Costume Design": [setAndCostumeDesign, setSetAndCostumeDesign],
+    "Sound Design": [soundDesign, setSoundDesign],
+    "Commissioned by": [commissionedBy, setCommissionedBy],
+  };
+
+  function splitFieldNames(
+    value: string,
+  ) {
+    return value
+      .split(
+        /\s*(?:,|;|&|\band\b)\s*/i,
+      )
+      .map((name) =>
+        name.trim(),
+      )
+      .filter(Boolean);
+  }
+
+  const creditsForPaste = [
+    ...Object.entries(
+      pasteCreditFields,
+    ).flatMap(
+      ([role, [value]]) =>
+        splitFieldNames(
+          value,
+        ).map((name) => ({
+          role,
+          name,
+        })),
+    ),
+    ...extraCredits,
+  ];
+
+  function addPastedCredits(
+    pasted: PastedCredit[],
+  ) {
+    const extras: PastedCredit[] = [];
+
+    for (const credit of pasted) {
+      const field =
+        pasteCreditFields[
+          credit.role
+        ];
+
+      if (!field) {
+        extras.push(credit);
+        continue;
+      }
+
+      const [, setField] =
+        field;
+
+      setField((current) => {
+        const existing =
+          splitFieldNames(
+            current,
+          ).map((name) =>
+            name.toLowerCase(),
+          );
+
+        if (
+          existing.includes(
+            credit.name.toLowerCase(),
+          )
+        ) {
+          return current;
+        }
+
+        return current.trim()
+          ? `${current.trim()}, ${credit.name}`
+          : credit.name;
+      });
+    }
+
+    if (extras.length) {
+      setExtraCredits(
+        (current) => [
+          ...current,
+          ...extras,
+        ],
+      );
+    }
+  }
 
   const includedImages =
     useMemo(
@@ -1047,6 +1155,7 @@ export default function ProductionUpload() {
     setPublishedUrl("");
     setPublishSucceeded(false);
     setDetailsFileName("");
+    setExtraCredits([]);
 
     const detailsFile =
       selectedFiles.find(
@@ -1560,6 +1669,16 @@ export default function ProductionUpload() {
       );
 
       credits.push(
+        ...extraCredits
+          .map((credit) => ({
+            role: credit.role.trim(),
+            name: credit.name.trim(),
+          }))
+          .filter(
+            (credit) =>
+              credit.role &&
+              credit.name,
+          ),
         ...castCredits,
       );
 
@@ -2764,6 +2883,146 @@ export default function ProductionUpload() {
                 />
               </label>
             </div>
+
+            <PasteCreditsPanel
+              existingCredits={
+                creditsForPaste
+              }
+              onAdd={
+                addPastedCredits
+              }
+              afterAddHint="They will be published with the production."
+            />
+
+            {extraCredits.length >
+            0 ? (
+              <div
+                style={{
+                  marginTop:
+                    "1.5rem",
+                }}
+              >
+                <p
+                  className="backstage-field-label"
+                  style={{
+                    margin:
+                      "0 0 .75rem",
+                  }}
+                >
+                  Other credits
+                </p>
+
+                <div
+                  style={{
+                    display:
+                      "grid",
+                    gap:
+                      ".5rem",
+                  }}
+                >
+                  {extraCredits.map(
+                    (
+                      credit,
+                      index,
+                    ) => (
+                      <div
+                        key={index}
+                        style={{
+                          display:
+                            "grid",
+                          gridTemplateColumns:
+                            "minmax(9rem, .8fr) minmax(12rem, 1fr) auto",
+                          gap:
+                            ".75rem",
+                          alignItems:
+                            "center",
+                        }}
+                      >
+                        <input
+                          className="backstage-input"
+                          aria-label="Role"
+                          value={
+                            credit.role
+                          }
+                          onChange={(
+                            event,
+                          ) =>
+                            setExtraCredits(
+                              (current) =>
+                                current.map(
+                                  (
+                                    item,
+                                    itemIndex,
+                                  ) =>
+                                    itemIndex ===
+                                    index
+                                      ? {
+                                          ...item,
+                                          role: event
+                                            .target
+                                            .value,
+                                        }
+                                      : item,
+                                ),
+                            )
+                          }
+                        />
+
+                        <input
+                          className="backstage-input"
+                          aria-label="Name"
+                          value={
+                            credit.name
+                          }
+                          onChange={(
+                            event,
+                          ) =>
+                            setExtraCredits(
+                              (current) =>
+                                current.map(
+                                  (
+                                    item,
+                                    itemIndex,
+                                  ) =>
+                                    itemIndex ===
+                                    index
+                                      ? {
+                                          ...item,
+                                          name: event
+                                            .target
+                                            .value,
+                                        }
+                                      : item,
+                                ),
+                            )
+                          }
+                        />
+
+                        <button
+                          type="button"
+                          className="backstage-button"
+                          onClick={() =>
+                            setExtraCredits(
+                              (current) =>
+                                current.filter(
+                                  (
+                                    _item,
+                                    itemIndex,
+                                  ) =>
+                                    itemIndex !==
+                                    index,
+                                ),
+                            )
+                          }
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ),
+                  )}
+                </div>
+              </div>
+            ) : null}
 
             <label
               style={{

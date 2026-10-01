@@ -9,6 +9,11 @@ import {
   getDirectoryUrlFromData,
   type DirectoryData,
 } from "@/lib/directory-data";
+import type { PastedCredit } from "@/lib/parse-pasted-credits";
+
+import PasteCreditsPanel, {
+  creditKey,
+} from "./PasteCreditsPanel";
 
 type Credit = {
   role: string;
@@ -121,6 +126,49 @@ export default function CreditsEditor({
     ]);
   }
 
+  function addPastedCredits(
+    pasted: PastedCredit[],
+  ) {
+    const existingKeys = new Set(
+      credits.map(creditKey),
+    );
+
+    const additions = pasted
+      .filter(
+        (credit) =>
+          !existingKeys.has(
+            creditKey(credit),
+          ),
+      )
+      .map((credit): Credit => {
+        const knownWebsite =
+          directory
+            ? getDirectoryUrlFromData(
+                directory,
+                credit.name,
+              )
+            : undefined;
+
+        return knownWebsite
+          ? {
+              ...credit,
+              website: knownWebsite,
+            }
+          : { ...credit };
+      });
+
+    // Drop completely empty rows (e.g. a blank one from "Add credit")
+    // so the pasted credits don't sit below a gap.
+    const kept = credits.filter(
+      (credit) =>
+        credit.role.trim() ||
+        credit.name.trim() ||
+        credit.website?.trim(),
+    );
+
+    onChange([...kept, ...additions]);
+  }
+
   function removeCredit(index: number) {
     onChange(
       credits.filter(
@@ -181,6 +229,11 @@ export default function CreditsEditor({
           Add credit
         </button>
       </div>
+
+      <PasteCreditsPanel
+        existingCredits={credits}
+        onAdd={addPastedCredits}
+      />
 
       <div
         style={{
