@@ -47,8 +47,66 @@ const PRICE = {
 
 const cli = process.argv.slice(2);
 
+const GENERATED_DIR_NAMES = new Set([
+  "thumbnails",
+  "contact-sheets",
+  "pass-1",
+  "pass-2-contact-sheets",
+  "selected-web-staging",
+  ".editor-thumbnails",
+]);
+
+const MIN_FREE_BYTES = 20 * 1024 * 1024 * 1024;
+
+function sourceLooksCloudBacked(value) {
+  const normalised = path.resolve(value).replace(/\\/g, "/");
+  return (
+    normalised.includes("/Library/CloudStorage/Dropbox/") ||
+    normalised.includes("/Library/CloudStorage/GoogleDrive-") ||
+    normalised.includes("/Library/CloudStorage/OneDrive-") ||
+    normalised.includes("/Library/CloudStorage/Box-Box/")
+  );
+}
+
+function pathIsInside(parent, child) {
+  const relative = path.relative(path.resolve(parent), path.resolve(child));
+  return (
+    relative === "" ||
+    (!relative.startsWith("..") && !path.isAbsolute(relative))
+  );
+}
+
+async function assertDiskSafety(outputRoot, candidates) {
+  const stats = await fs.statfs(outputRoot);
+  const freeBytes = Number(stats.bavail) * Number(stats.bsize);
+  const sourceBytes = candidates.reduce(
+    (sum, candidate) => sum + Number(candidate.size || 0),
+    0,
+  );
+
+  // The curator normally writes small JPEG thumbnails/contact sheets plus
+  // only the final selected originals. Keep a hard 20 GiB safety reserve
+  // and also require room for a conservative fraction of the source set.
+  const estimatedWorkingBytes = Math.max(
+    2 * 1024 * 1024 * 1024,
+    Math.min(
+      10 * 1024 * 1024 * 1024,
+      Math.ceil(sourceBytes * 0.35),
+    ),
+  );
+
+  const requiredBytes = MIN_FREE_BYTES + estimatedWorkingBytes;
+
+  if (freeBytes < requiredBytes) {
+    throw new Error(
+      `DISK SAFETY STOP: only ${(freeBytes / 1024 ** 3).toFixed(1)} GiB free. ` +
+      `This run requires at least ${(requiredBytes / 1024 ** 3).toFixed(1)} GiB free, including a 20 GiB safety reserve. No images were processed.`,
+    );
+  }
+}
+
 function argValue(name) {
-  const prefix = \`--\${name}=\`;
+  const prefix = `--${name}=`;
   const item = cli.find((value) =>
     value.startsWith(prefix),
   );
@@ -58,7 +116,7 @@ function argValue(name) {
 }
 
 function hasFlag(name) {
-  return cli.includes(\`--\${name}\`);
+  return cli.includes(`--${name}`);
 }
 
 function safeName(value) {
@@ -84,7 +142,7 @@ function readEnvValue(text, key) {
     if (
       !line ||
       line.startsWith("#") ||
-      !line.startsWith(\`\${key}=\`)
+      !line.startsWith(`${key}=`)
     ) {
       continue;
     }
@@ -154,7 +212,7 @@ async function chooseFolderWithFinder() {
 
       reject(
         new Error(
-          \`Folder picker failed: \${stderr.trim()}\`,
+          `Folder picker failed: ${stderr.trim()}`,
         ),
       );
     });
@@ -163,10 +221,10 @@ async function chooseFolderWithFinder() {
 
 async function ask(rl, question, fallback = "") {
   const suffix = fallback
-    ? \` [\${fallback}]\`
+    ? ` [${fallback}]`
     : "";
   const answer =
-    (await rl.question(\`\${question}\${suffix}: \`))
+    (await rl.question(`${question}${suffix}: `))
       .trim();
   return answer || fallback;
 }
@@ -181,7 +239,7 @@ async function yesNo(
     : "y/N";
   const answer =
     (await rl.question(
-      \`\${question} [\${marker}]: \`,
+      `${question} [${marker}]: `,
     ))
       .trim()
       .toLowerCase();
@@ -214,6 +272,13 @@ async function listImages(root) {
         path.join(folder, item.name);
 
       if (item.isDirectory()) {
+        if (
+          GENERATED_DIR_NAMES.has(item.name) ||
+          item.name.startsWith("pass-")
+        ) {
+          continue;
+        }
+
         await walk(fullPath);
         continue;
       }
@@ -273,7 +338,7 @@ async function writeJson(filePath, value) {
   );
 
   const temp =
-    \`\${filePath}.tmp\`;
+    `${filePath}.tmp`;
 
   await fs.writeFile(
     temp,
@@ -349,7 +414,7 @@ async function prepareThumbnails(
 
   console.log();
   console.log(
-    \`PREPARING \${candidates.length} THUMBNAILS\`,
+    `PREPARING ${candidates.length} THUMBNAILS`,
   );
 
   async function worker() {
@@ -365,7 +430,7 @@ async function prepareThumbnails(
         candidates[index];
 
       const filename =
-        \`\${String(index + 1).padStart(4, "0")}.jpg\`;
+        `${String(index + 1).padStart(4, "0")}.jpg`;
 
       const destination =
         path.join(
@@ -434,7 +499,7 @@ async function prepareThumbnails(
         completed === candidates.length
       ) {
         console.log(
-          \`\${completed}/\${candidates.length}\`,
+          `${completed}/${candidates.length}`,
         );
       }
     }
@@ -492,13 +557,13 @@ async function prepareThumbnails(
 
 function contactSheetSvgLabel(index) {
   const label =
-    \`#\${String(index).padStart(4, "0")}\`;
+    `#${String(index).padStart(4, "0")}`;
 
   return Buffer.from(
-    \`<svg width="\${CELL_W}" height="35" xmlns="http://www.w3.org/2000/svg">
+    `<svg width="${CELL_W}" height="35" xmlns="http://www.w3.org/2000/svg">
       <rect width="100%" height="100%" fill="white"/>
-      <text x="50%" y="24" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="700" fill="black">\${label}</text>
-    </svg>\`,
+      <text x="50%" y="24" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="700" fill="black">${label}</text>
+    </svg>`,
   );
 }
 
@@ -544,7 +609,7 @@ async function buildContactSheet(
     const input =
       path.join(
         thumbnailDir,
-        \`\${String(imageIndex).padStart(4, "0")}.jpg\`,
+        `${String(imageIndex).padStart(4, "0")}.jpg`,
       );
 
     const image =
@@ -653,7 +718,7 @@ async function generateContactSheets(
       sheets.length + 1;
 
     const filename =
-      \`sheet-\${String(sheetNumber).padStart(2, "0")}.jpg\`;
+      `sheet-${String(sheetNumber).padStart(2, "0")}.jpg`;
 
     const destination =
       path.join(
@@ -679,7 +744,7 @@ async function generateContactSheets(
     });
 
     console.log(
-      \`Contact sheet \${sheetNumber}: \${subset.length} photographs\`,
+      `Contact sheet ${sheetNumber}: ${subset.length} photographs`,
     );
   }
 
@@ -846,7 +911,7 @@ async function paidResponse(
     PRICE.model
   ) {
     throw new Error(
-      \`Paid-run guard only authorises model \${PRICE.model}; requested \${params.model}.\`,
+      `Paid-run guard only authorises model ${PRICE.model}; requested ${params.model}.`,
     );
   }
 
@@ -927,7 +992,7 @@ async function paidResponse(
     paidState.ledger.budgetUsd
   ) {
     throw new Error(
-      \`PAID RUN STOPPED: next request could exceed the approved £/\$ budget ceiling. Recorded \$\${spent.toFixed(4)}; conservative next-call max \$\${conservative.toFixed(4)}; ceiling \$\${paidState.ledger.budgetUsd.toFixed(2)}.\`,
+      `PAID RUN STOPPED: next request could exceed the approved £/\$ budget ceiling. Recorded \$${spent.toFixed(4)}; conservative next-call max \$${conservative.toFixed(4)}; ceiling \$${paidState.ledger.budgetUsd.toFixed(2)}.`,
     );
   }
 
@@ -999,7 +1064,7 @@ async function paidResponse(
   );
 
   console.log(
-    \`API spend: \$\${cost.toFixed(4)} this call | \$\${cumulative.toFixed(4)} / \$\${paidState.ledger.budgetUsd.toFixed(2)} approved ceiling\`,
+    `API spend: \$${cost.toFixed(4)} this call | \$${cumulative.toFixed(4)} / \$${paidState.ledger.budgetUsd.toFixed(2)} approved ceiling`,
   );
 
   return response;
@@ -1037,7 +1102,7 @@ async function runPassOne(
     const cachedPath =
       path.join(
         directory,
-        \`sheet-\${String(sheet.sheet).padStart(2, "0")}.json\`,
+        `sheet-${String(sheet.sheet).padStart(2, "0")}.json`,
       );
 
     try {
@@ -1052,7 +1117,7 @@ async function runPassOne(
         results.push(cached);
 
         console.log(
-          \`Sheet \${sheet.sheet}/\${contactSheets.sheets.length}: cached\`,
+          `Sheet ${sheet.sheet}/${contactSheets.sheets.length}: cached`,
         );
 
         continue;
@@ -1067,13 +1132,13 @@ async function runPassOne(
         ),
       );
 
-    const prompt = \`
+    const prompt = `
 You are making a FIRST-PASS visual edit for Steve Gregson's professional theatre-photography archive.
 
 Production:
-\${production}
+${production}
 
-This sheet contains photographs #\${String(sheet.first).padStart(4, "0")} through #\${String(sheet.last).padStart(4, "0")}.
+This sheet contains photographs #${String(sheet.first).padStart(4, "0")} through #${String(sheet.last).padStart(4, "0")}.
 
 Retain every photograph worthy of serious consideration in the final production gallery. This is not the final cut.
 
@@ -1103,10 +1168,10 @@ Return JSON only:
 }
 
 Every number must be visible on this sheet.
-\`.trim();
+`.trim();
 
     console.log(
-      \`Sheet \${sheet.sheet}/\${contactSheets.sheets.length}: reviewing...\`,
+      `Sheet ${sheet.sheet}/${contactSheets.sheets.length}: reviewing...`,
     );
 
     const response =
@@ -1286,7 +1351,7 @@ async function runPassTwo(
     ) {
       console.log();
       console.log(
-        \`PASS 2 — using cached final edit (\${cached.sequence.length} images)\`,
+        `PASS 2 — using cached final edit (${cached.sequence.length} images)`,
       );
       return cached;
     }
@@ -1319,11 +1384,11 @@ async function runPassTwo(
   const content = [
     {
       type: "input_text",
-      text: \`
+      text: `
 You are making the FINAL whole-production edit for Steve Gregson's professional theatre-photography archive.
 
 Production:
-\${production}
+${production}
 
 Select only photographs that deserve to be on a professional archive website.
 
@@ -1360,7 +1425,7 @@ Rules:
 - hero must be selected.
 - sequence must contain each selected image exactly once.
 - altText must contain one non-empty sentence for every selected image.
-\`.trim(),
+`.trim(),
     },
   ];
 
@@ -1380,11 +1445,11 @@ Rules:
       type:
         "input_text",
       text:
-        \`Finalist sheet \${sheet.sheet}: \` +
+        `Finalist sheet ${sheet.sheet}: ` +
         sheet.indices
           .map(
             (index) =>
-              \`#\${String(index).padStart(4, "0")}\`,
+              `#${String(index).padStart(4, "0")}`,
           )
           .join(", "),
     });
@@ -1403,7 +1468,7 @@ Rules:
 
   console.log();
   console.log(
-    \`PASS 2 — FINAL EDIT (\${finalists.length} finalists)\`,
+    `PASS 2 — FINAL EDIT (${finalists.length} finalists)`,
   );
 
   const response =
@@ -1480,7 +1545,7 @@ Rules:
       !value.trim()
     ) {
       throw new Error(
-        \`Final edit omitted alt text for image #\${index}.\`,
+        `Final edit omitted alt text for image #${index}.`,
       );
     }
 
@@ -1529,6 +1594,7 @@ async function stageFinalSelection(
   candidates,
   finalEdit,
   outputDir,
+  production,
 ) {
   const stagingDir =
     path.join(
@@ -1580,7 +1646,7 @@ async function stageFinalSelection(
 
     if (!candidate) {
       throw new Error(
-        \`Selected image #\${imageIndex} is missing.\`,
+        `Selected image #${imageIndex} is missing.`,
       );
     }
 
@@ -1593,12 +1659,12 @@ async function stageFinalSelection(
       ".jpg";
 
     const destinationName =
-      \`\${String(position + 1).padStart(3, "0")}__\${String(imageIndex).padStart(4, "0")}__\${safeName(
+      `${String(position + 1).padStart(3, "0")}__${String(imageIndex).padStart(4, "0")}__${safeName(
         path.basename(
           candidate.name,
           extension,
         ),
-      )}\${extension}\`;
+      )}${extension}`;
 
     await fs.copyFile(
       candidate
@@ -1620,9 +1686,9 @@ async function stageFinalSelection(
       sourceName:
         candidate.name,
       sourcePath:
-        candidate.relativePath,
+        "/" + candidate.relativePath.replace(/^\\/+/, ""),
       sourceFolder:
-        sourceFolder,
+        cleanDisplayName(path.basename(sourceFolder)),
       modified:
         candidate.modified,
       stagedFile:
@@ -1642,12 +1708,7 @@ async function stageFinalSelection(
     version: 1,
     source:
       "local-folder",
-    production:
-      cleanDisplayName(
-        path.basename(
-          sourceFolder,
-        ),
-      ),
+    production,
     generatedAt:
       new Date()
         .toISOString(),
@@ -1782,17 +1843,17 @@ async function runMetadataResearch(
       sourceFolder,
     );
 
-  const prompt = \`
+  const prompt = `
 Research the exact theatre/performance production below for Steve Gregson's professional photography archive.
 
 PRODUCTION:
-\${production}
+${production}
 
 SOURCE FOLDER:
-\${path.basename(sourceFolder)}
+${path.basename(sourceFolder)}
 
 EXISTING SOURCE TXT:
-\${sourceTxt.text || "(none provided)"}
+${sourceTxt.text || "(none provided)"}
 
 Research THIS production, not another production of the same play.
 
@@ -1841,7 +1902,7 @@ Return JSON only:
 
 Every populated researched field must have credible support in sources or the supplied source TXT.
 Do not invent source URLs.
-\`.trim();
+`.trim();
 
   console.log();
   console.log(
@@ -1917,7 +1978,7 @@ Do not invent source URLs.
     }
 
     lines.push(
-      \`\${label}: \${String(value).trim()}\`,
+      `${label}: ${String(value).trim()}`,
     );
   }
 
@@ -2074,7 +2135,7 @@ async function validatePackage(
     images.length
   ) {
     throw new Error(
-      \`Package validation failed: \${images.length} selected but \${staged.length} staged.\`,
+      `Package validation failed: ${images.length} selected but ${staged.length} staged.`,
     );
   }
 
@@ -2085,7 +2146,7 @@ async function validatePackage(
       !image.alt.trim()
     ) {
       throw new Error(
-        \`Package validation failed: image #\${image.index} has no alt text.\`,
+        `Package validation failed: image #${image.index} has no alt text.`,
       );
     }
 
@@ -2099,7 +2160,7 @@ async function validatePackage(
 
     if (!stats.size) {
       throw new Error(
-        \`Package validation failed: empty staged file \${image.stagedFile}.\`,
+        `Package validation failed: empty staged file ${image.stagedFile}.`,
       );
     }
   }
@@ -2120,7 +2181,7 @@ async function validatePackage(
 
     if (!stats.size) {
       throw new Error(
-        \`Package validation failed: \${required} is empty.\`,
+        `Package validation failed: ${required} is empty.`,
       );
     }
   }
@@ -2222,6 +2283,15 @@ async function main() {
       );
     }
 
+    if (
+      sourceLooksCloudBacked(sourceFolder) &&
+      !hasFlag("allow-cloud-source")
+    ) {
+      throw new Error(
+        "CLOUD SOURCE SAFETY STOP: this folder is inside a cloud-provider mount. Reading every source image could hydrate large amounts of data onto this Mac. Copy the single production locally first, or rerun with --allow-cloud-source only if you intentionally accept that behaviour.",
+      );
+    }
+
     const defaultProduction =
       cleanDisplayName(
         path.basename(
@@ -2263,6 +2333,25 @@ async function main() {
           production,
         ),
       );
+
+    if (
+      pathIsInside(sourceFolder, outputDir) ||
+      pathIsInside(outputDir, sourceFolder)
+    ) {
+      throw new Error(
+        "SAFETY STOP: source and curator output folders must be separate.",
+      );
+    }
+
+    await fs.mkdir(
+      outputRoot,
+      { recursive: true },
+    );
+
+    await assertDiskSafety(
+      outputRoot,
+      candidates,
+    );
 
     await fs.mkdir(
       outputDir,
@@ -2310,10 +2399,10 @@ async function main() {
 
     console.log();
     console.log(
-      \`Source photographs: \${candidates.length}\`,
+      `Source photographs: ${candidates.length}`,
     );
     console.log(
-      \`Output: \${outputDir}\`,
+      `Output: ${outputDir}`,
     );
 
     const thumbnailDir =
@@ -2339,7 +2428,7 @@ async function main() {
 
     console.log();
     console.log(
-      \`Preparation complete: \${contactSheets.sheets.length} contact sheet(s).\`,
+      `Preparation complete: ${contactSheets.sheets.length} contact sheet(s).`,
     );
 
     if (
@@ -2413,7 +2502,7 @@ async function main() {
     ) {
       const approval =
         await rl.question(
-          \`Type APPROVE PAID RUN to authorise this one curation up to \$\${budgetUsd.toFixed(2)}: \`,
+          `Type APPROVE PAID RUN to authorise this one curation up to \$${budgetUsd.toFixed(2)}: `,
         );
 
       if (
@@ -2459,7 +2548,7 @@ async function main() {
 
     console.log();
     console.log(
-      \`Pass 1: \${passOne.shortlist.length} shortlisted; \${passOne.strongest.length} strongest.\`,
+      `Pass 1: ${passOne.shortlist.length} shortlisted; ${passOne.strongest.length} strongest.`,
     );
 
     const finalEdit =
@@ -2478,11 +2567,12 @@ async function main() {
         candidates,
         finalEdit,
         outputDir,
+        production,
       );
 
     console.log();
     console.log(
-      \`Final selection staged: \${staged.manifest.selectedCount} photographs.\`,
+      `Final selection staged: ${staged.manifest.selectedCount} photographs.`,
     );
 
     await runMetadataResearch(
@@ -2509,22 +2599,22 @@ async function main() {
       "==============================================",
     );
     console.log(
-      \`Source photographs:     \${candidates.length}\`,
+      `Source photographs:     ${candidates.length}`,
     );
     console.log(
-      \`First-pass shortlist:   \${passOne.shortlist.length}\`,
+      `First-pass shortlist:   ${passOne.shortlist.length}`,
     );
     console.log(
-      \`Final website edit:     \${validation.selected}\`,
+      `Final website edit:     ${validation.selected}`,
     );
     console.log(
-      \`Alt text complete:      \${validation.selected}/\${validation.selected}\`,
+      `Alt text complete:      ${validation.selected}/${validation.selected}`,
     );
     console.log(
-      \`Staged photographs:     \${validation.staged}/\${validation.selected}\`,
+      `Staged photographs:     ${validation.staged}/${validation.selected}`,
     );
     console.log(
-      \`Recorded API spend:     \$\${Number(paidState.ledger.actualSpendUsd ?? 0).toFixed(4)}\`,
+      `Recorded API spend:     \$${Number(paidState.ledger.actualSpendUsd ?? 0).toFixed(4)}`,
     );
     console.log();
     console.log(
