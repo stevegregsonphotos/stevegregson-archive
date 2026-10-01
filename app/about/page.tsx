@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     type: "website",
     url: "/about",
     title: "About Steve Gregson | Theatre Photographer",
-    description: "Steve Gregson is a London theatre photographer specialising in production, rehearsal, backstage, marketing and PR photography for the performing arts.",
+    description: "Steve Gregson is an award-winning London theatre photographer whose work includes productions at the Young Vic, Kiln Theatre, Orange Tree Theatre and in the West End.",
     images: [
       {
         url: "/images/homepage-hero.webp",
@@ -24,11 +24,11 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "About Steve Gregson | Theatre Photographer",
-    description: "Steve Gregson is a London theatre photographer specialising in production, rehearsal, backstage, marketing and PR photography for the performing arts.",
+    description: "Steve Gregson is an award-winning London theatre photographer whose work includes productions at the Young Vic, Kiln Theatre, Orange Tree Theatre and in the West End.",
     images: ["/images/homepage-hero.webp"],
   },
   description:
-    "Steve Gregson is a London theatre photographer specialising in production, rehearsal, backstage, marketing and PR photography for the performing arts.",
+    "Steve Gregson is an award-winning London theatre photographer whose work includes productions at the Young Vic, Kiln Theatre, Orange Tree Theatre and in the West End.",
 };
 
 export default function AboutPage() {
@@ -46,9 +46,9 @@ export default function AboutPage() {
             </h1>
 
             <p className="lead">
-              I’m Steve Gregson, a London theatre photographer creating striking
-              production, rehearsal and promotional photography for theatre,
-              live performance and the people who bring productions to life.
+              I’m Steve Gregson, an award-winning London theatre photographer
+              whose work includes productions at the Young Vic, Kiln Theatre,
+              Orange Tree Theatre and in the West End.
             </p>
           </div>
 
@@ -72,11 +72,12 @@ export default function AboutPage() {
           <div className="copy">
             <p>
               I am a London-based theatre photographer specialising in
-              production and live arts photography. My work is
-              shaped by almost two decades inside theatre and the performing
-              arts, alongside more than a decade working in education. I am a
-              Licentiate of the British Institute of Professional Photography
-              (LBIPP) and a Fellow of the Royal Society of Arts (FRSA).
+              production photography. My work is shaped by over 25 years
+              working in theatre and the performing arts, alongside more than
+              a decade working in education. I have photographed more than 400
+              productions, and I am a Fellow of the Royal Society of Arts
+              (FRSA) and a Licentiate of the British Institute of Professional
+              Photography (LBIPP).
             </p>
 
             <p>
@@ -84,7 +85,8 @@ export default function AboutPage() {
               performance, technical management, theatrical design, teaching
               and lighting. That experience gives me an instinctive
               understanding of staging, light, rhythm and the collective
-              vision behind a production.
+              vision behind a production: the moments, movement and visual
+              language that make each one distinctive.
             </p>
 
             <p>
@@ -136,7 +138,7 @@ export default function AboutPage() {
 
           <article>
             <span>Industry perspective</span>
-            <h2>Almost two decades working inside theatre</h2>
+            <h2>Over 25 years working inside theatre</h2>
           </article>
         </section>
 

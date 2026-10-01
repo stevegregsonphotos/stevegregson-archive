@@ -289,7 +289,7 @@ export default async function PersonPage({ params }: PersonPageProps) {
             <h2>Working on a new production?</h2>
             <p>
               Production, rehearsal and press photography from a photographer who
-              has worked inside theatre for almost two decades.
+              has worked inside theatre for over 25 years.
             </p>
           </div>
           <Link className="dir-button" href="/contact">

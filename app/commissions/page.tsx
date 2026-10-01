@@ -87,7 +87,7 @@ const STEPS = [
     title: "The shoot",
     body: (
       <>
-        I work discreetly around the company, drawing on almost two decades inside
+        I work discreetly around the company, drawing on over 25 years inside
         theatre to anticipate the moments that tell the story.
       </>
     ),

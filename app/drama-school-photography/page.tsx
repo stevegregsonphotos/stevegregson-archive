@@ -173,7 +173,7 @@ export default async function DramaSchoolPhotographyPage() {
             <p className="dir-label">Education</p>
             <h2>I understand how a school works</h2>
             <p>
-              Alongside almost two decades in theatre, I spent more than a decade
+              Alongside over 25 years in theatre, I spent more than a decade
               working in education. I know what a training production means to the
               students in it, and how tightly a school’s season is scheduled.
             </p>

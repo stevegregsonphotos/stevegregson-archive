@@ -18,14 +18,14 @@ export const metadata: Metadata = {
     absolute: "London Theatre Photographer | Steve Gregson",
   },
   description:
-    "London theatre photographer Steve Gregson creates production, rehearsal, backstage, marketing and PR photography for theatres, producers and performing arts organisations.",
+    "Steve Gregson is an award-winning London theatre photographer whose work includes productions at the Young Vic, Kiln Theatre, Orange Tree Theatre and in the West End.",
   alternates: {
     canonical: "/",
   },
   openGraph: {
     title: "Steve Gregson | London Theatre Photographer",
     description:
-      "London theatre photographer Steve Gregson creates production, rehearsal, backstage, marketing and PR photography for theatre and the performing arts.",
+      "Steve Gregson is an award-winning London theatre photographer whose work includes productions at the Young Vic, Kiln Theatre, Orange Tree Theatre and in the West End.",
     url: "/",
     images: [
       {
@@ -40,7 +40,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Steve Gregson | London Theatre Photographer",
     description:
-      "London theatre photographer Steve Gregson creates production, rehearsal, backstage, marketing and PR photography for theatre and the performing arts.",
+      "Steve Gregson is an award-winning London theatre photographer whose work includes productions at the Young Vic, Kiln Theatre, Orange Tree Theatre and in the West End.",
     images: ["/images/homepage-hero.webp"],
   },
 };
@@ -158,9 +158,9 @@ export default async function Home() {
           
 
           <p className="hero-subheading">
-            Steve Gregson is a London theatre photographer creating
-            production, rehearsal, backstage and campaign photography for
-            theatre and the performing arts.
+            Steve Gregson is an award-winning London theatre photographer
+            whose work includes productions at the Young Vic, Kiln Theatre,
+            Orange Tree Theatre and in the West End.
           </p>
 </div>
 

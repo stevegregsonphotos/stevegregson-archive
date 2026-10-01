@@ -45,6 +45,23 @@ export default function ProductionContent({
       production.hero,
     );
 
+  // Every production in the archive was photographed by Steve, so show
+  // the Photography credit on all of them, in the same style as the rest.
+  // Older records were imported without it; newer ones already include it.
+  const credits = production.credits.some(
+    (credit) =>
+      credit.role.trim().toLowerCase() ===
+      "photography",
+  )
+    ? production.credits
+    : [
+        ...production.credits,
+        {
+          role: "Photography",
+          name: "Steve Gregson",
+        },
+      ];
+
   const structuredData = {
     "@context": "https://schema.org",
     "@graph": [
@@ -190,7 +207,7 @@ export default function ProductionContent({
           </div>
 
           <dl className="curated-production-credits">
-            {production.credits.map(
+            {credits.map(
               (credit) => {
                 const creditUrl =
                   credit.website ??
