@@ -9,7 +9,10 @@
     "lint": "eslint",
     "check:vercel-architecture": "node scripts/check-vercel-architecture.mjs",
     "curate": "node scripts/production-curator.mjs",
-    "curate:prepare": "node scripts/production-curator.mjs --prepare-only"
+    "curate:prepare": "node scripts/production-curator.mjs --prepare-only",
+    "curate:finish": "node scripts/production-curator.mjs --mode=finish",
+    "curate:paid": "node scripts/production-curator.mjs --mode=paid",
+    "curator:install-app": "bash scripts/curator-app/install-curator-app.sh"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1126.0",

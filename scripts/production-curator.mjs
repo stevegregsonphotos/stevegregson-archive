@@ -45,6 +45,35 @@ const PRICE = {
   outputPerMillion: 30,
 };
 
+// OpenAI bills each web search the research step makes separately from
+// tokens. This is an estimate per search, used so the on-screen spend and
+// the budget ceiling include it. Adjust if OpenAI's price changes.
+const WEB_SEARCH_CALL_USD = Number(
+  process.env.OPENAI_WEB_SEARCH_CALL_USD || 0.01,
+);
+
+// Reply allowances. Thinking models spend part of the reply allowance on
+// reasoning, so these are generous enough for ~300-photo productions.
+const MAX_OUTPUT_TOKENS = {
+  passOne: 16000,
+  passTwo: 32000,
+  research: 16000,
+};
+
+const OUTPUT_TOKEN_CEILING = 32000;
+
+const EDITED_SET_CONTEXT = `
+These photographs have already been edited by Steve and delivered to the client, so they are generally technically sound. Do not judge them as raw camera output. The number delivered varies from production to production; there is no fixed size.
+
+The archive gallery must do four things at once:
+1. pick the very best photographs in the set;
+2. showcase the entire production, from beginning to end — key scenes, principal performers, ensemble moments, set, costume and lighting states;
+3. give real variety — wides, mid shots and close-ups, individuals and groups, stillness and movement, contrasting moods and colour;
+4. show off Steve's skill and storytelling as a theatre photographer, so the sequence reads as a story of the show and a prospective client can see what he can do.
+
+Do not include everything that was delivered, and never keep a weaker photograph just to tick a box.
+`.trim();
+
 const cli = process.argv.slice(2);
 
 const GENERATED_DIR_NAMES = new Set([
@@ -162,9 +191,96 @@ async function loadEnvText() {
   }
 }
 
-async function chooseFolderWithFinder() {
+function appleScriptString(value) {
+  return `"${String(value).replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+}
+
+async function runAppleScript(script) {
+  if (process.platform !== "darwin") {
+    return { ok: false, cancelled: false, output: "" };
+  }
+
+  return await new Promise((resolve, reject) => {
+    const child = spawn("osascript", ["-e", script], {
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let stdout = "";
+    let stderr = "";
+    child.stdout.on("data", (chunk) => {
+      stdout += chunk.toString();
+    });
+    child.stderr.on("data", (chunk) => {
+      stderr += chunk.toString();
+    });
+    child.on("error", reject);
+    child.on("close", (code) => {
+      if (code === 0) {
+        resolve({ ok: true, cancelled: false, output: stdout.trim() });
+        return;
+      }
+      if (
+        stderr.includes("-128") ||
+        stderr.toLowerCase().includes("user canceled")
+      ) {
+        resolve({ ok: false, cancelled: true, output: "" });
+        return;
+      }
+      reject(new Error(`Mac dialog failed: ${stderr.trim()}`));
+    });
+  });
+}
+
+const MODES = {
+  claude: "Prepare for Claude (free)",
+  paid: "Full automatic (paid)",
+  finish: "Finish a Claude curation",
+};
+
+async function chooseMode(rl) {
+  if (process.platform === "darwin") {
+    const result = await runAppleScript(
+      `button returned of (display dialog ${appleScriptString(
+        "How would you like to curate this production?\n\n" +
+          "• Prepare for Claude (free): makes contact sheets, then you ask Claude in a chat to choose the photographs.\n\n" +
+          "• Finish a Claude curation: once Claude has made its choices, this copies your chosen originals ready for Backstage.\n\n" +
+          "• Full automatic (paid): uses the OpenAI API and asks you to approve a spending limit first.",
+      )} with title "Production Curator" buttons {${appleScriptString(
+        MODES.paid,
+      )}, ${appleScriptString(MODES.finish)}, ${appleScriptString(
+        MODES.claude,
+      )}} default button ${appleScriptString(MODES.claude)})`,
+    );
+    if (result.cancelled) {
+      return "";
+    }
+    const match = Object.entries(MODES).find(
+      ([, label]) => label === result.output,
+    );
+    return match ? match[0] : "";
+  }
+
+  const answer = await ask(
+    rl,
+    "Mode: 1 = Prepare for Claude (free), 2 = Finish a Claude curation, 3 = Full automatic (paid)",
+    "1",
+  );
+  return { 1: "claude", 2: "finish", 3: "paid" }[answer] || "";
+}
+
+async function chooseFolderWithFinder(
+  prompt = "Choose the production image folder",
+  defaultLocation = "",
+) {
   if (process.platform !== "darwin") {
     return "";
+  }
+
+  let location = "";
+  if (defaultLocation) {
+    try {
+      await fs.access(defaultLocation);
+      location = ` default location (POSIX file ${appleScriptString(defaultLocation)})`;
+    } catch {}
   }
 
   return await new Promise((resolve, reject) => {
@@ -172,7 +288,7 @@ async function chooseFolderWithFinder() {
       "osascript",
       [
         "-e",
-        'POSIX path of (choose folder with prompt "Choose the production image folder")',
+        `POSIX path of (choose folder with prompt ${appleScriptString(prompt)}${location})`,
       ],
       {
         stdio: [
@@ -964,8 +1080,17 @@ async function paidResponse(
           .max_output_tokens ??
         8000,
       ),
-      8000,
+      OUTPUT_TOKEN_CEILING,
     );
+
+  // A research call may run several web searches; allow for up to 10 in
+  // the worst-case check.
+  const searchAllowance =
+    params.tools?.some(
+      (tool) => tool.type === "web_search",
+    )
+      ? 10 * WEB_SEARCH_CALL_USD
+      : 0;
 
   const conservative =
     (
@@ -977,7 +1102,8 @@ async function paidResponse(
       maxOutputTokens /
       1_000_000
     ) *
-      PRICE.outputPerMillion;
+      PRICE.outputPerMillion +
+    searchAllowance;
 
   const spent =
     Number(
@@ -1009,10 +1135,21 @@ async function paidResponse(
     );
   }
 
+  const searchCalls =
+    Array.isArray(response.output)
+      ? response.output.filter(
+          (item) =>
+            item?.type ===
+            "web_search_call",
+        ).length
+      : 0;
+
   const cost =
     usageCost(
       response.usage,
-    );
+    ) +
+    searchCalls *
+      WEB_SEARCH_CALL_USD;
 
   const cumulative =
     spent + cost;
@@ -1052,6 +1189,8 @@ async function paidResponse(
           .usage
           .output_tokens ??
         0,
+      webSearchCalls:
+        searchCalls,
       actualCostUsd:
         cost,
       cumulativeSpendUsd:
@@ -1066,6 +1205,12 @@ async function paidResponse(
   console.log(
     `API spend: \$${cost.toFixed(4)} this call | \$${cumulative.toFixed(4)} / \$${paidState.ledger.budgetUsd.toFixed(2)} approved ceiling`,
   );
+
+  if (response.status === "incomplete") {
+    throw new Error(
+      `The AI's reply was cut off (${response.incomplete_details?.reason ?? "unknown reason"}). Work done so far is saved; nothing earlier will be paid for again if you rerun.`,
+    );
+  }
 
   return response;
 }
@@ -1140,6 +1285,8 @@ ${production}
 
 This sheet contains photographs #${String(sheet.first).padStart(4, "0")} through #${String(sheet.last).padStart(4, "0")}.
 
+${EDITED_SET_CONTEXT}
+
 Retain every photograph worthy of serious consideration in the final production gallery. This is not the final cut.
 
 Judge photographs on:
@@ -1179,6 +1326,8 @@ Every number must be visible on this sheet.
         client,
         {
           model: MODEL,
+          max_output_tokens:
+            MAX_OUTPUT_TOKENS.passOne,
           input: [
             {
               role: "user",
@@ -1311,99 +1460,30 @@ Every number must be visible on this sheet.
   return summary;
 }
 
-async function runPassTwo(
-  client,
-  production,
-  passOne,
-  thumbnailDir,
-  outputDir,
-  paidState,
-) {
-  const outputPath =
-    path.join(
-      outputDir,
-      "pass-2.json",
-    );
-
-  try {
-    const cached =
-      await readJson(outputPath);
-
-    if (
-      cached.version === 2 &&
-      Array.isArray(
-        cached.sequence,
-      ) &&
-      cached.sequence.length > 0 &&
-      cached.altText &&
-      cached.sequence.every(
-        (index) =>
-          typeof cached
-            .altText[
-              String(index)
-            ] === "string" &&
-          cached
-            .altText[
-              String(index)
-            ]
-            .trim(),
-      )
-    ) {
-      console.log();
-      console.log(
-        `PASS 2 — using cached final edit (${cached.sequence.length} images)`,
-      );
-      return cached;
-    }
-  } catch {}
-
-  const finalists =
-    [
-      ...new Set([
-        ...passOne.shortlist,
-        ...passOne.strongest,
-        ...passOne.heroCandidates,
-      ]),
-    ].sort((a, b) => a - b);
-
-  if (!finalists.length) {
-    throw new Error(
-      "Pass 1 produced no finalists.",
-    );
-  }
-
-  const contactSheets =
-    await generateContactSheets(
-      thumbnailDir,
-      finalists,
-      outputDir,
-      "pass-2-contact-sheets",
-      "pass-2-contact-sheets.json",
-    );
-
-  const content = [
-    {
-      type: "input_text",
-      text: `
+function finalEditPrompt(production) {
+  return `
 You are making the FINAL whole-production edit for Steve Gregson's professional theatre-photography archive.
 
 Production:
 ${production}
 
+${EDITED_SET_CONTEXT}
+
 Select only photographs that deserve to be on a professional archive website.
 
 Priorities:
 1. photographic excellence;
-2. a meaningful visual record of the production;
-3. breadth without repetition.
+2. the whole production told as a story, beginning to end;
+3. variety and breadth without repetition;
+4. showing off Steve's skill and storytelling as a photographer.
 
-Normal production galleries are commonly 20-40 images when the source supports that quality. Smaller shoots may deserve fewer; exceptional shoots may deserve more. Never fill a quota with weaker images.
+As a guideline only, production galleries are commonly 20-40 images. This is not a cap or a quota: a smaller set may deserve fewer, and a large or exceptional one may deserve more. Never pad with weaker images.
 
 Be ruthless about true repetition, but preserve meaningfully different scale, composition, expression, gesture, lighting, atmosphere and perspective.
 
 Choose the HERO as the single strongest advertisement for Steve Gregson as a photographer, not merely the photograph that most literally explains the production.
 
-Sequence the final edit as a photographic portfolio, creating rhythm through changes in scale, intimacy, colour, intensity, people and space.
+Sequence the final edit so it tells the story of the production and reads as a photographic portfolio, creating rhythm through changes in scale, intimacy, colour, intensity, people and space.
 
 Write one concise, factual alt-text sentence for every selected image. Describe only what is visibly present. Do not invent performer identities or character names.
 
@@ -1425,74 +1505,15 @@ Rules:
 - hero must be selected.
 - sequence must contain each selected image exactly once.
 - altText must contain one non-empty sentence for every selected image.
-`.trim(),
-    },
-  ];
+`.trim();
+}
 
-  for (
-    const sheet
-    of contactSheets.sheets
-  ) {
-    const buffer =
-      await fs.readFile(
-        path.join(
-          contactSheets.directory,
-          sheet.filename,
-        ),
-      );
-
-    content.push({
-      type:
-        "input_text",
-      text:
-        `Finalist sheet ${sheet.sheet}: ` +
-        sheet.indices
-          .map(
-            (index) =>
-              `#${String(index).padStart(4, "0")}`,
-          )
-          .join(", "),
-    });
-
-    content.push({
-      type:
-        "input_image",
-      detail:
-        "high",
-      image_url:
-        imageToDataUrl(
-          buffer,
-        ),
-    });
-  }
-
-  console.log();
-  console.log(
-    `PASS 2 — FINAL EDIT (${finalists.length} finalists)`,
-  );
-
-  const response =
-    await paidResponse(
-      client,
-      {
-        model:
-          MODEL,
-        input: [
-          {
-            role:
-              "user",
-            content,
-          },
-        ],
-      },
-      paidState,
-    );
-
-  const parsed =
-    extractJson(
-      response.output_text,
-    );
-
+function validateFinalEdit(
+  parsed,
+  finalists,
+  production,
+  model,
+) {
   const finalistSet =
     new Set(finalists);
 
@@ -1577,9 +1598,162 @@ Rules:
         "",
       ).trim(),
     altText,
-    model:
-      MODEL,
+    model,
   };
+
+  return result;
+}
+
+async function runPassTwo(
+  client,
+  production,
+  passOne,
+  thumbnailDir,
+  outputDir,
+  paidState,
+) {
+  const outputPath =
+    path.join(
+      outputDir,
+      "pass-2.json",
+    );
+
+  try {
+    const cached =
+      await readJson(outputPath);
+
+    if (
+      cached.version === 2 &&
+      Array.isArray(
+        cached.sequence,
+      ) &&
+      cached.sequence.length > 0 &&
+      cached.altText &&
+      cached.sequence.every(
+        (index) =>
+          typeof cached
+            .altText[
+              String(index)
+            ] === "string" &&
+          cached
+            .altText[
+              String(index)
+            ]
+            .trim(),
+      )
+    ) {
+      console.log();
+      console.log(
+        `PASS 2 — using cached final edit (${cached.sequence.length} images)`,
+      );
+      return cached;
+    }
+  } catch {}
+
+  const finalists =
+    [
+      ...new Set([
+        ...passOne.shortlist,
+        ...passOne.strongest,
+        ...passOne.heroCandidates,
+      ]),
+    ].sort((a, b) => a - b);
+
+  if (!finalists.length) {
+    throw new Error(
+      "Pass 1 produced no finalists.",
+    );
+  }
+
+  const contactSheets =
+    await generateContactSheets(
+      thumbnailDir,
+      finalists,
+      outputDir,
+      "pass-2-contact-sheets",
+      "pass-2-contact-sheets.json",
+    );
+
+  const content = [
+    {
+      type: "input_text",
+      text: finalEditPrompt(production),
+    },
+  ];
+
+  for (
+    const sheet
+    of contactSheets.sheets
+  ) {
+    const buffer =
+      await fs.readFile(
+        path.join(
+          contactSheets.directory,
+          sheet.filename,
+        ),
+      );
+
+    content.push({
+      type:
+        "input_text",
+      text:
+        `Finalist sheet ${sheet.sheet}: ` +
+        sheet.indices
+          .map(
+            (index) =>
+              `#${String(index).padStart(4, "0")}`,
+          )
+          .join(", "),
+    });
+
+    content.push({
+      type:
+        "input_image",
+      detail:
+        "high",
+      image_url:
+        imageToDataUrl(
+          buffer,
+        ),
+    });
+  }
+
+  console.log();
+  console.log(
+    `PASS 2 — FINAL EDIT (${finalists.length} finalists)`,
+  );
+
+  const response =
+    await paidResponse(
+      client,
+      {
+        model:
+          MODEL,
+        max_output_tokens:
+          MAX_OUTPUT_TOKENS.passTwo,
+        input: [
+          {
+            role:
+              "user",
+            content,
+          },
+        ],
+      },
+      paidState,
+    );
+
+  const parsed =
+    extractJson(
+      response.output_text,
+    );
+
+  const result =
+    validateFinalEdit(
+      parsed,
+      finalists,
+      production,
+      MODEL,
+    );
 
   await writeJson(
     outputPath,
@@ -1805,55 +1979,22 @@ async function findSourceText(
   };
 }
 
-async function runMetadataResearch(
-  client,
+function metadataResearchPrompt(
   production,
-  sourceFolder,
-  outputDir,
-  paidState,
+  sourceFolderName,
+  sourceText,
 ) {
-  const outputPath =
-    path.join(
-      outputDir,
-      "metadata-research.json",
-    );
-
-  const proposedPath =
-    path.join(
-      outputDir,
-      "metadata-proposed.txt",
-    );
-
-  try {
-    const cached =
-      await readJson(outputPath);
-
-    if (
-      cached?.researched?.title
-    ) {
-      console.log(
-        "METADATA — using cached research",
-      );
-      return cached;
-    }
-  } catch {}
-
-  const sourceTxt =
-    await findSourceText(
-      sourceFolder,
-    );
-
-  const prompt = `
+  return `
 Research the exact theatre/performance production below for Steve Gregson's professional photography archive.
 
 PRODUCTION:
 ${production}
 
 SOURCE FOLDER:
-${path.basename(sourceFolder)}
+${sourceFolderName}
 
 EXISTING SOURCE TXT:
-${sourceTxt.text || "(none provided)"}
+${sourceText || "(none provided)"}
 
 Research THIS production, not another production of the same play.
 
@@ -1903,69 +2044,13 @@ Return JSON only:
 Every populated researched field must have credible support in sources or the supplied source TXT.
 Do not invent source URLs.
 `.trim();
+}
 
-  console.log();
-  console.log(
-    "METADATA — researching production and creative team...",
-  );
-
-  const response =
-    await paidResponse(
-      client,
-      {
-        model:
-          RESEARCH_MODEL,
-        tools: [
-          {
-            type:
-              "web_search",
-          },
-        ],
-        input: [
-          {
-            role:
-              "user",
-            content: [
-              {
-                type:
-                  "input_text",
-                text:
-                  prompt,
-              },
-            ],
-          },
-        ],
-      },
-      paidState,
-    );
-
-  const researched =
-    extractJson(
-      response.output_text,
-    );
-
-  const audit = {
-    version: 1,
-    production,
-    researchedAt:
-      new Date()
-        .toISOString(),
-    model:
-      RESEARCH_MODEL,
-    sourceTxt: {
-      path:
-        sourceTxt.path,
-      originalText:
-        sourceTxt.text,
-    },
-    researched,
-  };
-
-  await writeJson(
-    outputPath,
-    audit,
-  );
-
+async function writeProposedMetadata(
+  researched,
+  production,
+  proposedPath,
+) {
   const lines = [];
 
   function add(label, value) {
@@ -2080,6 +2165,122 @@ Do not invent source URLs.
     lines.join("\n") +
       "\n",
     "utf8",
+  );
+}
+
+async function runMetadataResearch(
+  client,
+  production,
+  sourceFolder,
+  outputDir,
+  paidState,
+) {
+  const outputPath =
+    path.join(
+      outputDir,
+      "metadata-research.json",
+    );
+
+  const proposedPath =
+    path.join(
+      outputDir,
+      "metadata-proposed.txt",
+    );
+
+  try {
+    const cached =
+      await readJson(outputPath);
+
+    if (
+      cached?.researched?.title
+    ) {
+      console.log(
+        "METADATA — using cached research",
+      );
+      return cached;
+    }
+  } catch {}
+
+  const sourceTxt =
+    await findSourceText(
+      sourceFolder,
+    );
+
+  const prompt =
+    metadataResearchPrompt(
+      production,
+      path.basename(sourceFolder),
+      sourceTxt.text,
+    );
+
+  console.log();
+  console.log(
+    "METADATA — researching production and creative team...",
+  );
+
+  const response =
+    await paidResponse(
+      client,
+      {
+        model:
+          RESEARCH_MODEL,
+        max_output_tokens:
+          MAX_OUTPUT_TOKENS.research,
+        tools: [
+          {
+            type:
+              "web_search",
+          },
+        ],
+        input: [
+          {
+            role:
+              "user",
+            content: [
+              {
+                type:
+                  "input_text",
+                text:
+                  prompt,
+              },
+            ],
+          },
+        ],
+      },
+      paidState,
+    );
+
+  const researched =
+    extractJson(
+      response.output_text,
+    );
+
+  const audit = {
+    version: 1,
+    production,
+    researchedAt:
+      new Date()
+        .toISOString(),
+    model:
+      RESEARCH_MODEL,
+    sourceTxt: {
+      path:
+        sourceTxt.path,
+      originalText:
+        sourceTxt.text,
+    },
+    researched,
+  };
+
+  await writeJson(
+    outputPath,
+    audit,
+  );
+
+  await writeProposedMetadata(
+    researched,
+    production,
+    proposedPath,
   );
 
   return audit;
@@ -2224,6 +2425,357 @@ async function openInFinder(
   });
 }
 
+const CLAUDE_BRIEF_NAME =
+  "CLAUDE-CURATION-BRIEF.md";
+
+async function writeClaudeBrief({
+  outputDir,
+  production,
+  sourceFolder,
+  candidates,
+  contactSheets,
+}) {
+  const sourceTxt =
+    await findSourceText(
+      sourceFolder,
+    );
+
+  const sheetLines =
+    contactSheets.sheets
+      .map(
+        (sheet) =>
+          `- contact-sheets/${sheet.filename}: #${String(sheet.first).padStart(4, "0")} to #${String(sheet.last).padStart(4, "0")}`,
+      )
+      .join("\n");
+
+  const brief = `# Curation brief: ${production}
+
+Prepared ${new Date().toISOString().slice(0, 10)} by the Production Curator (free Claude route).
+
+## For Steve
+
+Start a chat with Claude (with your Mac linked) and say:
+
+> Please curate the production in "${outputDir}". Read ${CLAUDE_BRIEF_NAME} there first.
+
+When Claude says it has finished, open **Curate Production** again and choose **Finish a Claude curation**, then pick this folder.
+
+## For Claude
+
+Source photographs: ${candidates.length} (numbered #0001 to #${String(candidates.length).padStart(4, "0")}; the numbers are printed under each photo on the contact sheets).
+
+Contact sheets (32 per sheet):
+${sheetLines}
+
+Larger previews of any single photo are in \`thumbnails/NNNN.jpg\` (e.g. \`thumbnails/0042.jpg\`). Use them to compare close calls.
+
+Do not copy, move, rename or edit any original photographs, and do not touch the website or Backstage. Your job is only to write the two files below into this folder. Steve's app then copies the chosen originals.
+
+### Step 1: choose the photographs
+
+Look at every contact sheet, make a first shortlist, then make the final edit using the guidance below.
+
+${finalEditPrompt(production)}
+
+Write the result to \`pass-2.json\` in this folder, in exactly this shape (numbers are the contact-sheet numbers, as plain numbers):
+
+\`\`\`json
+{
+  "version": 2,
+  "source": "claude",
+  "model": "claude",
+  "production": ${JSON.stringify(production)},
+  "classification": "normal",
+  "hero": 12,
+  "selected": [3, 12, 40],
+  "sequence": [12, 3, 40],
+  "heroReason": "",
+  "editorialSummary": "",
+  "altText": {
+    "3": "One factual sentence.",
+    "12": "One factual sentence.",
+    "40": "One factual sentence."
+  }
+}
+\`\`\`
+
+### Step 2: research the credits
+
+${metadataResearchPrompt(production, path.basename(sourceFolder), sourceTxt.text)}
+
+Write the result to \`metadata-research.json\` in this folder, in this shape (the \`researched\` object uses the fields listed above; leave anything unverified as "" or null, never guess):
+
+\`\`\`json
+{
+  "version": 1,
+  "production": ${JSON.stringify(production)},
+  "researchedAt": "ISO date",
+  "model": "claude",
+  "sourceTxt": { "path": ${JSON.stringify(sourceTxt.path)}, "originalText": "(copy of the source TXT, if any)" },
+  "researched": { "title": "", "venue": "", "month": null, "year": null, "director": "", "description": "", "sources": [] }
+}
+\`\`\`
+
+### Step 3: hand back to Steve
+
+Tell Steve in plain English how many photographs you chose and which is the hero, list any credits you could not verify, and remind him to run **Finish a Claude curation**.
+`;
+
+  await fs.writeFile(
+    path.join(
+      outputDir,
+      CLAUDE_BRIEF_NAME,
+    ),
+    brief,
+    "utf8",
+  );
+
+  await writeJson(
+    path.join(
+      outputDir,
+      "claude-curation.json",
+    ),
+    {
+      version: 1,
+      mode: "claude",
+      production,
+      sourceFolder,
+      preparedAt:
+        new Date().toISOString(),
+      candidateCount:
+        candidates.length,
+    },
+  );
+}
+
+async function finishClaudeCuration(
+  outputDir,
+) {
+  outputDir =
+    path.resolve(outputDir);
+
+  let discovery;
+  try {
+    discovery =
+      await readJson(
+        path.join(
+          outputDir,
+          "discovery.json",
+        ),
+      );
+  } catch {
+    throw new Error(
+      "That folder isn't a prepared production (discovery.json is missing). Choose the folder inside Curated Imports that Claude worked on.",
+    );
+  }
+
+  const production =
+    discovery.production;
+  const sourceFolder =
+    discovery.sourceFolder;
+
+  console.log();
+  console.log(
+    `FINISHING CLAUDE CURATION: ${production}`,
+  );
+
+  try {
+    await fs.access(
+      sourceFolder,
+    );
+  } catch {
+    throw new Error(
+      `The original photo folder can't be found: ${sourceFolder}. Reconnect the drive it's on, or move it back, then try again.`,
+    );
+  }
+
+  if (
+    sourceLooksCloudBacked(sourceFolder) &&
+    !hasFlag("allow-cloud-source")
+  ) {
+    throw new Error(
+      "CLOUD SOURCE SAFETY STOP: the original photo folder is inside a cloud-provider mount.",
+    );
+  }
+
+  const candidates =
+    await listImages(
+      sourceFolder,
+    );
+
+  const recorded =
+    Array.isArray(
+      discovery.candidates,
+    )
+      ? discovery.candidates
+      : [];
+
+  const unchanged =
+    recorded.length ===
+      candidates.length &&
+    recorded.every(
+      (item, index) =>
+        item.sourcePath ===
+          candidates[index]
+            .relativePath &&
+        Number(item.size) ===
+          Number(
+            candidates[index]
+              .size,
+          ),
+    );
+
+  if (!unchanged) {
+    throw new Error(
+      "The photo folder has changed since it was prepared, so the numbers Claude chose may no longer match. Run 'Prepare for Claude' again and ask Claude to redo the choice.",
+    );
+  }
+
+  let parsed;
+  try {
+    parsed =
+      await readJson(
+        path.join(
+          outputDir,
+          "pass-2.json",
+        ),
+      );
+  } catch {
+    throw new Error(
+      "Claude's choices (pass-2.json) aren't in this folder yet. Ask Claude to curate it first.",
+    );
+  }
+
+  const allIndices =
+    candidates.map(
+      (_, index) =>
+        index + 1,
+    );
+
+  const finalEdit =
+    validateFinalEdit(
+      parsed,
+      allIndices,
+      production,
+      String(
+        parsed.model ??
+          "claude",
+      ),
+    );
+
+  await assertDiskSafety(
+    path.dirname(outputDir),
+    finalEdit.selected.map(
+      (index) =>
+        candidates[index - 1],
+    ),
+  );
+
+  const staged =
+    await stageFinalSelection(
+      sourceFolder,
+      candidates,
+      finalEdit,
+      outputDir,
+      production,
+    );
+
+  console.log(
+    `Final selection staged: ${staged.manifest.selectedCount} photographs.`,
+  );
+
+  const researchPath =
+    path.join(
+      outputDir,
+      "metadata-research.json",
+    );
+
+  let research;
+  try {
+    research =
+      await readJson(
+        researchPath,
+      );
+  } catch {
+    research = null;
+  }
+
+  if (
+    !research?.researched ||
+    typeof research.researched !==
+      "object"
+  ) {
+    console.log(
+      "Note: Claude hasn't saved credits research, so only the production name goes in metadata-proposed.txt.",
+    );
+    research = {
+      version: 1,
+      production,
+      researchedAt:
+        new Date().toISOString(),
+      model: "none",
+      researched: {
+        title:
+          production,
+      },
+      notes:
+        "No credits research was supplied.",
+    };
+    await writeJson(
+      researchPath,
+      research,
+    );
+  }
+
+  await writeProposedMetadata(
+    research.researched,
+    production,
+    path.join(
+      outputDir,
+      "metadata-proposed.txt",
+    ),
+  );
+
+  const validation =
+    await validatePackage(
+      outputDir,
+    );
+
+  console.log();
+  console.log(
+    "==============================================",
+  );
+  console.log(
+    "CURATION COMPLETE — IMPORT PACKAGE PASS",
+  );
+  console.log(
+    "==============================================",
+  );
+  console.log(
+    `Source photographs:     ${candidates.length}`,
+  );
+  console.log(
+    `Final website edit:     ${validation.selected}`,
+  );
+  console.log(
+    `Staged photographs:     ${validation.staged}/${validation.selected}`,
+  );
+  console.log(
+    "Chosen by:              Claude (no API charges)",
+  );
+  console.log();
+  console.log(
+    "Ready for Backstage → Curated Archive Import:",
+  );
+  console.log(
+    outputDir,
+  );
+
+  await openInFinder(
+    outputDir,
+  );
+}
+
 async function main() {
   console.log();
   console.log(
@@ -2249,6 +2801,77 @@ async function main() {
     });
 
   try {
+    let mode =
+      argValue("mode") ||
+      (hasFlag("prepare-only")
+        ? "claude"
+        : "");
+
+    if (!mode) {
+      mode =
+        await chooseMode(rl);
+    }
+
+    if (!mode) {
+      console.log(
+        "No option chosen. Nothing was done.",
+      );
+      return;
+    }
+
+    if (
+      !["claude", "paid", "finish"].includes(
+        mode,
+      )
+    ) {
+      throw new Error(
+        `Unknown mode "${mode}". Use claude, finish or paid.`,
+      );
+    }
+
+    console.log(
+      `Mode: ${MODES[mode]}`,
+    );
+
+    if (mode === "finish") {
+      const outputRoot =
+        argValue(
+          "output-root",
+        ) ||
+        DEFAULT_OUTPUT_ROOT;
+
+      let preparedFolder =
+        argValue("output");
+
+      if (!preparedFolder) {
+        preparedFolder =
+          await chooseFolderWithFinder(
+            "Choose the production folder Claude has curated",
+            outputRoot,
+          );
+      }
+
+      if (!preparedFolder) {
+        preparedFolder =
+          await ask(
+            rl,
+            "Curated production folder",
+          );
+      }
+
+      if (!preparedFolder) {
+        console.log(
+          "No folder chosen. Nothing was done.",
+        );
+        return;
+      }
+
+      await finishClaudeCuration(
+        preparedFolder,
+      );
+      return;
+    }
+
     let sourceFolder =
       argValue("folder");
 
@@ -2431,14 +3054,35 @@ async function main() {
       `Preparation complete: ${contactSheets.sheets.length} contact sheet(s).`,
     );
 
-    if (
-      hasFlag(
-        "prepare-only",
-      )
-    ) {
+    if (mode === "claude") {
+      await writeClaudeBrief({
+        outputDir,
+        production,
+        sourceFolder,
+        candidates,
+        contactSheets,
+      });
+
       console.log();
       console.log(
-        "PREPARE-ONLY COMPLETE. No paid API calls were made.",
+        "==============================================",
+      );
+      console.log(
+        "READY FOR CLAUDE — no API charges were made",
+      );
+      console.log(
+        "==============================================",
+      );
+      console.log(
+        "Next: in a Claude chat (with your Mac linked), say:",
+      );
+      console.log();
+      console.log(
+        `  Please curate the production in "${outputDir}". Read ${CLAUDE_BRIEF_NAME} there first.`,
+      );
+      console.log();
+      console.log(
+        "When Claude has finished, open Curate Production again and choose 'Finish a Claude curation'.",
       );
       await openInFinder(
         outputDir,
