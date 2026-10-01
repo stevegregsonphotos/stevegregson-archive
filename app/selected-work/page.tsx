@@ -1,17 +1,23 @@
 import type { Metadata } from "next";
-import SelectedWorkGallery from "../../components/SelectedWorkGallery";
 import Link from "next/link";
 
+import SelectedWorkShowcase from "../../components/SelectedWorkShowcase";
 import {
-  getSelectedWork,
-} from "../../lib/selected-work-repository";
+  showcaseChapters,
+  showcaseCount,
+  showcaseHero,
+  showcaseInterlude,
+} from "../../content/selected-work-showcase";
 
 import styles from "./selected-work-preview.module.css";
+import showcase from "./showcase.module.css";
+
+const DESCRIPTION =
+  "Selected theatre photography by London photographer Steve Gregson, including production, dress rehearsal, marketing, rehearsal and backstage photography.";
 
 export const metadata: Metadata = {
   title: "Selected Work",
-  description:
-    "Selected theatre photography by London photographer Steve Gregson, including production, dress rehearsal, marketing, rehearsal and backstage photography.",
+  description: DESCRIPTION,
   alternates: {
     canonical: "/selected-work",
   },
@@ -19,7 +25,7 @@ export const metadata: Metadata = {
     type: "website",
     url: "/selected-work",
     title: "Selected Work | Steve Gregson",
-    description: "Selected theatre photography by London photographer Steve Gregson, including production, dress rehearsal, marketing, rehearsal and backstage photography.",
+    description: DESCRIPTION,
     images: [
       {
         url: "/images/homepage-hero.webp",
@@ -32,77 +38,62 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Selected Work | Steve Gregson",
-    description: "Selected theatre photography by London photographer Steve Gregson, including production, dress rehearsal, marketing, rehearsal and backstage photography.",
+    description: DESCRIPTION,
     images: ["/images/homepage-hero.webp"],
   },
 };
 
-type SelectedWorkImage = {
-  filename: string;
-  suggestedFilename?: string;
-  alt: string;
-  uploadedAt: string;
-  width: number;
-  height: number;
-};
+const CREDITS = [
+  "National Theatre",
+  "Young Vic",
+  "Kiln Theatre",
+  "West End",
+  "Theatre Royal Stratford East",
+  "Opera",
+  "Dance",
+  "Family theatre",
+  "Drama schools",
+];
 
-type SelectedWorkData = {
-  production: SelectedWorkImage[];
-  rehearsal: SelectedWorkImage[];
-  campaign: SelectedWorkImage[];
-};
-
-/*
- * These positions become the large,
- * full-width photographs.
- *
- * The numbers refer to the displayed
- * position in the gallery:
- *
- * 0 = first image
- * 6 = seventh image
- * 12 = thirteenth image
- *
- * Change these numbers later to art-direct
- * which photographs get the biggest impact.
- */
-
-
-export default async function SelectedWorkPreviewPage() {
-  const portfolio =
-    await getSelectedWork() as SelectedWorkData;
-
-  /*
-   * Start with 15 production photographs.
-   *
-   * We can increase or decrease this once
-   * we've curated the actual gallery.
-   */
-  const productionImages =
-    portfolio.production.slice(0, 15);
-
+export default function SelectedWorkPage() {
   return (
     <main className={styles.page}>
       <section className={styles.introduction}>
-        <p className={styles.eyebrow}>
-          Selected Work
-        </p>
+        <p className={styles.eyebrow}>Selected Work</p>
 
         <div className={styles.introductionLayout}>
           <h1>
-            Production photography
+            Every production has
             <br />
-            built around the life
+            a moment where it all
             <br />
-            of a performance.
+            comes into focus.
           </h1>
 
           <p className={styles.introductionCopy}>
-            A curated selection of live performance
-            photography capturing the energy,
-            atmosphere and visual language of theatre.
+            {showcaseCount} photographs from more than 400 productions,
+            each chosen to show what I look for: the scale of the whole
+            stage, the intention behind the light, real emotion, perfect
+            timing, and the detail that tells the story.
           </p>
         </div>
+
+        <ol className={showcase.chapterIndex} aria-label="Chapters">
+          {showcaseChapters.map((chapter) => (
+            <li key={chapter.id}>
+              <a href={`#${chapter.id}`}>
+                <span>{chapter.number}</span>
+                {chapter.title}
+              </a>
+            </li>
+          ))}
+        </ol>
+
+        <ul className={showcase.credits} aria-label="Work includes">
+          {CREDITS.map((credit) => (
+            <li key={credit}>{credit}</li>
+          ))}
+        </ul>
       </section>
 
       <nav
@@ -111,61 +102,41 @@ export default async function SelectedWorkPreviewPage() {
       >
         <div className={styles.navigationInner}>
           <a
-            href="#production-gallery"
+            href="#scale"
             className={styles.activeNavigationItem}
           >
             Production
           </a>
 
-          <Link href="/rehearsals">
-            Rehearsals
-          </Link>
+          <Link href="/rehearsals">Rehearsals</Link>
 
-          <Link href="/marketing-pr">
-            Marketing &amp; PR
-          </Link>
+          <Link href="/marketing-pr">Marketing &amp; PR</Link>
         </div>
       </nav>
 
-              <SelectedWorkGallery
-          images={productionImages}
-          featuredIndices={[0, 7, 14]}
-          galleryClassName={styles.gallery}
-          galleryItemClassName={styles.galleryItem}
-          featuredClassName={styles.featured}
-          imageClassName={styles.galleryImage}
-        />
+      <SelectedWorkShowcase
+        hero={showcaseHero}
+        interlude={showcaseInterlude}
+        interludeAfter="emotion"
+        chapters={showcaseChapters}
+      />
 
       <section className={styles.nextStep}>
         <div className={styles.nextStepHeading}>
-          <p className={styles.eyebrow}>
-            Explore Further
-          </p>
+          <p className={styles.eyebrow}>Explore Further</p>
 
-          <h2>
-            Looking for a particular production?
-          </h2>
+          <h2>Looking for a particular production?</h2>
         </div>
 
         <div className={styles.nextStepLinks}>
           <Link href="/production">
-            <span>
-              More production photography
-            </span>
-
-            <span aria-hidden="true">
-              →
-            </span>
+            <span>More production photography</span>
+            <span aria-hidden="true">→</span>
           </Link>
 
           <Link href="/archive">
-            <span>
-              Search the archive
-            </span>
-
-            <span aria-hidden="true">
-              →
-            </span>
+            <span>Search the archive</span>
+            <span aria-hidden="true">→</span>
           </Link>
         </div>
       </section>
