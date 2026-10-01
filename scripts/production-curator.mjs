@@ -1686,7 +1686,7 @@ async function stageFinalSelection(
       sourceName:
         candidate.name,
       sourcePath:
-        "/" + candidate.relativePath.replace(/^\\/+/, ""),
+        "/" + candidate.relativePath.replace(/^\/+/, ""),
       sourceFolder:
         cleanDisplayName(path.basename(sourceFolder)),
       modified:
