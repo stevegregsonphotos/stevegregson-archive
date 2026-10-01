@@ -1985,6 +1985,7 @@ function metadataResearchPrompt(
   production,
   sourceFolderName,
   sourceText,
+  shootDate = null,
 ) {
   return `
 Research the exact theatre/performance production below for Steve Gregson's professional photography archive.
@@ -1994,6 +1995,9 @@ ${production}
 
 SOURCE FOLDER:
 ${sourceFolderName}
+
+PHOTOGRAPHED:
+${shootDate?.label ? `${shootDate.label} (${shootDate.source})` : "(unknown)"}
 
 EXISTING SOURCE TXT:
 ${sourceText || "(none provided)"}
@@ -2048,10 +2052,187 @@ Do not invent source URLs.
 `.trim();
 }
 
+function exifDateTaken(exif) {
+  // Reads "date taken" (DateTimeOriginal, falling back to DateTime) from the
+  // raw EXIF block sharp returns. Returns { year, month } or null.
+  if (!Buffer.isBuffer(exif) || exif.length < 14) {
+    return null;
+  }
+
+  let base =
+    exif.indexOf("Exif\0\0") === 0
+      ? 6
+      : 0;
+  const order =
+    exif.toString("latin1", base, base + 2);
+  const little =
+    order === "II";
+  if (!little && order !== "MM") {
+    return null;
+  }
+
+  const u16 = (offset) =>
+    offset + 2 <= exif.length
+      ? little
+        ? exif.readUInt16LE(offset)
+        : exif.readUInt16BE(offset)
+      : 0;
+  const u32 = (offset) =>
+    offset + 4 <= exif.length
+      ? little
+        ? exif.readUInt32LE(offset)
+        : exif.readUInt32BE(offset)
+      : 0;
+
+  function readIfd(offset) {
+    const tags = new Map();
+    const start = base + offset;
+    const count = u16(start);
+    for (let i = 0; i < count && i < 500; i += 1) {
+      const entry = start + 2 + i * 12;
+      if (entry + 12 > exif.length) {
+        break;
+      }
+      tags.set(u16(entry), {
+        type: u16(entry + 2),
+        count: u32(entry + 4),
+        value: u32(entry + 8),
+        entry,
+      });
+    }
+    return tags;
+  }
+
+  function readAscii(tag) {
+    if (!tag || tag.type !== 2 || tag.count < 10) {
+      return "";
+    }
+    const at =
+      tag.count > 4
+        ? base + tag.value
+        : tag.entry + 8;
+    return exif
+      .toString("latin1", at, Math.min(at + tag.count, exif.length))
+      .replace(/\0+$/, "");
+  }
+
+  function parse(text) {
+    const match = /^(\d{4})[:\-](\d{2})[:\-](\d{2})/.exec(text);
+    if (!match) {
+      return null;
+    }
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    return year > 1900 && month >= 1 && month <= 12
+      ? { year, month }
+      : null;
+  }
+
+  try {
+    const ifd0 = readIfd(u32(base + 4));
+    const exifPointer = ifd0.get(0x8769);
+    if (exifPointer) {
+      const sub = readIfd(exifPointer.value);
+      const original = parse(readAscii(sub.get(0x9003)));
+      if (original) {
+        return original;
+      }
+    }
+    return parse(readAscii(ifd0.get(0x0132)));
+  } catch {
+    return null;
+  }
+}
+
+function dateFromFolderName(name) {
+  const text = String(name).toLowerCase();
+  const year = /(?:^|\D)((?:19|20)\d{2})(?!\d)/.exec(text);
+  const names = monthNames().map((month) => month.toLowerCase());
+  let month = null;
+  for (let i = 0; i < 12 && !month; i += 1) {
+    const pattern = new RegExp(
+      `(?:^|[^a-z])(${names[i]}|${names[i].slice(0, 3)}${i === 8 ? "t?" : ""})(?![a-z])`,
+    );
+    if (pattern.test(text)) {
+      month = i + 1;
+    }
+  }
+  return {
+    year: year ? Number(year[1]) : null,
+    month,
+  };
+}
+
+async function detectShootDate(
+  candidates,
+  sourceFolder,
+) {
+  const counts = new Map();
+  let dated = 0;
+
+  for (const candidate of candidates) {
+    try {
+      const { exif } =
+        await sharp(candidate.absolutePath).metadata();
+      const taken = exifDateTaken(exif);
+      if (taken) {
+        dated += 1;
+        const key = `${taken.year}-${taken.month}`;
+        counts.set(key, (counts.get(key) ?? 0) + 1);
+      }
+    } catch {}
+  }
+
+  const fromFolder =
+    dateFromFolderName(path.basename(sourceFolder));
+
+  if (counts.size) {
+    const [key, count] = [...counts.entries()].sort(
+      (a, b) => b[1] - a[1],
+    )[0];
+    const [year, month] = key.split("-").map(Number);
+    return {
+      year,
+      month,
+      label: `${monthNames()[month - 1]} ${year}`,
+      source: "photo dates",
+      datedPhotos: dated,
+      matchingPhotos: count,
+      otherMonths: counts.size - 1,
+    };
+  }
+
+  if (fromFolder.year || fromFolder.month) {
+    return {
+      year: fromFolder.year,
+      month: fromFolder.month,
+      label: [
+        fromFolder.month ? monthNames()[fromFolder.month - 1] : "",
+        fromFolder.year ?? "",
+      ].join(" ").trim(),
+      source: "folder name",
+      datedPhotos: 0,
+    };
+  }
+
+  return null;
+}
+
+function describeShootDate(shootDate) {
+  if (!shootDate) {
+    return "Shoot date: not found (no date in the photos or folder name).";
+  }
+  if (shootDate.source === "photo dates") {
+    return `Shoot date: ${shootDate.label} (from the date taken on ${shootDate.matchingPhotos} of ${shootDate.datedPhotos} dated photos${shootDate.otherMonths ? `; ${shootDate.otherMonths} other month(s) also present` : ""}).`;
+  }
+  return `Shoot date: ${shootDate.label} (from the folder name; the photos carry no date).`;
+}
+
 async function writeProposedMetadata(
   researched,
   production,
   proposedPath,
+  shootDate = null,
 ) {
   const lines = [];
 
@@ -2080,16 +2261,22 @@ async function writeProposedMetadata(
     researched.venue,
   );
 
-  const month =
+  // Month and year: use the research when it found them, otherwise the
+  // date the photographs were taken (or the folder name). Backstage needs
+  // both before it will import.
+  const researchedMonth =
     Number(
       researched.month,
     );
 
-  if (
-    Number.isInteger(month) &&
-    month >= 1 &&
-    month <= 12
-  ) {
+  const month =
+    Number.isInteger(researchedMonth) &&
+    researchedMonth >= 1 &&
+    researchedMonth <= 12
+      ? researchedMonth
+      : shootDate?.month ?? null;
+
+  if (month) {
     add(
       "Month",
       monthNames()[
@@ -2098,10 +2285,39 @@ async function writeProposedMetadata(
     );
   }
 
+  const researchedYear =
+    Number.parseInt(
+      String(researched.year ?? ""),
+      10,
+    );
+
   add(
     "Year",
-    researched.year,
+    Number.isInteger(researchedYear) &&
+      researchedYear > 1900
+      ? researchedYear
+      : shootDate?.year ?? "",
   );
+
+  if (
+    shootDate &&
+    Number.isInteger(researchedMonth) &&
+    researchedMonth >= 1 &&
+    researchedMonth <= 12 &&
+    (researchedMonth !== shootDate.month ||
+      (Number.isInteger(researchedYear) &&
+        researchedYear !== shootDate.year))
+  ) {
+    console.log(
+      `Note: the research says ${monthNames()[researchedMonth - 1]} ${researchedYear || ""}, but the photos were taken in ${shootDate.label}. Kept the research; check it in Backstage.`,
+    );
+  }
+
+  if (!month) {
+    console.log(
+      "Note: no month found from research, photo dates or folder name. Enter it in Backstage.",
+    );
+  }
   add(
     "Director",
     researched.director,
@@ -2176,6 +2392,7 @@ async function runMetadataResearch(
   sourceFolder,
   outputDir,
   paidState,
+  shootDate = null,
 ) {
   const outputPath =
     path.join(
@@ -2199,6 +2416,12 @@ async function runMetadataResearch(
       console.log(
         "METADATA — using cached research",
       );
+      await writeProposedMetadata(
+        cached.researched,
+        production,
+        proposedPath,
+        shootDate,
+      );
       return cached;
     }
   } catch {}
@@ -2213,6 +2436,7 @@ async function runMetadataResearch(
       production,
       path.basename(sourceFolder),
       sourceTxt.text,
+      shootDate,
     );
 
   console.log();
@@ -2283,6 +2507,7 @@ async function runMetadataResearch(
     researched,
     production,
     proposedPath,
+    shootDate,
   );
 
   return audit;
@@ -2436,6 +2661,7 @@ async function writeClaudeBrief({
   sourceFolder,
   candidates,
   contactSheets,
+  shootDate = null,
 }) {
   const sourceTxt =
     await findSourceText(
@@ -2463,6 +2689,8 @@ Start a chat with Claude (with your Mac linked) and say:
 When Claude says it has finished, open **Curate Production** again and choose **Finish a Claude curation**, then pick this folder.
 
 ## For Claude
+
+${describeShootDate(shootDate)} Use this month and year in the credits research unless a verified source clearly shows otherwise.
 
 Source photographs: ${candidates.length} (numbered #0001 to #${String(candidates.length).padStart(4, "0")}; the numbers are printed under each photo on the contact sheets).
 
@@ -2503,7 +2731,7 @@ Write the result to \`pass-2.json\` in this folder, in exactly this shape (numbe
 
 ### Step 2: research the credits
 
-${metadataResearchPrompt(production, path.basename(sourceFolder), sourceTxt.text)}
+${metadataResearchPrompt(production, path.basename(sourceFolder), sourceTxt.text, shootDate)}
 
 Write the result to \`metadata-research.json\` in this folder, in this shape (the \`researched\` object uses the fields listed above; leave anything unverified as "" or null, never guess):
 
@@ -2648,6 +2876,17 @@ async function finishClaudeCuration(
     );
   }
 
+  const shootDate =
+    discovery.shootDate ??
+    await detectShootDate(
+      candidates,
+      sourceFolder,
+    );
+
+  console.log(
+    describeShootDate(shootDate),
+  );
+
   const allIndices =
     candidates.map(
       (_, index) =>
@@ -2736,6 +2975,7 @@ async function finishClaudeCuration(
       outputDir,
       "metadata-proposed.txt",
     ),
+    shootDate,
   );
 
   const validation =
@@ -2945,6 +3185,12 @@ async function main() {
       );
     }
 
+    const shootDate =
+      await detectShootDate(
+        candidates,
+        sourceFolder,
+      );
+
     const outputRoot =
       argValue(
         "output-root",
@@ -2989,6 +3235,7 @@ async function main() {
         "local-folder",
       production,
       sourceFolder,
+      shootDate,
       generatedAt:
         new Date()
           .toISOString(),
@@ -3027,6 +3274,9 @@ async function main() {
       `Source photographs: ${candidates.length}`,
     );
     console.log(
+      describeShootDate(shootDate),
+    );
+    console.log(
       `Output: ${outputDir}`,
     );
 
@@ -3063,6 +3313,7 @@ async function main() {
         sourceFolder,
         candidates,
         contactSheets,
+        shootDate,
       });
 
       console.log();
@@ -3227,6 +3478,7 @@ async function main() {
       sourceFolder,
       outputDir,
       paidState,
+      shootDate,
     );
 
     const validation =
