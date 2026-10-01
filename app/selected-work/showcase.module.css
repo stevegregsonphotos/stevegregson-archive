@@ -105,6 +105,14 @@
   text-transform: uppercase;
 }
 
+.captionPending {
+  color: rgba(242, 238, 230, 0.3);
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
 .caption a:hover .captionTitle,
 .caption a:focus-visible .captionTitle {
   color: #c7a369;
@@ -112,18 +120,17 @@
 
 /* Full-bleed images */
 
+/* Big images are sized so the whole photograph fits on screen: never
+   cropped, never taller than the window. All photos here are 3:2. */
 .bleed {
-  margin: clamp(2.5rem, 5vw, 5rem) 0;
-}
-
-.bleed .caption {
-  padding: 0 6vw;
+  width: min(100%, calc((100svh - 6rem) * 1.5));
+  margin: clamp(2rem, 4vw, 4rem) auto;
 }
 
 /* Chapters */
 
 .chapter {
-  padding: clamp(4rem, 8vw, 8rem) 3vw clamp(2rem, 4vw, 4rem);
+  padding: clamp(3rem, 6vw, 6rem) 3vw clamp(1.5rem, 3vw, 3rem);
   scroll-margin-top: 5rem;
 }
 
@@ -171,6 +178,8 @@
 
 .wide {
   grid-column: 1 / -1;
+  justify-self: center;
+  width: min(100%, calc((100svh - 7rem) * 1.5));
   margin: 0;
 }
 
@@ -284,5 +293,10 @@
 
   .bleed .caption {
     padding: 0 4vw;
+  }
+
+  .wide,
+  .bleed {
+    width: 100%;
   }
 }

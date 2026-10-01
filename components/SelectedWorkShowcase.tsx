@@ -20,7 +20,11 @@ type SelectedWorkShowcaseProps = {
 
 function Caption({ image }: { image: ShowcaseImage }) {
   if (!image.credit) {
-    return null;
+    return (
+      <figcaption className={`${styles.caption} ${styles.captionPending}`}>
+        Production to be named
+      </figcaption>
+    );
   }
 
   return (
