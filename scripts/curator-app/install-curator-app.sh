@@ -61,7 +61,16 @@ if [[ -f "$ICON_SRC" ]]; then
   done
   iconutil -c icns -o "$TMP/Curate.icns" "$ICONSET"
   cp "$TMP/Curate.icns" "$APP/Contents/Resources/applet.icns"
+  # Newer macOS shows a default icon baked into the app, so also set the
+  # icon the way Finder's Get Info does; this reliably wins.
+  ICON_SRC="$ICON_SRC" APP="$APP" osascript -l JavaScript -e '
+    ObjC.import("AppKit");
+    const env = $.NSProcessInfo.processInfo.environment;
+    const image = $.NSImage.alloc.initWithContentsOfFile(env.objectForKey("ICON_SRC"));
+    $.NSWorkspace.sharedWorkspace.setIconForFileOptions(image, env.objectForKey("APP"), 0);
+  ' >/dev/null || echo "Note: couldn't set the app icon; the app still works."
   touch "$APP"
+  killall Dock 2>/dev/null || true
 fi
 
 # Remove an older copy from the personal Applications folder, so there's
