@@ -8,11 +8,13 @@ import sharp from "sharp";
 
 const PROJECT_ROOT = process.cwd();
 const ENV_PATH = path.join(PROJECT_ROOT, ".env.local");
+// New curations go to ~/Pictures/Curated: kept apart from the finished
+// archive in Downloads/Archive Download/Curated Imports, and off the
+// cloud-synced Desktop.
 const DEFAULT_OUTPUT_ROOT = path.join(
   os.homedir(),
-  "Downloads",
-  "Archive Download",
-  "Curated Imports",
+  "Pictures",
+  "Curated",
 );
 
 const IMAGE_EXTENSIONS = new Set([
@@ -2565,7 +2567,7 @@ async function finishClaudeCuration(
       );
   } catch {
     throw new Error(
-      "That folder isn't a prepared production (discovery.json is missing). Choose the folder inside Curated Imports that Claude worked on.",
+      "That folder isn't a prepared production (discovery.json is missing). Choose the production folder inside Pictures → Curated that Claude worked on.",
     );
   }
 
