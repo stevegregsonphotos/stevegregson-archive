@@ -209,21 +209,24 @@ export default async function ArchivePage() {
           text-wrap: pretty;
         }
 
+        /* The figures always sit on a single line, at every screen width:
+           they never wrap, and they shrink together on narrow screens. */
         .archive-stats {
           display: flex;
-          flex-wrap: wrap;
+          flex-wrap: nowrap;
           justify-content: center;
-          gap: 1.6rem 0;
-          max-width: 56rem;
-          margin: 2.2rem auto 0;
+          max-width: 100%;
+          margin: clamp(1.6rem, 3vw, 2.2rem) auto 0;
         }
 
         .archive-stats div {
           display: flex;
+          flex: 0 1 auto;
           flex-direction: column-reverse;
           align-items: center;
-          gap: 0.45rem;
-          padding: 0.3rem 2.6rem;
+          gap: clamp(0.3rem, 0.8vw, 0.45rem);
+          min-width: 0;
+          padding: 0.3rem clamp(0.4rem, 2.6vw, 2.6rem);
         }
 
         /* A fine rule between each figure. */
@@ -234,10 +237,11 @@ export default async function ArchivePage() {
 
         .archive-stats dt {
           color: rgba(242, 238, 230, 0.55);
-          font-size: 0.55rem;
+          font-size: clamp(0.4rem, 1.5vw, 0.55rem);
           font-weight: 700;
-          letter-spacing: 0.2em;
+          letter-spacing: clamp(0.06em, 0.35vw, 0.2em);
           text-transform: uppercase;
+          white-space: nowrap;
         }
 
         .archive-stats dd {
@@ -247,31 +251,11 @@ export default async function ArchivePage() {
             "Palatino Linotype",
             Georgia,
             serif;
-          font-size: clamp(1.9rem, 2.8vw, 2.7rem);
+          font-size: clamp(1rem, 4.2vw, 2.7rem);
           font-variant-numeric: tabular-nums;
           letter-spacing: -0.03em;
           line-height: 1;
-        }
-
-        @media (max-width: 900px) {
-          .archive-stats {
-            display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 1.4rem 0;
-            margin-top: 1.8rem;
-          }
-
-          .archive-stats div {
-            padding: 0.2rem 0.6rem;
-          }
-
-          .archive-stats div:nth-child(3n + 1) {
-            border-left: 0;
-          }
-
-          .archive-stats dd {
-            font-size: 1.7rem;
-          }
+          white-space: nowrap;
         }
 
         @media (max-width: 900px) {
