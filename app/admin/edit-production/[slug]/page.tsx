@@ -7,6 +7,7 @@ import {
 } from "next/navigation";
 
 import DeleteProductionPanel from "../../../../components/admin/editor/DeleteProductionPanel";
+import EditorSectionNav from "../../../../components/admin/editor/EditorSectionNav";
 import CreditsEditor from "../../../../components/admin/editor/CreditsEditor";
 import GalleryEditor from "../../../../components/admin/editor/GalleryEditor";
 import HeroEditor from "../../../../components/admin/editor/HeroEditor";
@@ -238,6 +239,72 @@ const [accessPassword, setAccessPassword] =
 
   const hasUnsavedChanges =
     hasHeroChanges || hasDetailChanges || hasGalleryChanges;
+
+  const MONTH_NAMES = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+  ];
+
+  const analysedCount = galleryImages.filter(
+    (image) => image.analysisStatus !== "pending",
+  ).length;
+
+  const detailsMissing = [
+    !title.trim() ? "title" : "",
+    !venue.trim() ? "venue" : "",
+    parsedMonth === null ? "month" : "",
+    !Number.isInteger(parsedYear) ? "year" : "",
+  ].filter(Boolean);
+
+  const sectionNavItems = [
+    {
+      id: "editor-details",
+      label: "Production details",
+      value:
+        parsedMonth && parsedMonth >= 1 && parsedMonth <= 12
+          ? `${MONTH_NAMES[parsedMonth - 1]} ${year}`
+          : year || "—",
+      hint: detailsMissing.length
+        ? `Missing ${detailsMissing.join(", ")}`
+        : venue.trim() || undefined,
+      attention: detailsMissing.length > 0,
+    },
+    {
+      id: "editor-credits",
+      label: "Credits",
+      value: String(credits.length),
+      hint: credits.length === 1 ? "credit" : "credits",
+      attention: credits.length === 0,
+    },
+    {
+      id: "editor-hero",
+      label: "Hero",
+      value: hasHeroChanges ? "Changed" : selectedHero ? "Set" : "None",
+      hint: hasHeroChanges ? "Not saved yet" : undefined,
+      attention: !selectedHero,
+    },
+    {
+      id: "editor-add-photos",
+      label: "Add photos",
+      value: uploadProgress
+        ? `${uploadProgress.completed}/${uploadProgress.total}`
+        : "Upload",
+      hint: uploadProgress ? "Uploading…" : undefined,
+    },
+    {
+      id: "editor-ai-analyse",
+      label: "AI analyse",
+      value: `${analysedCount}/${galleryImages.length}`,
+      hint: "analysed",
+      attention: analysedCount < galleryImages.length,
+    },
+    {
+      id: "editor-gallery",
+      label: "Gallery editor",
+      value: String(galleryImages.length),
+      hint: hasGalleryChanges ? "Changed, not saved" : "photographs",
+    },
+  ];
 
   function clearMessage() {
     setMessage(null);
@@ -861,47 +928,42 @@ setAccessPassword("");
       <section
         style={{
           maxWidth: "90rem",
-          margin: "3rem auto 0",
-          padding: "2rem",
+          margin: "2rem auto 0",
+          padding: "0.85rem 1rem",
           border:
             "1px solid rgba(242, 238, 230, 0.14)",
           background:
             "rgba(255, 255, 255, 0.02)",
         }}
       >
-        <p
-          style={{
-            margin: 0,
-            color: "#c7a369",
-            fontSize: "0.55rem",
-            fontWeight: 700,
-            letterSpacing: "0.16em",
-            textTransform: "uppercase",
-          }}
-        >
-          Production URL
-        </p>
-
         <label
           htmlFor="production-slug"
           style={{
-            display: "block",
-            marginTop: "1.25rem",
-            maxWidth: "48rem",
+            display: "flex",
+            alignItems: "center",
+            gap: "0.75rem",
+            flexWrap: "wrap",
           }}
         >
           <span
             style={{
-              display: "block",
-              marginBottom: "0.6rem",
-              color: "rgba(242, 238, 230, 0.58)",
+              color: "#c7a369",
               fontSize: "0.55rem",
               fontWeight: 700,
-              letterSpacing: "0.12em",
+              letterSpacing: "0.16em",
               textTransform: "uppercase",
             }}
           >
-            Slug
+            Production URL
+          </span>
+
+          <span
+            style={{
+              color: "rgba(242, 238, 230, 0.45)",
+              fontSize: "0.72rem",
+            }}
+          >
+            stevegregson.com/productions/
           </span>
 
           <input
@@ -919,42 +981,25 @@ setAccessPassword("");
             spellCheck={false}
             autoCapitalize="none"
             autoCorrect="off"
+            title="Slugs are generated automatically. Change this only when the production URL needs correcting."
             style={{
-              width: "100%",
-              padding: "0.9rem 1rem",
+              flex: "1 1 18rem",
+              minWidth: 0,
+              padding: "0.45rem 0.65rem",
               border:
                 "1px solid rgba(242, 238, 230, 0.18)",
               background: "#11100f",
               color: "#f2eee6",
               font: "inherit",
+              fontSize: "0.8rem",
             }}
           />
         </label>
-
-        <p
-          style={{
-            margin: "0.75rem 0 0",
-            color: "rgba(242, 238, 230, 0.45)",
-            fontSize: "0.72rem",
-            lineHeight: 1.5,
-          }}
-        >
-          https://www.stevegregson.com/productions/{productionSlug}
-        </p>
-
-        <p
-          style={{
-            margin: "0.75rem 0 0",
-            color: "rgba(242, 238, 230, 0.45)",
-            fontSize: "0.72rem",
-            lineHeight: 1.5,
-          }}
-        >
-          Slugs are generated automatically when a production is created.
-          Change this only when the production URL needs correcting.
-        </p>
       </section>
 
+      <EditorSectionNav items={sectionNavItems} />
+
+      <div id="editor-details">
       <ProductionDetailsEditor
         title={title}
         venue={venue}
@@ -1161,6 +1206,9 @@ setAccessPassword("");
     </div>
   ) : null}
 </section>
+      </div>
+
+      <div id="editor-credits">
       <CreditsEditor
         credits={credits}
         onChange={(nextCredits) => {
@@ -1168,7 +1216,9 @@ setAccessPassword("");
           clearMessage();
         }}
       />
+      </div>
 
+      <div id="editor-hero">
       <HeroEditor
         slug={production.slug}
         publishedHero={production.hero}
@@ -1181,8 +1231,10 @@ setAccessPassword("");
           clearMessage();
         }}
       />
+      </div>
 
       <section
+        id="editor-add-photos"
         className="backstage-panel"
         style={{
           maxWidth: "90rem",
@@ -1285,6 +1337,7 @@ setAccessPassword("");
 
       </section>
 
+      <div id="editor-ai-analyse">
       <VisionMetadataPanel
         productionSlug={production.slug}
         images={galleryImages}
@@ -1307,7 +1360,9 @@ setAccessPassword("");
           clearMessage();
         }}
       />
+      </div>
 
+      <div id="editor-gallery">
       <GalleryEditor
         productionSlug={production.slug}
         images={galleryImages}
@@ -1335,6 +1390,7 @@ setAccessPassword("");
           clearMessage();
         }}
       />
+      </div>
 
       {editingImage ? (
         <ImageEditor
