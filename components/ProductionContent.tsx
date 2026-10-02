@@ -284,6 +284,7 @@ export default function ProductionContent({
             alt: production.heroAlt,
           }}
           images={production.images}
+          layout={production.galleryLayout}
         />
 
         {nextProduction ? (
