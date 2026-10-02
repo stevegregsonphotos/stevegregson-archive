@@ -374,6 +374,7 @@ export default function ProductionPageEditor() {
         wording. Nothing changes on the live site until you press Save.
       </p>
 
+      <div>
       <div className={styles.toolbar}>
         <button type="button" className="backstage-button" onClick={() => setPicker({ mode: "add" })}>
           Add photograph
@@ -554,6 +555,7 @@ export default function ProductionPageEditor() {
           );
         })}
       </ol>
+      </div>
 
       <section className="backstage-section" id="commissions-images">
         <div className="backstage-section-heading">
