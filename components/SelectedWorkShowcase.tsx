@@ -34,7 +34,7 @@ function Caption({ image }: { image: ShowcaseImage }) {
           {image.credit.title}
         </span>
         <span className={styles.captionMeta}>
-          {image.credit.venue} · {image.credit.year}
+          {image.credit.venue}
         </span>
       </Link>
     </figcaption>
@@ -203,7 +203,7 @@ export default function SelectedWorkShowcase({
                   <>
                     <strong>{current.credit.title}</strong>{" "}
                     <span>
-                      {current.credit.venue} · {current.credit.year}
+                      {current.credit.venue}
                     </span>
                   </>
                 ) : (
