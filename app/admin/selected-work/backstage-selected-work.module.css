@@ -20,10 +20,10 @@
   font-family: "Helvetica Neue", Helvetica, system-ui, sans-serif;
 }
 
-.screen button,
-.screen input,
-.screen select,
-.screen textarea {
+:where(.screen) button,
+:where(.screen) input,
+:where(.screen) select,
+:where(.screen) textarea {
   font: inherit;
 }
 
