@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Production Edit: Photographs</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;background:#11100f}
+body{color:#f2eee6;font-family:'Helvetica Neue',Helvetica,system-ui,sans-serif;font-size:14px;line-height:1.4}
+a{color:#c7a369}a:hover{color:#f2eee6}
+.serif{font-family:'Iowan Old Style','Palatino Linotype',Georgia,serif;font-weight:400}
+.lbl{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#a39d93}
+.gold{color:#c7a369}.muted{color:#a39d93}
+button{font:inherit;cursor:pointer}
+.btn{height:40px;padding:0 14px;border:1px solid #5c5852;background:transparent;color:#f2eee6;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
+.btn:hover{border-color:#c7a369}
+.btn-sm{height:34px;padding:0 12px;font-size:11px}
+.btn-quiet{border:1px solid #45423d;text-transform:none;letter-spacing:0;font-weight:400;font-size:12px}
+.btn-danger{border-color:#7a3b2e;color:#ffb4a3}
+.btn-gold{border-color:#c7a369;background:#c7a369;color:#11100f}
+.btn[disabled]{color:#6f6a63;border-color:#36332f;cursor:default}
+input[type=text],input[type=password],select,textarea{width:100%;height:40px;padding:0 10px;border:1px solid #45423d;background:#11100f;color:#f2eee6;font:inherit;font-size:14px;border-radius:0}
+textarea{height:auto;padding:10px;line-height:1.5;resize:vertical}
+input:focus,select,textarea:focus{outline:none}
+input:focus,textarea:focus{border-color:#c7a369}
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.field .lbl{font-size:10.5px}
+.hint{font-size:12px;color:#a39d93;margin:0}
+.changed{border-color:#c7a369 !important}
+.dot{width:8px;height:8px;border-radius:50%;background:#c7a369;display:inline-block}
+
+/* top nav (Backstage layout) */
+.topnav{min-height:72px;padding:0 48px;display:flex;align-items:center;gap:24px;border-bottom:1px solid #2e2c29}
+.brand{display:flex;flex-direction:column;gap:3px;flex:none;text-decoration:none;color:#f2eee6}
+.brand span{font-size:11px;font-weight:700;letter-spacing:.18em}
+.brand span+span{color:#c7a369}
+.topnav nav{display:flex;gap:14px;flex-wrap:wrap;row-gap:8px;font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase}
+.topnav nav a{color:#a39d93;text-decoration:none;padding:6px 0}
+.topnav nav a.on{color:#f2eee6;border-bottom:2px solid #c7a369;padding-bottom:4px}
+.util{margin-left:auto;display:flex;gap:16px;font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;flex:none}
+.util a{color:#a39d93;text-decoration:none}
+
+.wrap{padding:0 48px}
+.head{padding-top:36px;display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap}
+.head h1{margin:10px 0 0;font-size:64px;letter-spacing:-.04em;line-height:1}
+.head .sub{margin:12px 0 0;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#a39d93}
+.head .links{display:flex;gap:28px}
+.head .links a{font-size:12px;font-weight:700;letter-spacing:.12em;text-decoration:none;text-transform:uppercase}
+.head .links a.back{color:#a39d93}
+.crumb{margin:0;font-size:11px;font-weight:700;letter-spacing:.2em;color:#c7a369}
+.crumb a{color:#a39d93;text-decoration:none}
+
+.tabs{margin-top:28px;display:flex;gap:8px;border-bottom:1px solid #2e2c29;overflow-x:auto}
+.tab{display:flex;align-items:baseline;gap:10px;padding:14px 20px;text-decoration:none;color:#a39d93;white-space:nowrap}
+.tab .n{font-size:11px;font-weight:700}
+.tab .t{font-size:15px}
+.tab .c{font-size:12px}
+.tab .warn{font-size:11px;color:#c7a369;display:inline-flex;align-items:center;gap:6px}
+.tab.on{color:#f2eee6;border-bottom:2px solid #c7a369;margin-bottom:-1px}
+.tab.on .n{color:#c7a369}.tab.on .c{color:#a39d93}
+
+.savebar{position:sticky;bottom:0;z-index:5;height:76px;padding:0 48px;display:flex;align-items:center;gap:16px;background:#1a1918;border-top:1px solid #c7a369;margin-top:40px}
+.savebar.saved{border-top-color:#2e2c29}
+.savebar .bd{width:10px;height:10px;border-radius:50%;background:#c7a369;flex:none}
+.savebar.saved .bd{background:#8fb38a}
+.savebar .st{font-size:14px;white-space:nowrap}
+.savebar .sum{font-size:13px;color:#a39d93;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.savebar .sp{flex-grow:1}
+.savebar .btn{height:44px;padding:0 20px;letter-spacing:.1em}
+
+@media (max-width:1100px){
+ .topnav{flex-wrap:wrap;padding:14px 24px;gap:14px 28px}
+ .util{margin-left:0}
+ .wrap,.savebar{padding-left:24px;padding-right:24px}
+ .head h1{font-size:48px}
+}
+@media (max-width:640px){
+ .wrap,.savebar,.topnav{padding-left:16px;padding-right:16px}
+ .savebar .sum{display:none}
+ .savebar{gap:8px}
+ .savebar .st{font-size:13px}
+ .savebar .btn{padding:0 10px;letter-spacing:.04em;font-size:11px}
+ .head h1{font-size:40px}
+}
+
+.drop{margin-top:24px;border:2px dashed #c7a369;background:rgba(199,163,105,.06);padding:18px 24px;display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+.drop .t{flex:1 1 320px}
+.drop p{margin:0}
+.prog{width:340px;max-width:100%;display:flex;flex-direction:column;gap:8px}
+.bar{height:6px;background:#2e2c29}.bar i{display:block;height:6px;background:#c7a369}
+.toolbar{margin-top:20px;min-height:56px;padding:8px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:#1a1918;border:1px solid #45423d}
+.toolbar .count{font-size:14px;font-weight:700}
+.vr{width:1px;height:24px;background:#45423d}
+.layout{margin-top:20px;display:grid;grid-template-columns:minmax(0,1fr) minmax(380px,460px);gap:24px;align-items:start}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),420px));gap:16px 12px}
+.ph-card{margin:0;position:relative;cursor:grab}
+.thumb{aspect-ratio:4/3;background:#080808;outline:0 solid transparent;outline-offset:3px}
+.thumb img{display:block;width:100%;height:100%;object-fit:contain}
+.ph-card.sel .thumb{outline:3px solid #c7a369}
+.num{position:absolute;top:6px;left:6px;min-width:26px;height:26px;padding:0 6px;display:flex;align-items:center;justify-content:center;background:#11100f;color:#c7a369;font-size:11px;font-weight:700}
+.tick{position:absolute;top:6px;right:6px;width:26px;height:26px;border:2px solid #a39d93;background:rgba(17,16,15,.6);color:#11100f;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.ph-card.ticked .tick{border-color:#c7a369;background:#c7a369}
+.herotag{position:absolute;top:6px;left:38px;height:26px;padding:0 8px;display:flex;align-items:center;background:#c7a369;color:#11100f;font-size:10.5px;font-weight:700;letter-spacing:.12em}
+.cap{margin-top:6px;display:flex;justify-content:space-between;gap:10px;font-size:12px;color:#a39d93}
+.cap .f{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.cap .l{flex:none;color:#d8d3ca}
+.ph-card.moved .cap .l::after{content:" · moved";color:#c7a369}
+.side{position:sticky;top:16px;max-height:calc(100vh - 76px - 32px);overflow:auto;border:1px solid #2e2c29;background:#1a1918;padding:20px;display:flex;flex-direction:column;gap:16px}
+.side h3{margin:0;font-size:22px}
+.side .prev{display:flex;gap:12px;align-items:center}
+.side .prev img{width:96px;height:72px;object-fit:contain;background:#080808;flex:none}
+.sec{border-top:1px solid #2e2c29;padding-top:14px;display:flex;flex-direction:column;gap:10px}
+.chips{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.chip{height:34px;border:1px solid #45423d;background:transparent;color:#d8d3ca;font-size:12px;padding:0 4px}
+.chip.on{border-color:#c7a369;background:rgba(199,163,105,.14);color:#f2eee6}
+.two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.two .btn{width:100%;height:40px;padding:0 6px}
+.full{width:100%}
+.flag{font-size:12px;color:#c7a369;display:flex;align-items:center;gap:6px}
+details.fd summary{list-style:none;cursor:pointer;font-size:12px;color:#d8d3ca}
+details.fd summary::-webkit-details-marker{display:none}
+details.fd[open] summary .ar{display:inline-block;transform:rotate(90deg)}
+details.fd .in{margin-top:10px;display:flex;flex-direction:column;gap:10px}
+.kv{margin:0;font-size:12px;color:#a39d93}.kv b{font-weight:400;color:#d8d3ca;word-break:break-all}
+@media (max-width:1180px){.layout{grid-template-columns:minmax(0,1fr) 340px}}
+@media (max-width:900px){.layout{grid-template-columns:1fr}.side{position:static;max-height:none}}
+</style>
+</head>
+<body>
+<header class="topnav">
+<a class="brand" href="#"><span>STEVE GREGSON</span><span>BACKSTAGE</span></a>
+<nav aria-label="Backstage navigation"><a href="#">Dashboard</a><a href="#">Upload &amp; publish</a><a href="#">Bulk import</a><a href="#">Curated import</a><a href="#" class="on">Productions</a><a href="#">Proofing</a><a href="#">Clients</a><a href="#">Watermarks</a><a href="#">Selected Work</a><a href="#">Settings</a></nav>
+<div class="util"><a href="#">View website ↗</a><a href="#">Sign out</a></div>
+</header><div class="wrap">
+<div class="head">
+<div>
+<p class="crumb"><a href="#">PRODUCTIONS</a> › EDIT</p>
+<h1 class="serif">Godspell</h1>
+<p class="sub">Mountview · 2026</p>
+</div>
+<div class="links"><a class="back" href="#">← Back to archive</a><a href="#">View on site ↗</a></div>
+</div>
+<div class="tabs">
+<a class="tab " href="production-edit-details.html"><span class="n">01</span><span class="t">Details &amp; credits</span><span class="c">9 credits</span><span class="warn"><span class="dot"></span>Month missing</span></a>
+<a class="tab on" href="production-edit-photos.html"><span class="n">02</span><span class="t">Photographs</span><span class="c">18</span><span class="warn" style="color:#a39d93">0 of 18 described</span></a>
+</div>
+</div>
+<div class="wrap">
+
+<div class="drop">
+<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#c7a369" stroke-width="1.5" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M4 16v4h16v-4"/></svg>
+<div class="t">
+<p style="font-size:16px">Drop photographs here to add them to Godspell</p>
+<p style="margin-top:4px;font-size:13px" class="muted">Or <a href="#">choose files</a> (JPEG, PNG or WebP). Add as many as you like at once.</p>
+</div>
+<div class="prog">
+<div style="display:flex;justify-content:space-between;font-size:12px"><span>Uploading 2 of 3 photographs…</span><span class="muted">example</span></div>
+<div class="bar"><i style="width:66%"></i></div>
+</div>
+</div>
+
+<div class="toolbar">
+<span class="count">3 selected</span>
+<span class="vr"></span>
+<button class="btn" type="button">Describe with AI</button>
+<button class="btn" type="button">Set layout ▾</button>
+<button class="btn btn-danger" type="button">Remove</button>
+<button class="btn" type="button" style="border:0;text-transform:none;letter-spacing:0;font-weight:400;font-size:13px;color:#a39d93">Clear selection</button>
+<span style="flex-grow:1"></span>
+<span class="muted" style="font-size:12px">0 of 18 described by AI</span>
+<button class="btn btn-quiet" type="button">Describe all 18 with AI</button>
+</div>
+<p class="hint" style="margin-top:10px">Drag photographs to change their order on the page · click a photo to edit it · tick the box to select several</p>
+
+<div class="layout">
+<div class="grid">
+<figure class="ph-card">
+<div class="thumb"><img src="https://images.stevegregson.com/godspell/GODSPELL-Revelation-136-2.jpg" alt="Godspell production photograph"></div>
+<span class="num">1</span>
+<span class="tick"></span>
+<figcaption class="cap"><span class="f">GODSPELL-Revelation-136-2.jpg</span><span class="l">Wide</span></figcaption>
+</figure><figure class="ph-card ticked">
+<div class="thumb"><img src="https://images.stevegregson.com/godspell/GODSPELL-Genesis-329.jpg" alt="Godspell production photograph"></div>
+<span class="num">2</span>
+<span class="tick">✓</span>
+<figcaption class="cap"><span class="f">GODSPELL-Genesis-329.jpg</span><span class="l">Left</span></figcaption>
+</figure><figure class="ph-card">
+<div class="thumb"><img src="https://images.stevegregson.com/godspell/GODSPELL-Genesis-381.jpg" alt="Godspell production photograph"></div>
+<span class="num">3</span>
+<span class="tick"></span>
+<figcaption class="cap"><span class="f">GODSPELL-Genesis-381.jpg</span><span class="l">Right</span></figcaption>
+</figure><figure class="ph-card sel ticked">
+<div class="thumb"><img src="https://images.stevegregson.com/godspell/GODSPELL-Revelation-181-2.jpg" alt="Godspell production photograph"></div>
+<span class="num">4</span><span class="herotag">HERO</span>
+<span class="tick">✓</span>
+<figcaption class="cap"><span class="f">GODSPELL-Revelation-181-2.jpg</span><span class="l">Full</span></figcaption>
+</figure><figure class="ph-card">
+<div class="thumb"><img src="https://images.stevegregson.com/godspell/GODSPELL-Genesis-249.jpg" alt="Godspell production photograph"></div>
+<span class="num">5</span>
+<span class="tick"></span>
+<figcaption class="cap"><span class="f">GODSPELL-Genesis-249.jpg</span><span class="l">Left small</span></figcaption>
+</figure><figure class="ph-card">
+<div class="thumb"><img src="https://images.stevegregson.com/godspell/GODSPELL-Revelation-266.jpg" alt="Godspell production photograph"></div>
+<span class="num">6</span>
+<span class="tick"></span>
+<figcaption class="cap"><span class="f">GODSPELL-Revelation-266.jpg</span><span class="l">Right small</span></figcaption>
+</figure><figure class="ph-card ticked moved">
+<div class="thumb"><img src="https://images.stevegregson.com/godspell/GODSPELL-Revelation-184.jpg" alt="Godspell production photograph"></div>
+<span class="num">7</span>
+<span class="tick">✓</span>
+<figcaption class="cap"><span class="f">GODSPELL-Revelation-184.jpg</span><span class="l">Wide left</span></figcaption>
+</figure><figure class="ph-card moved">
+<div class="thumb"><img src="https://images.stevegregson.com/godspell/GODSPELL-Revelation-190-2.jpg" alt="Godspell production photograph"></div>
+<span class="num">8</span>
+<span class="tick"></span>
+<figcaption class="cap"><span class="f">GODSPELL-Revelation-190-2.jpg</span><span class="l">Wide right</span></figcaption>
+</figure><figure class="ph-card">
+<div class="thumb"><img src="https://images.stevegregson.com/godspell/GODSPELL-Revelation-24.jpg" alt="Godspell production photograph"></div>
+<span class="num">9</span>
+<span class="tick"></span>
+<figcaption class="cap"><span class="f">GODSPELL-Revelation-24.jpg</span><span class="l">Medium</span></figcaption>
+</figure><figure class="ph-card">
+<div class="thumb"><img src="https://images.stevegregson.com/godspell/GODSPELL-Revelation-33-2.jpg" alt="Godspell production photograph"></div>
+<span class="num">10</span>
+<span class="tick"></span>
+<figcaption class="cap"><span class="f">GODSPELL-Revelation-33-2.jpg</span><span class="l">Left small</span></figcaption>
+</figure><figure class="ph-card">
+<div class="thumb"><img src="https://images.stevegregson.com/godspell/GODSPELL-Revelation-27-2.jpg" alt="Godspell production photograph"></div>
+<span class="num">11</span>
+<span class="tick"></span>
+<figcaption class="cap"><span class="f">GODSPELL-Revelation-27-2.jpg</span><span class="l">Wide</span></figcaption>
+</figure><figure class="ph-card">
+<div class="thumb"><img src="https://images.stevegregson.com/godspell/GODSPELL-Revelation-32-2.jpg" alt="Godspell production photograph"></div>
+<span class="num">12</span>
+<span class="tick"></span>
+<figcaption class="cap"><span class="f">GODSPELL-Revelation-32-2.jpg</span><span class="l">Full</span></figcaption>
+</figure><figure class="ph-card">
+<div class="thumb"><img src="https://images.stevegregson.com/godspell/GODSPELL-Revelation-372-2.jpg" alt="Godspell production photograph"></div>
+<span class="num">13</span>
+<span class="tick"></span>
+<figcaption class="cap"><span class="f">GODSPELL-Revelation-372-2.jpg</span><span class="l">Left</span></figcaption>
+</figure><figure class="ph-card">
+<div class="thumb"><img src="https://images.stevegregson.com/godspell/GODSPELL-Revelation-374.jpg" alt="Godspell production photograph"></div>
+<span class="num">14</span>
+<span class="tick"></span>
+<figcaption class="cap"><span class="f">GODSPELL-Revelation-374.jpg</span><span class="l">Right</span></figcaption>
+</figure><figure class="ph-card">
+<div class="thumb"><img src="https://images.stevegregson.com/godspell/GODSPELL-Genesis-388.jpg" alt="Godspell production photograph"></div>
+<span class="num">15</span>
+<span class="tick"></span>
+<figcaption class="cap"><span class="f">GODSPELL-Genesis-388.jpg</span><span class="l">Medium</span></figcaption>
+</figure><figure class="ph-card">
+<div class="thumb"><img src="https://images.stevegregson.com/godspell/GODSPELL-Genesis-397.jpg" alt="Godspell production photograph"></div>
+<span class="num">16</span>
+<span class="tick"></span>
+<figcaption class="cap"><span class="f">GODSPELL-Genesis-397.jpg</span><span class="l">Right small</span></figcaption>
+</figure><figure class="ph-card">
+<div class="thumb"><img src="https://images.stevegregson.com/godspell/GODSPELL-Genesis-395.jpg" alt="Godspell production photograph"></div>
+<span class="num">17</span>
+<span class="tick"></span>
+<figcaption class="cap"><span class="f">GODSPELL-Genesis-395.jpg</span><span class="l">Wide left</span></figcaption>
+</figure><figure class="ph-card">
+<div class="thumb"><img src="https://images.stevegregson.com/godspell/GODSPELL-Revelation-380-2.jpg" alt="Godspell production photograph"></div>
+<span class="num">18</span>
+<span class="tick"></span>
+<figcaption class="cap"><span class="f">GODSPELL-Revelation-380-2.jpg</span><span class="l">Full</span></figcaption>
+</figure>
+</div>
+
+<aside class="side" aria-label="Photo details">
+<span class="lbl gold" style="letter-spacing:.16em">Photo 4 of 18</span>
+<div class="prev"><img src="https://images.stevegregson.com/godspell/GODSPELL-Revelation-181-2.jpg" alt=""><div><h3 class="serif">Selected photograph</h3><p class="hint" style="margin-top:4px">Changes here are saved with the bar below.</p></div></div>
+
+<div class="sec" style="border-top:0;padding-top:0">
+<label class="field"><span class="lbl">Description for Google and screen readers</span>
+<textarea rows="3">Godspell production photograph</textarea></label>
+<div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+<span class="flag"><span class="dot"></span>Placeholder – not yet described</span>
+<button class="btn btn-sm btn-quiet" type="button">Describe with AI</button>
+</div>
+</div>
+
+<div class="sec">
+<span class="lbl">Layout on the page</span>
+<div class="chips"><button type="button" class="chip">Wide</button><button type="button" class="chip on">Full</button><button type="button" class="chip">Medium</button><button type="button" class="chip">Left</button><button type="button" class="chip">Right</button><button type="button" class="chip">Left small</button><button type="button" class="chip">Right small</button><button type="button" class="chip">Wide left</button><button type="button" class="chip">Wide right</button></div>
+</div>
+
+<div class="sec">
+<span class="lbl">Hero</span>
+<button class="btn full" type="button" style="border-color:#c7a369;color:#c7a369">★ Hero image (changed, not saved)</button>
+<p class="hint">Was GODSPELL-Genesis-58.jpg. The hero photo can’t be removed from the gallery.</p>
+</div>
+
+<div class="sec">
+<span class="lbl">Order</span>
+<div class="two"><button class="btn" type="button">← Move earlier</button><button class="btn" type="button">Move later →</button></div>
+</div>
+
+<div class="two">
+<button class="btn" type="button" style="height:44px">Edit / crop</button>
+<button class="btn btn-danger" type="button" style="height:44px" disabled>Remove</button>
+</div>
+<p class="hint" style="margin-top:-8px">Edit / crop opens the existing crop &amp; adjust window: shape (Original, Square, 16:9, 3:2, 4:5), zoom, auto, brightness, reset.</p>
+
+<details class="fd sec" open>
+<summary><span class="ar">▸</span> File details</summary>
+<div class="in">
+<p class="kv">Current filename: <b>GODSPELL-Revelation-181-2.jpg</b></p>
+<label class="field"><span class="lbl">Suggested filename</span><input type="text" value="" placeholder="AI suggestion appears here"></label>
+</div>
+</details>
+</aside>
+</div>
+</div>
+
+<div class="savebar">
+<span class="bd"></span>
+<span class="st">3 unsaved changes</span>
+<span class="sum">Hero changed · 2 photos reordered · 1 layout changed</span>
+<span class="sp"></span>
+<button class="btn" type="button">Undo</button>
+<button class="btn btn-gold" type="button">Save &amp; publish</button>
+</div>
+
+</body>
+</html>

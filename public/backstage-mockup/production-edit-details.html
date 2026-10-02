@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Production Edit: Details</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;background:#11100f}
+body{color:#f2eee6;font-family:'Helvetica Neue',Helvetica,system-ui,sans-serif;font-size:14px;line-height:1.4}
+a{color:#c7a369}a:hover{color:#f2eee6}
+.serif{font-family:'Iowan Old Style','Palatino Linotype',Georgia,serif;font-weight:400}
+.lbl{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#a39d93}
+.gold{color:#c7a369}.muted{color:#a39d93}
+button{font:inherit;cursor:pointer}
+.btn{height:40px;padding:0 14px;border:1px solid #5c5852;background:transparent;color:#f2eee6;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
+.btn:hover{border-color:#c7a369}
+.btn-sm{height:34px;padding:0 12px;font-size:11px}
+.btn-quiet{border:1px solid #45423d;text-transform:none;letter-spacing:0;font-weight:400;font-size:12px}
+.btn-danger{border-color:#7a3b2e;color:#ffb4a3}
+.btn-gold{border-color:#c7a369;background:#c7a369;color:#11100f}
+.btn[disabled]{color:#6f6a63;border-color:#36332f;cursor:default}
+input[type=text],input[type=password],select,textarea{width:100%;height:40px;padding:0 10px;border:1px solid #45423d;background:#11100f;color:#f2eee6;font:inherit;font-size:14px;border-radius:0}
+textarea{height:auto;padding:10px;line-height:1.5;resize:vertical}
+input:focus,select,textarea:focus{outline:none}
+input:focus,textarea:focus{border-color:#c7a369}
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.field .lbl{font-size:10.5px}
+.hint{font-size:12px;color:#a39d93;margin:0}
+.changed{border-color:#c7a369 !important}
+.dot{width:8px;height:8px;border-radius:50%;background:#c7a369;display:inline-block}
+
+/* top nav (Backstage layout) */
+.topnav{min-height:72px;padding:0 48px;display:flex;align-items:center;gap:24px;border-bottom:1px solid #2e2c29}
+.brand{display:flex;flex-direction:column;gap:3px;flex:none;text-decoration:none;color:#f2eee6}
+.brand span{font-size:11px;font-weight:700;letter-spacing:.18em}
+.brand span+span{color:#c7a369}
+.topnav nav{display:flex;gap:14px;flex-wrap:wrap;row-gap:8px;font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase}
+.topnav nav a{color:#a39d93;text-decoration:none;padding:6px 0}
+.topnav nav a.on{color:#f2eee6;border-bottom:2px solid #c7a369;padding-bottom:4px}
+.util{margin-left:auto;display:flex;gap:16px;font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;flex:none}
+.util a{color:#a39d93;text-decoration:none}
+
+.wrap{padding:0 48px}
+.head{padding-top:36px;display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap}
+.head h1{margin:10px 0 0;font-size:64px;letter-spacing:-.04em;line-height:1}
+.head .sub{margin:12px 0 0;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#a39d93}
+.head .links{display:flex;gap:28px}
+.head .links a{font-size:12px;font-weight:700;letter-spacing:.12em;text-decoration:none;text-transform:uppercase}
+.head .links a.back{color:#a39d93}
+.crumb{margin:0;font-size:11px;font-weight:700;letter-spacing:.2em;color:#c7a369}
+.crumb a{color:#a39d93;text-decoration:none}
+
+.tabs{margin-top:28px;display:flex;gap:8px;border-bottom:1px solid #2e2c29;overflow-x:auto}
+.tab{display:flex;align-items:baseline;gap:10px;padding:14px 20px;text-decoration:none;color:#a39d93;white-space:nowrap}
+.tab .n{font-size:11px;font-weight:700}
+.tab .t{font-size:15px}
+.tab .c{font-size:12px}
+.tab .warn{font-size:11px;color:#c7a369;display:inline-flex;align-items:center;gap:6px}
+.tab.on{color:#f2eee6;border-bottom:2px solid #c7a369;margin-bottom:-1px}
+.tab.on .n{color:#c7a369}.tab.on .c{color:#a39d93}
+
+.savebar{position:sticky;bottom:0;z-index:5;height:76px;padding:0 48px;display:flex;align-items:center;gap:16px;background:#1a1918;border-top:1px solid #c7a369;margin-top:40px}
+.savebar.saved{border-top-color:#2e2c29}
+.savebar .bd{width:10px;height:10px;border-radius:50%;background:#c7a369;flex:none}
+.savebar.saved .bd{background:#8fb38a}
+.savebar .st{font-size:14px;white-space:nowrap}
+.savebar .sum{font-size:13px;color:#a39d93;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.savebar .sp{flex-grow:1}
+.savebar .btn{height:44px;padding:0 20px;letter-spacing:.1em}
+
+@media (max-width:1100px){
+ .topnav{flex-wrap:wrap;padding:14px 24px;gap:14px 28px}
+ .util{margin-left:0}
+ .wrap,.savebar{padding-left:24px;padding-right:24px}
+ .head h1{font-size:48px}
+}
+@media (max-width:640px){
+ .wrap,.savebar,.topnav{padding-left:16px;padding-right:16px}
+ .savebar .sum{display:none}
+ .savebar{gap:8px}
+ .savebar .st{font-size:13px}
+ .savebar .btn{padding:0 10px;letter-spacing:.04em;font-size:11px}
+ .head h1{font-size:40px}
+}
+
+.mock-note{margin:20px 0 0;padding:10px 14px;border:1px dashed #45423d;font-size:12px;color:#a39d93}
+.cols{margin-top:28px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:32px;align-items:start}
+.panel{border:1px solid #2e2c29;background:#1a1918;padding:22px 24px}
+.panel h2{margin:0;font-size:24px;letter-spacing:-.01em}
+.ph{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:18px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 18px}
+.grid4{display:grid;grid-template-columns:2fr 1fr 1fr;gap:16px 18px}
+.span2{grid-column:1/-1}
+.slug{display:flex;align-items:center;border:1px solid #45423d;background:#11100f}
+.slug span{padding:0 0 0 10px;color:#6f6a63;font-size:13px;white-space:nowrap}
+.slug input{border:0;padding-left:2px}
+.radio{display:flex;gap:22px;flex-wrap:wrap}
+.radio label{display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer}
+.r{width:16px;height:16px;border-radius:50%;border:2px solid #a39d93;display:inline-block;flex:none}
+.r.on{border-color:#c7a369;box-shadow:inset 0 0 0 3px #1a1918;background:#c7a369}
+.sub-opts{margin-top:14px;padding:14px;border:1px solid #2e2c29;opacity:.55}
+.chk{display:flex;align-items:center;gap:8px;font-size:13px}
+.box{width:16px;height:16px;border:2px solid #a39d93;flex:none}
+.hero{display:grid;grid-template-columns:168px minmax(0,1fr);gap:16px;align-items:center}
+.hero img{width:168px;height:126px;object-fit:contain;background:#080808;display:block}
+.credits{width:100%;border-collapse:collapse}
+.credits th{text-align:left;padding:0 10px 8px 0;font-size:10.5px;font-weight:700;letter-spacing:.14em;color:#a39d93;text-transform:uppercase}
+.credits td{padding:4px 10px 4px 0;border-top:1px solid #2e2c29}
+.credits td:first-child{width:34%}
+.credits td:nth-child(2){width:34%}
+.credits td:last-child{width:40px;padding-right:0;text-align:right}
+.credits input{height:36px;font-size:13px;border-color:transparent;background:transparent;padding:0 8px}
+.credits input:hover{border-color:#45423d;background:#11100f}
+.credits input::placeholder{color:#5c5852}
+.x{width:32px;height:32px;border:1px solid transparent;background:transparent;color:#6f6a63;font-size:16px}
+.x:hover{border-color:#7a3b2e;color:#ffb4a3}
+.credit-actions{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+details.paste{margin-top:14px;border:1px solid #2e2c29}
+details.paste summary{list-style:none;cursor:pointer;padding:12px 14px;font-size:13px;display:flex;justify-content:space-between}
+details.paste summary::-webkit-details-marker{display:none}
+details.paste .in{padding:0 14px 14px;display:flex;flex-direction:column;gap:10px}
+.danger{margin-top:32px;border:1px solid #4a2a23;padding:18px 24px;display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+.danger p{margin:0}
+@media (max-width:1100px){.cols{grid-template-columns:1fr}}
+@media (max-width:640px){.grid2,.grid4{grid-template-columns:1fr}.hero{grid-template-columns:1fr}.credits td:nth-child(3){display:none}.credits th:nth-child(3){display:none}}
+</style>
+</head>
+<body>
+<header class="topnav">
+<a class="brand" href="#"><span>STEVE GREGSON</span><span>BACKSTAGE</span></a>
+<nav aria-label="Backstage navigation"><a href="#">Dashboard</a><a href="#">Upload &amp; publish</a><a href="#">Bulk import</a><a href="#">Curated import</a><a href="#" class="on">Productions</a><a href="#">Proofing</a><a href="#">Clients</a><a href="#">Watermarks</a><a href="#">Selected Work</a><a href="#">Settings</a></nav>
+<div class="util"><a href="#">View website ↗</a><a href="#">Sign out</a></div>
+</header><div class="wrap">
+<div class="head">
+<div>
+<p class="crumb"><a href="#">PRODUCTIONS</a> › EDIT</p>
+<h1 class="serif">Godspell</h1>
+<p class="sub">Mountview · 2026</p>
+</div>
+<div class="links"><a class="back" href="#">← Back to archive</a><a href="#">View on site ↗</a></div>
+</div>
+<div class="tabs">
+<a class="tab on" href="production-edit-details.html"><span class="n">01</span><span class="t">Details &amp; credits</span><span class="c">9 credits</span><span class="warn"><span class="dot"></span>Month missing</span></a>
+<a class="tab " href="production-edit-photos.html"><span class="n">02</span><span class="t">Photographs</span><span class="c">18</span><span class="warn" style="color:#a39d93">0 of 18 described</span></a>
+</div>
+</div>
+<div class="wrap">
+<div class="cols">
+
+<div style="display:flex;flex-direction:column;gap:32px;min-width:0">
+<section class="panel">
+<div class="ph"><h2 class="serif">Production details</h2><span class="lbl">Shown on the production page</span></div>
+<div class="grid2">
+<label class="field span2"><span class="lbl">Title</span><input type="text" value="Godspell"></label>
+<label class="field"><span class="lbl">Venue</span><input type="text" value="Mountview"></label>
+<div class="grid2" style="gap:18px">
+<label class="field"><span class="lbl">Month <span class="gold">· missing</span></span><select style="border-color:#7d6a45"><option>Unknown</option><option>January</option><option>February</option><option>March</option><option>April</option><option>May</option><option>June</option><option>July</option><option>August</option><option>September</option><option>October</option><option>November</option><option>December</option></select></label>
+<label class="field"><span class="lbl">Year</span><input type="text" value="2026"></label>
+</div>
+<label class="field span2"><span class="lbl">Description</span><textarea rows="3">Dress rehearsal photography for Godspell at Mountview, created for the production’s publicity campaign.</textarea></label>
+<label class="field span2"><span class="lbl">Web address</span>
+<span class="slug"><span>stevegregson.com/productions/</span><input type="text" value="godspell" spellcheck="false"></span>
+<span class="hint">Made automatically from the title. Only change it if the web address needs correcting.</span></label>
+</div>
+</section>
+
+<section class="panel">
+<div class="ph"><h2 class="serif">Who can see it</h2></div>
+<div class="radio">
+<label><span class="r on"></span>Public</label>
+<label><span class="r"></span>Password protected</label>
+</div>
+<div class="sub-opts">
+<label class="field"><span class="lbl">Password</span><input type="password" placeholder="Enter password" disabled></label>
+<p style="margin:8px 0 0"><a href="#" style="font-size:11px;font-weight:700;letter-spacing:.12em;text-decoration:none">SHOW PASSWORD</a></p>
+<label class="chk" style="margin-top:12px"><span class="box"></span>Show hero image while locked</label>
+<p class="hint" style="margin-top:8px">The production page stays visible; only the gallery needs the password. These options switch on when “Password protected” is chosen.</p>
+</div>
+</section>
+
+
+</div>
+
+<div style="display:flex;flex-direction:column;gap:32px;min-width:0">
+
+
+<section class="panel">
+<div class="ph"><h2 class="serif">Hero image</h2><span class="lbl">Published</span></div>
+<div class="hero">
+<img src="https://images.stevegregson.com/godspell/GODSPELL-Genesis-58.jpg" alt="Current hero image">
+<div>
+<p style="margin:0;font-size:13px;word-break:break-all">GODSPELL-Genesis-58.jpg</p>
+<p class="hint" style="margin-top:6px">The large picture at the top of the production page.</p>
+<p style="margin:12px 0 0"><a href="production-edit-photos.html" style="font-size:12px;font-weight:700;letter-spacing:.1em;text-decoration:none">CHOOSE A DIFFERENT HERO →</a></p>
+</div>
+</div>
+</section>
+
+<section class="panel">
+<div class="ph"><h2 class="serif">Credits</h2><span class="lbl">9 people</span></div>
+<table class="credits">
+<thead><tr><th>Role</th><th>Name</th><th>Website</th><th></th></tr></thead>
+<tbody><tr><td><input type="text" value="Venue" aria-label="Role"></td><td><input type="text" value="Mountview" aria-label="Name"></td><td><input type="text" value="" placeholder="Website (optional)" aria-label="Website"></td><td><button class="x" type="button" title="Remove credit">×</button></td></tr><tr><td><input type="text" value="Director" aria-label="Role"></td><td><input type="text" value="Shane Dempsey" aria-label="Name"></td><td><input type="text" value="" placeholder="Website (optional)" aria-label="Website"></td><td><button class="x" type="button" title="Remove credit">×</button></td></tr><tr><td><input type="text" value="Musical Director" aria-label="Role"></td><td><input type="text" value="James Bowen-Thomas" aria-label="Name"></td><td><input type="text" value="" placeholder="Website (optional)" aria-label="Website"></td><td><button class="x" type="button" title="Remove credit">×</button></td></tr><tr><td><input type="text" value="Choreographer" aria-label="Role"></td><td><input type="text" value="Julia Cave" aria-label="Name"></td><td><input type="text" value="" placeholder="Website (optional)" aria-label="Website"></td><td><button class="x" type="button" title="Remove credit">×</button></td></tr><tr><td><input type="text" value="Lighting Design" aria-label="Role"></td><td><input type="text" value="Mark Dymock" aria-label="Name"></td><td><input type="text" value="" placeholder="Website (optional)" aria-label="Website"></td><td><button class="x" type="button" title="Remove credit">×</button></td></tr><tr><td><input type="text" value="Set &amp; Costume Design" aria-label="Role"></td><td><input type="text" value="George P Martin" aria-label="Name"></td><td><input type="text" value="" placeholder="Website (optional)" aria-label="Website"></td><td><button class="x" type="button" title="Remove credit">×</button></td></tr><tr><td><input type="text" value="Sound Design" aria-label="Role"></td><td><input type="text" value="Matthew Giles" aria-label="Name"></td><td><input type="text" value="" placeholder="Website (optional)" aria-label="Website"></td><td><button class="x" type="button" title="Remove credit">×</button></td></tr><tr><td><input type="text" value="Commissioned by" aria-label="Role"></td><td><input type="text" value="Mountview" aria-label="Name"></td><td><input type="text" value="" placeholder="Website (optional)" aria-label="Website"></td><td><button class="x" type="button" title="Remove credit">×</button></td></tr><tr><td><input type="text" value="Photography" aria-label="Role"></td><td><input type="text" value="Steve Gregson" aria-label="Name"></td><td><input type="text" value="" placeholder="Website (optional)" aria-label="Website"></td><td><button class="x" type="button" title="Remove credit">×</button></td></tr></tbody>
+</table>
+<p class="hint" style="margin-top:10px">Websites fill in automatically when a name is already in your directory.</p>
+<div class="credit-actions"><button class="btn btn-sm" type="button">+ Add credit</button></div>
+<details class="paste">
+<summary><span>Paste a list of credits</span><span class="muted">From Google, a theatre website or a programme ▸</span></summary>
+<div class="in">
+<span class="hint">One credit per line works best, but most layouts are understood. Nothing changes until you press “Add to credits”.</span>
+<textarea rows="5" placeholder="Director: Jane Smith&#10;Lighting Designer – Bob Jones"></textarea>
+<div class="credit-actions" style="margin:0"><button class="btn btn-sm btn-gold" type="button">Fill credits</button><button class="btn btn-sm" type="button">Close</button></div>
+<span class="hint">After “Fill credits”: review the list (ones already in credits are marked), remove any you don’t want, then “Add N to credits” or “Start again”.</span>
+</div>
+</details>
+</section>
+</div>
+
+</div>
+
+<section class="danger">
+<span class="lbl" style="color:#ffb4a3">Danger zone</span>
+<p class="hint" style="flex:1;min-width:260px">Permanently delete Godspell, its production file and every photograph in its image folder. This cannot be undone. You’ll be asked to type DELETE to confirm.</p>
+<button class="btn btn-sm btn-danger" type="button">Delete production…</button>
+</section>
+</div>
+
+<div class="savebar saved">
+<span class="bd"></span>
+<span class="st">All changes saved</span>
+<span class="sum">Published to the site 2 minutes ago · edits on either tab are saved together with one button</span>
+<span class="sp"></span>
+<button class="btn" type="button" disabled>Undo</button>
+<button class="btn" type="button" disabled>Save &amp; publish</button>
+</div>
+
+</body>
+</html>
