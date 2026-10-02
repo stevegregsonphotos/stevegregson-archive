@@ -178,7 +178,7 @@ function ImagePicker({
           </div>
         ) : (
           <p className={styles.intro}>
-            Photographs uploaded in the photo library (the other tab on this page). Upload new photographs
+            Photographs uploaded in the Production, Rehearsal and Campaign sections above. Upload new photographs
             there first, then add them here.
           </p>
         )}
@@ -369,8 +369,8 @@ export default function ProductionPageEditor() {
   return (
     <div>
       <p className={styles.intro}>
-        These are the photographs on the public Selected Work page, in order. The first one is always
-        shown large at the top. Choose a production to set the caption and its link; you can edit the
+        These are the photographs on the public Selected Work page, in order. (The Production section
+        above is now your upload library for this page.) The first one is always shown large at the top. Choose a production to set the caption and its link; you can edit the
         wording. Nothing changes on the live site until you press Save.
       </p>
 
