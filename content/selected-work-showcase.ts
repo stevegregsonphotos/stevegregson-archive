@@ -83,9 +83,9 @@ function local(file: string, width = 2048, height = Math.round((width * 2) / 3))
 }
 
 export const showcaseHero: ShowcaseImage = {
-  id: "the-lonely-londoners-ensemble",
-  ...archive("the-lonely-londoners", "the-lonely-londoners-kiln-theatre-2025-ensemble-reaching.webp"),
-  alt: "Four men crowd together in warm light, leaning and reaching out towards something just beyond the stage.",
+  id: "the-lonely-londoners-company",
+  ...archive("the-lonely-londoners", "the-lonely-londoners-kiln-theatre-2025-ensemble-trunks-grid-lights.webp"),
+  alt: "The company bow low over travelling trunks in rolling haze, one man rising above them against a wall of blazing stage lights.",
   credit: {
     title: "The Lonely Londoners",
     venue: "Kiln Theatre",
@@ -113,14 +113,14 @@ export const showcaseSections: ShowcaseSection[] = [
     id: "opening",
     images: [
       {
-        id: "senecas-oedipus",
-        ...archive("senecas-oedipus", "hero-web-oedipus-credit-stevegregson-214-edited.webp"),
-        alt: "A woman with bound wrists cries out, a rope pulled tight across her mouth, lit cold blue against black.",
+        id: "die-walkure-embrace",
+        ...archive("die-walkure-york-hall-bethnal-green-london-february-2025", "19-web-regentsopera-diewalk-re-creditstevegregson-196.webp", { card: true }),
+        alt: "A bloodied man cradles a woman’s face in his scarred hands as she closes her eyes.",
         credit: {
-          title: "Seneca’s Oedipus",
-          venue: "The Cockpit",
-          year: 2024,
-          slug: "senecas-oedipus",
+          title: "Die Walküre",
+          venue: "York Hall",
+          year: 2025,
+          slug: "die-walkure-york-hall-bethnal-green-london-february-2025",
         },
         size: "half",
       },
@@ -134,6 +134,32 @@ export const showcaseSections: ShowcaseSection[] = [
           year: 2025,
           slug: "and-then-there-were-none",
         },
+        size: "half",
+      },
+      {
+        id: "giant-key",
+        ...library("theatre-performer-giant-key-glowing-keyhole-vivid-lighting.webp"),
+        alt: "A performer in a blue dress lifts an oversized golden key beneath a blazing keyhole, surrounded by flying playing cards and a giant clock.",
+        credit: null,
+        size: "wide",
+      },
+      {
+        id: "senecas-oedipus",
+        ...archive("senecas-oedipus", "hero-web-oedipus-credit-stevegregson-214-edited.webp"),
+        alt: "A woman with bound wrists cries out, a rope pulled tight across her mouth, lit cold blue against black.",
+        credit: {
+          title: "Seneca’s Oedipus",
+          venue: "The Cockpit",
+          year: 2024,
+          slug: "senecas-oedipus",
+        },
+        size: "half",
+      },
+      {
+        id: "mid-century-embrace",
+        ...library("intimate-embrace-stage-mid-century-living-room-blue-gown.webp"),
+        alt: "In a lamplit mid-century lounge, a man in a velvet jacket leans in to hold a woman in a blue gown as she rests her head on his hands.",
+        credit: null,
         size: "half",
       },
       {
@@ -153,42 +179,6 @@ export const showcaseSections: ShowcaseSection[] = [
         size: "wide",
       },
       {
-        id: "die-walkure-embrace",
-        ...archive("die-walkure-york-hall-bethnal-green-london-february-2025", "19-web-regentsopera-diewalk-re-creditstevegregson-196.webp", { card: true }),
-        alt: "A bloodied man cradles a woman’s face in his scarred hands as she closes her eyes.",
-        credit: {
-          title: "Die Walküre",
-          venue: "York Hall",
-          year: 2025,
-          slug: "die-walkure-york-hall-bethnal-green-london-february-2025",
-        },
-        size: "half",
-      },
-      {
-        id: "gotterdammerung",
-        ...archive("gotterdammerung", "01-web-regentsopera-g-tterd-mmerung-creditstevegregson-002.webp", { card: true }),
-        alt: "A woman in black sequins stares out wide-eyed, tangled in a curtain of fine silver threads.",
-        credit: {
-          title: "Götterdämmerung",
-          venue: "York Hall",
-          year: 2025,
-          slug: "gotterdammerung",
-        },
-        size: "half",
-      },
-      {
-        id: "the-choir-of-man",
-        ...archive("the-choir-of-man", "44-choirofman-pub-web-203.webp"),
-        alt: "A pub full of men raise their pints and grin straight out at the audience under warm bar lights.",
-        credit: {
-          title: "The Choir of Man",
-          venue: "The Arts at Marble Arch",
-          year: 2024,
-          slug: "the-choir-of-man",
-        },
-        size: "wide",
-      },
-      {
         id: "girl-in-the-machine",
         ...archive("girl-in-the-machine", "GirlInTheMachine-31.webp", { card: true }),
         alt: "A woman bathed in red light leans back, holding a glowing white box above her face against total darkness.",
@@ -201,14 +191,14 @@ export const showcaseSections: ShowcaseSection[] = [
         size: "half",
       },
       {
-        id: "table-17-hands",
-        ...archive("table-17-kiln-theatre-september-2026", "table-17-kiln-theatre-2026-diners-holding-hands.webp", { card: true }),
-        alt: "Across a small table lit by a red lamp, a man takes a woman’s hands and holds her gaze.",
+        id: "gotterdammerung",
+        ...archive("gotterdammerung", "01-web-regentsopera-g-tterd-mmerung-creditstevegregson-002.webp", { card: true }),
+        alt: "A woman in black sequins stares out wide-eyed, tangled in a curtain of fine silver threads.",
         credit: {
-          title: "Table 17",
-          venue: "Kiln Theatre",
-          year: 2026,
-          slug: "table-17-kiln-theatre-september-2026",
+          title: "Götterdämmerung",
+          venue: "York Hall",
+          year: 2025,
+          slug: "gotterdammerung",
         },
         size: "half",
       },
@@ -334,17 +324,14 @@ export const showcaseSections: ShowcaseSection[] = [
         size: "half",
       },
       {
-        id: "tidy",
-        ...archive(
-          "tidy-polka-theatre-february-2024",
-          "hero-web-polka-tidy-credit-stevegregson-006.webp",
-        ),
-        alt: "Puppet animals peer out from inside a giant woven nest, a single red leaf falling above them.",
+        id: "table-17-hands",
+        ...archive("table-17-kiln-theatre-september-2026", "table-17-kiln-theatre-2026-diners-holding-hands.webp", { card: true }),
+        alt: "Across a small table lit by a red lamp, a man takes a woman’s hands and holds her gaze.",
         credit: {
-          title: "Tidy",
-          venue: "Polka Theatre",
-          year: 2024,
-          slug: "tidy-polka-theatre-february-2024",
+          title: "Table 17",
+          venue: "Kiln Theatre",
+          year: 2026,
+          slug: "table-17-kiln-theatre-september-2026",
         },
         size: "half",
       },
@@ -353,44 +340,6 @@ export const showcaseSections: ShowcaseSection[] = [
   {
     id: "closing",
     images: [
-      {
-        id: "giant-key",
-        ...library("theatre-performer-giant-key-glowing-keyhole-vivid-lighting.webp"),
-        alt: "A performer in a blue dress lifts an oversized golden key beneath a blazing keyhole, surrounded by flying playing cards and a giant clock.",
-        credit: null,
-        size: "wide",
-      },
-      {
-        id: "amelie",
-        ...archive(
-          "amelie-mountview-may-2026",
-          "31-amelie-sacrecoeur-349.webp",
-          { card: true, width: 2560 },
-        ),
-        alt: "A booth stands in a shaft of white backlight on a Parisian set, musicians and company silhouetted on the stairs around it.",
-        credit: {
-          title: "Amélie",
-          venue: "Mountview",
-          year: 2026,
-          slug: "amelie-mountview-may-2026",
-        },
-        size: "half",
-      },
-      {
-        id: "the-snowy-day",
-        ...archive(
-          "the-snowy-day-polka-theatre-december-2024",
-          "hero-web-thesnowyday-creditstevegregson-345.webp",
-        ),
-        alt: "A child in a red snowsuit sits in the snow gazing up at giant flakes and puffs of cloud on a bright blue set.",
-        credit: {
-          title: "The Snowy Day",
-          venue: "Polka Theatre",
-          year: 2024,
-          slug: "the-snowy-day-polka-theatre-december-2024",
-        },
-        size: "half",
-      },
       {
         id: "let-the-right-one-in",
         ...archive(
@@ -404,6 +353,21 @@ export const showcaseSections: ShowcaseSection[] = [
           venue: "Mountview",
           year: 2024,
           slug: "let-the-right-one-in-mountview-july-2024",
+        },
+        size: "wide",
+      },
+      {
+        id: "tidy",
+        ...archive(
+          "tidy-polka-theatre-february-2024",
+          "hero-web-polka-tidy-credit-stevegregson-006.webp",
+        ),
+        alt: "Puppet animals peer out from inside a giant woven nest, a single red leaf falling above them.",
+        credit: {
+          title: "Tidy",
+          venue: "Polka Theatre",
+          year: 2024,
+          slug: "tidy-polka-theatre-february-2024",
         },
         size: "half",
       },
