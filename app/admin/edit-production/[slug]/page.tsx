@@ -1,87 +1,43 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import {
-  useParams,
-  useRouter,
-} from "next/navigation";
+/*
+ * Backstage -> Productions -> Edit. Two tabs (Details & credits,
+ * Photographs) and one Save & publish bar, in the same design as the
+ * Selected Work screen. Everything is saved together through the existing
+ * /api/admin/edit-production request (plus the new galleryLayout field).
+ */
 
-import DeleteProductionPanel from "../../../../components/admin/editor/DeleteProductionPanel";
-import EditorSectionNav from "../../../../components/admin/editor/EditorSectionNav";
-import CreditsEditor from "../../../../components/admin/editor/CreditsEditor";
-import GalleryEditor from "../../../../components/admin/editor/GalleryEditor";
-import HeroEditor from "../../../../components/admin/editor/HeroEditor";
-import ProductionDetailsEditor from "../../../../components/admin/editor/ProductionDetailsEditor";
-import VisionMetadataPanel from "../../../../components/admin/editor/VisionMetadataPanel";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+
 import ImageEditor from "../../../../components/admin/image-editor/ImageEditor";
+import { prepareImageForUpload } from "../../../../lib/client-image-editor";
+import { getProductionImageUrl } from "../../../../lib/production-image-url";
+
+import DetailsTab from "./DetailsTab";
 import {
-  prepareImageForUpload,
-} from "../../../../lib/client-image-editor";
-import {
-  getProductionImageUrl,
-} from "../../../../lib/production-image-url";
+  docFromProduction,
+  editorReducer,
+  INITIAL_EDITOR_STATE,
+  needsDescription,
+  same,
+  type Doc,
+  type Production,
+  type ProductionImage,
+} from "./editor-state";
+import PhotosTab, { HERO_TILE, type UploadProgress } from "./PhotosTab";
 
-type GalleryLayout =
-  | "wide"
-  | "left"
-  | "right"
-  | "medium"
-  | "full"
-  | "left-small"
-  | "right-small"
-  | "wide-left"
-  | "wide-right";
+import sw from "../../selected-work/backstage-selected-work.module.css";
+import styles from "./production-edit.module.css";
 
-type ProductionImage = {
-  src: string;
-  alt: string;
-  layout: GalleryLayout;
-  suggestedFilename?: string;
-  originalSrc?: string;
-  editAspect?: "original" | "3:2" | "4:5" | "1:1" | "16:9";
-  editZoom?: number;
-  editPanX?: number;
-  editPanY?: number;
-  editBrightness?: number;
-  editAutoStrength?: number;
-  analysisStatus?: "pending" | "complete";
-  analysedAt?: string;
-};
-
-type ProductionCredit = {
-  role: string;
-  name: string;
-  website?: string;
-};
-
-type Production = {
-  slug: string;
-  title: string;
-  venue: string;
-  month?: number | null;
-  year: number;
-  description: string;
-  hero: string;
-  heroAlt: string;
-  access?: "public" | "password";
-  showHeroWhenLocked?: boolean;
-accessPassword?: string;
-  credits: ProductionCredit[];
-  images: ProductionImage[];
-};
-
-type LoadResult = {
-  ok: boolean;
-  message?: string;
-  production?: Production;
-};
-
+type LoadResult = { ok: boolean; message?: string; production?: Production };
 type SaveResult = {
   ok: boolean;
   message?: string;
   production?: Production;
+  directoryWarning?: string | null;
+  galleryLayoutWarning?: string;
 };
-
 type PresignResult = {
   ok?: boolean;
   message?: string;
@@ -90,1436 +46,599 @@ type PresignResult = {
   cardUploadUrl?: string;
 };
 
+type TabId = "details" | "photos";
+type Notice = { type: "success" | "error"; text: string } | null;
+
+function webpFilename(filename: string) {
+  const stem = filename.replace(/\.[^.]+$/, "").trim() || "production-image";
+  return `${stem}.webp`;
+}
+
+/** Lightweight WebP copy used by the public gallery grid (the full image stays for fullscreen). */
+async function createProductionCardBlob(source: Blob) {
+  const bitmap = await createImageBitmap(source);
+  try {
+    const maximumWidth = 1000;
+    const scale = Math.min(1, maximumWidth / bitmap.width);
+    const width = Math.max(1, Math.round(bitmap.width * scale));
+    const height = Math.max(1, Math.round(bitmap.height * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("Could not prepare production gallery derivative.");
+    context.drawImage(bitmap, 0, 0, width, height);
+    return await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            reject(new Error("Could not create production gallery derivative."));
+            return;
+          }
+          resolve(blob);
+        },
+        "image/webp",
+        0.75,
+      );
+    });
+  } finally {
+    bitmap.close();
+  }
+}
+
+async function putImageToR2(uploadUrl: string, blob: Blob) {
+  const response = await fetch(uploadUrl, {
+    method: "PUT",
+    headers: { "Content-Type": "image/webp" },
+    body: blob,
+  });
+  if (!response.ok) throw new Error(`Direct R2 upload failed (HTTP ${response.status}).`);
+}
+
 export default function EditProductionPage() {
   const params = useParams<{ slug: string }>();
   const router = useRouter();
   const slug = params.slug;
 
-  const [production, setProduction] =
-    useState<Production | null>(null);
-  const [selectedHero, setSelectedHero] =
-    useState<string | null>(null);
-  const [productionSlug, setProductionSlug] =
-    useState("");
-  const [title, setTitle] = useState("");
-  const [venue, setVenue] = useState("");
-  const [month, setMonth] = useState("");
-  const [year, setYear] = useState("");
-  const [description, setDescription] = useState("");
-  const [access, setAccess] =
-  useState<"public" | "password">("public");
-  const [showHeroWhenLocked, setShowHeroWhenLocked] =
-    useState(false);
+  const [state, dispatch] = useReducer(editorReducer, INITIAL_EDITOR_STATE);
+  const { doc, saved } = state;
+  const [production, setProduction] = useState<Production | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [tab, setTab] = useState<TabId>("details");
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [savedMessage, setSavedMessage] = useState<string | null>(null);
+  const [notice, setNotice] = useState<Notice>(null);
+  const [active, setActive] = useState<string | null>(null);
+  const [selection, setSelection] = useState<Set<string>>(() => new Set());
+  const [recent, setRecent] = useState<Set<string>>(() => new Set());
+  const [editingImage, setEditingImage] = useState<ProductionImage | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<UploadProgress>(null);
+  const docRef = useRef<Doc | null>(doc);
 
-const [accessPassword, setAccessPassword] =
-  useState("");
-  const [showAccessPassword, setShowAccessPassword] =
-  useState(false);
-  const [credits, setCredits] = useState<ProductionCredit[]>([]);
-  const [galleryImages, setGalleryImages] = useState<ProductionImage[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const [messageType, setMessageType] =
-    useState<"success" | "error" | null>(null);
+  useEffect(() => {
+    docRef.current = doc;
+  }, [doc]);
 
-  const [editingImage, setEditingImage] =
-    useState<ProductionImage | null>(null);
-
-  const [isUploadingImage, setIsUploadingImage] =
-    useState(false);
-
-  const [uploadProgress, setUploadProgress] =
-    useState<{
-      completed: number;
-      total: number;
-    } | null>(null);
+  /* ---------- Load ---------- */
 
   useEffect(() => {
     let cancelled = false;
-
     async function loadProduction() {
-      setIsLoading(true);
-      setMessage(null);
-      setMessageType(null);
-
+      setLoading(true);
+      setLoadError(null);
       try {
-        const response = await fetch(
-          `/api/admin/edit-production?slug=${encodeURIComponent(slug)}`,
-        );
+        const response = await fetch(`/api/admin/edit-production?slug=${encodeURIComponent(slug)}`);
         const data = (await response.json()) as LoadResult;
-
         if (!response.ok || !data.ok || !data.production) {
-          throw new Error(
-            data.message ?? "The production could not be loaded.",
-          );
+          throw new Error(data.message ?? "The production could not be loaded.");
         }
-
-        if (cancelled) {
-          return;
-        }
-
+        if (cancelled) return;
         setProduction(data.production);
-        setSelectedHero(data.production.hero);
-        setProductionSlug(data.production.slug);
-        setTitle(data.production.title);
-        setVenue(data.production.venue);
-        setMonth(
-          data.production.month == null
-            ? ""
-            : String(data.production.month),
-        );
-        setYear(String(data.production.year));
-        setDescription(data.production.description);
-        setAccess(data.production.access ?? "public");
-        setShowHeroWhenLocked(data.production.showHeroWhenLocked ?? false);
-       setAccessPassword(
-  data.production.accessPassword ?? accessPassword,
-);
-        setCredits(data.production.credits);
-        setGalleryImages(data.production.images);
+        dispatch({ type: "load", doc: docFromProduction(data.production) });
       } catch (error) {
-        if (cancelled) {
-          return;
-        }
-
-        setMessage(
-          error instanceof Error
-            ? error.message
-            : "The production could not be loaded.",
-        );
-        setMessageType("error");
+        if (!cancelled) setLoadError(error instanceof Error ? error.message : "The production could not be loaded.");
       } finally {
-        if (!cancelled) {
-          setIsLoading(false);
-        }
+        if (!cancelled) setLoading(false);
       }
     }
-
     void loadProduction();
-
     return () => {
       cancelled = true;
     };
   }, [slug]);
 
-  const parsedMonth =
-    month === ""
-      ? null
-      : Number.parseInt(month, 10);
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const fromHash = window.location.hash.replace("#", "");
+      if (fromHash === "photos" || fromHash === "details") setTab(fromHash);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
 
-  const parsedYear = Number.parseInt(year, 10);
-
-  const hasHeroChanges = Boolean(
-    production &&
-      selectedHero &&
-      selectedHero !== production.hero,
-  );
-
-  const hasDetailChanges = Boolean(
-  production &&
-  (productionSlug.trim() !== production.slug ||
-  title.trim() !== production.title ||
-  venue.trim() !== production.venue ||
-  parsedMonth !== (production.month ?? null) ||
-  parsedYear !== production.year ||
-  description.trim() !== production.description ||
-  access !== (production.access ?? "public") ||
-  (access === "password" &&
-    accessPassword.trim().length > 0) ||
-  JSON.stringify(credits) !==
-    JSON.stringify(production.credits)),
-);
-
-  const hasGalleryChanges = Boolean(
-    production &&
-      JSON.stringify(galleryImages) !==
-        JSON.stringify(production.images),
-  );
-
-  const hasUnsavedChanges =
-    hasHeroChanges || hasDetailChanges || hasGalleryChanges;
-
-  const MONTH_NAMES = [
-    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-  ];
-
-  const analysedCount = galleryImages.filter(
-    (image) => image.analysisStatus !== "pending",
-  ).length;
-
-  const detailsMissing = [
-    !title.trim() ? "title" : "",
-    !venue.trim() ? "venue" : "",
-    parsedMonth === null ? "month" : "",
-    !Number.isInteger(parsedYear) ? "year" : "",
-  ].filter(Boolean);
-
-  const sectionNavItems = [
-    {
-      id: "editor-details",
-      label: "Production details",
-      value:
-        parsedMonth && parsedMonth >= 1 && parsedMonth <= 12
-          ? `${MONTH_NAMES[parsedMonth - 1]} ${year}`
-          : year || "—",
-      hint: detailsMissing.length
-        ? `Missing ${detailsMissing.join(", ")}`
-        : venue.trim() || undefined,
-      attention: detailsMissing.length > 0,
-    },
-    {
-      id: "editor-credits",
-      label: "Credits",
-      value: String(credits.length),
-      hint: credits.length === 1 ? "credit" : "credits",
-      attention: credits.length === 0,
-    },
-    {
-      id: "editor-hero",
-      label: "Hero",
-      value: hasHeroChanges ? "Changed" : selectedHero ? "Set" : "None",
-      hint: hasHeroChanges ? "Not saved yet" : undefined,
-      attention: !selectedHero,
-    },
-    {
-      id: "editor-add-photos",
-      label: "Add photos",
-      value: uploadProgress
-        ? `${uploadProgress.completed}/${uploadProgress.total}`
-        : "Upload",
-      hint: uploadProgress ? "Uploading…" : undefined,
-    },
-    {
-      id: "editor-ai-analyse",
-      label: "AI analyse",
-      value: `${analysedCount}/${galleryImages.length}`,
-      hint: "analysed",
-      attention: analysedCount < galleryImages.length,
-    },
-    {
-      id: "editor-gallery",
-      label: "Gallery editor",
-      value: String(galleryImages.length),
-      hint: hasGalleryChanges ? "Changed, not saved" : "photographs",
-    },
-  ];
-
-  function clearMessage() {
-    setMessage(null);
-    setMessageType(null);
+  function chooseTab(next: TabId) {
+    setTab(next);
+    window.history.replaceState(null, "", `#${next}`);
   }
 
-  function webpFilename(
-    filename: string,
-  ) {
-    const stem =
-      filename
-        .replace(/\.[^.]+$/, "")
-        .trim() ||
-      "production-image";
+  /* ---------- What needs saving ---------- */
 
-    return `${stem}.webp`;
-  }
+  const anyDirty = Boolean(doc && saved && !same(doc, saved));
+  const dirtyAreas = doc && saved
+    ? [
+        !same(
+          { ...doc, credits: null, images: null, hero: null, galleryLayout: null },
+          { ...saved, credits: null, images: null, hero: null, galleryLayout: null },
+        ),
+        !same(doc.credits, saved.credits),
+        doc.hero !== saved.hero,
+        !same(doc.images, saved.images),
+        doc.galleryLayout !== saved.galleryLayout,
+      ].filter(Boolean).length
+    : 0;
+  const changeCount = anyDirty ? Math.max(state.history.length, dirtyAreas) : 0;
+  const summary = Array.from(new Set(state.history.map((entry) => entry.label)))
+    .slice(-4)
+    .join(" · ");
 
-  async function requestUpload(
-    filename: string,
-  ) {
-    if (!production) {
-      throw new Error(
-        "The production is not loaded.",
-      );
-    }
+  /* ---------- Warn before leaving ---------- */
 
-    const response =
-      await fetch(
-        "/api/admin/edit-production",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-          body: JSON.stringify({
-            action: "presign",
-            slug: production.slug,
-            originalFilename:
-              filename,
-          }),
-        },
-      );
-
-    const result =
-      (await response.json()) as
-        PresignResult;
-
-    if (
-      !response.ok ||
-      !result.ok ||
-      !result.filename ||
-      !result.uploadUrl
-    ) {
-      throw new Error(
-        result.message ??
-          "The image upload could not be prepared.",
-      );
-    }
-
-    return {
-      filename:
-        result.filename,
-      uploadUrl:
-        result.uploadUrl,
-      cardUploadUrl:
-        result.cardUploadUrl,
+  useEffect(() => {
+    if (!anyDirty) return;
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
     };
-  }
-
-  async function createProductionCardBlob(
-    source: Blob,
-  ) {
-    const bitmap =
-      await createImageBitmap(source);
-
-    try {
-      const maximumWidth = 1000;
-      const scale =
-        Math.min(
-          1,
-          maximumWidth / bitmap.width,
-        );
-
-      const width =
-        Math.max(
-          1,
-          Math.round(
-            bitmap.width * scale,
-          ),
-        );
-
-      const height =
-        Math.max(
-          1,
-          Math.round(
-            bitmap.height * scale,
-          ),
-        );
-
-      const canvas =
-        document.createElement(
-          "canvas",
-        );
-
-      canvas.width = width;
-      canvas.height = height;
-
-      const context =
-        canvas.getContext("2d");
-
-      if (!context) {
-        throw new Error(
-          "Could not prepare production gallery derivative.",
-        );
+    // Links inside Backstage navigate without reloading, so ask for those too.
+    const onClick = (event: MouseEvent) => {
+      const link = (event.target as HTMLElement | null)?.closest?.("a[href]") as HTMLAnchorElement | null;
+      if (!link || link.target === "_blank" || event.defaultPrevented || event.metaKey || event.ctrlKey) return;
+      const url = new URL(link.href, window.location.href);
+      if (url.origin !== window.location.origin || url.pathname === window.location.pathname) return;
+      if (!window.confirm("You have unsaved changes to this production. Leave without saving them?")) {
+        event.preventDefault();
+        event.stopPropagation();
       }
+    };
+    window.addEventListener("beforeunload", warn);
+    document.addEventListener("click", onClick, true);
+    return () => {
+      window.removeEventListener("beforeunload", warn);
+      document.removeEventListener("click", onClick, true);
+    };
+  }, [anyDirty]);
 
-      context.drawImage(
-        bitmap,
-        0,
-        0,
-        width,
-        height,
-      );
+  /* ---------- Changes ---------- */
 
-      return await new Promise<Blob>(
-        (resolve, reject) => {
-          canvas.toBlob(
-            (blob) => {
-              if (!blob) {
-                reject(
-                  new Error(
-                    "Could not create production gallery derivative.",
-                  ),
-                );
-                return;
-              }
+  const change = useCallback((label: string, key: string | undefined, mutate: (current: Doc) => Doc) => {
+    setSavedMessage(null);
+    setSaveError(null);
+    dispatch({ type: "change", label, key, mutate });
+  }, []);
 
-              resolve(blob);
-            },
-            "image/webp",
-            0.75,
-          );
-        },
-      );
-    } finally {
-      bitmap.close();
-    }
-  }
+  /* ---------- Uploads and image edits (files go to R2 straight away) ---------- */
 
-  async function putImageToR2(
-    uploadUrl: string,
-    blob: Blob,
-  ) {
-    const response =
-      await fetch(
-        uploadUrl,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type":
-              "image/webp",
-          },
-          body: blob,
-        },
-      );
-
-    if (!response.ok) {
-      throw new Error(
-        `Direct R2 upload failed (HTTP ${response.status}).`,
-      );
-    }
-  }
-
-  async function uploadNewImages(
-    files: FileList | null,
-  ) {
-    if (
-      !production ||
-      !files?.length ||
-      isUploadingImage
-    ) {
-      return;
-    }
-
-    const selected =
-      Array.from(files).filter(
-        (file) =>
-          file.type.startsWith(
-            "image/",
-          ),
-      );
-
-    if (!selected.length) {
-      setMessage(
-        "Choose one or more image files.",
-      );
-      setMessageType("error");
-      return;
-    }
-
-    setIsUploadingImage(true);
-    setUploadProgress({
-      completed: 0,
-      total: selected.length,
+  async function requestUpload(filename: string) {
+    if (!production) throw new Error("The production is not loaded.");
+    const response = await fetch("/api/admin/edit-production", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "presign", slug: production.slug, originalFilename: filename }),
     });
-    clearMessage();
+    const result = (await response.json()) as PresignResult;
+    if (!response.ok || !result.ok || !result.filename || !result.uploadUrl) {
+      throw new Error(result.message ?? "The image upload could not be prepared.");
+    }
+    return { filename: result.filename, uploadUrl: result.uploadUrl, cardUploadUrl: result.cardUploadUrl };
+  }
 
-    const added:
-      ProductionImage[] = [];
-
+  async function uploadNewImages(files: File[]) {
+    if (!production || !files.length || isUploadingImage) return;
+    const selected = files.filter((file) => file.type.startsWith("image/"));
+    if (!selected.length) {
+      setNotice({ type: "error", text: "Choose one or more image files." });
+      return;
+    }
+    setIsUploadingImage(true);
+    setUploadProgress({ completed: 0, total: selected.length });
+    setNotice(null);
+    const added: ProductionImage[] = [];
     try {
       const concurrency = 3;
-
-      for (
-        let start = 0;
-        start < selected.length;
-        start += concurrency
-      ) {
-        const batch =
-          selected.slice(
-            start,
-            start + concurrency,
-          );
-
-        const batchResults =
-          await Promise.all(
-            batch.map(
-              async (file) => {
-                const prepared =
-                  await prepareImageForUpload(
-                    file,
-                  );
-
-                const signed =
-                  await requestUpload(
-                    webpFilename(
-                      file.name,
-                    ),
-                  );
-
-                await putImageToR2(
-                  signed.uploadUrl,
-                  prepared.blob,
-                );
-
-                if (!signed.cardUploadUrl) {
-                  throw new Error(
-                    "The production gallery derivative upload was not prepared.",
-                  );
-                }
-
-                const cardBlob =
-                  await createProductionCardBlob(
-                    prepared.blob,
-                  );
-
-                await putImageToR2(
-                  signed.cardUploadUrl,
-                  cardBlob,
-                );
-
-                return {
-                  src: signed.filename,
-                  alt:
-                    `${production.title} production photograph`,
-                  layout: "wide" as const,
-                  originalSrc:
-                    signed.filename,
-                  editAspect:
-                    "original" as const,
-                  editZoom: 1,
-                  editPanX: 0,
-                  editPanY: 0,
-                  editBrightness: 100,
-                };
-              },
-            ),
-          );
-
-        added.push(
-          ...batchResults,
+      for (let start = 0; start < selected.length; start += concurrency) {
+        const batch = selected.slice(start, start + concurrency);
+        const batchResults = await Promise.all(
+          batch.map(async (file) => {
+            const prepared = await prepareImageForUpload(file);
+            const signed = await requestUpload(webpFilename(file.name));
+            await putImageToR2(signed.uploadUrl, prepared.blob);
+            if (!signed.cardUploadUrl) {
+              throw new Error("The production gallery derivative upload was not prepared.");
+            }
+            const cardBlob = await createProductionCardBlob(prepared.blob);
+            await putImageToR2(signed.cardUploadUrl, cardBlob);
+            return {
+              src: signed.filename,
+              alt: `${production.title} production photograph`,
+              layout: "wide" as const,
+              originalSrc: signed.filename,
+              editAspect: "original" as const,
+              editZoom: 1,
+              editPanX: 0,
+              editPanY: 0,
+              editBrightness: 100,
+            };
+          }),
         );
-
-        setUploadProgress({
-          completed: Math.min(
-            added.length,
-            selected.length,
-          ),
-          total: selected.length,
-        });
+        added.push(...batchResults);
+        setUploadProgress({ completed: Math.min(added.length, selected.length), total: selected.length });
       }
-
-      setGalleryImages(
-        (current) => [
-          ...current,
-          ...added,
-        ],
-      );
-
-      setMessage(
-        `${added.length} photograph${added.length === 1 ? "" : "s"} added. Save changes to publish ${added.length === 1 ? "it" : "them"} to the gallery.`,
-      );
-      setMessageType("success");
+      setNotice({
+        type: "success",
+        text: `${added.length} photograph${added.length === 1 ? "" : "s"} added. Press Save & publish to put ${added.length === 1 ? "it" : "them"} in the gallery.`,
+      });
     } catch (error) {
-      setMessage(
-        error instanceof Error
-          ? error.message
-          : "The images could not be uploaded.",
-      );
-      setMessageType("error");
+      setNotice({ type: "error", text: error instanceof Error ? error.message : "The images could not be uploaded." });
     } finally {
+      // Keep whatever did upload, even if a later file failed.
+      if (added.length) {
+        change(added.length === 1 ? "1 photo added" : `${added.length} photos added`, undefined, (current) => ({
+          ...current,
+          images: [...current.images, ...added],
+        }));
+        setRecent((current) => new Set([...current, ...added.map((image) => image.src)]));
+        setActive(added[0].src);
+      }
       setIsUploadingImage(false);
       setUploadProgress(null);
     }
   }
 
-  async function applyImageEdit(
-    result: {
-      blob: Blob;
-      width: number;
-      height: number;
-      filename: string;
-      settings: {
-        aspect: "original" | "3:2" | "4:5" | "1:1" | "16:9";
-        zoom: number;
-        panX: number;
-        panY: number;
-        brightness: number;
-        autoStrength: number;
-      };
-    },
-  ) {
-    if (
-      !production ||
-      !editingImage ||
-      isUploadingImage
-    ) {
-      return;
-    }
-
+  async function applyImageEdit(result: {
+    blob: Blob;
+    width: number;
+    height: number;
+    filename: string;
+    settings: {
+      aspect: "original" | "3:2" | "4:5" | "1:1" | "16:9";
+      zoom: number;
+      panX: number;
+      panY: number;
+      brightness: number;
+      autoStrength: number;
+    };
+  }) {
+    if (!production || !editingImage || isUploadingImage) return;
     setIsUploadingImage(true);
-    clearMessage();
-
+    setNotice(null);
     try {
-      const signed =
-        await requestUpload(
-          result.filename,
-        );
-
-      await putImageToR2(
-        signed.uploadUrl,
-        result.blob,
-      );
-
+      const signed = await requestUpload(result.filename);
+      await putImageToR2(signed.uploadUrl, result.blob);
       if (!signed.cardUploadUrl) {
-        throw new Error(
-          "The production gallery derivative upload was not prepared.",
-        );
+        throw new Error("The production gallery derivative upload was not prepared.");
       }
-
-      const cardBlob =
-        await createProductionCardBlob(
-          result.blob,
-        );
-
-      await putImageToR2(
-        signed.cardUploadUrl,
-        cardBlob,
-      );
-
-      const oldSrc =
-        editingImage.src;
-
-      const originalSrc =
-        editingImage.originalSrc ??
-        editingImage.src;
-
-      setGalleryImages(
-        (current) =>
-          current.map(
-            (image) =>
-              image.src === oldSrc
-                ? {
-                    ...image,
-                    src: signed.filename,
-                    originalSrc,
-                    editAspect: result.settings.aspect,
-                    editZoom: result.settings.zoom,
-                    editPanX: result.settings.panX,
-                    editPanY: result.settings.panY,
-                    editBrightness: result.settings.brightness,
-                    editAutoStrength:
-                      result.settings.autoStrength,
-                    suggestedFilename: undefined,
-                  }
-                : image,
-          ),
-      );
-
+      const cardBlob = await createProductionCardBlob(result.blob);
+      await putImageToR2(signed.cardUploadUrl, cardBlob);
+      const oldSrc = editingImage.src;
+      const originalSrc = editingImage.originalSrc ?? editingImage.src;
+      change("Photo edited", undefined, (current) => ({
+        ...current,
+        // The hero choice follows the photo to its new filename.
+        hero: current.hero === oldSrc ? signed.filename : current.hero,
+        images: current.images.map((image) =>
+          image.src === oldSrc
+            ? {
+                ...image,
+                src: signed.filename,
+                originalSrc,
+                editAspect: result.settings.aspect,
+                editZoom: result.settings.zoom,
+                editPanX: result.settings.panX,
+                editPanY: result.settings.panY,
+                editBrightness: result.settings.brightness,
+                editAutoStrength: result.settings.autoStrength,
+                suggestedFilename: undefined,
+              }
+            : image,
+        ),
+      }));
+      setSelection((current) => {
+        if (!current.has(oldSrc)) return current;
+        const next = new Set(current);
+        next.delete(oldSrc);
+        next.add(signed.filename);
+        return next;
+      });
+      setActive(signed.filename);
       setEditingImage(null);
-
-      setMessage(
-        "Image edit applied. Save changes to publish it.",
-      );
-      setMessageType("success");
+      setNotice({ type: "success", text: "Image edit applied. Press Save & publish to put it on the site." });
     } catch (error) {
-      setMessage(
-        error instanceof Error
-          ? error.message
-          : "The edited image could not be uploaded.",
-      );
-      setMessageType("error");
+      setNotice({ type: "error", text: error instanceof Error ? error.message : "The edited image could not be uploaded." });
     } finally {
       setIsUploadingImage(false);
     }
   }
 
+  /* ---------- Save & publish ---------- */
+
   async function saveChanges() {
-    if (!production || !selectedHero || !hasUnsavedChanges) {
+    const current = docRef.current;
+    if (!production || !current || !anyDirty || saving) return;
+    const parsedMonth = current.month === "" ? null : Number.parseInt(current.month, 10);
+    const parsedYear = Number.parseInt(current.year, 10);
+
+    const problem = !current.title.trim()
+      ? "A production title is required."
+      : !current.venue.trim()
+        ? "A venue is required."
+        : parsedMonth !== null && (!Number.isInteger(parsedMonth) || parsedMonth < 1 || parsedMonth > 12)
+          ? "Select a valid production month."
+          : !Number.isInteger(parsedYear)
+            ? "A valid production year is required."
+            : null;
+    if (problem) {
+      setSaveError(problem);
+      setTab("details");
       return;
     }
 
-    if (!title.trim()) {
-      setMessage("A production title is required.");
-      setMessageType("error");
-      return;
-    }
-
-    if (!venue.trim()) {
-      setMessage("A venue is required.");
-      setMessageType("error");
-      return;
-    }
-
-    if (
-      parsedMonth !== null &&
-      (
-        !Number.isInteger(parsedMonth) ||
-        parsedMonth < 1 ||
-        parsedMonth > 12
-      )
-    ) {
-      setMessage("Select a valid production month.");
-      setMessageType("error");
-      return;
-    }
-
-    if (!Number.isInteger(parsedYear)) {
-      setMessage("A valid production year is required.");
-      setMessageType("error");
-      return;
-    }
-
-    setIsSaving(true);
-    clearMessage();
-
+    setSaving(true);
+    setSaveError(null);
+    setSavedMessage(null);
     try {
-      const response = await fetch(
-        "/api/admin/edit-production",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            slug: production.slug,
-            newSlug: productionSlug.trim(),
-            hero: selectedHero,
-            title: title.trim(),
-            venue: venue.trim(),
-            month: parsedMonth,
-            year: parsedYear,
-            description: description.trim(),
-            access,
-            showHeroWhenLocked,
-accessPassword:
-  access === "password"
-    ? accessPassword.trim()
-    : "",
-            credits,
-            images: galleryImages,
-          }),
-        },
-      );
-
+      const response = await fetch("/api/admin/edit-production", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          slug: production.slug,
+          newSlug: current.slug.trim(),
+          hero: current.hero,
+          title: current.title.trim(),
+          venue: current.venue.trim(),
+          month: parsedMonth,
+          year: parsedYear,
+          description: current.description.trim(),
+          access: current.access,
+          showHeroWhenLocked: current.showHeroWhenLocked,
+          accessPassword: current.access === "password" ? current.accessPassword.trim() : "",
+          credits: current.credits,
+          images: current.images,
+          galleryLayout: current.galleryLayout,
+        }),
+      });
       const data = (await response.json()) as SaveResult;
-
       if (!response.ok || !data.ok || !data.production) {
-        throw new Error(
-          data.message ?? "The production could not be updated.",
-        );
+        throw new Error(data.message ?? "The production could not be updated.");
       }
-
       setProduction(data.production);
-      setSelectedHero(data.production.hero);
-      setProductionSlug(data.production.slug);
-      setTitle(data.production.title);
-      setVenue(data.production.venue);
-      setMonth(
-        data.production.month == null
-          ? ""
-          : String(data.production.month),
+      dispatch({ type: "load", doc: docFromProduction(data.production) });
+      setRecent(new Set());
+      setSelection(new Set());
+      setActive((previous) =>
+        previous === HERO_TILE || data.production!.images.some((image) => image.src === previous) ? previous : null,
       );
-      setYear(String(data.production.year));
-      setDescription(data.production.description);
-      setAccess(data.production.access ?? "public");
-      setShowHeroWhenLocked(data.production.showHeroWhenLocked ?? false);
-setAccessPassword("");
-      setCredits(data.production.credits);
-      setGalleryImages(data.production.images);
-
-      if (
-        data.production.slug !== slug
-      ) {
-        router.replace(
-          `/admin/edit-production/${encodeURIComponent(
-            data.production.slug,
-          )}`,
-        );
+      if (data.production.slug !== slug) {
+        router.replace(`/admin/edit-production/${encodeURIComponent(data.production.slug)}${window.location.hash}`);
       }
-
-      setMessage(
-        data.message ?? "Production updated successfully.",
-      );
-      setMessageType("success");
+      const warnings = [data.directoryWarning, data.galleryLayoutWarning].filter(Boolean).join(" ");
+      setSavedMessage(`Saved and published. The production page has been updated.${warnings ? ` ${warnings}` : ""}`);
+      setNotice(null);
     } catch (error) {
-      setMessage(
-        error instanceof Error
-          ? error.message
-          : "The production could not be updated.",
+      setSaveError(
+        `${error instanceof Error ? error.message : "The production could not be updated."} Your changes are still here; try again.`,
       );
-      setMessageType("error");
     } finally {
-      setIsSaving(false);
+      setSaving(false);
     }
   }
 
-  if (isLoading) {
+  /* ---------- Tab badges ---------- */
+
+  const detailsMissing = useMemo(() => {
+    if (!doc) return [];
+    return [
+      !doc.title.trim() ? "Title" : "",
+      !doc.venue.trim() ? "Venue" : "",
+      doc.month === "" ? "Month" : "",
+      !Number.isInteger(Number.parseInt(doc.year, 10)) ? "Year" : "",
+    ].filter(Boolean);
+  }, [doc]);
+
+  /* ---------- Render ---------- */
+
+  if (loading || !doc || !saved || !production) {
     return (
-      <main
-        style={{
-          minHeight: "100vh",
-          padding: "4rem clamp(1.5rem, 5vw, 5rem)",
-          color: "#f2eee6",
-        }}
-      >
-        <p>Loading production…</p>
+      <main className="backstage-page" style={{ paddingTop: "4rem" }}>
+        <div className="backstage-shell">
+          <div className={sw.screen}>
+            {loadError ? (
+              <p className={sw.errorText} role="alert">
+                {loadError}
+              </p>
+            ) : loading ? (
+              <p className={sw.intro}>Loading production…</p>
+            ) : (
+              <p className={sw.intro}>Production not found.</p>
+            )}
+          </div>
+        </div>
       </main>
     );
   }
 
-  if (!production || !selectedHero) {
-    return (
-      <main
-        style={{
-          minHeight: "100vh",
-          padding: "4rem clamp(1.5rem, 5vw, 5rem)",
-          color: "#f2eee6",
-        }}
-      >
-        <p>{message ?? "Production not found."}</p>
-      </main>
-    );
-  }
+  const described = doc.images.filter((image) => !needsDescription(image)).length;
 
   return (
-    <main
-      style={{
-        minHeight: "100vh",
-        padding: "4rem clamp(1.5rem, 5vw, 5rem) 6rem",
-        color: "#f2eee6",
-      }}
-    >
-      <header
-        style={{
-          maxWidth: "90rem",
-          margin: "0 auto",
-        }}
-      >
-        <p
-          style={{
-            margin: 0,
-            color: "#c7a369",
-            fontSize: "0.55rem",
-            fontWeight: 700,
-            letterSpacing: "0.18em",
-            textTransform: "uppercase",
-          }}
-        >
-          Production editor
-        </p>
-
-        <h1
-          style={{
-            margin: "0.75rem 0 0",
-            fontFamily:
-              '"Iowan Old Style", "Palatino Linotype", Georgia, serif',
-            fontSize: "clamp(3rem, 7vw, 7rem)",
-            fontWeight: 400,
-            lineHeight: 0.95,
-          }}
-        >
-          {production.title}
-        </h1>
-
-        <p
-          style={{
-            margin: "1rem 0 0",
-            color: "rgba(242, 238, 230, 0.58)",
-            fontSize: "0.75rem",
-            letterSpacing: "0.08em",
-            textTransform: "uppercase",
-          }}
-        >
-          {production.venue} · {production.year}
-        </p>
-      </header>
-
-      <section
-        style={{
-          maxWidth: "90rem",
-          margin: "2rem auto 0",
-          padding: "0.85rem 1rem",
-          border:
-            "1px solid rgba(242, 238, 230, 0.14)",
-          background:
-            "rgba(255, 255, 255, 0.02)",
-        }}
-      >
-        <label
-          htmlFor="production-slug"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "0.75rem",
-            flexWrap: "wrap",
-          }}
-        >
-          <span
-            style={{
-              color: "#c7a369",
-              fontSize: "0.55rem",
-              fontWeight: 700,
-              letterSpacing: "0.16em",
-              textTransform: "uppercase",
-            }}
-          >
-            Production URL
-          </span>
-
-          <span
-            style={{
-              color: "rgba(242, 238, 230, 0.45)",
-              fontSize: "0.72rem",
-            }}
-          >
-            stevegregson.com/productions/
-          </span>
-
-          <input
-            id="production-slug"
-            type="text"
-            value={productionSlug}
-            onChange={(event) => {
-              setProductionSlug(
-                event.target.value
-                  .trimStart()
-                  .toLowerCase(),
-              );
-              clearMessage();
-            }}
-            spellCheck={false}
-            autoCapitalize="none"
-            autoCorrect="off"
-            title="Slugs are generated automatically. Change this only when the production URL needs correcting."
-            style={{
-              flex: "1 1 18rem",
-              minWidth: 0,
-              padding: "0.45rem 0.65rem",
-              border:
-                "1px solid rgba(242, 238, 230, 0.18)",
-              background: "#11100f",
-              color: "#f2eee6",
-              font: "inherit",
-              fontSize: "0.8rem",
-            }}
-          />
-        </label>
-      </section>
-
-      <EditorSectionNav items={sectionNavItems} />
-
-      <div id="editor-details">
-      <ProductionDetailsEditor
-        title={title}
-        venue={venue}
-        month={month}
-        year={year}
-        description={description}
-        onTitleChange={(value) => {
-          setTitle(value);
-          clearMessage();
-        }}
-        onVenueChange={(value) => {
-          setVenue(value);
-          clearMessage();
-        }}
-        onMonthChange={(value) => {
-          setMonth(value);
-          clearMessage();
-        }}
-        onYearChange={(value) => {
-          setYear(value);
-          clearMessage();
-        }}
-        onDescriptionChange={(value) => {
-          setDescription(value);
-          clearMessage();
-        }}
-      />
-<section
-  style={{
-    maxWidth: "90rem",
-    margin: "3rem auto 0",
-    padding: "2rem",
-    border:
-      "1px solid rgba(242, 238, 230, 0.14)",
-    background:
-      "rgba(255, 255, 255, 0.02)",
-  }}
->
-  <p
-    style={{
-      margin: 0,
-      color: "#c7a369",
-      fontSize: "0.55rem",
-      fontWeight: 700,
-      letterSpacing: "0.16em",
-      textTransform: "uppercase",
-    }}
-  >
-    Access
-  </p>
-
-  <div
-    style={{
-      display: "flex",
-      flexWrap: "wrap",
-      gap: "1.25rem",
-      marginTop: "1.25rem",
-    }}
-  >
-    <label
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: "0.6rem",
-        cursor: "pointer",
-      }}
-    >
-      <input
-        type="radio"
-        name="production-access"
-        value="public"
-        checked={access === "public"}
-        onChange={() => {
-          setAccess("public");
-          setAccessPassword("");
-          clearMessage();
-        }}
-      />
-
-      <span>Public</span>
-    </label>
-
-    <label
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: "0.6rem",
-        cursor: "pointer",
-      }}
-    >
-      <input
-        type="radio"
-        name="production-access"
-        value="password"
-        checked={access === "password"}
-        onChange={() => {
-          setAccess("password");
-          clearMessage();
-        }}
-      />
-
-      <span>Password protected</span>
-    </label>
-  </div>
-
-  {access === "password" ? (
-    <div
-      style={{
-        marginTop: "1.5rem",
-        maxWidth: "28rem",
-      }}
-    >
-      <label
-        htmlFor="production-access-password"
-        style={{
-          display: "block",
-          marginBottom: "0.6rem",
-          color: "rgba(242, 238, 230, 0.58)",
-          fontSize: "0.55rem",
-          fontWeight: 700,
-          letterSpacing: "0.12em",
-          textTransform: "uppercase",
-        }}
-      >
-        Password
-      </label>
-
-      <input
-        id="production-access-password"
-        type={showAccessPassword ? "text" : "password"}
-        value={accessPassword}
-        onChange={(event) => {
-          setAccessPassword(event.target.value);
-          clearMessage();
-        }}
-        placeholder={
-          production.access === "password"
-            ? "Leave blank to keep existing password"
-            : "Enter password"
-        }
-        autoComplete="new-password"
-        style={{
-          width: "100%",
-          padding: "0.9rem 1rem",
-          border:
-            "1px solid rgba(242, 238, 230, 0.18)",
-          background: "#11100f",
-          color: "#f2eee6",
-          font: "inherit",
-        }}
-      />
-      <button
-  type="button"
-  onClick={() =>
-    setShowAccessPassword((current) => !current)
-  }
-  style={{
-    marginTop: "0.75rem",
-    padding: 0,
-    border: 0,
-    background: "transparent",
-    color: "#c7a369",
-    cursor: "pointer",
-    fontSize: "0.55rem",
-    fontWeight: 700,
-    letterSpacing: "0.12em",
-    textTransform: "uppercase",
-  }}
->
-  {showAccessPassword ? "Hide password" : "Show password"}
-</button>
-
-      <label
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "0.6rem",
-          marginTop: "1.25rem",
-          cursor: "pointer",
-        }}
-      >
-        <input
-          type="checkbox"
-          checked={showHeroWhenLocked}
-          onChange={(event) => {
-            setShowHeroWhenLocked(event.target.checked);
-            clearMessage();
-          }}
-        />
-        <span>Show hero image while locked</span>
-      </label>
-
-      <p
-        style={{
-          margin: "0.75rem 0 0",
-          color: "rgba(242, 238, 230, 0.45)",
-          fontSize: "0.7rem",
-          lineHeight: 1.6,
-        }}
-      >
-        The production page remains visible.
-        The photographic gallery requires this password.
-      </p>
-    </div>
-  ) : null}
-</section>
-      </div>
-
-      <div id="editor-credits">
-      <CreditsEditor
-        credits={credits}
-        onChange={(nextCredits) => {
-          setCredits(nextCredits);
-          clearMessage();
-        }}
-      />
-      </div>
-
-      <div id="editor-hero">
-      <HeroEditor
-        slug={production.slug}
-        publishedHero={production.hero}
-        publishedHeroAlt={production.heroAlt}
-        images={galleryImages}
-        selectedHero={selectedHero}
-        hasUnsavedHeroChange={hasHeroChanges}
-        onSelectHero={(src) => {
-          setSelectedHero(src);
-          clearMessage();
-        }}
-      />
-      </div>
-
-      <section
-        id="editor-add-photos"
-        className="backstage-panel"
-        style={{
-          maxWidth: "90rem",
-          margin: "4rem auto 2rem",
-          padding: "2rem 1.5rem",
-          borderTop:
-            "1px solid rgba(242, 238, 230, 0.18)",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: "1rem",
-            flexWrap: "wrap",
-          }}
-        >
-          <div>
-            <p className="backstage-eyebrow">
-              Gallery
-            </p>
-
-            <h2
-              style={{
-                margin: "0.35rem 0 0",
-                fontSize: "1.4rem",
-                fontWeight: 400,
-              }}
-            >
-              Add photographs
-            </h2>
-
-            <p
-              style={{
-                margin: "0.55rem 0 0",
-                color:
-                  "rgba(242, 238, 230, 0.52)",
-                fontSize: "0.78rem",
-                lineHeight: 1.6,
-              }}
-            >
-              Add one or more images directly to the
-              gallery. Editing remains optional after upload.
-            </p>
-
-            {uploadProgress ? (
-              <p
-                role="status"
-                style={{
-                  margin: "0.75rem 0 0",
-                  color: "#c7a369",
-                  fontSize: "0.75rem",
-                }}
-              >
-                Uploading {uploadProgress.completed} of{" "}
-                {uploadProgress.total} photographs…
+    <main className="backstage-page" style={{ paddingTop: "4rem" }}>
+      <div className="backstage-shell">
+        <div className={sw.screen} aria-busy={saving}>
+          <header className={sw.head}>
+            <div>
+              <p className={sw.eyebrow}>PRODUCTIONS › EDIT</p>
+              <h1 className={sw.title}>{production.title}</h1>
+              <p className={styles.subline}>
+                {production.venue} · {production.year}
               </p>
-            ) : null}
+            </div>
+            <div className={styles.headRight}>
+              <a className={styles.backLink} href="/archive">
+                ← Back to archive
+              </a>
+              <a className={sw.liveLink} href={`/productions/${production.slug}`} target="_blank" rel="noreferrer">
+                View production ↗
+              </a>
+            </div>
+          </header>
+
+          <div className={sw.tabs} role="tablist" aria-label="Production editor sections">
+            <button
+              type="button"
+              role="tab"
+              id="tab-details"
+              aria-selected={tab === "details"}
+              aria-controls="production-edit-section"
+              className={tab === "details" ? `${sw.tab} ${sw.tabActive}` : sw.tab}
+              onClick={() => chooseTab("details")}
+            >
+              <span className={sw.tabNum}>01</span>
+              <span className={sw.tabName}>Details &amp; credits</span>
+              <span className={styles.tabMeta}>
+                {doc.credits.length} {doc.credits.length === 1 ? "credit" : "credits"}
+              </span>
+              {detailsMissing.length ? (
+                <span className={styles.tabWarn}>{detailsMissing.join(", ")} missing</span>
+              ) : null}
+            </button>
+            <button
+              type="button"
+              role="tab"
+              id="tab-photos"
+              aria-selected={tab === "photos"}
+              aria-controls="production-edit-section"
+              className={tab === "photos" ? `${sw.tab} ${sw.tabActive}` : sw.tab}
+              onClick={() => chooseTab("photos")}
+            >
+              <span className={sw.tabNum}>02</span>
+              <span className={sw.tabName}>Photographs</span>
+              <span className={sw.tabCount}>{doc.images.length}</span>
+              <span className={described < doc.images.length ? styles.tabWarn : styles.tabMeta}>
+                {described} of {doc.images.length} described
+              </span>
+            </button>
           </div>
 
-          <label
-            className="backstage-button backstage-button-primary"
-            style={{
-              cursor:
-                isUploadingImage
-                  ? "wait"
-                  : "pointer",
-            }}
-          >
-            Add images
+          {notice ? (
+            <p className={notice.type === "error" ? `${styles.notice} ${styles.noticeError}` : styles.notice} role="status">
+              {notice.text}
+            </p>
+          ) : null}
 
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              multiple
-              disabled={isUploadingImage}
-              onChange={(event) => {
-                const files =
-                  event.currentTarget.files;
+          <section id="production-edit-section" role="tabpanel" aria-labelledby={`tab-${tab}`}>
+            {tab === "details" ? (
+              <DetailsTab
+                doc={doc}
+                savedSlug={production.slug}
+                publishedHero={saved.hero}
+                publishedAccess={production.access ?? "public"}
+                heroChanged={doc.hero !== saved.hero}
+                hasUnsavedChanges={anyDirty}
+                change={change}
+                onChooseHero={() => {
+                  chooseTab("photos");
+                  setActive(HERO_TILE);
+                }}
+              />
+            ) : (
+              <PhotosTab
+                slug={production.slug}
+                doc={doc}
+                publishedHero={saved.hero}
+                publishedHeroAlt={production.heroAlt}
+                publishedGalleryLayout={saved.galleryLayout}
+                change={change}
+                active={active}
+                setActive={setActive}
+                selection={new Set(Array.from(selection).filter((src) => doc.images.some((image) => image.src === src)))}
+                setSelection={setSelection}
+                recent={recent}
+                uploadProgress={uploadProgress}
+                busy={isUploadingImage || saving}
+                onUpload={(files) => void uploadNewImages(files)}
+                onEditImage={(image) => {
+                  setEditingImage(image);
+                  setNotice(null);
+                }}
+              />
+            )}
+          </section>
 
-                void uploadNewImages(
-                  files,
-                );
-
-                event.currentTarget.value =
-                  "";
-              }}
-              style={{
-                position: "absolute",
-                width: 1,
-                height: 1,
-                overflow: "hidden",
-                clip: "rect(0 0 0 0)",
-                whiteSpace: "nowrap",
-              }}
-            />
-          </label>
+          <div className={anyDirty ? `${sw.saveBar} ${sw.saveBarDirty}` : sw.saveBar} data-testid="save-bar">
+            <span className={anyDirty ? `${sw.dot} ${sw.dotDirty}` : sw.dot} aria-hidden="true" />
+            <span className={sw.saveCount} role="status">
+              {saving
+                ? "Saving…"
+                : anyDirty
+                  ? `${changeCount} unsaved ${changeCount === 1 ? "change" : "changes"}`
+                  : "All changes saved"}
+            </span>
+            {saveError ? (
+              <span className={sw.saveError} role="alert">
+                {saveError}
+              </span>
+            ) : (
+              <span className={sw.saveSummary} title={anyDirty ? summary : undefined}>
+                {anyDirty
+                  ? summary
+                  : savedMessage ??
+                    "Edits on either tab are saved together with one button. Uploads and crops are stored straight away; deleting the production happens immediately."}
+              </span>
+            )}
+            <span className={sw.spacer} />
+            {anyDirty ? (
+              <button
+                type="button"
+                className={sw.btn}
+                disabled={saving || state.history.length === 0}
+                onClick={() => {
+                  setSaveError(null);
+                  dispatch({ type: "undo" });
+                }}
+                data-testid="undo"
+              >
+                Undo
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className={sw.btnPrimary}
+              disabled={!anyDirty || saving || isUploadingImage}
+              onClick={() => void saveChanges()}
+              data-testid="save"
+            >
+              {saving ? "Saving…" : "Save & publish"}
+            </button>
+          </div>
         </div>
-
-      </section>
-
-      <div id="editor-ai-analyse">
-      <VisionMetadataPanel
-        productionSlug={production.slug}
-        images={galleryImages}
-        onApplyMetadata={(imageSrc, metadata) => {
-          setGalleryImages((current) =>
-            current.map((image) =>
-              image.src === imageSrc
-                ? {
-                    ...image,
-                    alt: metadata.alt,
-                    layout: metadata.layout,
-                    suggestedFilename: metadata.filename,
-                    analysisStatus: "complete" as const,
-                    analysedAt:
-                      new Date().toISOString(),
-                  }
-                : image,
-            ),
-          );
-          clearMessage();
-        }}
-      />
-      </div>
-
-      <div id="editor-gallery">
-      <GalleryEditor
-        productionSlug={production.slug}
-        images={galleryImages}
-        selectedHero={selectedHero}
-        onSelectHero={(src) => {
-          setSelectedHero(src);
-          clearMessage();
-        }}
-        onEditImage={(image) => {
-          setEditingImage(image);
-          clearMessage();
-        }}
-        onChange={(nextImages) => {
-          setGalleryImages(nextImages);
-
-          if (
-            selectedHero !== production.hero &&
-            !nextImages.some(
-              (image) => image.src === selectedHero,
-            )
-          ) {
-            setSelectedHero(production.hero);
-          }
-
-          clearMessage();
-        }}
-      />
       </div>
 
       {editingImage ? (
         <ImageEditor
-          source={`${getProductionImageUrl(
-            production.slug,
-            editingImage.originalSrc ??
-              editingImage.src,
-          )}?editor=1`}
-          filename={
-            editingImage.originalSrc ??
-            editingImage.src
-          }
+          source={`${getProductionImageUrl(production.slug, editingImage.originalSrc ?? editingImage.src)}?editor=1`}
+          filename={editingImage.originalSrc ?? editingImage.src}
           initialSettings={{
             aspect: editingImage.editAspect ?? "original",
             zoom: editingImage.editZoom ?? 1,
             panX: editingImage.editPanX ?? 0,
             panY: editingImage.editPanY ?? 0,
             brightness: editingImage.editBrightness ?? 100,
-            autoStrength:
-              editingImage.editAutoStrength ?? 0,
+            autoStrength: editingImage.editAutoStrength ?? 0,
           }}
-          onCancel={() =>
-            setEditingImage(null)
-          }
-          onApply={
-            applyImageEdit
-          }
+          onCancel={() => setEditingImage(null)}
+          onApply={applyImageEdit}
         />
       ) : null}
-
-      <DeleteProductionPanel
-        slug={production.slug}
-        title={production.title}
-        hasUnsavedChanges={hasUnsavedChanges}
-      />
-
-      <section
-        style={{
-          position: "sticky",
-          bottom: 0,
-          zIndex: 10,
-          maxWidth: "90rem",
-          margin: "3rem auto 0",
-          border: "1px solid rgba(242, 238, 230, 0.16)",
-          padding: "1rem",
-          background: "rgba(8, 8, 8, 0.94)",
-          backdropFilter: "blur(14px)",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            gap: "1rem",
-            flexWrap: "wrap",
-          }}
-        >
-          <div>
-            {message ? (
-              <p
-                role="status"
-                style={{
-                  margin: 0,
-                  color:
-                    messageType === "error"
-                      ? "#ffb3a7"
-                      : "#c7a369",
-                }}
-              >
-                {message}
-              </p>
-            ) : (
-              <p
-                style={{
-                  margin: 0,
-                  color: "rgba(242, 238, 230, 0.48)",
-                }}
-              >
-                {hasUnsavedChanges
-                  ? "Your changes have not been saved yet."
-                  : "No unsaved changes."}
-              </p>
-            )}
-          </div>
-
-          <div
-            style={{
-              display: "flex",
-              gap: "0.75rem",
-              flexWrap: "wrap",
-            }}
-          >
-            <a
-              href={`/productions/${production.slug}`}
-              target="_blank"
-              rel="noreferrer"
-              className="backstage-button"
-              style={{
-                display: "inline-flex",
-                textDecoration: "none",
-              }}
-            >
-              View production
-            </a>
-
-            <a
-              href="/archive"
-              className="backstage-button"
-              style={{
-                display: "inline-flex",
-                textDecoration: "none",
-              }}
-            >
-              Back to archive
-            </a>
-
-            <button
-              type="button"
-              className="backstage-button backstage-button-primary"
-              onClick={saveChanges}
-              disabled={isSaving || !hasUnsavedChanges}
-            >
-              {isSaving ? "Saving changes…" : "Save changes"}
-              <span aria-hidden="true">→</span>
-            </button>
-          </div>
-        </div>
-      </section>
     </main>
   );
 }

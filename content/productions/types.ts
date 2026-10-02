@@ -1,3 +1,5 @@
+import type { ProductionGalleryLayout } from "../../lib/production-gallery-layouts";
+
 export type GalleryLayout =
   | "wide"
   | "left"
@@ -48,4 +50,6 @@ export type Production = {
     accessPasswordEncrypted?: string;
   credits: ProductionCredit[];
   images: ProductionImage[];
+  /** Gallery layout preset; missing means "per-photo" (each photo's own layout). */
+  galleryLayout?: ProductionGalleryLayout;
 };

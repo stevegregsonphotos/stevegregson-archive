@@ -1328,6 +1328,119 @@ a {
   grid-column: 4 / 13;
 }
 
+/*
+ * Gallery layout presets (Backstage › Productions › Edit › Photographs).
+ * Only used when a production has a preset other than "As set per photo";
+ * the per-photo layout above is untouched. 6-column grid on desktop,
+ * 2 across on tablets, 1 column on phones. Cropped tiles are 3:2.
+ */
+.curated-production-gallery.curated-production-gallery-preset {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 2vw;
+  align-items: start;
+}
+
+.curated-production-gallery-preset .curated-production-preset-shot {
+  grid-column: span 2;
+  margin: 0;
+}
+
+.curated-production-gallery-grid-2 .curated-production-preset-shot,
+.curated-production-gallery-editorial .curated-production-preset-shot:nth-child(6n + 2),
+.curated-production-gallery-editorial .curated-production-preset-shot:nth-child(6n + 3) {
+  grid-column: span 3;
+}
+
+.curated-production-gallery-feature .curated-production-preset-shot:first-child,
+.curated-production-gallery-editorial .curated-production-preset-shot:nth-child(6n + 1) {
+  grid-column: 1 / -1;
+}
+
+.curated-production-gallery.curated-production-gallery-editorial {
+  row-gap: 4vw;
+}
+
+/* Cropped tiles: a fixed 3:2 frame, so nothing moves while photos load. */
+.curated-production-gallery-preset .curated-production-preset-shot .curated-production-image-button {
+  aspect-ratio: 3 / 2;
+}
+
+.curated-production-gallery-preset .curated-production-preset-shot .curated-production-image-button img {
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  object-fit: cover;
+}
+
+/* Full-width tiles (feature, editorial) and masonry keep each photo's own shape. */
+.curated-production-gallery-feature .curated-production-preset-shot:first-child .curated-production-image-button,
+.curated-production-gallery-editorial .curated-production-preset-shot:nth-child(6n + 1) .curated-production-image-button,
+.curated-production-gallery-masonry .curated-production-preset-shot .curated-production-image-button {
+  aspect-ratio: auto;
+}
+
+.curated-production-gallery-feature .curated-production-preset-shot:first-child .curated-production-image-button img,
+.curated-production-gallery-editorial .curated-production-preset-shot:nth-child(6n + 1) .curated-production-image-button img {
+  height: auto;
+  max-height: 92vh;
+  object-fit: contain;
+}
+
+.curated-production-gallery-masonry .curated-production-preset-shot .curated-production-image-button img {
+  height: auto;
+  max-height: none;
+  object-fit: contain;
+}
+
+.curated-production-gallery.curated-production-gallery-masonry {
+  display: block;
+  columns: 3;
+  column-gap: 2vw;
+}
+
+.curated-production-gallery-masonry .curated-production-preset-shot {
+  break-inside: avoid;
+  margin: 0 0 2vw;
+}
+
+@media (max-width: 1100px) {
+  .curated-production-gallery-preset .curated-production-preset-shot {
+    grid-column: span 3;
+  }
+
+  .curated-production-gallery-editorial .curated-production-preset-shot:nth-child(6n + 4) {
+    grid-column: 1 / -1;
+  }
+
+  .curated-production-gallery.curated-production-gallery-masonry {
+    columns: 2;
+  }
+}
+
+@media (max-width: 760px) {
+  .curated-production-gallery.curated-production-gallery-preset {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.75rem;
+    padding: 3.5rem 0.75rem;
+  }
+
+  .curated-production-gallery-preset .curated-production-preset-shot,
+  .curated-production-gallery-editorial .curated-production-preset-shot:nth-child(n) {
+    grid-column: 1 / -1;
+    margin: 0;
+  }
+
+  .curated-production-gallery.curated-production-gallery-masonry {
+    display: block;
+    columns: 1;
+  }
+
+  .curated-production-gallery-masonry .curated-production-preset-shot {
+    margin: 0 0 0.75rem;
+  }
+}
+
 .curated-production-next {
   display: flex;
   min-height: 78vh;

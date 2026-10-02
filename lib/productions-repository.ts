@@ -9,6 +9,14 @@ import type {
   ProductionCredit,
   ProductionImage,
 } from "../content/productions";
+import {
+  DEFAULT_PRODUCTION_GALLERY_LAYOUT,
+  parseStoredProductionGalleryLayout,
+  productionGalleryLayoutKey,
+  type ProductionGalleryLayout,
+  type StoredProductionGalleryLayout,
+} from "./production-gallery-layouts";
+import { getSiteContent, saveSiteContent } from "./site-content-repository";
 
 function getSql() {
   const databaseUrl =
@@ -824,7 +832,7 @@ export async function getProduction(
     return undefined;
   }
 
-  const [creditRows, imageRows] =
+  const [creditRows, imageRows, galleryLayout] =
     await Promise.all([
       sql`
         SELECT
@@ -859,6 +867,7 @@ export async function getProduction(
           AND production_id = ${row.id}
         ORDER BY position
       `,
+      getProductionGalleryLayout(row.slug),
     ]);
 
   return {
@@ -899,7 +908,36 @@ export async function getProduction(
     images:
       (imageRows as ImageRow[])
         .map(mapImageRow),
+    ...(galleryLayout && galleryLayout !== DEFAULT_PRODUCTION_GALLERY_LAYOUT
+      ? { galleryLayout }
+      : {}),
   } satisfies Production;
+}
+
+/**
+ * The production's gallery layout preset, kept in site_content.
+ * Never throws: any problem (no table yet, no key, bad value) means
+ * the default per-photo layout, so public pages always render.
+ */
+export async function getProductionGalleryLayout(
+  slug: string,
+): Promise<ProductionGalleryLayout | undefined> {
+  try {
+    return parseStoredProductionGalleryLayout(
+      await getSiteContent(productionGalleryLayoutKey(slug)),
+    );
+  } catch (error) {
+    console.error("Production gallery layout could not be read:", error);
+    return undefined;
+  }
+}
+
+export async function saveProductionGalleryLayout(
+  slug: string,
+  layout: ProductionGalleryLayout,
+) {
+  const value: StoredProductionGalleryLayout = { layout };
+  await saveSiteContent(productionGalleryLayoutKey(slug), value);
 }
 
 export function getNextProductionFromData<

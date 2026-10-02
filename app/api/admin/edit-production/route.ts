@@ -11,10 +11,15 @@ import {
   encryptProductionPassword,
 } from "@/lib/production-access";
 import {
+  DEFAULT_PRODUCTION_GALLERY_LAYOUT,
+  isProductionGalleryLayout,
+} from "@/lib/production-gallery-layouts";
+import {
   getProduction,
   productionExists,
   renameProductionSlug,
   replaceProduction,
+  saveProductionGalleryLayout,
 } from "@/lib/productions-repository";
 import {
   copyProductionImage,
@@ -75,6 +80,7 @@ type UpdateRequest = {
   accessPassword?: unknown;
   credits?: unknown;
   images?: unknown;
+  galleryLayout?: unknown;
 };
 
 const ALLOWED_LAYOUTS = new Set<GalleryLayout>([
@@ -359,6 +365,23 @@ export async function POST(request: Request) {
         { status: 409 },
       );
     }
+
+    if (
+      body.galleryLayout !== undefined &&
+      !isProductionGalleryLayout(body.galleryLayout)
+    ) {
+      return Response.json(
+        { ok: false, message: "Choose a valid gallery layout." },
+        { status: 400 },
+      );
+    }
+
+    const previousGalleryLayout =
+      existing.galleryLayout ?? DEFAULT_PRODUCTION_GALLERY_LAYOUT;
+    const nextGalleryLayout =
+      body.galleryLayout === undefined
+        ? previousGalleryLayout
+        : body.galleryLayout;
 
     const production = {
       ...existing,
@@ -726,6 +749,35 @@ export async function POST(request: Request) {
       copiedSlugPrefix = null;
     }
 
+    /*
+     * Gallery layout preset (kept in site_content, keyed by slug).
+     * Written only when it changed, or when the slug moved and a
+     * non-default layout must follow it. The old slug's key is reset
+     * so a future production with that slug starts from the default.
+     */
+    let galleryLayoutWarning: string | null = null;
+    try {
+      if (
+        nextGalleryLayout !== previousGalleryLayout ||
+        (slugChanged && nextGalleryLayout !== DEFAULT_PRODUCTION_GALLERY_LAYOUT)
+      ) {
+        await saveProductionGalleryLayout(saved.slug, nextGalleryLayout);
+      }
+      if (slugChanged && previousGalleryLayout !== DEFAULT_PRODUCTION_GALLERY_LAYOUT) {
+        await saveProductionGalleryLayout(slug, DEFAULT_PRODUCTION_GALLERY_LAYOUT);
+      }
+      saved = {
+        ...saved,
+        galleryLayout:
+          nextGalleryLayout === DEFAULT_PRODUCTION_GALLERY_LAYOUT
+            ? undefined
+            : nextGalleryLayout,
+      };
+    } catch (layoutError) {
+      console.error("Gallery layout save failed:", layoutError);
+      galleryLayoutWarning = "The gallery layout could not be saved. Everything else was saved.";
+    }
+
     let directorySync:
       Awaited<ReturnType<typeof rememberDirectoryCredits>> | null = null;
     let directoryWarning: string | null = null;
@@ -752,6 +804,7 @@ export async function POST(request: Request) {
       },
       directorySync,
       directoryWarning,
+      ...(galleryLayoutWarning ? { galleryLayoutWarning } : {}),
     });
   } catch (error) {
     if (copiedSlugPrefix) {
