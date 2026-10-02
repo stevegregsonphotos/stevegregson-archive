@@ -2,8 +2,9 @@
  * Selected Work showcase (mock-up, October 2026).
  *
  * A curated run of production photographs, deliberately mixed: wide stage
- * pictures, close faces, light and story alternate, so even the first
- * screen shows range. No headings or explanations.
+ * pictures and close faces alternate, neighbouring photos never share a
+ * colour palette, and no production appears twice in a row. No headings
+ * or explanations.
  *
  * Images marked `credit: null` came from the Selected Work library, which
  * doesn't record the production. Steve to add the title, venue and year.
@@ -34,9 +35,10 @@ export type ShowcaseImage = {
   credit: ShowcaseCredit | null;
   /**
    * "wide" fills the row; "half" sits beside the next half image;
-   * "portrait" is an upright frame that pairs with the next portrait.
+   * "portrait" is an upright frame that pairs with the next portrait;
+   * "tall" is an upright frame shown on its own, centred.
    */
-  size: "wide" | "half" | "portrait";
+  size: "wide" | "half" | "portrait" | "tall";
 };
 
 export type ShowcaseSection = {
@@ -80,18 +82,14 @@ function local(file: string, width = 2048, height = Math.round((width * 2) / 3))
 }
 
 export const showcaseHero: ShowcaseImage = {
-  id: "dear-england",
-  ...archive(
-    "dear-england-olivier-theatre-national-theatre-london-june-2023",
-    "hero-fullres-dearengland-credit-stevegregson-027.webp",
-    { width: 2560 },
-  ),
-  alt: "A goalkeeper in luminous green dives across a vast circular stage ringed with light, the England squad lined up beneath a stadium screen.",
+  id: "girl-in-the-machine",
+  ...archive("girl-in-the-machine", "GirlInTheMachine-31.webp"),
+  alt: "A woman bathed in red light leans back, holding a glowing white box above her face against total darkness.",
   credit: {
-    title: "Dear England",
-    venue: "Olivier Theatre, National Theatre",
-    year: 2023,
-    slug: "dear-england-olivier-theatre-national-theatre-london-june-2023",
+    title: "Girl In The Machine",
+    venue: "Young Vic",
+    year: 2025,
+    slug: "girl-in-the-machine",
   },
   size: "wide",
 };
@@ -126,45 +124,6 @@ export const showcaseSections: ShowcaseSection[] = [
         size: "half",
       },
       {
-        id: "the-lonely-londoners",
-        ...archive(
-          "the-lonely-londoners",
-          "hero-web-thelonelylondoners-113.webp",
-        ),
-        alt: "A man in a cream jumper gazes upward, one hand raised, as a beam of blue light cuts through haze behind him.",
-        credit: {
-          title: "The Lonely Londoners",
-          venue: "Kiln Theatre",
-          year: 2025,
-          slug: "the-lonely-londoners",
-        },
-        size: "half",
-      },
-      {
-        id: "austenland",
-        ...archive("austenland", "18-web-austenland-tech-1027.webp"),
-        alt: "A couple dance centre stage beneath a glowing Austenland sign and a fan of blue and gold light beams, the company framed either side.",
-        credit: {
-          title: "Austenland",
-          venue: "Savoy Theatre",
-          year: 2025,
-          slug: "austenland",
-        },
-        size: "wide",
-      },
-      {
-        id: "girl-in-the-machine",
-        ...archive("girl-in-the-machine", "GirlInTheMachine-31.webp", { card: true }),
-        alt: "A woman bathed in red light leans back, holding a glowing white box above her face against total darkness.",
-        credit: {
-          title: "Girl In The Machine",
-          venue: "Young Vic",
-          year: 2025,
-          slug: "girl-in-the-machine",
-        },
-        size: "half",
-      },
-      {
         id: "gotterdammerung",
         ...archive("gotterdammerung", "01-web-regentsopera-g-tterd-mmerung-creditstevegregson-002.webp", { card: true }),
         alt: "A woman in black sequins stares out wide-eyed, tangled in a curtain of fine silver threads.",
@@ -177,16 +136,20 @@ export const showcaseSections: ShowcaseSection[] = [
         size: "half",
       },
       {
-        id: "candy",
-        ...archive("candy-park-theatre-august-2023", "hero-fullres-candy-parktheatre-credit-stevegregson-014.webp"),
-        alt: "A lone man sings into a microphone on a blue floor as a single white beam cuts across a wall of shimmering tinsel.",
-        credit: {
-          title: "Candy",
-          venue: "Park Theatre",
-          year: 2023,
-          slug: "candy-park-theatre-august-2023",
-        },
-        size: "wide",
+      id: "dear-england",
+      ...archive(
+        "dear-england-olivier-theatre-national-theatre-london-june-2023",
+        "hero-fullres-dearengland-credit-stevegregson-027.webp",
+        { width: 2560 },
+      ),
+      alt: "A goalkeeper in luminous green dives across a vast circular stage ringed with light, the England squad lined up beneath a stadium screen.",
+      credit: {
+        title: "Dear England",
+        venue: "Olivier Theatre, National Theatre",
+        year: 2023,
+        slug: "dear-england-olivier-theatre-national-theatre-london-june-2023",
+      },
+      size: "wide",
       },
       {
         id: "die-walkure",
@@ -204,29 +167,32 @@ export const showcaseSections: ShowcaseSection[] = [
         size: "half",
       },
       {
-        id: "on-the-ropes-round-2",
-        ...archive("on-the-ropes", "hero-ontheropes-fullres-photosbystevegregson-060-copy.webp", { card: true }),
-        alt: "A boxer in a red-lit ring raises both fists to the crowd beneath a glowing Round 2 sign.",
+        id: "the-lonely-londoners",
+        ...archive(
+          "the-lonely-londoners",
+          "hero-web-thelonelylondoners-113.webp",
+        ),
+        alt: "A man in a cream jumper gazes upward, one hand raised, as a beam of blue light cuts through haze behind him.",
         credit: {
-          title: "On The Ropes",
-          venue: "Park Theatre",
-          year: 2023,
-          slug: "on-the-ropes",
+          title: "The Lonely Londoners",
+          venue: "Kiln Theatre",
+          year: 2025,
+          slug: "the-lonely-londoners",
         },
         size: "half",
       },
       {
-        id: "vertical-light",
-        ...library("stage-performer-profile-vertical-light-minimalist-darkness.webp", 2048, 1152),
-        alt: "A woman in a long grey cardigan stands in profile, head bowed, beside a single vertical blade of white light in total darkness.",
-        credit: null,
+        id: "a-sherlock-carol",
+        ...archive("a-sherlock-carol", "SherlockCarolDress-1534-Edit-Edit-Edit.webp"),
+        alt: "A detective in a top hat crouches in rolling fog, peering through a magnifying glass between gas lamps.",
+        credit: {
+          title: "A Sherlock Carol",
+          venue: "Marylebone Theatre",
+          year: 2025,
+          slug: "a-sherlock-carol",
+        },
         size: "wide",
       },
-    ],
-  },
-  {
-    id: "middle",
-    images: [
       {
         id: "the-big-life",
         ...archive(
@@ -258,56 +224,16 @@ export const showcaseSections: ShowcaseSection[] = [
         },
         size: "half",
       },
+    ],
+  },
+  {
+    id: "middle",
+    images: [
       {
-        id: "cruel-intentions",
-        ...archive("cruel-intentions-the-90s-musical", "hero-a1-07680-edit.webp", {
-          width: 2560,
-        }),
-        alt: "A performer hangs mid-leap above the stage while a cellist plays below on a magenta-lit checkerboard floor.",
-        credit: {
-          title: "Cruel Intentions: The ’90s Musical",
-          venue: "The Other Palace",
-          year: 2024,
-          slug: "cruel-intentions-the-90s-musical",
-        },
-        size: "wide",
-      },
-      {
-        id: "salome-platter",
-        ...local("salome-dress1-228.webp", 1365, 2048),
-        alt: "Salome kneels on a blood-spattered stage holding the veiled head, her reflection caught in the pool of blood on a silver platter.",
-        credit: {
-          title: "Salome",
-          venue: "York Hall",
-          year: 2026,
-          slug: "salome",
-        },
-        size: "portrait",
-      },
-      {
-        id: "salome-raised",
-        ...archive("salome", "hero-web-salome-regents-dress2-229.webp", { width: 1365, height: 2048 }),
-        alt: "Salome lifts the veiled head high above her, blood running down onto her upturned face.",
-        credit: {
-          title: "Salome",
-          venue: "York Hall",
-          year: 2026,
-          slug: "salome",
-        },
-        size: "portrait",
-      },
-      {
-        id: "salome",
-        ...archive("salome", "16-web-salome-regents-dress2-279.webp", {
-          card: true,
-        }),
-        alt: "A severed head rests on a silver platter in a pool of blood, the stage lights soft and blurred behind.",
-        credit: {
-          title: "Salome",
-          venue: "York Hall",
-          year: 2026,
-          slug: "salome",
-        },
+        id: "vertical-light",
+        ...library("stage-performer-profile-vertical-light-minimalist-darkness.webp", 2048, 1152),
+        alt: "A woman in a long grey cardigan stands in profile, head bowed, beside a single vertical blade of white light in total darkness.",
+        credit: null,
         size: "wide",
       },
       {
@@ -342,6 +268,18 @@ export const showcaseSections: ShowcaseSection[] = [
         size: "half",
       },
       {
+        id: "salome-platter",
+        ...local("salome-dress1-228.webp", 1365, 2048),
+        alt: "Salome kneels on a blood-spattered stage holding the veiled head, her reflection caught in the pool of blood on a silver platter.",
+        credit: {
+          title: "Salome",
+          venue: "York Hall",
+          year: 2026,
+          slug: "salome",
+        },
+        size: "tall",
+      },
+      {
         id: "the-penelopiad",
         ...archive("the-penelopiad", "21-web-thepenelopiad-lyt-63.webp", {
           card: true,
@@ -356,6 +294,18 @@ export const showcaseSections: ShowcaseSection[] = [
         size: "wide",
       },
       {
+        id: "on-the-ropes-round-2",
+        ...archive("on-the-ropes", "hero-ontheropes-fullres-photosbystevegregson-060-copy.webp", { card: true }),
+        alt: "A boxer in a red-lit ring raises both fists to the crowd beneath a glowing Round 2 sign.",
+        credit: {
+          title: "On The Ropes",
+          venue: "Park Theatre",
+          year: 2023,
+          slug: "on-the-ropes",
+        },
+        size: "half",
+      },
+      {
         id: "glowing-door",
         ...library("stage-performer-opens-glowing-door-blue-amber-lighting.webp", 1800),
         alt: "A performer opens a door onto a blade of amber light that spills across a dark blue stage.",
@@ -363,26 +313,15 @@ export const showcaseSections: ShowcaseSection[] = [
         size: "half",
       },
       {
-        id: "amelie",
-        ...archive(
-          "amelie-mountview-may-2026",
-          "31-amelie-sacrecoeur-349.webp",
-          { card: true, width: 2560 },
-        ),
-        alt: "A booth stands in a shaft of white backlight on a Parisian set, musicians and company silhouetted on the stairs around it.",
+        id: "austenland",
+        ...archive("austenland", "18-web-austenland-tech-1027.webp"),
+        alt: "A couple dance centre stage beneath a glowing Austenland sign and a fan of blue and gold light beams, the company framed either side.",
         credit: {
-          title: "Amélie",
-          venue: "Mountview",
-          year: 2026,
-          slug: "amelie-mountview-may-2026",
+          title: "Austenland",
+          venue: "Savoy Theatre",
+          year: 2025,
+          slug: "austenland",
         },
-        size: "half",
-      },
-      {
-        id: "giant-key",
-        ...library("theatre-performer-giant-key-glowing-keyhole-vivid-lighting.webp"),
-        alt: "A performer in a blue dress lifts an oversized golden key beneath a blazing keyhole, surrounded by flying playing cards and a giant clock.",
-        credit: null,
         size: "wide",
       },
     ],
@@ -391,14 +330,16 @@ export const showcaseSections: ShowcaseSection[] = [
     id: "closing",
     images: [
       {
-        id: "a-sherlock-carol",
-        ...archive("a-sherlock-carol", "SherlockCarolDress-1534-Edit-Edit-Edit.webp"),
-        alt: "A detective in a top hat crouches in rolling fog, peering through a magnifying glass between gas lamps.",
+        id: "cruel-intentions",
+        ...archive("cruel-intentions-the-90s-musical", "hero-a1-07680-edit.webp", {
+          width: 2560,
+        }),
+        alt: "A performer hangs mid-leap above the stage while a cellist plays below on a magenta-lit checkerboard floor.",
         credit: {
-          title: "A Sherlock Carol",
-          venue: "Marylebone Theatre",
-          year: 2025,
-          slug: "a-sherlock-carol",
+          title: "Cruel Intentions: The ’90s Musical",
+          venue: "The Other Palace",
+          year: 2024,
+          slug: "cruel-intentions-the-90s-musical",
         },
         size: "wide",
       },
@@ -433,6 +374,29 @@ export const showcaseSections: ShowcaseSection[] = [
         size: "half",
       },
       {
+        id: "giant-key",
+        ...library("theatre-performer-giant-key-glowing-keyhole-vivid-lighting.webp"),
+        alt: "A performer in a blue dress lifts an oversized golden key beneath a blazing keyhole, surrounded by flying playing cards and a giant clock.",
+        credit: null,
+        size: "wide",
+      },
+      {
+        id: "amelie",
+        ...archive(
+          "amelie-mountview-may-2026",
+          "31-amelie-sacrecoeur-349.webp",
+          { card: true, width: 2560 },
+        ),
+        alt: "A booth stands in a shaft of white backlight on a Parisian set, musicians and company silhouetted on the stairs around it.",
+        credit: {
+          title: "Amélie",
+          venue: "Mountview",
+          year: 2026,
+          slug: "amelie-mountview-may-2026",
+        },
+        size: "half",
+      },
+      {
         id: "let-the-right-one-in",
         ...archive(
           "let-the-right-one-in-mountview-july-2024",
@@ -445,6 +409,20 @@ export const showcaseSections: ShowcaseSection[] = [
           venue: "Mountview",
           year: 2024,
           slug: "let-the-right-one-in-mountview-july-2024",
+        },
+        size: "half",
+      },
+      {
+        id: "salome",
+        ...archive("salome", "16-web-salome-regents-dress2-279.webp", {
+          card: true,
+        }),
+        alt: "A severed head rests on a silver platter in a pool of blood, the stage lights soft and blurred behind.",
+        credit: {
+          title: "Salome",
+          venue: "York Hall",
+          year: 2026,
+          slug: "salome",
         },
         size: "wide",
       },

@@ -109,6 +109,13 @@
 }
 
 /* Upright frames: shown whole, never taller than the window. */
+.tall {
+  grid-column: 1 / -1;
+  justify-self: center;
+  width: min(100%, calc((100svh - 7rem) * 2 / 3));
+  margin: 0;
+}
+
 .portrait {
   justify-self: center;
   width: min(100%, calc((100svh - 7rem) * 2 / 3));
@@ -216,7 +223,8 @@
 
   .wide,
   .bleed,
-  .portrait {
+  .portrait,
+  .tall {
     width: 100%;
   }
 }
