@@ -83,6 +83,12 @@ const nextConfig: NextConfig = {
 
   async redirects() {
     return [
+      // The old Production page merged into Selected Work (October 2026).
+      {
+        source: "/production",
+        destination: "/selected-work",
+        permanent: true,
+      },
       {
         source: "/:path*",
         has: [
@@ -120,7 +126,7 @@ const nextConfig: NextConfig = {
       // Old stevegregsonphotos.com pages still in search results.
       {
         source: "/theatrephotography",
-        destination: "/production",
+        destination: "/selected-work",
         permanent: true,
       },
       {
@@ -135,12 +141,12 @@ const nextConfig: NextConfig = {
       },
       {
         source: "/theatre",
-        destination: "/production",
+        destination: "/selected-work",
         permanent: true,
       },
       {
         source: "/dance",
-        destination: "/production",
+        destination: "/selected-work",
         permanent: true,
       },
       {
@@ -185,7 +191,7 @@ const nextConfig: NextConfig = {
       },
       {
         source: "/theatrephotographer",
-        destination: "/production",
+        destination: "/selected-work",
         permanent: true,
       },
       {
@@ -195,12 +201,12 @@ const nextConfig: NextConfig = {
       },
       {
         source: "/dancephotography",
-        destination: "/production",
+        destination: "/selected-work",
         permanent: true,
       },
       {
         source: "/theatregif",
-        destination: "/production",
+        destination: "/selected-work",
         permanent: true,
       },
       {

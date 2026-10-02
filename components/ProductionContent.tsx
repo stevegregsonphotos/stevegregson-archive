@@ -34,7 +34,7 @@ export default function ProductionContent({
   nextProduction,
   personSlugs = {},
   venueSlug,
-  serviceLink = { href: "/production", label: "Explore production photography" },
+  serviceLink = { href: "/selected-work", label: "Explore production photography" },
 }: ProductionContentProps) {
   const productionUrl =
     `https://www.stevegregson.com/productions/${production.slug}`;

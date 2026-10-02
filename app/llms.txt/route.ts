@@ -27,7 +27,7 @@ export async function GET() {
 ## Services
 
 - [Commissions](${SITE}/commissions): how booking works, turnaround, licensing and FAQs
-- [Production photography](${SITE}/production): performance and dress rehearsal photography
+- [Production photography](${SITE}/selected-work): performance and dress rehearsal photography
 - [Rehearsal & backstage photography](${SITE}/rehearsals)
 - [Marketing & PR photography](${SITE}/marketing-pr): campaign, poster and press images
 - [Drama school photography](${SITE}/drama-school-photography): showcases and graduating-year productions

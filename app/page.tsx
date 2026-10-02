@@ -95,7 +95,7 @@ const workCards: Array<{
     title: "Production Photography",
     description:
       "The energy, atmosphere and visual language of live performance.",
-    href: "/production",
+    href: "/selected-work",
   },
   {
     id: "rehearsal",
@@ -166,7 +166,7 @@ export default async function Home() {
 
         <div className="hero-footer">
           <div className="hero-categories">
-            <Link href="/production">
+            <Link href="/selected-work">
               Production Photography
             </Link>
 

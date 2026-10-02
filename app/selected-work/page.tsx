@@ -11,10 +11,10 @@ import {
 import styles from "./selected-work-preview.module.css";
 
 const DESCRIPTION =
-  "Selected theatre photography by London photographer Steve Gregson, including production, dress rehearsal, marketing, rehearsal and backstage photography.";
+  "London theatre photographer Steve Gregson creates production photography for theatres, producers and performing arts organisations across the UK and internationally.";
 
 export const metadata: Metadata = {
-  title: "Selected Work",
+  title: "Theatre Production Photography",
   description: DESCRIPTION,
   alternates: {
     canonical: "/selected-work",
@@ -22,7 +22,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     url: "/selected-work",
-    title: "Selected Work | Steve Gregson",
+    title: "Theatre Production Photography | Steve Gregson",
     description: DESCRIPTION,
     images: [
       {
@@ -35,7 +35,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Selected Work | Steve Gregson",
+    title: "Theatre Production Photography | Steve Gregson",
     description: DESCRIPTION,
     images: ["/images/homepage-hero.webp"],
   },
@@ -88,11 +88,6 @@ export default function SelectedWorkPage() {
         </div>
 
         <div className={styles.nextStepLinks}>
-          <Link href="/production">
-            <span>More production photography</span>
-            <span aria-hidden="true">→</span>
-          </Link>
-
           <Link href="/archive">
             <span>Search the archive</span>
             <span aria-hidden="true">→</span>
