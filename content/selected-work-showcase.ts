@@ -7,8 +7,8 @@
  * colour palette, and no production appears twice in a row. No headings
  * or explanations.
  *
- * Images marked `credit: null` came from the Selected Work library, which
- * doesn't record the production. Steve to add the title, venue and year.
+ * Library images (from the Selected Work collection) carry credits Steve
+ * supplied, as the library doesn't record the production.
  *
  * One Salome frame (dress1-228) isn't on the website yet,
  * so the mock-up serves Steve's own copy from /public/selected-work-mockup.
@@ -140,7 +140,12 @@ export const showcaseSections: ShowcaseSection[] = [
         id: "giant-key",
         ...library("theatre-performer-giant-key-glowing-keyhole-vivid-lighting.webp"),
         alt: "A performer in a blue dress lifts an oversized golden key beneath a blazing keyhole, surrounded by flying playing cards and a giant clock.",
-        credit: null,
+        credit: {
+          title: "Alice in Wonderland",
+          venue: "Marylebone Theatre",
+          year: 2025,
+          slug: "alice-in-wonderland",
+        },
         size: "wide",
       },
       {
@@ -159,7 +164,12 @@ export const showcaseSections: ShowcaseSection[] = [
         id: "mid-century-embrace",
         ...library("intimate-embrace-stage-mid-century-living-room-blue-gown.webp"),
         alt: "In a lamplit mid-century lounge, a man in a velvet jacket leans in to hold a woman in a blue gown as she rests her head on his hands.",
-        credit: null,
+        credit: {
+          title: "The Code",
+          venue: "Southwark Playhouse Elephant",
+          year: 2025,
+          slug: "the-code",
+        },
         size: "half",
       },
       {
@@ -250,7 +260,12 @@ export const showcaseSections: ShowcaseSection[] = [
         id: "vertical-light",
         ...library("stage-performer-profile-vertical-light-minimalist-darkness.webp", 2048, 1152),
         alt: "A woman in a long grey cardigan stands in profile, head bowed, beside a single vertical blade of white light in total darkness.",
-        credit: null,
+        credit: {
+          title: "Footfalls and Rockaby",
+          venue: "Jermyn Street Theatre",
+          year: 2024,
+          slug: "footfalls-and-rockaby",
+        },
         size: "wide",
       },
       {
