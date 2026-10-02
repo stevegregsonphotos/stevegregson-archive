@@ -71,7 +71,7 @@ export default function SelectedWorkPage() {
       <SelectedWorkShowcase
         hero={showcaseHero}
         interlude={showcaseInterlude}
-        interludeAfter="faces"
+        interludeAfter="middle"
         sections={showcaseSections}
       />
 
