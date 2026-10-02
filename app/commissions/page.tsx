@@ -16,33 +16,14 @@ import {
 } from "../../components/services/ServiceParts";
 import { getSectorData } from "../../lib/sectors";
 import { getDirectoryData } from "../../lib/people-directory";
-import { getProductionCardImageUrl } from "../../lib/production-image-url";
-import {
-  getSelectedWorkDisplayUrl,
-  getSelectedWorkPreviewUrl,
-} from "../../lib/selected-work-image-url";
 import {
   getSelectedWork,
-  type SelectedWorkCategory,
   type SelectedWorkData,
 } from "../../lib/selected-work-repository";
+import { automaticCommissionsPictures } from "../../lib/commissions-pictures";
+import { getCommissionsImages } from "../../lib/selected-work-page-repository";
 
 type Picture = { src: string; alt: string };
-
-/** The nth landscape image Steve chose for a Selected Work category. */
-function selectedPicture(
-  portfolio: SelectedWorkData,
-  category: SelectedWorkCategory,
-  index: number,
-  size: "preview" | "display" = "preview",
-): Picture | undefined {
-  const images = portfolio[category] ?? [];
-  const landscape = images.filter((image) => !image.width || !image.height || image.width > image.height);
-  const image = landscape[index] ?? images[index];
-  if (!image) return undefined;
-  const url = size === "display" ? getSelectedWorkDisplayUrl : getSelectedWorkPreviewUrl;
-  return { src: url(category, image.filename), alt: image.alt };
-}
 
 export const revalidate = 3600;
 
@@ -58,9 +39,6 @@ export const metadata: Metadata = {
   openGraph: { type: "website", url: PAGE_URL, title: `${TITLE} | Steve Gregson`, description: DESCRIPTION },
   twitter: { card: "summary_large_image", title: `${TITLE} | Steve Gregson`, description: DESCRIPTION },
 };
-
-/** The Selected Work photograph behind the page title: mostly black, high contrast. */
-const HERO_IMAGE = "stage-performer-profile-vertical-light-minimalist-darkness";
 
 const STEPS = [
   {
@@ -218,21 +196,18 @@ const QUESTIONS: Question[] = [
 ];
 
 export default async function CommissionsPage() {
-  const [{ dramaSchools, opera, totalProductions }, directory, portfolio] = await Promise.all([
+  const [{ dramaSchools, opera, totalProductions }, directory, portfolio, chosen] = await Promise.all([
     getSectorData(),
     getDirectoryData(),
     getSelectedWork().catch(() => ({ production: [], rehearsal: [], campaign: [] }) as SelectedWorkData),
+    getCommissionsImages(),
   ]);
 
-  const productionCover = (production?: { slug: string; hero: string; heroAlt: string; title: string }): Picture | undefined =>
-    production
-      ? { src: getProductionCardImageUrl(production.slug, production.hero), alt: production.heroAlt || production.title }
-      : undefined;
+  // Pictures chosen in Backstage win; otherwise the page picks automatically.
+  const automatic = automaticCommissionsPictures(portfolio, dramaSchools.productions, opera.productions);
+  const picture = (slot: keyof typeof automatic): Picture | undefined => chosen[slot] ?? automatic[slot];
 
-  const heroImage = portfolio.production?.find((image) => image.filename.replace(/\.[a-z0-9]+$/i, "") === HERO_IMAGE);
-  const hero: Picture | undefined = heroImage
-    ? { src: getSelectedWorkDisplayUrl("production", heroImage.filename), alt: heroImage.alt }
-    : selectedPicture(portfolio, "production", 1, "display");
+  const hero: Picture | undefined = picture("hero");
 
   const tiles = [
     {
@@ -240,21 +215,21 @@ export default async function CommissionsPage() {
       label: "Production",
       title: "Production photography",
       body: "Performance and dress-rehearsal photography that captures the production as audiences experience it.",
-      picture: selectedPicture(portfolio, "production", 0),
+      picture: picture("production"),
     },
     {
       href: "/rehearsals",
       label: "Rehearsals",
       title: "Rehearsal photography",
       body: "The making of the work, from the first rehearsal-room days to the technical rehearsal.",
-      picture: selectedPicture(portfolio, "rehearsal", 0),
+      picture: picture("rehearsals"),
     },
     {
       href: "/marketing-pr",
       label: "Marketing & PR",
       title: "Campaign photography",
       body: "Publicity and campaign images created to sell the show before it opens.",
-      picture: selectedPicture(portfolio, "campaign", 2),
+      picture: picture("marketing"),
     },
     ...(dramaSchools.productions.length > 0
       ? [{
@@ -262,7 +237,7 @@ export default async function CommissionsPage() {
           label: `${dramaSchools.productions.length} productions`,
           title: "Drama schools",
           body: "Production and rehearsal photography for drama schools and conservatoires, season after season.",
-          picture: productionCover(dramaSchools.productions.find((production) => !/summer school/i.test(production.title)) ?? dramaSchools.productions[0]),
+          picture: picture("dramaSchools"),
         }]
       : []),
     ...(opera.productions.length > 0
@@ -271,7 +246,7 @@ export default async function CommissionsPage() {
           label: `${opera.productions.length} productions`,
           title: "Opera",
           body: "Opera and music theatre, from full stagings to new work in unexpected spaces.",
-          picture: productionCover(opera.productions[0]),
+          picture: picture("opera"),
         }]
       : []),
     {
@@ -279,7 +254,7 @@ export default async function CommissionsPage() {
       label: `${totalProductions} productions`,
       title: "The archive",
       body: `Every production photographed, searchable by venue, year and the ${directory.people.length} people who made them.`,
-      picture: selectedPicture(portfolio, "production", 2),
+      picture: picture("archive"),
     },
   ];
 

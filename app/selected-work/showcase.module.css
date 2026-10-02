@@ -65,6 +65,14 @@
   text-transform: uppercase;
 }
 
+.captionPlain {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.15rem 0.75rem;
+  align-items: baseline;
+  color: #f2eee6;
+}
+
 .caption a:hover .captionTitle,
 .caption a:focus-visible .captionTitle {
   color: #c7a369;
@@ -75,7 +83,7 @@
 /* Big images are sized so the whole photograph fits on screen: never
    cropped, never taller than the window. All photos here are 3:2. */
 .bleed {
-  width: min(100%, calc((100svh - 6rem) * 1.5));
+  width: min(100%, calc((100svh - 6rem) * var(--ratio, 1.5)));
   margin: clamp(2rem, 4vw, 4rem) auto;
 }
 
@@ -85,7 +93,7 @@
   padding: clamp(1.5rem, 3vw, 3rem) 3vw;
 }
 
-.section + .section,
+.sectionGap,
 .bleed + .section {
   margin-top: clamp(3rem, 8vw, 8rem);
 }
@@ -100,7 +108,7 @@
 .wide {
   grid-column: 1 / -1;
   justify-self: center;
-  width: min(100%, calc((100svh - 7rem) * 1.5));
+  width: min(100%, calc((100svh - 7rem) * var(--ratio, 1.5)));
   margin: 0;
 }
 
@@ -112,13 +120,13 @@
 .tall {
   grid-column: 1 / -1;
   justify-self: center;
-  width: min(100%, calc((100svh - 7rem) * 2 / 3));
+  width: min(100%, calc((100svh - 7rem) * var(--ratio, 0.6667)));
   margin: 0;
 }
 
 .portrait {
   justify-self: center;
-  width: min(100%, calc((100svh - 7rem) * 2 / 3));
+  width: min(100%, calc((100svh - 7rem) * var(--ratio, 0.6667)));
   margin: 0;
 }
 

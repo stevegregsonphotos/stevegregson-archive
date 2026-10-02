@@ -3,82 +3,94 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import type React from "react";
 
-import type {
-  ShowcaseImage,
-  ShowcaseSection,
-} from "../content/selected-work-showcase";
+import type { ShowcaseItem } from "../lib/selected-work-page";
 
 import styles from "../app/selected-work/showcase.module.css";
 
 type SelectedWorkShowcaseProps = {
-  hero: ShowcaseImage;
-  interlude: ShowcaseImage;
-  interludeAfter: string;
-  sections: ShowcaseSection[];
+  items: ShowcaseItem[];
+  /** id for the first block of photographs, used by the "Production" tab. */
+  anchorId?: string;
 };
 
-function Caption({ image }: { image: ShowcaseImage }) {
-  if (!image.credit) {
-    return (
-      <figcaption className={`${styles.caption} ${styles.captionPending}`}>
-        Production to be named
-      </figcaption>
-    );
+type Block =
+  | { kind: "feature"; item: ShowcaseItem; first: boolean }
+  | { kind: "grid"; items: ShowcaseItem[]; gap: boolean };
+
+function Caption({ item }: { item: ShowcaseItem }) {
+  if (!item.credit) {
+    return null;
   }
+
+  const content = (
+    <>
+      <span className={styles.captionTitle}>{item.credit.title}</span>
+      {item.credit.venue ? (
+        <span className={styles.captionMeta}>{item.credit.venue}</span>
+      ) : null}
+    </>
+  );
 
   return (
     <figcaption className={styles.caption}>
-      <Link href={`/productions/${image.credit.slug}`}>
-        <span className={styles.captionTitle}>
-          {image.credit.title}
-        </span>
-        <span className={styles.captionMeta}>
-          {image.credit.venue}
-        </span>
-      </Link>
+      {item.credit.slug ? (
+        <Link href={`/productions/${item.credit.slug}`}>{content}</Link>
+      ) : (
+        <span className={styles.captionPlain}>{content}</span>
+      )}
     </figcaption>
   );
 }
 
-export default function SelectedWorkShowcase({
-  hero,
-  interlude,
-  interludeAfter,
-  sections,
-}: SelectedWorkShowcaseProps) {
-  const sequence = useMemo(() => {
-    const ordered: ShowcaseImage[] = [hero];
+function ratioStyle(item: ShowcaseItem) {
+  return { "--ratio": (item.width / item.height).toFixed(4) } as React.CSSProperties;
+}
 
-    for (const section of sections) {
-      ordered.push(...section.images);
+function buildBlocks(items: ShowcaseItem[]): Block[] {
+  const blocks: Block[] = [];
+  let grid: Extract<Block, { kind: "grid" }> | null = null;
 
-      if (section.id === interludeAfter) {
-        ordered.push(interlude);
-      }
+  items.forEach((item, index) => {
+    if (index === 0 || item.size === "feature") {
+      grid = null;
+      blocks.push({ kind: "feature", item, first: index === 0 });
+      return;
     }
 
-    return ordered;
-  }, [hero, interlude, interludeAfter, sections]);
+    if (!grid || item.gapBefore) {
+      grid = { kind: "grid", items: [], gap: Boolean(item.gapBefore) };
+      blocks.push(grid);
+    }
 
+    grid.items.push(item);
+  });
+
+  return blocks;
+}
+
+export default function SelectedWorkShowcase({
+  items,
+  anchorId = "opening",
+}: SelectedWorkShowcaseProps) {
+  const blocks = useMemo(() => buildBlocks(items), [items]);
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
 
   const open = useCallback(
-    (image: ShowcaseImage) => {
-      setViewerIndex(sequence.findIndex((item) => item.id === image.id));
+    (item: ShowcaseItem) => {
+      setViewerIndex(items.findIndex((candidate) => candidate.id === item.id));
     },
-    [sequence],
+    [items],
   );
 
   const step = useCallback(
     (delta: number) => {
       setViewerIndex((current) =>
-        current === null
-          ? current
-          : (current + delta + sequence.length) % sequence.length,
+        current === null ? current : (current + delta + items.length) % items.length,
       );
     },
-    [sequence.length],
+    [items.length],
   );
 
   useEffect(() => {
@@ -102,79 +114,76 @@ export default function SelectedWorkShowcase({
     };
   }, [viewerIndex, step]);
 
-  function renderBleed(image: ShowcaseImage, first = false) {
-    return (
-      <figure className={styles.bleed}>
-        <button
-          type="button"
-          className={styles.imageButton}
-          onClick={() => open(image)}
-          aria-label={`View ${image.credit?.title ?? "photograph"} full screen`}
-        >
-          <Image
-            src={image.src}
-            alt={image.alt}
-            width={image.width}
-            height={image.height}
-            sizes="100vw"
-            className={styles.image}
-            loading={first ? "eager" : "lazy"}
-            fetchPriority={first ? "high" : undefined}
-          />
-        </button>
-        <Caption image={image} />
-      </figure>
-    );
-  }
-
-  const current = viewerIndex === null ? null : sequence[viewerIndex];
+  const current = viewerIndex === null ? null : items[viewerIndex];
+  const firstGridIndex = blocks.findIndex((block) => block.kind === "grid");
 
   return (
     <>
-      {renderBleed(hero, true)}
+      {blocks.map((block, blockIndex) => {
+        if (block.kind === "feature") {
+          const { item, first } = block;
+          return (
+            <figure key={item.id} className={styles.bleed} style={ratioStyle(item)}>
+              <button
+                type="button"
+                className={styles.imageButton}
+                onClick={() => open(item)}
+                aria-label={`View ${item.credit?.title ?? "photograph"} full screen`}
+              >
+                <Image
+                  src={item.src}
+                  alt={item.alt}
+                  width={item.width}
+                  height={item.height}
+                  sizes="100vw"
+                  className={styles.image}
+                  loading={first ? "eager" : "lazy"}
+                  fetchPriority={first ? "high" : undefined}
+                />
+              </button>
+              <Caption item={item} />
+            </figure>
+          );
+        }
 
-      {sections.map((section) => (
-        <div key={section.id}>
+        const id = blockIndex === firstGridIndex ? anchorId : undefined;
+
+        return (
           <section
-            id={section.id}
-            className={styles.section}
+            key={block.items[0].id}
+            id={id}
+            className={block.gap ? `${styles.section} ${styles.sectionGap}` : styles.section}
             aria-label="Production photographs"
           >
             <div className={styles.grid}>
-              {section.images.map((image) => (
-                <figure key={image.id} className={styles[image.size]}>
+              {block.items.map((item) => (
+                <figure key={item.id} className={styles[item.size]} style={ratioStyle(item)}>
                   <button
                     type="button"
                     className={styles.imageButton}
-                    onClick={() => open(image)}
-                    aria-label={`View ${image.credit?.title ?? "photograph"} full screen`}
+                    onClick={() => open(item)}
+                    aria-label={`View ${item.credit?.title ?? "photograph"} full screen`}
                   >
                     <Image
-                      src={
-                        image.size !== "wide" && image.smallSrc
-                          ? image.smallSrc
-                          : image.src
-                      }
-                      alt={image.alt}
-                      width={image.width}
-                      height={image.height}
+                      src={item.size !== "wide" && item.smallSrc ? item.smallSrc : item.src}
+                      alt={item.alt}
+                      width={item.width}
+                      height={item.height}
                       sizes={
-                        image.size === "wide"
+                        item.size === "wide"
                           ? "(max-width: 760px) 100vw, 94vw"
                           : "(max-width: 760px) 100vw, 47vw"
                       }
                       className={styles.image}
                     />
                   </button>
-                  <Caption image={image} />
+                  <Caption item={item} />
                 </figure>
               ))}
             </div>
           </section>
-
-          {section.id === interludeAfter ? renderBleed(interlude) : null}
-        </div>
-      ))}
+        );
+      })}
 
       {current ? (
         <div
@@ -184,10 +193,7 @@ export default function SelectedWorkShowcase({
           aria-label="Photograph viewer"
           onClick={() => setViewerIndex(null)}
         >
-          <div
-            className={styles.viewerFrame}
-            onClick={(event) => event.stopPropagation()}
-          >
+          <div className={styles.viewerFrame} onClick={(event) => event.stopPropagation()}>
             <Image
               src={current.src}
               alt={current.alt}
@@ -202,15 +208,11 @@ export default function SelectedWorkShowcase({
                 {current.credit ? (
                   <>
                     <strong>{current.credit.title}</strong>{" "}
-                    <span>
-                      {current.credit.venue}
-                    </span>
+                    <span>{current.credit.venue}</span>
                   </>
-                ) : (
-                  <strong>Production to be named</strong>
-                )}
+                ) : null}
                 <span className={styles.viewerCount}>
-                  {viewerIndex! + 1} / {sequence.length}
+                  {viewerIndex! + 1} / {items.length}
                 </span>
               </p>
 

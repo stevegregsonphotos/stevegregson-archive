@@ -2,11 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import SelectedWorkShowcase from "../../components/SelectedWorkShowcase";
-import {
-  showcaseHero,
-  showcaseInterlude,
-  showcaseSections,
-} from "../../content/selected-work-showcase";
+import { getSelectedWorkPage } from "../../lib/selected-work-page-repository";
 
 import styles from "./selected-work-preview.module.css";
 
@@ -41,7 +37,12 @@ export const metadata: Metadata = {
   },
 };
 
-export default function SelectedWorkPage() {
+// Saving in Backstage refreshes this page straight away; this is a fallback.
+export const revalidate = 3600;
+
+export default async function SelectedWorkPage() {
+  const { page } = await getSelectedWorkPage();
+
   return (
     <main className={styles.page}>
       <section className={styles.introduction}>
@@ -68,12 +69,7 @@ export default function SelectedWorkPage() {
         </div>
       </nav>
 
-      <SelectedWorkShowcase
-        hero={showcaseHero}
-        interlude={showcaseInterlude}
-        interludeAfter="middle"
-        sections={showcaseSections}
-      />
+      <SelectedWorkShowcase items={page.items} />
 
       <p className={styles.workFor}>
         Production photography for producing theatres, commercial
