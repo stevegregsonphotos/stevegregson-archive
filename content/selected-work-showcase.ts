@@ -190,6 +190,18 @@ export const showcaseSections: ShowcaseSection[] = [
         size: "wide",
       },
       {
+        id: "austenland",
+        ...archive("austenland", "18-web-austenland-tech-1027.webp"),
+        alt: "A couple dance centre stage beneath a glowing Austenland sign and a fan of blue and gold light beams, the company framed either side.",
+        credit: {
+          title: "Austenland",
+          venue: "Savoy Theatre",
+          year: 2025,
+          slug: "austenland",
+        },
+        size: "wide",
+      },
+      {
         id: "girl-in-the-machine",
         ...archive("girl-in-the-machine", "GirlInTheMachine-31.webp", { card: true }),
         alt: "A woman bathed in red light leans back, holding a glowing white box above her face against total darkness.",
@@ -213,51 +225,11 @@ export const showcaseSections: ShowcaseSection[] = [
         },
         size: "half",
       },
-      {
-        id: "austenland",
-        ...archive("austenland", "18-web-austenland-tech-1027.webp"),
-        alt: "A couple dance centre stage beneath a glowing Austenland sign and a fan of blue and gold light beams, the company framed either side.",
-        credit: {
-          title: "Austenland",
-          venue: "Savoy Theatre",
-          year: 2025,
-          slug: "austenland",
-        },
-        size: "wide",
-      },
     ],
   },
   {
     id: "middle",
     images: [
-      {
-        id: "young-frankenstein",
-        ...archive("young-frankenstein-yvonne-arnaud-theatre-june-2026", "11-web-youngfrankenstein-gsa-372.webp", { card: true }),
-        alt: "A young woman clutches a startled man’s face, both frozen mid-gasp in a comic double take.",
-        credit: {
-          title: "Young Frankenstein",
-          venue: "Yvonne Arnaud Theatre",
-          year: 2026,
-          slug: "young-frankenstein-yvonne-arnaud-theatre-june-2026",
-        },
-        size: "half",
-      },
-      {
-        id: "the-big-life",
-        ...archive(
-          "the-big-life-theatre-royal-stratford-east-february-2024",
-          "01-a-109094-enhanced-nr.webp",
-          { card: true, width: 2560 },
-        ),
-        alt: "A winged performer leads the company downstage inside concentric arches of red bulbs, a 1950s London streetscape rising behind.",
-        credit: {
-          title: "The Big Life",
-          venue: "Theatre Royal Stratford East",
-          year: 2024,
-          slug: "the-big-life-theatre-royal-stratford-east-february-2024",
-        },
-        size: "half",
-      },
       {
         id: "vertical-light",
         ...library("stage-performer-profile-vertical-light-minimalist-darkness.webp", 2048, 1152),
@@ -278,6 +250,13 @@ export const showcaseSections: ShowcaseSection[] = [
         size: "half",
       },
       {
+        id: "gold-and-green",
+        ...library("production-photography-crouching-performer-gold-hands-green-drape-warm-light.webp", 2400),
+        alt: "A bare-chested man crouches on a crate, gold paint on his hands, as a figure draped in green fabric leans over him in warm light.",
+        credit: null,
+        size: "half",
+      },
+      {
         id: "on-the-ropes-round-2",
         ...archive("on-the-ropes", "hero-ontheropes-fullres-photosbystevegregson-060-copy.webp", { card: true }),
         alt: "A boxer in a red-lit ring raises both fists to the crowd beneath a glowing Round 2 sign.",
@@ -287,7 +266,7 @@ export const showcaseSections: ShowcaseSection[] = [
           year: 2023,
           slug: "on-the-ropes",
         },
-        size: "half",
+        size: "wide",
       },
       {
         id: "salome-platter",
@@ -326,27 +305,6 @@ export const showcaseSections: ShowcaseSection[] = [
         alt: "A line of people wait with suitcases and bags outside a row of steel-shuttered kiosks under bright strip lights.",
         credit: null,
         size: "wide",
-      },
-      {
-        id: "gold-and-green",
-        ...library("production-photography-crouching-performer-gold-hands-green-drape-warm-light.webp", 2400),
-        alt: "A bare-chested man crouches on a crate, gold paint on his hands, as a figure draped in green fabric leans over him in warm light.",
-        credit: null,
-        size: "half",
-      },
-      {
-        id: "salome",
-        ...archive("salome", "16-web-salome-regents-dress2-279.webp", {
-          card: true,
-        }),
-        alt: "A severed head rests on a silver platter in a pool of blood, the stage lights soft and blurred behind.",
-        credit: {
-          title: "Salome",
-          venue: "York Hall",
-          year: 2026,
-          slug: "salome",
-        },
-        size: "half",
       },
       {
         id: "tidy",

@@ -75,6 +75,11 @@ export default function SelectedWorkPage() {
         sections={showcaseSections}
       />
 
+      <p className={styles.workFor}>
+        Production photography for producing theatres, commercial
+        producers, opera companies, drama schools and family theatre.
+      </p>
+
       <section className={styles.nextStep}>
         <div className={styles.nextStepHeading}>
           <p className={styles.eyebrow}>Explore Further</p>
