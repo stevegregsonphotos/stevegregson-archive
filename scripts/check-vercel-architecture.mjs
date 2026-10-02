@@ -95,15 +95,15 @@ const checks = [
     ],
   ),
   () => assertContains(
-    "app/admin/selected-work/SelectedWorkEditor.tsx",
+    "app/admin/selected-work/library/pipeline.ts",
     [
       '"image/webp"',
-      "webpBlob",
+      "canvas.toBlob",
       "maximumWidth",
     ],
   ),
   () => assertNotContains(
-    "app/admin/selected-work/SelectedWorkEditor.tsx",
+    "app/admin/selected-work/library/pipeline.ts",
     [
       '"Content-Type":\n                          "image/jpeg"',
       "body: file,",
