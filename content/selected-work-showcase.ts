@@ -100,7 +100,7 @@ export const showcaseInterlude: ShowcaseImage = {
   ...archive("the-dance-show-2026", "hero-web-danceshow2026-show-253.webp"),
   alt: "A dancer at the height of a leap, folded in mid-air inside a cone of white light above a glowing red stage.",
   credit: {
-    title: "The Dance Show 2026",
+    title: "The Dance Show",
     venue: "ArtsEd",
     year: 2026,
     slug: "the-dance-show-2026",
