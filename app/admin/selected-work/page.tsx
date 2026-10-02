@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import SelectedWorkAdminTabs from "./SelectedWorkAdminTabs";
+
+import SelectedWorkBackstage from "./SelectedWorkBackstage";
 
 export const metadata: Metadata = {
   title: "Selected Work | Backstage",
@@ -11,19 +12,9 @@ export const metadata: Metadata = {
 
 export default function SelectedWorkAdminPage() {
   return (
-    <main className="backstage-page">
+    <main className="backstage-page" style={{ paddingTop: "4rem" }}>
       <div className="backstage-shell">
-        <header>
-          <p className="backstage-eyebrow">Curated portfolio</p>
-          <h1 className="backstage-title">Selected Work</h1>
-          <p className="backstage-lead">
-            Choose and arrange the photographs on the public Selected Work
-            page and the images in the Commissions page boxes. Upload new
-            photographs in the photo library.
-          </p>
-        </header>
-
-        <SelectedWorkAdminTabs />
+        <SelectedWorkBackstage />
       </div>
     </main>
   );

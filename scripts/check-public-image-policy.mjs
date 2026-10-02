@@ -92,7 +92,7 @@ const requiredChecks = [
     'contentType = "image/webp"',
   ],
   [
-    "app/admin/selected-work/SelectedWorkEditor.tsx",
+    "app/admin/selected-work/library/pipeline.ts",
     '"image/webp"',
   ],
   [
