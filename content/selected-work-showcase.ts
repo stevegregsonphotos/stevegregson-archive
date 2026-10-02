@@ -8,7 +8,8 @@
  * or explanations.
  *
  * Library images (from the Selected Work collection) carry credits Steve
- * supplied, as the library doesn't record the production.
+ * supplied, as the library doesn't record the production. Those still marked
+ * `credit: null` are waiting for Steve to name the production.
  *
  * One Salome frame (dress1-228) isn't on the website yet,
  * so the mock-up serves Steve's own copy from /public/selected-work-mockup.
@@ -242,33 +243,6 @@ export const showcaseSections: ShowcaseSection[] = [
         size: "half",
       },
       {
-        id: "into-the-woods",
-        ...archive(
-          "into-the-woods-artsed-november-2024",
-          "hero-webres-intothewoods-cast2-fast-credit-stevegregson-023.webp",
-        ),
-        alt: "A huge red sheet billows overhead as a girl in a red cloak bursts through beneath it.",
-        credit: {
-          title: "Into the Woods",
-          venue: "ArtsEd",
-          year: 2024,
-          slug: "into-the-woods-artsed-november-2024",
-        },
-        size: "half",
-      },
-      {
-        id: "vertical-light",
-        ...library("stage-performer-profile-vertical-light-minimalist-darkness.webp", 2048, 1152),
-        alt: "A woman in a long grey cardigan stands in profile, head bowed, beside a single vertical blade of white light in total darkness.",
-        credit: {
-          title: "Footfalls and Rockaby",
-          venue: "Jermyn Street Theatre",
-          year: 2024,
-          slug: "footfalls-and-rockaby",
-        },
-        size: "wide",
-      },
-      {
         id: "the-big-life",
         ...archive(
           "the-big-life-theatre-royal-stratford-east-february-2024",
@@ -285,18 +259,33 @@ export const showcaseSections: ShowcaseSection[] = [
         size: "half",
       },
       {
-        id: "attempts-on-her-life",
-        ...archive(
-          "attempts-on-her-life-bellairs-theatre-ivy-arts-centre-guildford-may-2022",
-          "hero-attemptsonherlife-full-001.webp",
-          { width: 2560 },
-        ),
-        alt: "A small figure in red stands in a single pool of white light on a vast dark stage washed with red.",
+        id: "vertical-light",
+        ...library("stage-performer-profile-vertical-light-minimalist-darkness.webp", 2048, 1152),
+        alt: "A woman in a long grey cardigan stands in profile, head bowed, beside a single vertical blade of white light in total darkness.",
         credit: {
-          title: "Attempts on Her Life",
-          venue: "Guildford School of Acting",
-          year: 2022,
-          slug: "attempts-on-her-life-bellairs-theatre-ivy-arts-centre-guildford-may-2022",
+          title: "Footfalls and Rockaby",
+          venue: "Jermyn Street Theatre",
+          year: 2024,
+          slug: "footfalls-and-rockaby",
+        },
+        size: "wide",
+      },
+      {
+        id: "bookshelf-moment",
+        ...library("intimate-stage-moment-bookshelf-nautical-props.webp", 2400),
+        alt: "An older man in a long coat sits among shelves of books and ship models as a young woman kneels beside him, sharing a quiet moment.",
+        credit: null,
+        size: "half",
+      },
+      {
+        id: "on-the-ropes-round-2",
+        ...archive("on-the-ropes", "hero-ontheropes-fullres-photosbystevegregson-060-copy.webp", { card: true }),
+        alt: "A boxer in a red-lit ring raises both fists to the crowd beneath a glowing Round 2 sign.",
+        credit: {
+          title: "On The Ropes",
+          venue: "Park Theatre",
+          year: 2023,
+          slug: "on-the-ropes",
         },
         size: "half",
       },
@@ -332,30 +321,30 @@ export const showcaseSections: ShowcaseSection[] = [
     id: "closing",
     images: [
       {
-        id: "let-the-right-one-in",
-        ...archive(
-          "let-the-right-one-in-mountview-july-2024",
-          "hero-fullres-lettherightonein-credit-stevegregson-232.webp",
-          { width: 2560 },
-        ),
-        alt: "Figures press their hands against tall, pale curtains lit cold blue, one climbing a ladder behind the drapes.",
-        credit: {
-          title: "Let the Right One In",
-          venue: "Mountview",
-          year: 2024,
-          slug: "let-the-right-one-in-mountview-july-2024",
-        },
+        id: "strip-light-queue",
+        ...library("ensemble-queue-under-strip-lights-stage-scene-edited-edited-edited.webp", 2048),
+        alt: "A line of people wait with suitcases and bags outside a row of steel-shuttered kiosks under bright strip lights.",
+        credit: null,
         size: "wide",
       },
       {
-        id: "on-the-ropes-round-2",
-        ...archive("on-the-ropes", "hero-ontheropes-fullres-photosbystevegregson-060-copy.webp", { card: true }),
-        alt: "A boxer in a red-lit ring raises both fists to the crowd beneath a glowing Round 2 sign.",
+        id: "gold-and-green",
+        ...library("production-photography-crouching-performer-gold-hands-green-drape-warm-light.webp", 2400),
+        alt: "A bare-chested man crouches on a crate, gold paint on his hands, as a figure draped in green fabric leans over him in warm light.",
+        credit: null,
+        size: "half",
+      },
+      {
+        id: "salome",
+        ...archive("salome", "16-web-salome-regents-dress2-279.webp", {
+          card: true,
+        }),
+        alt: "A severed head rests on a silver platter in a pool of blood, the stage lights soft and blurred behind.",
         credit: {
-          title: "On The Ropes",
-          venue: "Park Theatre",
-          year: 2023,
-          slug: "on-the-ropes",
+          title: "Salome",
+          venue: "York Hall",
+          year: 2026,
+          slug: "salome",
         },
         size: "half",
       },
@@ -375,18 +364,11 @@ export const showcaseSections: ShowcaseSection[] = [
         size: "half",
       },
       {
-        id: "salome",
-        ...archive("salome", "16-web-salome-regents-dress2-279.webp", {
-          card: true,
-        }),
-        alt: "A severed head rests on a silver platter in a pool of blood, the stage lights soft and blurred behind.",
-        credit: {
-          title: "Salome",
-          venue: "York Hall",
-          year: 2026,
-          slug: "salome",
-        },
-        size: "wide",
+        id: "top-hat-number",
+        ...library("top-hatted-performer-raises-arms-red-stage-lights-art-deco-set.webp", 1800),
+        alt: "A performer in a top hat and waistcoat throws both arms up in triumph under red stage lights on an art deco set.",
+        credit: null,
+        size: "half",
       },
     ],
   },
