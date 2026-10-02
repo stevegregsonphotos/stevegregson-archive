@@ -4,7 +4,6 @@ export function revalidateProductionContent(
   slug?: string,
 ) {
   revalidatePath("/");
-  revalidatePath("/production");
   revalidatePath("/archive");
   revalidatePath("/sitemap.xml");
   // Pages whose counts and lists come from the archive.
@@ -27,7 +26,6 @@ export function revalidateProductionContent(
 export function revalidateSelectedWorkContent() {
   revalidatePath("/");
   revalidatePath("/selected-work");
-  revalidatePath("/production");
   revalidatePath("/rehearsals");
   revalidatePath("/marketing-pr");
 }

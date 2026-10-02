@@ -66,7 +66,7 @@ type WorkNavigationItem = {
 
 const workNavigation: WorkNavigationItem[] = [
   {
-    href: "/production",
+    href: "/selected-work",
     label: "Production",
   },
   {
@@ -175,7 +175,7 @@ export default async function RehearsalsPage() {
           </p>
 
           <Link
-            href="/production"
+            href="/selected-work"
             className={styles.archiveLink}
           >
             View production photography

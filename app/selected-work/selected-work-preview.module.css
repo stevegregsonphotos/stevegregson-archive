@@ -376,3 +376,14 @@
     transform: translateY(0);
   }
 }
+
+/* One plain line naming who Steve works for (mock-up) */
+.workFor {
+  max-width: 40rem;
+  margin: clamp(3rem, 6vw, 5rem) auto 0;
+  padding: 0 1.5rem;
+  color: rgba(242, 238, 230, 0.55);
+  font-size: 0.85rem;
+  line-height: 1.7;
+  text-align: center;
+}

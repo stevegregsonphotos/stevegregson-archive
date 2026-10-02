@@ -8,7 +8,7 @@ const SECTIONS = [
   {
     href: "/selected-work",
     label: "Selected Work",
-    paths: ["/selected-work", "/production", "/rehearsals", "/marketing-pr"],
+    paths: ["/selected-work", "/rehearsals", "/marketing-pr"],
   },
   {
     href: "/archive",
