@@ -3,14 +3,12 @@ import Link from "next/link";
 
 import SelectedWorkShowcase from "../../components/SelectedWorkShowcase";
 import {
-  showcaseChapters,
-  showcaseCount,
   showcaseHero,
   showcaseInterlude,
+  showcaseSections,
 } from "../../content/selected-work-showcase";
 
 import styles from "./selected-work-preview.module.css";
-import showcase from "./showcase.module.css";
 
 const DESCRIPTION =
   "Selected theatre photography by London photographer Steve Gregson, including production, dress rehearsal, marketing, rehearsal and backstage photography.";
@@ -43,57 +41,13 @@ export const metadata: Metadata = {
   },
 };
 
-const CREDITS = [
-  "National Theatre",
-  "Young Vic",
-  "Kiln Theatre",
-  "West End",
-  "Theatre Royal Stratford East",
-  "Opera",
-  "Dance",
-  "Family theatre",
-  "Drama schools",
-];
-
 export default function SelectedWorkPage() {
   return (
     <main className={styles.page}>
       <section className={styles.introduction}>
         <p className={styles.eyebrow}>Selected Work</p>
 
-        <div className={styles.introductionLayout}>
-          <h1>
-            Every production has
-            <br />
-            a moment where it all
-            <br />
-            comes into focus.
-          </h1>
-
-          <p className={styles.introductionCopy}>
-            {showcaseCount} photographs from more than 400 productions,
-            each chosen to show what I look for: the scale of the whole
-            stage, the intention behind the light, real emotion, perfect
-            timing, and the detail that tells the story.
-          </p>
-        </div>
-
-        <ol className={showcase.chapterIndex} aria-label="Chapters">
-          {showcaseChapters.map((chapter) => (
-            <li key={chapter.id}>
-              <a href={`#${chapter.id}`}>
-                <span>{chapter.number}</span>
-                {chapter.title}
-              </a>
-            </li>
-          ))}
-        </ol>
-
-        <ul className={showcase.credits} aria-label="Work includes">
-          {CREDITS.map((credit) => (
-            <li key={credit}>{credit}</li>
-          ))}
-        </ul>
+        <h1>Production photography</h1>
       </section>
 
       <nav
@@ -102,7 +56,7 @@ export default function SelectedWorkPage() {
       >
         <div className={styles.navigationInner}>
           <a
-            href="#scale"
+            href="#opening"
             className={styles.activeNavigationItem}
           >
             Production
@@ -117,8 +71,8 @@ export default function SelectedWorkPage() {
       <SelectedWorkShowcase
         hero={showcaseHero}
         interlude={showcaseInterlude}
-        interludeAfter="emotion"
-        chapters={showcaseChapters}
+        interludeAfter="faces"
+        sections={showcaseSections}
       />
 
       <section className={styles.nextStep}>

@@ -1,13 +1,15 @@
 /**
  * Selected Work showcase (mock-up, October 2026).
  *
- * One photograph per production, drawn from the "Fresh Picks" report and the
- * strongest images already on the Selected Work page. Grouped into chapters
- * that each make one case for Steve's work: scale, light, emotion, timing and
- * story.
+ * A curated run of production photographs. No headings or explanations:
+ * the sequence is grouped into sections that breathe apart, and the
+ * pictures make their own case.
  *
  * Images marked `credit: null` came from the Selected Work library, which
  * doesn't record the production. Steve to add the title, venue and year.
+ *
+ * One Salome frame (dress1-228) isn't on the website yet,
+ * so the mock-up serves Steve's own copy from /public/selected-work-mockup.
  */
 
 const ARCHIVE = "https://images.stevegregson.com";
@@ -30,29 +32,29 @@ export type ShowcaseImage = {
   height: number;
   alt: string;
   credit: ShowcaseCredit | null;
-  /** "wide" fills the row; "half" sits beside the next half image. */
-  size: "wide" | "half";
+  /**
+   * "wide" fills the row; "half" sits beside the next half image;
+   * "portrait" is an upright frame that pairs with the next portrait.
+   */
+  size: "wide" | "half" | "portrait";
 };
 
-export type ShowcaseChapter = {
+export type ShowcaseSection = {
   id: string;
-  number: string;
-  title: string;
-  statement: string;
   images: ShowcaseImage[];
 };
 
 function archive(
   slug: string,
   file: string,
-  options: { card?: boolean; width?: number } = {},
+  options: { card?: boolean; width?: number; height?: number } = {},
 ) {
   const width = options.width ?? 2048;
   return {
     src: `${ARCHIVE}/${slug}/${file}`,
     smallSrc: options.card ? `${ARCHIVE}/${slug}/__cards/${file}` : undefined,
     width,
-    height: Math.round((width * 2) / 3),
+    height: options.height ?? Math.round((width * 2) / 3),
   };
 }
 
@@ -62,6 +64,14 @@ function library(file: string, width = 2048) {
     smallSrc: `${LIBRARY}/__display/${file}`,
     width,
     height: Math.round((width * 2) / 3),
+  };
+}
+
+function local(file: string, width = 2048, height = Math.round((width * 2) / 3)) {
+  return {
+    src: `/selected-work-mockup/${file}`,
+    width,
+    height,
   };
 }
 
@@ -95,13 +105,9 @@ export const showcaseInterlude: ShowcaseImage = {
   size: "wide",
 };
 
-export const showcaseChapters: ShowcaseChapter[] = [
+export const showcaseSections: ShowcaseSection[] = [
   {
-    id: "scale",
-    number: "01",
-    title: "Scale",
-    statement:
-      "The whole stage held as a single picture: set, light and company working together, read in one look.",
+    id: "opening",
     images: [
       {
         id: "austenland",
@@ -189,51 +195,17 @@ export const showcaseChapters: ShowcaseChapter[] = [
   },
   {
     id: "light",
-    number: "02",
-    title: "Light",
-    statement:
-      "Understanding what the lighting designer intended, then waiting for the moment it lands on the performer.",
     images: [
       {
-        id: "the-penelopiad",
-        ...archive("the-penelopiad", "21-web-thepenelopiad-lyt-63.webp", {
-          card: true,
-        }),
-        alt: "A woman in a red dress sits alone on a deep blue stage as a single shaft of white light falls diagonally across the floor.",
+        id: "candy",
+        ...archive("candy-park-theatre-august-2023", "hero-fullres-candy-parktheatre-credit-stevegregson-014.webp"),
+        alt: "A lone man sings into a microphone on a blue floor as a single white beam cuts across a wall of shimmering tinsel.",
         credit: {
-          title: "The Penelopiad",
-          venue: "The Cockpit",
-          year: 2026,
-          slug: "the-penelopiad",
+          title: "Candy",
+          venue: "Park Theatre",
+          year: 2023,
+          slug: "candy-park-theatre-august-2023",
         },
-        size: "wide",
-      },
-      {
-        id: "glowing-door",
-        ...library("stage-performer-opens-glowing-door-blue-amber-lighting.webp", 1800),
-        alt: "A performer opens a door onto a blade of amber light that spills across a dark blue stage.",
-        credit: null,
-        size: "half",
-      },
-      {
-        id: "girl-in-the-machine",
-        ...archive("girl-in-the-machine", "GITM-Dress-1300.webp", {
-          card: true,
-        }),
-        alt: "A performer stands lost in a wall of projected red text repeating the word bliss across the set and floor.",
-        credit: {
-          title: "Girl In The Machine",
-          venue: "Young Vic",
-          year: 2025,
-          slug: "girl-in-the-machine",
-        },
-        size: "half",
-      },
-      {
-        id: "cage-ensemble",
-        ...library("stage-ensemble-cage-spotlights-production-photography.webp"),
-        alt: "A line of performers grip the bars of a cage, each lit by its own narrow white spotlight against black.",
-        credit: null,
         size: "wide",
       },
       {
@@ -253,29 +225,30 @@ export const showcaseChapters: ShowcaseChapter[] = [
         size: "half",
       },
       {
-        id: "children-of-eden",
-        ...archive(
-          "children-of-eden-union-theatre-london-december-2021",
-          "hero-childrenofeden-full-433.webp",
-          { width: 2560 },
-        ),
-        alt: "A performer sits cross-legged with raised hands beneath hazy shafts of blue light pouring down from above.",
-        credit: {
-          title: "Children of Eden",
-          venue: "Union Theatre",
-          year: 2021,
-          slug: "children-of-eden-union-theatre-london-december-2021",
-        },
+        id: "glowing-door",
+        ...library("stage-performer-opens-glowing-door-blue-amber-lighting.webp", 1800),
+        alt: "A performer opens a door onto a blade of amber light that spills across a dark blue stage.",
+        credit: null,
         size: "half",
+      },
+      {
+        id: "the-penelopiad",
+        ...archive("the-penelopiad", "21-web-thepenelopiad-lyt-63.webp", {
+          card: true,
+        }),
+        alt: "A woman in a red dress sits alone on a deep blue stage as a single shaft of white light falls diagonally across the floor.",
+        credit: {
+          title: "The Penelopiad",
+          venue: "The Cockpit",
+          year: 2026,
+          slug: "the-penelopiad",
+        },
+        size: "wide",
       },
     ],
   },
   {
-    id: "emotion",
-    number: "03",
-    title: "Emotion",
-    statement:
-      "Faces, not just figures. The thought behind the line, caught while it is still happening.",
+    id: "faces",
     images: [
       {
         id: "the-lonely-londoners",
@@ -293,84 +266,57 @@ export const showcaseChapters: ShowcaseChapter[] = [
         size: "wide",
       },
       {
-        id: "this-restless-house",
-        ...archive(
-          "this-restless-house-stone-nest-shaftesbury-avenue-london-july-2022",
-          "08-thisrestlesshouse-part1-web-142.webp",
-          { card: true },
-        ),
-        alt: "A woman in a pale slip cries out with arms flung wide, her face lit against a dark brick interior.",
+        id: "senecas-oedipus",
+        ...archive("senecas-oedipus", "hero-web-oedipus-credit-stevegregson-214-edited.webp"),
+        alt: "A woman with bound wrists cries out, a rope pulled tight across her mouth, lit cold blue against black.",
         credit: {
-          title: "This Restless House",
-          venue: "Stone Nest",
-          year: 2022,
-          slug: "this-restless-house-stone-nest-shaftesbury-avenue-london-july-2022",
+          title: "Seneca’s Oedipus",
+          venue: "The Cockpit",
+          year: 2024,
+          slug: "senecas-oedipus",
         },
         size: "half",
       },
       {
-        id: "tristan-und-isolde",
-        ...archive(
-          "tristan-und-isolde-arcola-theatre-august-2025",
-          "39-fullres-tristanundisolde-creditstevegregson-274.webp",
-          { card: true, width: 2560 },
-        ),
-        alt: "A singer in a gold robe sings with arms open and face lifted against shimmering violet light.",
+        id: "gotterdammerung",
+        ...archive("gotterdammerung", "01-web-regentsopera-g-tterd-mmerung-creditstevegregson-002.webp", { card: true }),
+        alt: "A woman in black sequins stares out wide-eyed, tangled in a curtain of fine silver threads.",
         credit: {
-          title: "Tristan und Isolde",
-          venue: "Arcola Theatre",
+          title: "Götterdämmerung",
+          venue: "York Hall",
           year: 2025,
-          slug: "tristan-und-isolde-arcola-theatre-august-2025",
+          slug: "gotterdammerung",
         },
         size: "half",
       },
       {
-        id: "a-streetcar-named-desire",
-        ...archive(
-          "a-streetcar-named-desire-mountview-march-2025",
-          "21-fullres-streetcarnameddesire-leigh-creditstevegregson-183.webp",
-          { card: true, width: 2560 },
-        ),
-        alt: "A woman in a floral dress gazes at a small flame held between her fingers, lit warm against deep blue.",
+        id: "girl-in-the-machine",
+        ...archive("girl-in-the-machine", "GirlInTheMachine-31.webp", { card: true }),
+        alt: "A woman bathed in red light leans back, holding a glowing white box above her face against total darkness.",
         credit: {
-          title: "A Streetcar Named Desire",
-          venue: "Mountview",
+          title: "Girl In The Machine",
+          venue: "Young Vic",
           year: 2025,
-          slug: "a-streetcar-named-desire-mountview-march-2025",
+          slug: "girl-in-the-machine",
         },
         size: "half",
       },
       {
-        id: "the-farmers-wife",
-        ...archive(
-          "the-farmers-wife-theatre-by-the-lake-september-2026",
-          "the-farmers-wife-theatre-by-the-lake-2026-solo-under-blue-sky.webp",
-          { card: true },
-        ),
-        alt: "A woman in an apron raises one arm to a sky of hanging blue fabric on an open, sunlit farmhouse stage.",
+        id: "on-the-ropes-round-2",
+        ...archive("on-the-ropes", "hero-ontheropes-fullres-photosbystevegregson-060-copy.webp", { card: true }),
+        alt: "A boxer in a red-lit ring raises both fists to the crowd beneath a glowing Round 2 sign.",
         credit: {
-          title: "The Farmer’s Wife",
-          venue: "Theatre by the Lake",
-          year: 2026,
-          slug: "the-farmers-wife-theatre-by-the-lake-september-2026",
+          title: "On The Ropes",
+          venue: "Park Theatre",
+          year: 2023,
+          slug: "on-the-ropes",
         },
         size: "half",
-      },
-      {
-        id: "rain-screen",
-        ...library("theatre-performer-reaches-behind-rain-screen-blue-light.webp"),
-        alt: "A performer in a white shirt reaches up through a curtain of falling water droplets lit silver and blue.",
-        credit: null,
-        size: "wide",
       },
     ],
   },
   {
-    id: "timing",
-    number: "04",
-    title: "Timing",
-    statement:
-      "The fraction of a second a scene builds towards, taken silently from the dark.",
+    id: "moment",
     images: [
       {
         id: "cruel-intentions",
@@ -416,14 +362,22 @@ export const showcaseChapters: ShowcaseChapter[] = [
         },
         size: "half",
       },
+      {
+        id: "a-sherlock-carol",
+        ...archive("a-sherlock-carol", "SherlockCarolDress-1534-Edit-Edit-Edit.webp"),
+        alt: "A detective in a top hat crouches in rolling fog, peering through a magnifying glass between gas lamps.",
+        credit: {
+          title: "A Sherlock Carol",
+          venue: "Marylebone Theatre",
+          year: 2025,
+          slug: "a-sherlock-carol",
+        },
+        size: "wide",
+      },
     ],
   },
   {
-    id: "story",
-    number: "05",
-    title: "Story",
-    statement:
-      "The detail that tells you what the production is about, so a single frame can stand for the whole show.",
+    id: "salome",
     images: [
       {
         id: "salome",
@@ -440,21 +394,34 @@ export const showcaseChapters: ShowcaseChapter[] = [
         size: "wide",
       },
       {
-        id: "her-naked-skin",
-        ...archive(
-          "her-naked-skin-rose-bruford-college-november-2022",
-          "16-rbc-hernakedskin-webres-139.webp",
-          { card: true },
-        ),
-        alt: "A suffragette holds a Deeds Not Words banner centre stage, surrounded by figures on a red-lit floor.",
+        id: "salome-platter",
+        ...local("salome-dress1-228.webp", 1365, 2048),
+        alt: "Salome kneels on a blood-spattered stage holding the veiled head, her reflection caught in the pool of blood on a silver platter.",
         credit: {
-          title: "Her Naked Skin",
-          venue: "Rose Bruford College",
-          year: 2022,
-          slug: "her-naked-skin-rose-bruford-college-november-2022",
+          title: "Salome",
+          venue: "York Hall",
+          year: 2026,
+          slug: "salome",
         },
-        size: "half",
+        size: "portrait",
       },
+      {
+        id: "salome-raised",
+        ...archive("salome", "hero-web-salome-regents-dress2-229.webp", { width: 1365, height: 2048 }),
+        alt: "Salome lifts the veiled head high above her, blood running down onto her upturned face.",
+        credit: {
+          title: "Salome",
+          venue: "York Hall",
+          year: 2026,
+          slug: "salome",
+        },
+        size: "portrait",
+      },
+    ],
+  },
+  {
+    id: "closing",
+    images: [
       {
         id: "the-snowy-day",
         ...archive(
@@ -485,29 +452,13 @@ export const showcaseChapters: ShowcaseChapter[] = [
         },
         size: "half",
       },
-      {
-        id: "rain-weaver",
-        ...archive(
-          "rain-weaver-the-cockpit-august-2024",
-          "04-fullres-rainweaver-credit-stevegregson-016.webp",
-          { card: true, width: 2560 },
-        ),
-        alt: "A man holds up a glowing lantern that lights his face from below against complete darkness.",
-        credit: {
-          title: "Rain Weaver",
-          venue: "The Cockpit",
-          year: 2024,
-          slug: "rain-weaver-the-cockpit-august-2024",
-        },
-        size: "half",
-      },
     ],
   },
 ];
 
 export const showcaseCount =
   2 +
-  showcaseChapters.reduce(
-    (sum, chapter) => sum + chapter.images.length,
+  showcaseSections.reduce(
+    (sum, section) => sum + section.images.length,
     0,
   );

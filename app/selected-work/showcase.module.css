@@ -4,54 +4,6 @@
   font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
 }
 
-/* Intro additions */
-
-.chapterIndex {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.6rem 2.2rem;
-  margin: 2.4rem 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.chapterIndex a {
-  display: inline-flex;
-  gap: 0.6rem;
-  align-items: baseline;
-  color: rgba(242, 238, 230, 0.62);
-  font-size: 0.8rem;
-  text-decoration: none;
-  transition: color 180ms ease;
-}
-
-.chapterIndex a span {
-  color: #c7a369;
-  font-size: 0.55rem;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-}
-
-.chapterIndex a:hover,
-.chapterIndex a:focus-visible {
-  color: #f2eee6;
-}
-
-.credits {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem 1.6rem;
-  margin: 3.2rem 0 0;
-  padding: 1.1rem 0 0;
-  border-top: 1px solid rgba(242, 238, 230, 0.14);
-  color: rgba(242, 238, 230, 0.5);
-  font-size: 0.55rem;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  list-style: none;
-  text-transform: uppercase;
-}
-
 /* Images */
 
 .imageButton {
@@ -127,46 +79,15 @@
   margin: clamp(2rem, 4vw, 4rem) auto;
 }
 
-/* Chapters */
+/* Sections: no headings, just breathing room between groups */
 
-.chapter {
-  padding: clamp(3rem, 6vw, 6rem) 3vw clamp(1.5rem, 3vw, 3rem);
-  scroll-margin-top: 5rem;
+.section {
+  padding: clamp(1.5rem, 3vw, 3rem) 3vw;
 }
 
-.chapterHeader {
-  display: grid;
-  grid-template-columns: 6rem minmax(0, 0.9fr) minmax(16rem, 0.7fr);
-  gap: 1rem clamp(2rem, 5vw, 6rem);
-  align-items: end;
-  margin: 0 3vw clamp(2.5rem, 4vw, 3.5rem);
-  padding-bottom: 1.6rem;
-  border-bottom: 1px solid rgba(242, 238, 230, 0.14);
-}
-
-.chapterNumber {
-  margin: 0;
-  color: #c7a369;
-  font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
-  font-size: clamp(2.4rem, 4vw, 3.8rem);
-  line-height: 0.9;
-}
-
-.chapterHeader h2 {
-  margin: 0;
-  font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
-  font-size: clamp(2.6rem, 5vw, 5.2rem);
-  font-weight: 400;
-  letter-spacing: -0.05em;
-  line-height: 0.9;
-}
-
-.chapterStatement {
-  max-width: 26rem;
-  margin: 0;
-  color: rgba(242, 238, 230, 0.62);
-  font-size: 0.82rem;
-  line-height: 1.7;
+.section + .section,
+.bleed + .section {
+  margin-top: clamp(3rem, 8vw, 8rem);
 }
 
 .grid {
@@ -184,6 +105,13 @@
 }
 
 .half {
+  margin: 0;
+}
+
+/* Upright frames: shown whole, never taller than the window. */
+.portrait {
+  justify-self: center;
+  width: min(100%, calc((100svh - 7rem) * 2 / 3));
   margin: 0;
 }
 
@@ -272,26 +200,10 @@
 
 /* Small screens */
 
-@media (max-width: 900px) {
-  .chapterHeader {
-    grid-template-columns: auto minmax(0, 1fr);
-    align-items: baseline;
-  }
-
-  .chapterStatement {
-    grid-column: 1 / -1;
-  }
-}
-
 @media (max-width: 760px) {
-  .chapter {
+  .section {
     padding-right: 4vw;
     padding-left: 4vw;
-  }
-
-  .chapterHeader {
-    margin-right: 0;
-    margin-left: 0;
   }
 
   .grid {
@@ -303,7 +215,8 @@
   }
 
   .wide,
-  .bleed {
+  .bleed,
+  .portrait {
     width: 100%;
   }
 }

@@ -5,8 +5,8 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type {
-  ShowcaseChapter,
   ShowcaseImage,
+  ShowcaseSection,
 } from "../content/selected-work-showcase";
 
 import styles from "../app/selected-work/showcase.module.css";
@@ -15,7 +15,7 @@ type SelectedWorkShowcaseProps = {
   hero: ShowcaseImage;
   interlude: ShowcaseImage;
   interludeAfter: string;
-  chapters: ShowcaseChapter[];
+  sections: ShowcaseSection[];
 };
 
 function Caption({ image }: { image: ShowcaseImage }) {
@@ -45,21 +45,21 @@ export default function SelectedWorkShowcase({
   hero,
   interlude,
   interludeAfter,
-  chapters,
+  sections,
 }: SelectedWorkShowcaseProps) {
   const sequence = useMemo(() => {
     const ordered: ShowcaseImage[] = [hero];
 
-    for (const chapter of chapters) {
-      ordered.push(...chapter.images);
+    for (const section of sections) {
+      ordered.push(...section.images);
 
-      if (chapter.id === interludeAfter) {
+      if (section.id === interludeAfter) {
         ordered.push(interlude);
       }
     }
 
     return ordered;
-  }, [hero, interlude, interludeAfter, chapters]);
+  }, [hero, interlude, interludeAfter, sections]);
 
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
 
@@ -133,27 +133,16 @@ export default function SelectedWorkShowcase({
     <>
       {renderBleed(hero, true)}
 
-      {chapters.map((chapter) => (
-        <div key={chapter.id}>
+      {sections.map((section) => (
+        <div key={section.id}>
           <section
-            id={chapter.id}
-            className={styles.chapter}
-            aria-labelledby={`${chapter.id}-title`}
+            id={section.id}
+            className={styles.section}
+            aria-label="Production photographs"
           >
-            <header className={styles.chapterHeader}>
-              <p className={styles.chapterNumber}>{chapter.number}</p>
-              <h2 id={`${chapter.id}-title`}>{chapter.title}</h2>
-              <p className={styles.chapterStatement}>{chapter.statement}</p>
-            </header>
-
             <div className={styles.grid}>
-              {chapter.images.map((image) => (
-                <figure
-                  key={image.id}
-                  className={
-                    image.size === "wide" ? styles.wide : styles.half
-                  }
-                >
+              {section.images.map((image) => (
+                <figure key={image.id} className={styles[image.size]}>
                   <button
                     type="button"
                     className={styles.imageButton}
@@ -162,7 +151,7 @@ export default function SelectedWorkShowcase({
                   >
                     <Image
                       src={
-                        image.size === "half" && image.smallSrc
+                        image.size !== "wide" && image.smallSrc
                           ? image.smallSrc
                           : image.src
                       }
@@ -183,7 +172,7 @@ export default function SelectedWorkShowcase({
             </div>
           </section>
 
-          {chapter.id === interludeAfter ? renderBleed(interlude) : null}
+          {section.id === interludeAfter ? renderBleed(interlude) : null}
         </div>
       ))}
 
