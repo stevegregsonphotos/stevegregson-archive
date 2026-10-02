@@ -1,0 +1,497 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Curated Import (mock-up)</title>
+<style>
+:root{
+  --ground:#11100f;--panel:#1a1918;--line:#2e2c29;--line-strong:#45423d;--button-line:#5c5852;
+  --cream:#f2eee6;--soft:#d8d3ca;--muted:#a39d93;--gold:#c7a369;--ok:#8fb38a;
+  --danger-line:#7a3b2e;--danger:#ffb4a3;
+  --serif:"Iowan Old Style","Palatino Linotype",Georgia,serif;
+  --sans:"Helvetica Neue",Helvetica,system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--ground);color:var(--cream);font-family:var(--sans);-webkit-font-smoothing:antialiased}
+a{color:inherit}
+.eyebrow{margin:0;font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--gold)}
+.label{font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+
+/* Backstage top bar (from app/admin/layout.tsx) */
+.app-header{display:flex;align-items:center;gap:28px;min-height:72px;padding:0 32px;border-bottom:1px solid var(--line)}
+.brand{display:flex;flex-direction:column;gap:3px;flex:none;text-decoration:none;font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase}
+.brand span:last-child{color:var(--gold)}
+.app-nav{display:flex;gap:20px;flex:1 1 auto;min-width:0;overflow-x:auto;scrollbar-width:none}
+.app-nav a{flex:none;padding:6px 0;font-size:11px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:var(--muted);text-decoration:none;white-space:nowrap;border-bottom:2px solid transparent}
+.app-nav a:hover{color:var(--cream)}
+.app-nav a[aria-current]{color:var(--cream);border-bottom-color:var(--gold)}
+.app-utils{display:flex;align-items:center;gap:16px;flex:none;font-size:11px;font-weight:700;letter-spacing:.11em;text-transform:uppercase}
+.app-utils a{color:var(--muted);text-decoration:none}
+.app-utils button{height:32px;padding:0 12px;border:1px solid var(--button-line);background:transparent;color:var(--cream);font:inherit;letter-spacing:inherit;text-transform:inherit;cursor:pointer}
+
+/* Page */
+.page{max-width:1344px;margin:0 auto;padding:32px 48px 64px}
+.page-head{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:24px 48px;align-items:end}
+h1{margin:10px 0 0;font-family:var(--serif);font-weight:400;font-size:56px;line-height:1;letter-spacing:-.04em}
+.lead{margin:14px 0 0;max-width:46rem;color:var(--muted);font-size:14px;line-height:1.65}
+.note{border:1px solid rgba(199,163,105,.35);background:rgba(199,163,105,.05);padding:14px 16px}
+.note p{margin:6px 0 0;color:var(--soft);font-size:13px;line-height:1.5}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:36px;padding:0 14px;border:1px solid var(--button-line);background:transparent;color:var(--cream);font:inherit;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;text-decoration:none;white-space:nowrap;cursor:pointer}
+.btn:hover{border-color:var(--cream)}
+.btn-lg{height:44px;padding:0 18px;font-size:12px}
+.btn-gold{border-color:var(--gold);background:var(--gold);color:var(--ground)}
+.btn-gold:hover{background:#d6b67f;border-color:#d6b67f}
+.btn-quiet{border-color:var(--line-strong);color:var(--soft)}
+.btn-danger{border-color:var(--danger-line);color:var(--danger)}
+.btn-danger:hover{border-color:var(--danger)}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.btn-busy{border-color:var(--gold);color:var(--gold);cursor:wait}
+
+/* Step bar */
+.steps{margin:24px 0 0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border:1px solid var(--line);background:var(--panel)}
+.steps li{display:flex;align-items:baseline;gap:12px;padding:16px 20px;border-left:1px solid var(--line);color:var(--muted);font-size:14px;position:relative}
+.steps li:first-child{border-left:0}
+.steps .n{font-size:11px;font-weight:700;letter-spacing:.06em}
+.steps .s{margin-left:auto;font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase}
+.steps .done{color:var(--soft)}
+.steps .done .n,.steps .done .s{color:var(--ok)}
+.steps .current{color:var(--cream)}
+.steps .current::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--gold)}
+.steps .current .n,.steps .current .s{color:var(--gold)}
+
+/* Section */
+.section{margin-top:32px}
+.section-head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 24px;padding-bottom:14px;border-bottom:1px solid var(--line)}
+h2{margin:6px 0 0;font-family:var(--serif);font-weight:400;font-size:32px;letter-spacing:-.02em}
+.section-head p.sub{margin:0;max-width:34rem;color:var(--muted);font-size:13px;line-height:1.5}
+
+/* Drop zone / folder chooser */
+.dropzone{margin-top:20px;display:flex;flex-wrap:wrap;align-items:center;gap:20px 28px;border:2px dashed var(--gold);padding:22px 24px;background:rgba(199,163,105,.06)}
+.dz-icon{width:44px;height:44px;flex:none;display:flex;align-items:center;justify-content:center;border:1px solid rgba(199,163,105,.5);color:var(--gold)}
+.dz-text{flex:1 1 24rem;min-width:0}
+.dz-title{margin:0;font-size:16px}
+.dz-sub{margin:4px 0 0;color:var(--muted);font-size:13px;line-height:1.55}
+.dz-pick{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.dz-file{font-size:13px;color:var(--soft)}
+.dz-file b{color:var(--ok);font-weight:700;font-size:11px;letter-spacing:.14em;text-transform:uppercase;margin-right:6px}
+
+/* Summary filters */
+.filters{margin-top:24px;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));border:1px solid var(--line)}
+.filter{display:flex;flex-direction:column;gap:6px;padding:14px 16px;border:0;border-left:1px solid var(--line);background:transparent;color:var(--cream);font:inherit;text-align:left;cursor:pointer;position:relative}
+.filter:first-child{border-left:0}
+.filter:hover{background:rgba(242,238,230,.03)}
+.filter .label{display:flex;align-items:center;gap:8px}
+.filter .v{font-family:var(--serif);font-size:30px;line-height:1}
+.filter[aria-pressed="true"]{background:rgba(199,163,105,.08)}
+.filter[aria-pressed="true"]::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--gold)}
+.filter[aria-pressed="true"] .label{color:var(--gold)}
+.dot{width:8px;height:8px;border-radius:50%;flex:none;background:var(--muted)}
+.dot.ok{background:var(--ok)}.dot.gold{background:var(--gold)}.dot.bad{background:var(--danger)}.dot.off{background:transparent;border:1px solid var(--muted)}
+.meta-line{margin:12px 0 0;display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 20px;color:var(--muted);font-size:13px}
+.meta-line b{color:var(--cream);font-weight:400}
+
+/* Production table */
+.table{margin-top:16px;border:1px solid var(--line);background:var(--panel)}
+.thead,.row{display:grid;grid-template-columns:40px minmax(0,1fr) 170px 180px 420px;gap:0 20px;align-items:start;padding:0 20px}
+.thead{padding-top:12px;padding-bottom:12px;border-bottom:1px solid var(--line)}
+.row{padding-top:18px;padding-bottom:18px;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:0}
+.row.is-selected{background:rgba(199,163,105,.05);box-shadow:inset 3px 0 0 var(--gold)}
+.row.is-excluded .prod-title,.row.is-excluded .prod-meta{opacity:.55}
+.c-select{padding-top:4px}
+.check{display:inline-flex;flex-direction:column;align-items:center;gap:4px;font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);cursor:pointer}
+.check input{width:18px;height:18px;margin:0;accent-color:var(--gold);cursor:pointer}
+.prod-kicker{margin:0;font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.prod-title{margin:4px 0 0;font-family:var(--serif);font-weight:400;font-size:22px;letter-spacing:-.015em}
+.prod-meta{margin:4px 0 0;color:var(--muted);font-size:13px}
+.prod-dup{margin:6px 0 0;color:var(--gold);font-size:12px}
+.prod-slug{margin:6px 0 0;font-family:ui-monospace,Menlo,monospace;font-size:12px;color:var(--muted)}
+.issues{margin:10px 0 0;padding:10px 12px;list-style:none;border:1px solid var(--danger-line);background:rgba(122,59,46,.15)}
+.issues li{color:var(--danger);font-size:13px;line-height:1.5}
+.issues li::before{content:"! ";font-weight:700}
+.chip{display:inline-flex;align-items:center;gap:7px;height:26px;padding:0 10px;border:1px solid var(--line-strong);font-size:10px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;white-space:nowrap}
+.chip.ready{border-color:rgba(143,179,138,.5);color:var(--ok)}
+.chip.existing{border-color:rgba(199,163,105,.45);color:var(--gold)}
+.chip.excluded{color:var(--muted)}
+.chip.attention{border-color:var(--danger-line);color:var(--danger)}
+.access{display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+.access-state{font-size:11px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:8px}
+.access-state.locked{color:var(--gold)}
+.access-state small{font-size:inherit;font-weight:400;letter-spacing:.06em;text-transform:none;color:var(--muted)}
+.access-btns{display:flex;gap:6px;flex-wrap:wrap}
+.access-btns .btn{height:30px;padding:0 10px;font-size:10px}
+.actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px}
+.actions .btn{padding:0 11px}
+.progress-mini{flex-basis:100%;display:flex;flex-direction:column;gap:6px;align-items:flex-end;font-size:12px;color:var(--gold)}
+.bar{width:100%;max-width:260px;height:3px;background:var(--line-strong)}
+.bar i{display:block;height:100%;background:var(--gold)}
+
+/* Sticky batch bar (same style as the Selected Work save bar) */
+.batchbar{position:sticky;left:0;right:0;bottom:0;z-index:10;display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;min-height:76px;padding:12px max(4vw,24px);border-top:1px solid var(--gold);background:var(--panel)}
+.batch-text{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1 1 18rem}
+.batch-text .label{color:var(--gold)}
+.batch-text span:last-child{font-size:14px}
+.batch-btns{display:flex;flex-wrap:wrap;gap:8px}
+
+/* Other states */
+.states{margin-top:56px}
+.state-grid{margin-top:16px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.state{border:1px solid var(--line);background:var(--panel);padding:20px}
+.state > .label{display:block;margin-bottom:14px}
+.state .dropzone{margin-top:0}
+.msg{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--line);font-size:14px;color:var(--soft)}
+.msg + .msg{margin-top:10px}
+.msg.err{border-color:var(--danger-line);background:rgba(122,59,46,.15);color:var(--danger)}
+.spinner{width:14px;height:14px;flex:none;border:2px solid var(--line-strong);border-top-color:var(--gold);border-radius:50%}
+
+@media (max-width:1200px){
+  .thead{display:none}
+  .row{grid-template-columns:44px minmax(0,1fr) auto;grid-template-areas:"sel prod status" ". access access" ". actions actions";gap:14px 16px}
+  .c-select{grid-area:sel}.c-prod{grid-area:prod}.c-status{grid-area:status}.c-access{grid-area:access}.c-actions{grid-area:actions}
+  .access{flex-direction:row;flex-wrap:wrap;align-items:center;gap:8px 14px}
+  .actions{justify-content:flex-start}
+  .progress-mini{align-items:flex-start}
+}
+@media (max-width:1100px){
+  .app-header{flex-wrap:wrap;gap:12px 24px;padding:14px 24px}
+  .app-nav{order:3;flex-basis:100%}
+  .app-utils{margin-left:auto}
+  .page{padding:32px 24px 48px}
+  .page-head{grid-template-columns:1fr}
+  .filters{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .filter:nth-child(4){border-left:0}
+  .filter:nth-child(n+4){border-top:1px solid var(--line)}
+}
+@media (max-width:760px){
+  .app-header{padding:14px 16px}
+  .page{padding:28px 16px 40px}
+  h1{font-size:40px}
+  h2{font-size:26px}
+  .steps{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .steps li{padding:12px 14px;font-size:13px}
+  .steps li:nth-child(3){border-left:0}
+  .steps li:nth-child(n+3){border-top:1px solid var(--line)}
+  .steps .s{display:none}
+  .dropzone{padding:18px 16px}
+  .filters{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .filter:nth-child(n){border-left:1px solid var(--line);border-top:1px solid var(--line)}
+  .filter:nth-child(odd){border-left:0}
+  .filter:nth-child(-n+2){border-top:0}
+  .row{grid-template-columns:44px minmax(0,1fr);grid-template-areas:"sel prod" ". status" ". access" ". actions";padding-left:14px;padding-right:14px}
+  .state-grid{grid-template-columns:1fr}
+  .batchbar{padding:12px 16px}
+  .batch-btns{width:100%}
+  .batch-btns .btn{flex:1 1 calc(50% - 4px);padding:0 8px;font-size:10px}
+}
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <a class="brand" href="#" aria-label="Backstage dashboard"><span>Steve Gregson</span><span>Backstage</span></a>
+  <nav class="app-nav" aria-label="Backstage navigation">
+    <a href="dashboard.html">Dashboard</a>
+    <a href="#">Upload &amp; publish</a>
+    <a href="#" aria-current="page">Curated import</a>
+    <a href="#">Productions</a>
+    <a href="#">Proofing</a>
+    <a href="#">Selected Work</a>
+    <a href="#">Clients</a>
+    <a href="#">Watermarks</a>
+    <a href="#">Settings</a>
+  </nav>
+  <div class="app-utils">
+    <a href="#">View website ↗</a>
+    <button type="button">Sign out</button>
+  </div>
+</header>
+
+<main class="page">
+
+  <div class="page-head">
+    <div>
+      <p class="eyebrow">Private archive tool</p>
+      <h1>Curated archive import</h1>
+      <p class="lead">Import productions that have already been curated and researched. Final image selections, hero choices, sequencing and production metadata are treated as authoritative. This workflow does not run the OpenAI vision review or metadata-analysis pipeline.</p>
+    </div>
+    <aside class="note">
+      <span class="eyebrow">Zero-AI import path</span>
+      <p>Curated Archive Import does not call the vision review or image-analysis endpoints used by general Bulk Import.</p>
+    </aside>
+  </div>
+
+  <ol class="steps" aria-label="Import steps">
+    <li class="done"><span class="n">01</span>Choose curated folder<span class="s">Done</span></li>
+    <li class="done"><span class="n">02</span>Readiness check<span class="s">Done</span></li>
+    <li class="current"><span class="n">03</span>Review productions<span class="s">Now</span></li>
+    <li><span class="n">04</span>Import to the archive</li>
+  </ol>
+
+  <section class="section" aria-labelledby="readiness-heading">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">Curated archive preflight</p>
+        <h2 id="readiness-heading">Archive readiness</h2>
+      </div>
+      <p class="sub">This is a read-only scan of the completed curated Archive output. No OpenAI, Dropbox or Google Drive requests are made by this preflight.</p>
+    </div>
+
+    <div class="dropzone">
+      <div class="dz-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
+      <div class="dz-text">
+        <p class="dz-title">Choose curated folder</p>
+        <p class="dz-sub">Choose the main completed curator output folder containing all production folders, or choose one individual production folder. Backstage will automatically find each final-selection.json and its selected-web-staging images, and ignore all other curator files.</p>
+      </div>
+      <div class="dz-pick">
+        <span class="dz-file"><b>Staged</b>1,284 files</span>
+        <label class="btn btn-lg">Choose folder…<input type="file" webkitdirectory multiple hidden></label>
+      </div>
+    </div>
+
+    <div class="filters" role="group" aria-label="Filter by status">
+      <button class="filter" type="button" aria-pressed="true"><span class="label">Final selections</span><span class="v">8</span></button>
+      <button class="filter" type="button" aria-pressed="false"><span class="label"><i class="dot ok"></i>Ready</span><span class="v">4</span></button>
+      <button class="filter" type="button" aria-pressed="false"><span class="label"><i class="dot gold"></i>Existing</span><span class="v">2</span></button>
+      <button class="filter" type="button" aria-pressed="false"><span class="label"><i class="dot off"></i>Excluded</span><span class="v">1</span></button>
+      <button class="filter" type="button" aria-pressed="false"><span class="label"><i class="dot bad"></i>Attention</span><span class="v">1</span></button>
+      <button class="filter" type="button" aria-pressed="false"><span class="label">Locked</span><span class="v">3</span></button>
+    </div>
+    <p class="meta-line"><span>Showing all 8 final selections · click a box above to filter</span><span>Existing website productions: <b>92</b></span></p>
+
+    <div class="table" role="table" aria-label="Productions found in the curated folder">
+      <div class="thead" role="row">
+        <span class="label">Pick</span>
+        <span class="label">Production</span>
+        <span class="label">Status</span>
+        <span class="label">Access</span>
+        <span class="label" style="text-align:right">Actions</span>
+      </div>
+
+      <!-- Ready, selected -->
+      <article class="row is-selected" role="row">
+        <div class="c-select"><label class="check"><input type="checkbox" checked>Select</label></div>
+        <div class="c-prod">
+          <p class="prod-kicker">Finborough Theatre · May 2026</p>
+          <h3 class="prod-title">FOAL</h3>
+          <p class="prod-meta">38 selected images · Hero #0007</p>
+        </div>
+        <div class="c-status"><span class="chip ready"><i class="dot ok"></i>Ready</span></div>
+        <div class="c-access access">
+          <span class="access-state"><i class="dot"></i>Public <small>· Automatic</small></span>
+          <div class="access-btns"><button class="btn btn-quiet" type="button">Lock</button></div>
+        </div>
+        <div class="c-actions actions">
+          <button class="btn btn-gold" type="button">Import</button>
+          <a class="btn" href="#">Edit</a>
+          <button class="btn" type="button">Exclude</button>
+          <button class="btn btn-danger" type="button">Delete from upload</button>
+        </div>
+      </article>
+
+      <!-- Ready, importing now -->
+      <article class="row" role="row">
+        <div class="c-select"><label class="check"><input type="checkbox">Select</label></div>
+        <div class="c-prod">
+          <p class="prod-kicker">Milton Court Studio Theatre · October 2025</p>
+          <h3 class="prod-title">Enron</h3>
+          <p class="prod-meta">31 selected images · Hero #0003</p>
+        </div>
+        <div class="c-status"><span class="chip ready"><i class="dot ok"></i>Ready</span></div>
+        <div class="c-access access">
+          <span class="access-state locked"><i class="dot gold"></i>Locked <small>· Automatic</small></span>
+          <div class="access-btns"><button class="btn btn-quiet" type="button">Unlock</button></div>
+        </div>
+        <div class="c-actions actions">
+          <button class="btn btn-busy" type="button" disabled style="opacity:1">Publishing 12 of 31 images…</button>
+          <a class="btn" href="#">Edit</a>
+          <button class="btn" type="button">Exclude</button>
+          <button class="btn btn-danger" type="button">Delete from upload</button>
+          <div class="progress-mini" aria-hidden="true"><span class="bar"><i style="width:39%"></i></span></div>
+        </div>
+      </article>
+
+      <!-- Ready, selected, manual lock, duplicate folders -->
+      <article class="row is-selected" role="row">
+        <div class="c-select"><label class="check"><input type="checkbox" checked>Select</label></div>
+        <div class="c-prod">
+          <p class="prod-kicker">Chalke Confidential Forum, Chalke History Festival Site, Broad Chalke · June 2026</p>
+          <h3 class="prod-title">Antonia: Behind the Myth of Marie Antoinette</h3>
+          <p class="prod-meta">24 selected images · Hero #0002</p>
+          <p class="prod-dup">Duplicate curator entries collapsed: 2 source folders</p>
+        </div>
+        <div class="c-status"><span class="chip ready"><i class="dot ok"></i>Ready</span></div>
+        <div class="c-access access">
+          <span class="access-state locked"><i class="dot gold"></i>Locked <small>· Manual override</small></span>
+          <div class="access-btns"><button class="btn btn-quiet" type="button">Unlock</button><button class="btn btn-quiet" type="button">Reset to automatic</button></div>
+        </div>
+        <div class="c-actions actions">
+          <button class="btn btn-gold" type="button">Import</button>
+          <a class="btn" href="#">Edit</a>
+          <button class="btn" type="button">Exclude</button>
+          <button class="btn btn-danger" type="button">Delete from upload</button>
+        </div>
+      </article>
+
+      <!-- Ready -->
+      <article class="row" role="row">
+        <div class="c-select"><label class="check"><input type="checkbox">Select</label></div>
+        <div class="c-prod">
+          <p class="prod-kicker">Greenwich Theatre · February 2025</p>
+          <h3 class="prod-title">Faustus: That Damned Woman</h3>
+          <p class="prod-meta">27 selected images · Hero #0001</p>
+        </div>
+        <div class="c-status"><span class="chip ready"><i class="dot ok"></i>Ready</span></div>
+        <div class="c-access access">
+          <span class="access-state"><i class="dot"></i>Public <small>· Automatic</small></span>
+          <div class="access-btns"><button class="btn btn-quiet" type="button">Lock</button></div>
+        </div>
+        <div class="c-actions actions">
+          <button class="btn btn-gold" type="button">Import</button>
+          <a class="btn" href="#">Edit</a>
+          <button class="btn" type="button">Exclude</button>
+          <button class="btn btn-danger" type="button">Delete from upload</button>
+        </div>
+      </article>
+
+      <!-- Needs attention -->
+      <article class="row" role="row">
+        <div class="c-select"></div>
+        <div class="c-prod">
+          <p class="prod-kicker">Marylebone Theatre · 2025</p>
+          <h3 class="prod-title">A Role To Die For</h3>
+          <p class="prod-meta">22 selected images · Hero #0004</p>
+          <ul class="issues"><li>Month is missing or invalid.</li><li>Description is missing.</li></ul>
+        </div>
+        <div class="c-status"><span class="chip attention"><i class="dot bad"></i>Needs attention</span></div>
+        <div class="c-access access">
+          <span class="access-state"><i class="dot"></i>Public <small>· Automatic</small></span>
+          <div class="access-btns"><button class="btn btn-quiet" type="button">Lock</button></div>
+        </div>
+        <div class="c-actions actions">
+          <a class="btn" href="#">Edit</a>
+          <button class="btn" type="button">Exclude</button>
+          <button class="btn btn-danger" type="button">Delete from upload</button>
+        </div>
+      </article>
+
+      <!-- Already published -->
+      <article class="row" role="row">
+        <div class="c-select"></div>
+        <div class="c-prod">
+          <p class="prod-kicker">KCS Studio · November 2025</p>
+          <h3 class="prod-title">Come From Away</h3>
+          <p class="prod-meta">44 selected images · Hero #0024</p>
+          <p class="prod-slug">/come-from-away</p>
+        </div>
+        <div class="c-status"><span class="chip existing"><i class="dot gold"></i>Already published</span></div>
+        <div class="c-access access">
+          <span class="access-state locked"><i class="dot gold"></i>Locked <small>· Automatic</small></span>
+          <div class="access-btns"><button class="btn btn-quiet" type="button">Unlock</button></div>
+        </div>
+        <div class="c-actions actions">
+          <a class="btn" href="#">Edit</a>
+          <button class="btn" type="button">Exclude</button>
+          <button class="btn btn-danger" type="button">Delete from upload</button>
+        </div>
+      </article>
+
+      <!-- Already published -->
+      <article class="row" role="row">
+        <div class="c-select"></div>
+        <div class="c-prod">
+          <p class="prod-kicker">King's Head Theatre · July 2025</p>
+          <h3 class="prod-title">Echo</h3>
+          <p class="prod-meta">29 selected images · Hero #0001</p>
+          <p class="prod-slug">/echo</p>
+        </div>
+        <div class="c-status"><span class="chip existing"><i class="dot gold"></i>Already published</span></div>
+        <div class="c-access access">
+          <span class="access-state"><i class="dot"></i>Public <small>· Automatic</small></span>
+          <div class="access-btns"><button class="btn btn-quiet" type="button">Lock</button></div>
+        </div>
+        <div class="c-actions actions">
+          <a class="btn" href="#">Edit</a>
+          <button class="btn" type="button">Exclude</button>
+          <button class="btn btn-danger" type="button">Delete from upload</button>
+        </div>
+      </article>
+
+      <!-- Excluded -->
+      <article class="row is-excluded" role="row">
+        <div class="c-select"></div>
+        <div class="c-prod">
+          <p class="prod-kicker">KCS Studio · May 2025</p>
+          <h3 class="prod-title">Blackbirds</h3>
+          <p class="prod-meta">19 selected images · Hero #0005</p>
+        </div>
+        <div class="c-status"><span class="chip excluded"><i class="dot off"></i>Excluded</span></div>
+        <div class="c-access access">
+          <span class="access-state"><i class="dot"></i>Public <small>· Manual override</small></span>
+          <div class="access-btns"><button class="btn btn-quiet" type="button">Lock</button><button class="btn btn-quiet" type="button">Reset to automatic</button></div>
+        </div>
+        <div class="c-actions actions">
+          <a class="btn" href="#">Edit</a>
+          <button class="btn" type="button">Include</button>
+          <button class="btn btn-danger" type="button">Delete from upload</button>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section class="states" aria-labelledby="states-heading">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">For reference</p>
+        <h2 id="states-heading">Other moments on this page</h2>
+      </div>
+      <p class="sub">The same page before a folder is chosen, while it works, and when something goes wrong. Nothing new, just the existing messages restyled.</p>
+    </div>
+    <div class="state-grid">
+      <div class="state">
+        <span class="label">Before a folder is chosen (steps 01–04 not started)</span>
+        <div class="dropzone">
+          <div class="dz-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
+          <div class="dz-text">
+            <p class="dz-title">Choose curated folder</p>
+            <p class="dz-sub">No folder chosen yet. Readiness results will appear here once the folder has been staged and scanned.</p>
+          </div>
+          <label class="btn btn-lg btn-gold">Choose folder…<input type="file" webkitdirectory multiple hidden></label>
+        </div>
+      </div>
+      <div class="state">
+        <span class="label">Staging and scanning</span>
+        <div class="msg"><span class="spinner" aria-hidden="true"></span>Uploaded 640 of 1,284 authoritative files…</div>
+        <div class="msg"><span class="spinner" aria-hidden="true"></span>Scanning curated Archive…</div>
+      </div>
+      <div class="state">
+        <span class="label">Error message</span>
+        <div class="msg err">Preflight failed: Curated archive preflight failed.</div>
+      </div>
+      <div class="state">
+        <span class="label">Batch import running / finished (shown in the bottom bar)</span>
+        <div class="msg"><span class="spinner" aria-hidden="true"></span>Importing 1 of 2 — FOAL</div>
+        <div class="msg">Imported 2. Failed 0.</div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="batchbar" role="region" aria-label="Batch curated import">
+  <div class="batch-text">
+    <span class="label">Batch curated import</span>
+    <span>4 Ready productions available to import.</span>
+  </div>
+  <div class="batch-btns">
+    <button class="btn btn-lg" type="button">Select visible Ready</button>
+    <button class="btn btn-lg" type="button">Clear selection</button>
+    <button class="btn btn-lg" type="button">Import All Ready (4)</button>
+    <button class="btn btn-lg btn-gold" type="button">Import Selected (2)</button>
+  </div>
+</div>
+
+</body>
+</html>

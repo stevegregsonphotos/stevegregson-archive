@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Backstage Dashboard (mock-up)</title>
+<style>
+:root{
+  --ground:#11100f;--panel:#1a1918;--line:#2e2c29;--line-strong:#45423d;--button-line:#5c5852;
+  --cream:#f2eee6;--soft:#d8d3ca;--muted:#a39d93;--gold:#c7a369;
+  --serif:"Iowan Old Style","Palatino Linotype",Georgia,serif;
+  --sans:"Helvetica Neue",Helvetica,system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--ground);color:var(--cream);font-family:var(--sans);-webkit-font-smoothing:antialiased}
+a{color:inherit}
+.eyebrow{margin:0;font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--gold)}
+.label{font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+
+/* Backstage top bar (from app/admin/layout.tsx) */
+.app-header{display:flex;align-items:center;gap:28px;min-height:72px;padding:0 32px;border-bottom:1px solid var(--line)}
+.brand{display:flex;flex-direction:column;gap:3px;flex:none;text-decoration:none;font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase}
+.brand span:last-child{color:var(--gold)}
+.app-nav{display:flex;gap:20px;flex:1 1 auto;min-width:0;overflow-x:auto;scrollbar-width:none}
+.app-nav a{flex:none;padding:6px 0;font-size:11px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:var(--muted);text-decoration:none;white-space:nowrap;border-bottom:2px solid transparent}
+.app-nav a:hover{color:var(--cream)}
+.app-nav a[aria-current]{color:var(--cream);border-bottom-color:var(--gold)}
+.app-utils{display:flex;align-items:center;gap:16px;flex:none;font-size:11px;font-weight:700;letter-spacing:.11em;text-transform:uppercase}
+.app-utils a{color:var(--muted);text-decoration:none}
+.app-utils button{height:32px;padding:0 12px;border:1px solid var(--button-line);background:transparent;color:var(--cream);font:inherit;letter-spacing:inherit;text-transform:inherit;cursor:pointer}
+
+/* Page */
+.page{max-width:1344px;margin:0 auto;padding:44px 48px 64px}
+.page-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:20px 40px}
+h1{margin:10px 0 0;font-family:var(--serif);font-weight:400;font-size:64px;line-height:1;letter-spacing:-.04em}
+.lead{margin:14px 0 0;max-width:40rem;color:var(--muted);font-size:15px;line-height:1.6}
+.head-links{display:flex;gap:24px;font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase}
+.head-links a{color:var(--gold);text-decoration:none}
+.head-links a:hover{color:var(--cream)}
+
+/* Primary workflow */
+.primary{margin-top:36px;display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);border:1px solid var(--line);background:var(--panel)}
+.primary-copy{padding:32px 36px;border-right:1px solid var(--line);display:flex;flex-direction:column;gap:14px}
+.primary-top{display:flex;align-items:baseline;gap:14px}
+.num{font-size:12px;font-weight:700;color:var(--gold);letter-spacing:.06em}
+.primary h2{margin:0;font-family:var(--serif);font-weight:400;font-size:40px;line-height:1.05;letter-spacing:-.03em}
+.primary p.desc{margin:0;max-width:34rem;color:var(--soft);font-size:15px;line-height:1.6}
+.btn-gold{align-self:flex-start;display:inline-flex;align-items:center;gap:14px;height:48px;margin-top:8px;padding:0 22px;border:1px solid var(--gold);background:var(--gold);color:var(--ground);font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;text-decoration:none}
+.btn-gold:hover{background:#d6b67f}
+.btn-gold .arrow{font-size:16px;letter-spacing:0}
+.flow{margin:0;padding:32px 36px;list-style:none;display:grid;align-content:center;gap:0}
+.flow li{display:grid;grid-template-columns:36px 1fr;align-items:baseline;padding:14px 0;border-top:1px solid var(--line);font-size:15px}
+.flow li:first-child{border-top:0}
+.flow li span{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.08em}
+
+/* Secondary tools */
+.section-head{display:flex;align-items:center;gap:14px;margin:44px 0 16px}
+.section-head::after{content:"";flex:1;height:1px;background:var(--line)}
+.tools{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.tool{position:relative;display:flex;flex-direction:column;gap:12px;min-height:200px;padding:24px;border:1px solid var(--line);background:var(--panel);text-decoration:none;transition:border-color .15s}
+.tool:hover{border-color:var(--gold)}
+.tool-top{display:flex;justify-content:space-between;align-items:baseline}
+.tool h3{margin:0;font-family:var(--serif);font-weight:400;font-size:26px;letter-spacing:-.02em}
+.tool p{margin:0;color:var(--muted);font-size:14px;line-height:1.55}
+.tool-link{margin-top:auto;display:flex;justify-content:space-between;align-items:center;padding-top:14px;border-top:1px solid var(--line);font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold)}
+.tool-link .arrow{font-size:16px;letter-spacing:0}
+.tool:hover .tool-link{color:var(--cream)}
+
+.footer{margin-top:44px;padding-top:18px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;color:var(--muted);font-size:13px}
+.footer code{padding:4px 8px;border:1px solid var(--line-strong);color:var(--cream);font-family:ui-monospace,Menlo,monospace;font-size:12px}
+
+.mock-note{margin:0 0 12px;color:var(--muted);font-size:12px}
+
+@media (max-width:1100px){
+  .app-header{flex-wrap:wrap;gap:12px 24px;padding:14px 24px}
+  .app-nav{order:3;flex-basis:100%}
+  .app-utils{margin-left:auto}
+  .page{padding:32px 24px 56px}
+  .tools{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:760px){
+  .app-header{padding:14px 16px}
+  .page{padding:28px 16px 48px}
+  h1{font-size:44px}
+  .primary{grid-template-columns:1fr}
+  .primary-copy{border-right:0;border-bottom:1px solid var(--line);padding:24px 20px}
+  .primary h2{font-size:32px}
+  .flow{padding:12px 20px}
+  .btn-gold{align-self:stretch;justify-content:space-between}
+  .tools{grid-template-columns:1fr}
+  .tool{min-height:0}
+  .footer{flex-wrap:wrap}
+}
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <a class="brand" href="#" aria-label="Backstage dashboard"><span>Steve Gregson</span><span>Backstage</span></a>
+  <nav class="app-nav" aria-label="Backstage navigation">
+    <a href="#" aria-current="page">Dashboard</a>
+    <a href="#">Upload &amp; publish</a>
+    <a href="curated-import.html">Curated import</a>
+    <a href="#">Productions</a>
+    <a href="#">Proofing</a>
+    <a href="#">Selected Work</a>
+    <a href="#">Clients</a>
+    <a href="#">Watermarks</a>
+    <a href="#">Settings</a>
+  </nav>
+  <div class="app-utils">
+    <a href="#">View website ↗</a>
+    <button type="button">Sign out</button>
+  </div>
+</header>
+
+<main class="page">
+  <div class="page-head">
+    <div>
+      <p class="eyebrow">Private archive tools</p>
+      <h1>Backstage</h1>
+      <p class="lead">Upload, prepare and publish new work to the Steve Gregson Archive.</p>
+    </div>
+    <nav class="head-links" aria-label="Backstage utilities">
+      <a href="#">View archive ↗</a>
+      <a href="#">View website ↗</a>
+    </nav>
+  </div>
+
+  <section class="primary" aria-labelledby="publish-heading">
+    <div class="primary-copy">
+      <div class="primary-top"><span class="num">01</span><span class="label">Primary workflow</span></div>
+      <h2 id="publish-heading">Upload &amp; publish</h2>
+      <p class="desc">Add a production ZIP, review the photographs, complete the production details and publish the finished page to the archive.</p>
+      <a class="btn-gold" href="#">Start a new production <span class="arrow" aria-hidden="true">→</span></a>
+    </div>
+    <ol class="flow" aria-label="What the workflow covers">
+      <li><span>A</span>Add a production ZIP</li>
+      <li><span>B</span>Review the photographs</li>
+      <li><span>C</span>Complete the production details</li>
+      <li><span>D</span>Publish the finished page to the archive</li>
+    </ol>
+  </section>
+
+  <div class="section-head"><span class="label">Additional Backstage tools</span></div>
+
+  <section class="tools" aria-label="Additional Backstage tools">
+    <a class="tool" href="#">
+      <div class="tool-top"><span class="num">02</span></div>
+      <h3>Client Proofing</h3>
+      <p>Create and manage private client galleries, image selections and favourites.</p>
+      <span class="tool-link">Manage galleries <span class="arrow" aria-hidden="true">→</span></span>
+    </a>
+    <a class="tool" href="#">
+      <div class="tool-top"><span class="num">03</span></div>
+      <h3>Selected Work</h3>
+      <p>Upload, arrange and remove photographs from the curated public portfolio.</p>
+      <span class="tool-link">Manage portfolio <span class="arrow" aria-hidden="true">→</span></span>
+    </a>
+    <a class="tool" href="#">
+      <div class="tool-top"><span class="num">04</span></div>
+      <h3>Settings</h3>
+      <p>Review publishing, storage and Vision AI configuration.</p>
+      <span class="tool-link">View settings <span class="arrow" aria-hidden="true">→</span></span>
+    </a>
+  </section>
+
+  <footer class="footer">
+    <span>You only need to remember:</span>
+    <code>/admin</code>
+  </footer>
+</main>
+
+</body>
+</html>
