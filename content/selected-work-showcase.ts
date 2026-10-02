@@ -8,8 +8,7 @@
  * or explanations.
  *
  * Library images (from the Selected Work collection) carry credits Steve
- * supplied, as the library doesn't record the production. Those still marked
- * `credit: null` are waiting for Steve to name the production.
+ * supplied, as the library doesn't record the production.
  *
  * One Salome frame (dress1-228) isn't on the website yet,
  * so the mock-up serves Steve's own copy from /public/selected-work-mockup.
@@ -246,14 +245,24 @@ export const showcaseSections: ShowcaseSection[] = [
         id: "bookshelf-moment",
         ...library("intimate-stage-moment-bookshelf-nautical-props.webp", 2400),
         alt: "An older man in a long coat sits among shelves of books and ship models as a young woman kneels beside him, sharing a quiet moment.",
-        credit: null,
+        credit: {
+          title: "The Tempest",
+          venue: "Jermyn Street Theatre",
+          year: 2021,
+          slug: "the-tempest",
+        },
         size: "half",
       },
       {
         id: "gold-and-green",
         ...library("production-photography-crouching-performer-gold-hands-green-drape-warm-light.webp", 2400),
         alt: "A bare-chested man crouches on a crate, gold paint on his hands, as a figure draped in green fabric leans over him in warm light.",
-        credit: null,
+        credit: {
+          title: "Das Rheingold",
+          venue: "Freemasons’ Hall",
+          year: 2022,
+          slug: "das-rheingold",
+        },
         size: "half",
       },
       {
@@ -303,7 +312,12 @@ export const showcaseSections: ShowcaseSection[] = [
         id: "strip-light-queue",
         ...library("ensemble-queue-under-strip-lights-stage-scene-edited-edited-edited.webp", 2048),
         alt: "A line of people wait with suitcases and bags outside a row of steel-shuttered kiosks under bright strip lights.",
-        credit: null,
+        credit: {
+          title: "The Full Monty",
+          venue: "Everyman Theatre, Cheltenham",
+          year: 2024,
+          slug: "the-full-monty-everyman-theatre-cheltenham-may-2024",
+        },
         size: "wide",
       },
       {
@@ -325,7 +339,12 @@ export const showcaseSections: ShowcaseSection[] = [
         id: "top-hat-number",
         ...library("top-hatted-performer-raises-arms-red-stage-lights-art-deco-set.webp", 1800),
         alt: "A performer in a top hat and waistcoat throws both arms up in triumph under red stage lights on an art deco set.",
-        credit: null,
+        credit: {
+          title: "Extraordinary Women",
+          venue: "Jermyn Street Theatre",
+          year: 2025,
+          slug: "extraordinary-women",
+        },
         size: "half",
       },
     ],
