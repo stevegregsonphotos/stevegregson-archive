@@ -58,12 +58,16 @@ function archive(
   };
 }
 
-function library(file: string, width = 2048) {
+function library(
+  file: string,
+  width = 2048,
+  height = Math.round((width * 2) / 3),
+) {
   return {
     src: `${LIBRARY}/${file}`,
     smallSrc: `${LIBRARY}/__display/${file}`,
     width,
-    height: Math.round((width * 2) / 3),
+    height,
   };
 }
 
@@ -149,13 +153,6 @@ export const showcaseSections: ShowcaseSection[] = [
         size: "wide",
       },
       {
-        id: "vertical-light",
-        ...library("stage-performer-profile-vertical-light-minimalist-darkness.webp"),
-        alt: "A woman in a long grey cardigan stands in profile, head bowed, beside a single vertical blade of white light in total darkness.",
-        credit: null,
-        size: "half",
-      },
-      {
         id: "girl-in-the-machine",
         ...archive("girl-in-the-machine", "GirlInTheMachine-31.webp", { card: true }),
         alt: "A woman bathed in red light leans back, holding a glowing white box above her face against total darkness.",
@@ -164,6 +161,18 @@ export const showcaseSections: ShowcaseSection[] = [
           venue: "Young Vic",
           year: 2025,
           slug: "girl-in-the-machine",
+        },
+        size: "half",
+      },
+      {
+        id: "gotterdammerung",
+        ...archive("gotterdammerung", "01-web-regentsopera-g-tterd-mmerung-creditstevegregson-002.webp", { card: true }),
+        alt: "A woman in black sequins stares out wide-eyed, tangled in a curtain of fine silver threads.",
+        credit: {
+          title: "Götterdämmerung",
+          venue: "York Hall",
+          year: 2025,
+          slug: "gotterdammerung",
         },
         size: "half",
       },
@@ -195,36 +204,29 @@ export const showcaseSections: ShowcaseSection[] = [
         size: "half",
       },
       {
-        id: "gotterdammerung",
-        ...archive("gotterdammerung", "01-web-regentsopera-g-tterd-mmerung-creditstevegregson-002.webp", { card: true }),
-        alt: "A woman in black sequins stares out wide-eyed, tangled in a curtain of fine silver threads.",
+        id: "on-the-ropes-round-2",
+        ...archive("on-the-ropes", "hero-ontheropes-fullres-photosbystevegregson-060-copy.webp", { card: true }),
+        alt: "A boxer in a red-lit ring raises both fists to the crowd beneath a glowing Round 2 sign.",
         credit: {
-          title: "Götterdämmerung",
-          venue: "York Hall",
-          year: 2025,
-          slug: "gotterdammerung",
+          title: "On The Ropes",
+          venue: "Park Theatre",
+          year: 2023,
+          slug: "on-the-ropes",
         },
         size: "half",
+      },
+      {
+        id: "vertical-light",
+        ...library("stage-performer-profile-vertical-light-minimalist-darkness.webp", 2048, 1152),
+        alt: "A woman in a long grey cardigan stands in profile, head bowed, beside a single vertical blade of white light in total darkness.",
+        credit: null,
+        size: "wide",
       },
     ],
   },
   {
     id: "middle",
     images: [
-      {
-        id: "cruel-intentions",
-        ...archive("cruel-intentions-the-90s-musical", "hero-a1-07680-edit.webp", {
-          width: 2560,
-        }),
-        alt: "A performer hangs mid-leap above the stage while a cellist plays below on a magenta-lit checkerboard floor.",
-        credit: {
-          title: "Cruel Intentions: The ’90s Musical",
-          venue: "The Other Palace",
-          year: 2024,
-          slug: "cruel-intentions-the-90s-musical",
-        },
-        size: "wide",
-      },
       {
         id: "the-big-life",
         ...archive(
@@ -257,6 +259,20 @@ export const showcaseSections: ShowcaseSection[] = [
         size: "half",
       },
       {
+        id: "cruel-intentions",
+        ...archive("cruel-intentions-the-90s-musical", "hero-a1-07680-edit.webp", {
+          width: 2560,
+        }),
+        alt: "A performer hangs mid-leap above the stage while a cellist plays below on a magenta-lit checkerboard floor.",
+        credit: {
+          title: "Cruel Intentions: The ’90s Musical",
+          venue: "The Other Palace",
+          year: 2024,
+          slug: "cruel-intentions-the-90s-musical",
+        },
+        size: "wide",
+      },
+      {
         id: "salome-platter",
         ...local("salome-dress1-228.webp", 1365, 2048),
         alt: "Salome kneels on a blood-spattered stage holding the veiled head, her reflection caught in the pool of blood on a silver platter.",
@@ -281,30 +297,18 @@ export const showcaseSections: ShowcaseSection[] = [
         size: "portrait",
       },
       {
-        id: "the-penelopiad",
-        ...archive("the-penelopiad", "21-web-thepenelopiad-lyt-63.webp", {
+        id: "salome",
+        ...archive("salome", "16-web-salome-regents-dress2-279.webp", {
           card: true,
         }),
-        alt: "A woman in a red dress sits alone on a deep blue stage as a single shaft of white light falls diagonally across the floor.",
+        alt: "A severed head rests on a silver platter in a pool of blood, the stage lights soft and blurred behind.",
         credit: {
-          title: "The Penelopiad",
-          venue: "The Cockpit",
+          title: "Salome",
+          venue: "York Hall",
           year: 2026,
-          slug: "the-penelopiad",
+          slug: "salome",
         },
         size: "wide",
-      },
-      {
-        id: "on-the-ropes-round-2",
-        ...archive("on-the-ropes", "hero-ontheropes-fullres-photosbystevegregson-060-copy.webp", { card: true }),
-        alt: "A boxer in a red-lit ring raises both fists to the crowd beneath a glowing Round 2 sign.",
-        credit: {
-          title: "On The Ropes",
-          venue: "Park Theatre",
-          year: 2023,
-          slug: "on-the-ropes",
-        },
-        size: "half",
       },
       {
         id: "into-the-woods",
@@ -320,13 +324,6 @@ export const showcaseSections: ShowcaseSection[] = [
           slug: "into-the-woods-artsed-november-2024",
         },
         size: "half",
-      },
-      {
-        id: "giant-key",
-        ...library("theatre-performer-giant-key-glowing-keyhole-vivid-lighting.webp"),
-        alt: "A performer in a blue dress lifts an oversized golden key beneath a blazing keyhole, surrounded by flying playing cards and a giant clock.",
-        credit: null,
-        size: "wide",
       },
       {
         id: "attempts-on-her-life",
@@ -345,43 +342,24 @@ export const showcaseSections: ShowcaseSection[] = [
         size: "half",
       },
       {
-        id: "glowing-door",
-        ...library("stage-performer-opens-glowing-door-blue-amber-lighting.webp", 1800),
-        alt: "A performer opens a door onto a blade of amber light that spills across a dark blue stage.",
-        credit: null,
-        size: "half",
-      },
-    ],
-  },
-  {
-    id: "closing",
-    images: [
-      {
-        id: "a-sherlock-carol",
-        ...archive("a-sherlock-carol", "SherlockCarolDress-1534-Edit-Edit-Edit.webp"),
-        alt: "A detective in a top hat crouches in rolling fog, peering through a magnifying glass between gas lamps.",
+        id: "the-penelopiad",
+        ...archive("the-penelopiad", "21-web-thepenelopiad-lyt-63.webp", {
+          card: true,
+        }),
+        alt: "A woman in a red dress sits alone on a deep blue stage as a single shaft of white light falls diagonally across the floor.",
         credit: {
-          title: "A Sherlock Carol",
-          venue: "Marylebone Theatre",
-          year: 2025,
-          slug: "a-sherlock-carol",
+          title: "The Penelopiad",
+          venue: "The Cockpit",
+          year: 2026,
+          slug: "the-penelopiad",
         },
         size: "wide",
       },
       {
-        id: "let-the-right-one-in",
-        ...archive(
-          "let-the-right-one-in-mountview-july-2024",
-          "hero-fullres-lettherightonein-credit-stevegregson-232.webp",
-          { width: 2560 },
-        ),
-        alt: "Figures press their hands against tall, pale curtains lit cold blue, one climbing a ladder behind the drapes.",
-        credit: {
-          title: "Let the Right One In",
-          venue: "Mountview",
-          year: 2024,
-          slug: "let-the-right-one-in-mountview-july-2024",
-        },
+        id: "glowing-door",
+        ...library("stage-performer-opens-glowing-door-blue-amber-lighting.webp", 1800),
+        alt: "A performer opens a door onto a blade of amber light that spills across a dark blue stage.",
+        credit: null,
         size: "half",
       },
       {
@@ -401,16 +379,26 @@ export const showcaseSections: ShowcaseSection[] = [
         size: "half",
       },
       {
-        id: "salome",
-        ...archive("salome", "16-web-salome-regents-dress2-279.webp", {
-          card: true,
-        }),
-        alt: "A severed head rests on a silver platter in a pool of blood, the stage lights soft and blurred behind.",
+        id: "giant-key",
+        ...library("theatre-performer-giant-key-glowing-keyhole-vivid-lighting.webp"),
+        alt: "A performer in a blue dress lifts an oversized golden key beneath a blazing keyhole, surrounded by flying playing cards and a giant clock.",
+        credit: null,
+        size: "wide",
+      },
+    ],
+  },
+  {
+    id: "closing",
+    images: [
+      {
+        id: "a-sherlock-carol",
+        ...archive("a-sherlock-carol", "SherlockCarolDress-1534-Edit-Edit-Edit.webp"),
+        alt: "A detective in a top hat crouches in rolling fog, peering through a magnifying glass between gas lamps.",
         credit: {
-          title: "Salome",
-          venue: "York Hall",
-          year: 2026,
-          slug: "salome",
+          title: "A Sherlock Carol",
+          venue: "Marylebone Theatre",
+          year: 2025,
+          slug: "a-sherlock-carol",
         },
         size: "wide",
       },
@@ -443,6 +431,22 @@ export const showcaseSections: ShowcaseSection[] = [
           slug: "tidy-polka-theatre-february-2024",
         },
         size: "half",
+      },
+      {
+        id: "let-the-right-one-in",
+        ...archive(
+          "let-the-right-one-in-mountview-july-2024",
+          "hero-fullres-lettherightonein-credit-stevegregson-232.webp",
+          { width: 2560 },
+        ),
+        alt: "Figures press their hands against tall, pale curtains lit cold blue, one climbing a ladder behind the drapes.",
+        credit: {
+          title: "Let the Right One In",
+          venue: "Mountview",
+          year: 2024,
+          slug: "let-the-right-one-in-mountview-july-2024",
+        },
+        size: "wide",
       },
     ],
   },
