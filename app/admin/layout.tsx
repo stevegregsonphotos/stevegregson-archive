@@ -11,46 +11,15 @@ type AdminLayoutProps = {
 };
 
 const navigation = [
-  {
-    label: "Dashboard",
-    href: "/admin",
-  },
-  {
-    label: "Upload & publish",
-    href: "/admin/new-production",
-  },
-  {
-    label: "Bulk import",
-    href: "/admin/bulk-import",
-  },
-  {
-    label: "Curated import",
-    href: "/admin/curated-archive-import",
-  },
-  {
-    label: "Productions",
-    href: "/admin/productions",
-  },
-  {
-    label: "Proofing",
-    href: "/admin/proofing",
-  },
-  {
-    label: "Clients",
-    href: "/admin/clients",
-  },
-  {
-    label: "Watermarks",
-    href: "/admin/proofing/watermarks",
-  },
-  {
-    label: "Selected Work",
-    href: "/admin/selected-work",
-  },
-  {
-    label: "Settings",
-    href: "/admin/settings",
-  },
+  { label: "Dashboard", href: "/admin" },
+  { label: "Upload & publish", href: "/admin/new-production" },
+  { label: "Curated import", href: "/admin/curated-archive-import" },
+  { label: "Productions", href: "/admin/productions" },
+  { label: "Proofing", href: "/admin/proofing" },
+  { label: "Selected Work", href: "/admin/selected-work" },
+  { label: "Clients", href: "/admin/clients" },
+  { label: "Watermarks", href: "/admin/proofing/watermarks" },
+  { label: "Settings", href: "/admin/settings" },
 ];
 
 function isActiveRoute(
