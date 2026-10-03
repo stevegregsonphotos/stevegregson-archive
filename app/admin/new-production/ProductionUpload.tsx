@@ -8,6 +8,11 @@ import {
 import PasteCreditsPanel from "../../../components/admin/editor/PasteCreditsPanel";
 import type { PastedCredit } from "../../../lib/parse-pasted-credits";
 
+import ci from "../curated-archive-import/curated-import.module.css";
+import pe from "../edit-production/[slug]/production-edit.module.css";
+import sw from "../selected-work/backstage-selected-work.module.css";
+import np from "./new-production.module.css";
+
 type LocalImage = {
   id: string;
   file: File;
@@ -1804,74 +1809,246 @@ export default function ProductionUpload() {
     }
   }
 
+  const parsedMonthForSteps =
+    Number.parseInt(month, 10);
+  const parsedYearForSteps =
+    Number.parseInt(year, 10);
+  const detailsReady =
+    Boolean(
+      title.trim() &&
+        venue.trim() &&
+        description.trim(),
+    ) &&
+    Number.isInteger(parsedMonthForSteps) &&
+    parsedMonthForSteps >= 1 &&
+    parsedMonthForSteps <= 12 &&
+    Number.isInteger(parsedYearForSteps) &&
+    parsedYearForSteps >= 1800 &&
+    parsedYearForSteps <= 2200;
+  const heroIncluded =
+    Boolean(hero && hero.included);
+  const imagesReady =
+    heroIncluded &&
+    includedImages.some(
+      (image) => image.id !== hero?.id,
+    );
+
+  const stepItems: {
+    label: string;
+    done: boolean;
+  }[] = [
+    {
+      label: "Choose folder",
+      done: images.length > 0,
+    },
+    {
+      label: "Production details",
+      done: images.length > 0 && detailsReady,
+    },
+    {
+      label: "Images & hero",
+      done: images.length > 0 && imagesReady,
+    },
+    {
+      label: "Upload & publish",
+      done: publishSucceeded,
+    },
+  ];
+  const currentStepIndex =
+    isPublishing
+      ? 3
+      : stepItems.findIndex(
+          (step) => !step.done,
+        );
+
+  const creditFields: [
+    string,
+    string,
+    (value: string) => void,
+  ][] = [
+    ["Director", director, setDirector],
+    ["Writer", writer, setWriter],
+    ["Cast", cast, setCast],
+    ["Associate Director", associateDirector, setAssociateDirector],
+    ["Musical Director", musicalDirector, setMusicalDirector],
+    ["Choreographer", choreographer, setChoreographer],
+    ["Movement Director", movementDirector, setMovementDirector],
+    ["Lighting Design", lightingDesign, setLightingDesign],
+    ["Set Design", setDesign, setSetDesign],
+    ["Costume Design", costumeDesign, setCostumeDesign],
+    ["Set & Costume Design", setAndCostumeDesign, setSetAndCostumeDesign],
+    ["Sound Design", soundDesign, setSoundDesign],
+    ["Commissioned by", commissionedBy, setCommissionedBy],
+  ];
+
   return (
     <div
-      style={{
-        display:
-          "grid",
-        gap:
-          "2rem",
-      }}
+      className={
+        images.length > 0
+          ? `${ci.screen} ${ci.screenWithBar}`
+          : ci.screen
+      }
     >
-      <section className="backstage-section">
-        <div className="backstage-section-heading">
-          <h2>
-            Production folder
-          </h2>
-          <p>
-            Browser → Cloudflare R2
+      <ol
+        className={ci.steps}
+        aria-label="Progress"
+      >
+        {stepItems.map(
+          (step, index) => {
+            const isCurrent =
+              index === currentStepIndex;
+            const className =
+              isCurrent
+                ? ci.stepCurrent
+                : step.done
+                  ? ci.stepDone
+                  : undefined;
+
+            return (
+              <li
+                key={step.label}
+                className={className}
+                aria-current={
+                  isCurrent
+                    ? "step"
+                    : undefined
+                }
+              >
+                <span className={ci.stepNumber}>
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                {step.label}
+                <span className={ci.stepState}>
+                  {isCurrent
+                    ? index === 3 && isPublishing
+                      ? "Working"
+                      : "Now"
+                    : step.done
+                      ? "Done"
+                      : ""}
+                </span>
+              </li>
+            );
+          },
+        )}
+      </ol>
+
+      <section>
+        <div className={ci.sectionHead}>
+          <div>
+            <p className={ci.eyebrow}>
+              Step 1
+            </p>
+            <h2 className={ci.sectionTitle}>
+              Production folder
+            </h2>
+          </div>
+          <p className={ci.sectionSub}>
+            Choose one production folder. Photographs remain in your browser until the selected images are converted to WebP and uploaded directly to R2.
           </p>
         </div>
 
-        <p
-          style={{
-            maxWidth:
-              "52rem",
-            color:
-              "rgba(242,238,230,.72)",
-            lineHeight:
-              1.7,
-          }}
-        >
-          Choose one production folder. Photographs remain in your browser until the selected images are converted to WebP and uploaded directly to R2.
-        </p>
-
-        <input
-          type="file"
-          multiple
-          // @ts-expect-error webkitdirectory is supported by Safari/Chromium.
-          webkitdirectory=""
-          onChange={(
-            event,
-          ) =>
-            void chooseFolder(
-              event.target
-                .files,
-            )
+        <div
+          className={
+            isPublishing
+              ? `${ci.dropzone} ${ci.dropzoneBusy}`
+              : ci.dropzone
           }
-        />
+        >
+          <input
+            type="file"
+            multiple
+            // @ts-expect-error webkitdirectory is supported by Safari/Chromium.
+            webkitdirectory=""
+            aria-label="Choose production folder"
+            className={ci.dropInput}
+            onChange={(
+              event,
+            ) =>
+              void chooseFolder(
+                event.target
+                  .files,
+              )
+            }
+          />
+
+          <span
+            className={ci.dropIcon}
+            aria-hidden="true"
+          >
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+            >
+              <path d="M3 6.5h6l2 2h10v10H3z" />
+            </svg>
+          </span>
+
+          <div className={ci.dropText}>
+            <p className={ci.dropTitle}>
+              Drop the production folder here, or click to choose
+            </p>
+            <p className={ci.dropSub}>
+              JPEG, PNG or WebP · converted to WebP automatically before upload
+            </p>
+            <p className={ci.dropSub}>
+              Include a details.txt or details.rtf file in the folder to fill in the production information.
+            </p>
+          </div>
+
+          <div className={ci.dropPick}>
+            {images.length > 0 ? (
+              <span className={ci.dropStaged}>
+                <b>Loaded</b>
+                {images.length.toLocaleString()} photograph
+                {images.length === 1 ? "" : "s"}
+              </span>
+            ) : null}
+
+            <span
+              className={
+                images.length > 0
+                  ? ci.btnLg
+                  : `${ci.btnLg} ${ci.btnGold}`
+              }
+              aria-hidden="true"
+            >
+              {images.length > 0
+                ? "Choose another folder…"
+                : "Choose folder…"}
+            </span>
+          </div>
+        </div>
 
         {progress ? (
-          <p>
+          <p className={ci.msg}>
+            {isPublishing ? (
+              <span
+                className={ci.spinner}
+                aria-hidden="true"
+              />
+            ) : null}
             {progress}
           </p>
         ) : null}
 
         {error ? (
           <p
-            style={{
-              color:
-                "#e6a89c",
-            }}
+            className={`${ci.msg} ${ci.msgError}`}
           >
             {error}
           </p>
         ) : null}
 
         {publishedUrl ? (
-          <p>
+          <p className={ci.msg}>
             Published:{" "}
             <a
+              className={np.goldLink}
               href={
                 publishedUrl
               }
@@ -1885,1381 +2062,488 @@ export default function ProductionUpload() {
       {images.length >
       0 ? (
         <>
-          <section className="backstage-section">
-            <div className="backstage-section-heading">
-              <h2>
-                Production information
-              </h2>
-              <p>
+          <section>
+            <div className={ci.sectionHead}>
+              <div>
+                <p className={ci.eyebrow}>
+                  Step 2
+                </p>
+                <h2 className={ci.sectionTitle}>
+                  Production information
+                </h2>
+              </div>
+              <span
+                className={
+                  detailsFileName
+                    ? `${ci.chip} ${ci.chipReady}`
+                    : `${ci.chip} ${ci.chipExisting}`
+                }
+              >
+                <span
+                  className={ci.chipDot}
+                  aria-hidden="true"
+                />
                 {detailsFileName
                   ? `Read from ${detailsFileName}`
                   : "Required before publishing"}
-              </p>
+              </span>
             </div>
 
-            <div
-              style={{
-                display:
-                  "grid",
-                gridTemplateColumns:
-                  "repeat(auto-fit, minmax(260px, 1fr))",
-                columnGap:
-                  "2rem",
-                rowGap:
-                  "1.5rem",
-              }}
-            >
-              <label
-                style={{
-                  display:
-                    "grid",
-                  gap:
-                    ".5rem",
-                  color:
-                    "rgba(242,238,230,.68)",
-                  fontSize:
-                    ".68rem",
-                  fontWeight:
-                    700,
-                  letterSpacing:
-                    ".08em",
-                  textTransform:
-                    "uppercase",
-                }}
-              >
-                Production
-                <input
-                  style={{
-                    width:
-                      "100%",
-                    boxSizing:
-                      "border-box",
-                    minHeight:
-                      "2.8rem",
-                    padding:
-                      ".75rem .9rem",
-                    border:
-                      "1px solid rgba(242,238,230,.24)",
-                    borderRadius:
-                      "2px",
-                    background:
-                      "rgba(255,255,255,.035)",
-                    color:
-                      "#f2eee6",
-                    fontSize:
-                      ".95rem",
-                    fontWeight:
-                      400,
-                    letterSpacing:
-                      "normal",
-                    textTransform:
-                      "none",
-                  }}
-                  value={
-                    title
-                  }
-                  onChange={(
-                    event,
-                  ) =>
-                    setTitle(
-                      event
-                        .target
-                        .value,
-                    )
-                  }
-                />
-              </label>
+            <div className={pe.detailsGrid}>
+              <div className={pe.card}>
+                <div className={pe.cardHead}>
+                  <h3 className={pe.cardTitle}>
+                    Production
+                  </h3>
+                  <span
+                    className={
+                      detailsReady
+                        ? pe.cardMeta
+                        : `${pe.cardMeta} ${pe.cardMetaGold}`
+                    }
+                  >
+                    {detailsReady
+                      ? "Complete"
+                      : "Title, venue, month, year and description are required"}
+                  </span>
+                </div>
 
-              <label
-                style={{
-                  display:
-                    "grid",
-                  gap:
-                    ".5rem",
-                  color:
-                    "rgba(242,238,230,.68)",
-                  fontSize:
-                    ".68rem",
-                  fontWeight:
-                    700,
-                  letterSpacing:
-                    ".08em",
-                  textTransform:
-                    "uppercase",
-                }}
-              >
-                Venue
-                <input
-                  style={{
-                    width:
-                      "100%",
-                    boxSizing:
-                      "border-box",
-                    minHeight:
-                      "2.8rem",
-                    padding:
-                      ".75rem .9rem",
-                    border:
-                      "1px solid rgba(242,238,230,.24)",
-                    borderRadius:
-                      "2px",
-                    background:
-                      "rgba(255,255,255,.035)",
-                    color:
-                      "#f2eee6",
-                    fontSize:
-                      ".95rem",
-                    fontWeight:
-                      400,
-                    letterSpacing:
-                      "normal",
-                    textTransform:
-                      "none",
-                  }}
-                  value={
-                    venue
-                  }
-                  onChange={(
-                    event,
-                  ) =>
-                    setVenue(
-                      event
-                        .target
-                        .value,
-                    )
-                  }
-                />
-              </label>
+                <label className={sw.field}>
+                  Production
+                  <input
+                    className={sw.input}
+                    value={
+                      title
+                    }
+                    onChange={(
+                      event,
+                    ) =>
+                      setTitle(
+                        event
+                          .target
+                          .value,
+                      )
+                    }
+                  />
+                </label>
 
-              <label
-                style={{
-                  display:
-                    "grid",
-                  gap:
-                    ".5rem",
-                  color:
-                    "rgba(242,238,230,.68)",
-                  fontSize:
-                    ".68rem",
-                  fontWeight:
-                    700,
-                  letterSpacing:
-                    ".08em",
-                  textTransform:
-                    "uppercase",
-                }}
-              >
-                Month
-                <select
-                  style={{
-                    width:
-                      "100%",
-                    boxSizing:
-                      "border-box",
-                    minHeight:
-                      "2.8rem",
-                    padding:
-                      ".75rem .9rem",
-                    border:
-                      "1px solid rgba(242,238,230,.24)",
-                    borderRadius:
-                      "2px",
-                    background:
-                      "#11100f",
-                    color:
-                      "#f2eee6",
-                    fontSize:
-                      ".95rem",
-                    fontWeight:
-                      400,
-                    letterSpacing:
-                      "normal",
-                    textTransform:
-                      "none",
-                  }}
-                  value={
-                    month
-                  }
-                  onChange={(
-                    event,
-                  ) =>
-                    setMonth(
-                      event
-                        .target
-                        .value,
-                    )
-                  }
-                >
-                  <option value="">
-                    Choose month
-                  </option>
-                  {MONTHS.slice(
-                    1,
-                  ).map(
-                    (
-                      name,
-                      index,
-                    ) => (
-                      <option
-                        key={
-                          name
-                        }
-                        value={
-                          index +
-                          1
-                        }
-                      >
-                        {name}
+                <label className={sw.field}>
+                  Venue
+                  <input
+                    className={sw.input}
+                    value={
+                      venue
+                    }
+                    onChange={(
+                      event,
+                    ) =>
+                      setVenue(
+                        event
+                          .target
+                          .value,
+                      )
+                    }
+                  />
+                </label>
+
+                <div className={np.pair}>
+                  <label className={sw.field}>
+                    Month
+                    <select
+                      className={sw.select}
+                      value={
+                        month
+                      }
+                      onChange={(
+                        event,
+                      ) =>
+                        setMonth(
+                          event
+                            .target
+                            .value,
+                        )
+                      }
+                    >
+                      <option value="">
+                        Choose month
                       </option>
-                    ),
-                  )}
-                </select>
-              </label>
+                      {MONTHS.slice(
+                        1,
+                      ).map(
+                        (
+                          name,
+                          index,
+                        ) => (
+                          <option
+                            key={
+                              name
+                            }
+                            value={
+                              index +
+                              1
+                            }
+                          >
+                            {name}
+                          </option>
+                        ),
+                      )}
+                    </select>
+                  </label>
 
-              <label
-                style={{
-                  display:
-                    "grid",
-                  gap:
-                    ".5rem",
-                  color:
-                    "rgba(242,238,230,.68)",
-                  fontSize:
-                    ".68rem",
-                  fontWeight:
-                    700,
-                  letterSpacing:
-                    ".08em",
-                  textTransform:
-                    "uppercase",
-                }}
-              >
-                Year
-                <input
-                  style={{
-                    width:
-                      "100%",
-                    boxSizing:
-                      "border-box",
-                    minHeight:
-                      "2.8rem",
-                    padding:
-                      ".75rem .9rem",
-                    border:
-                      "1px solid rgba(242,238,230,.24)",
-                    borderRadius:
-                      "2px",
-                    background:
-                      "rgba(255,255,255,.035)",
-                    color:
-                      "#f2eee6",
-                    fontSize:
-                      ".95rem",
-                    fontWeight:
-                      400,
-                    letterSpacing:
-                      "normal",
-                    textTransform:
-                      "none",
-                  }}
-                  inputMode="numeric"
-                  value={
-                    year
-                  }
-                  onChange={(
-                    event,
-                  ) =>
-                    setYear(
-                      event
-                        .target
-                        .value,
-                    )
-                  }
-                />
-              </label>
+                  <label className={sw.field}>
+                    Year
+                    <input
+                      className={sw.input}
+                      inputMode="numeric"
+                      value={
+                        year
+                      }
+                      onChange={(
+                        event,
+                      ) =>
+                        setYear(
+                          event
+                            .target
+                            .value,
+                        )
+                      }
+                    />
+                  </label>
+                </div>
 
-              <label
-                style={{
-                  display:
-                    "grid",
-                  gap:
-                    ".5rem",
-                  color:
-                    "rgba(242,238,230,.68)",
-                  fontSize:
-                    ".68rem",
-                  fontWeight:
-                    700,
-                  letterSpacing:
-                    ".08em",
-                  textTransform:
-                    "uppercase",
-                }}
-              >
-                Director
-                <input
-                  style={{
-                    width:
-                      "100%",
-                    boxSizing:
-                      "border-box",
-                    minHeight:
-                      "2.8rem",
-                    padding:
-                      ".75rem .9rem",
-                    border:
-                      "1px solid rgba(242,238,230,.24)",
-                    borderRadius:
-                      "2px",
-                    background:
-                      "rgba(255,255,255,.035)",
-                    color:
-                      "#f2eee6",
-                    fontSize:
-                      ".95rem",
-                    fontWeight:
-                      400,
-                    letterSpacing:
-                      "normal",
-                    textTransform:
-                      "none",
-                  }}
-                  value={
-                    director
-                  }
-                  onChange={(
-                    event,
-                  ) =>
-                    setDirector(
-                      event
-                        .target
-                        .value,
-                    )
-                  }
-                />
-              </label>
+                <label className={sw.field}>
+                  Description
+                  <textarea
+                    className={`${sw.textarea} ${np.description}`}
+                    rows={
+                      7
+                    }
+                    value={
+                      description
+                    }
+                    onChange={(
+                      event,
+                    ) =>
+                      setDescription(
+                        event
+                          .target
+                          .value,
+                      )
+                    }
+                  />
+                </label>
+              </div>
 
-              <label
-                style={{
-                  display:
-                    "grid",
-                  gap:
-                    ".5rem",
-                  color:
-                    "rgba(242,238,230,.68)",
-                  fontSize:
-                    ".68rem",
-                  fontWeight:
-                    700,
-                  letterSpacing:
-                    ".08em",
-                  textTransform:
-                    "uppercase",
-                }}
-              >
-                Writer
-                <input
-                  style={{
-                    width:
-                      "100%",
-                    boxSizing:
-                      "border-box",
-                    minHeight:
-                      "2.8rem",
-                    padding:
-                      ".75rem .9rem",
-                    border:
-                      "1px solid rgba(242,238,230,.24)",
-                    borderRadius:
-                      "2px",
-                    background:
-                      "rgba(255,255,255,.035)",
-                    color:
-                      "#f2eee6",
-                    fontSize:
-                      ".95rem",
-                    fontWeight:
-                      400,
-                    letterSpacing:
-                      "normal",
-                    textTransform:
-                      "none",
-                  }}
-                  value={writer}
-                  onChange={(event) =>
-                    setWriter(event.target.value)
-                  }
-                />
-              </label>
+              <div className={pe.card}>
+                <div className={pe.cardHead}>
+                  <h3 className={pe.cardTitle}>
+                    Credits
+                  </h3>
+                  <span className={pe.cardMeta}>
+                    Optional
+                  </span>
+                </div>
 
-              <label
-                style={{
-                  display:
-                    "grid",
-                  gap:
-                    ".5rem",
-                  color:
-                    "rgba(242,238,230,.68)",
-                  fontSize:
-                    ".68rem",
-                  fontWeight:
-                    700,
-                  letterSpacing:
-                    ".08em",
-                  textTransform:
-                    "uppercase",
-                }}
-              >
-                Cast
-                <input
-                  style={{
-                    width:
-                      "100%",
-                    boxSizing:
-                      "border-box",
-                    minHeight:
-                      "2.8rem",
-                    padding:
-                      ".75rem .9rem",
-                    border:
-                      "1px solid rgba(242,238,230,.24)",
-                    borderRadius:
-                      "2px",
-                    background:
-                      "rgba(255,255,255,.035)",
-                    color:
-                      "#f2eee6",
-                    fontSize:
-                      ".95rem",
-                    fontWeight:
-                      400,
-                    letterSpacing:
-                      "normal",
-                    textTransform:
-                      "none",
-                  }}
-                  value={cast}
-                  onChange={(event) =>
-                    setCast(event.target.value)
-                  }
-                />
-              </label>
-
-              <label
-                style={{
-                  display:
-                    "grid",
-                  gap:
-                    ".5rem",
-                  color:
-                    "rgba(242,238,230,.68)",
-                  fontSize:
-                    ".68rem",
-                  fontWeight:
-                    700,
-                  letterSpacing:
-                    ".08em",
-                  textTransform:
-                    "uppercase",
-                }}
-              >
-                Associate Director
-                <input
-                  style={{
-                    width:
-                      "100%",
-                    boxSizing:
-                      "border-box",
-                    minHeight:
-                      "2.8rem",
-                    padding:
-                      ".75rem .9rem",
-                    border:
-                      "1px solid rgba(242,238,230,.24)",
-                    borderRadius:
-                      "2px",
-                    background:
-                      "rgba(255,255,255,.035)",
-                    color:
-                      "#f2eee6",
-                    fontSize:
-                      ".95rem",
-                    fontWeight:
-                      400,
-                    letterSpacing:
-                      "normal",
-                    textTransform:
-                      "none",
-                  }}
-                  value={associateDirector}
-                  onChange={(event) =>
-                    setAssociateDirector(event.target.value)
-                  }
-                />
-              </label>
-
-              <label
-                style={{
-                  display:
-                    "grid",
-                  gap:
-                    ".5rem",
-                  color:
-                    "rgba(242,238,230,.68)",
-                  fontSize:
-                    ".68rem",
-                  fontWeight:
-                    700,
-                  letterSpacing:
-                    ".08em",
-                  textTransform:
-                    "uppercase",
-                }}
-              >
-                Musical Director
-                <input
-                  style={{
-                    width:
-                      "100%",
-                    boxSizing:
-                      "border-box",
-                    minHeight:
-                      "2.8rem",
-                    padding:
-                      ".75rem .9rem",
-                    border:
-                      "1px solid rgba(242,238,230,.24)",
-                    borderRadius:
-                      "2px",
-                    background:
-                      "rgba(255,255,255,.035)",
-                    color:
-                      "#f2eee6",
-                    fontSize:
-                      ".95rem",
-                    fontWeight:
-                      400,
-                    letterSpacing:
-                      "normal",
-                    textTransform:
-                      "none",
-                  }}
-                  value={musicalDirector}
-                  onChange={(event) =>
-                    setMusicalDirector(event.target.value)
-                  }
-                />
-              </label>
-
-              <label
-                style={{
-                  display:
-                    "grid",
-                  gap:
-                    ".5rem",
-                  color:
-                    "rgba(242,238,230,.68)",
-                  fontSize:
-                    ".68rem",
-                  fontWeight:
-                    700,
-                  letterSpacing:
-                    ".08em",
-                  textTransform:
-                    "uppercase",
-                }}
-              >
-                Choreographer
-                <input
-                  style={{
-                    width:
-                      "100%",
-                    boxSizing:
-                      "border-box",
-                    minHeight:
-                      "2.8rem",
-                    padding:
-                      ".75rem .9rem",
-                    border:
-                      "1px solid rgba(242,238,230,.24)",
-                    borderRadius:
-                      "2px",
-                    background:
-                      "rgba(255,255,255,.035)",
-                    color:
-                      "#f2eee6",
-                    fontSize:
-                      ".95rem",
-                    fontWeight:
-                      400,
-                    letterSpacing:
-                      "normal",
-                    textTransform:
-                      "none",
-                  }}
-                  value={choreographer}
-                  onChange={(event) =>
-                    setChoreographer(event.target.value)
-                  }
-                />
-              </label>
-
-              <label
-                style={{
-                  display:
-                    "grid",
-                  gap:
-                    ".5rem",
-                  color:
-                    "rgba(242,238,230,.68)",
-                  fontSize:
-                    ".68rem",
-                  fontWeight:
-                    700,
-                  letterSpacing:
-                    ".08em",
-                  textTransform:
-                    "uppercase",
-                }}
-              >
-                Movement Director
-                <input
-                  style={{
-                    width:
-                      "100%",
-                    boxSizing:
-                      "border-box",
-                    minHeight:
-                      "2.8rem",
-                    padding:
-                      ".75rem .9rem",
-                    border:
-                      "1px solid rgba(242,238,230,.24)",
-                    borderRadius:
-                      "2px",
-                    background:
-                      "rgba(255,255,255,.035)",
-                    color:
-                      "#f2eee6",
-                    fontSize:
-                      ".95rem",
-                    fontWeight:
-                      400,
-                    letterSpacing:
-                      "normal",
-                    textTransform:
-                      "none",
-                  }}
-                  value={movementDirector}
-                  onChange={(event) =>
-                    setMovementDirector(event.target.value)
-                  }
-                />
-              </label>
-
-              <label
-                style={{
-                  display:
-                    "grid",
-                  gap:
-                    ".5rem",
-                  color:
-                    "rgba(242,238,230,.68)",
-                  fontSize:
-                    ".68rem",
-                  fontWeight:
-                    700,
-                  letterSpacing:
-                    ".08em",
-                  textTransform:
-                    "uppercase",
-                }}
-              >
-                Lighting Design
-                <input
-                  style={{
-                    width:
-                      "100%",
-                    boxSizing:
-                      "border-box",
-                    minHeight:
-                      "2.8rem",
-                    padding:
-                      ".75rem .9rem",
-                    border:
-                      "1px solid rgba(242,238,230,.24)",
-                    borderRadius:
-                      "2px",
-                    background:
-                      "rgba(255,255,255,.035)",
-                    color:
-                      "#f2eee6",
-                    fontSize:
-                      ".95rem",
-                    fontWeight:
-                      400,
-                    letterSpacing:
-                      "normal",
-                    textTransform:
-                      "none",
-                  }}
-                  value={lightingDesign}
-                  onChange={(event) =>
-                    setLightingDesign(event.target.value)
-                  }
-                />
-              </label>
-
-              <label
-                style={{
-                  display:
-                    "grid",
-                  gap:
-                    ".5rem",
-                  color:
-                    "rgba(242,238,230,.68)",
-                  fontSize:
-                    ".68rem",
-                  fontWeight:
-                    700,
-                  letterSpacing:
-                    ".08em",
-                  textTransform:
-                    "uppercase",
-                }}
-              >
-                Set Design
-                <input
-                  style={{
-                    width:
-                      "100%",
-                    boxSizing:
-                      "border-box",
-                    minHeight:
-                      "2.8rem",
-                    padding:
-                      ".75rem .9rem",
-                    border:
-                      "1px solid rgba(242,238,230,.24)",
-                    borderRadius:
-                      "2px",
-                    background:
-                      "rgba(255,255,255,.035)",
-                    color:
-                      "#f2eee6",
-                    fontSize:
-                      ".95rem",
-                    fontWeight:
-                      400,
-                    letterSpacing:
-                      "normal",
-                    textTransform:
-                      "none",
-                  }}
-                  value={setDesign}
-                  onChange={(event) =>
-                    setSetDesign(event.target.value)
-                  }
-                />
-              </label>
-
-              <label
-                style={{
-                  display:
-                    "grid",
-                  gap:
-                    ".5rem",
-                  color:
-                    "rgba(242,238,230,.68)",
-                  fontSize:
-                    ".68rem",
-                  fontWeight:
-                    700,
-                  letterSpacing:
-                    ".08em",
-                  textTransform:
-                    "uppercase",
-                }}
-              >
-                Costume Design
-                <input
-                  style={{
-                    width:
-                      "100%",
-                    boxSizing:
-                      "border-box",
-                    minHeight:
-                      "2.8rem",
-                    padding:
-                      ".75rem .9rem",
-                    border:
-                      "1px solid rgba(242,238,230,.24)",
-                    borderRadius:
-                      "2px",
-                    background:
-                      "rgba(255,255,255,.035)",
-                    color:
-                      "#f2eee6",
-                    fontSize:
-                      ".95rem",
-                    fontWeight:
-                      400,
-                    letterSpacing:
-                      "normal",
-                    textTransform:
-                      "none",
-                  }}
-                  value={costumeDesign}
-                  onChange={(event) =>
-                    setCostumeDesign(event.target.value)
-                  }
-                />
-              </label>
-
-              <label
-                style={{
-                  display:
-                    "grid",
-                  gap:
-                    ".5rem",
-                  color:
-                    "rgba(242,238,230,.68)",
-                  fontSize:
-                    ".68rem",
-                  fontWeight:
-                    700,
-                  letterSpacing:
-                    ".08em",
-                  textTransform:
-                    "uppercase",
-                }}
-              >
-                Set &amp; Costume Design
-                <input
-                  style={{
-                    width:
-                      "100%",
-                    boxSizing:
-                      "border-box",
-                    minHeight:
-                      "2.8rem",
-                    padding:
-                      ".75rem .9rem",
-                    border:
-                      "1px solid rgba(242,238,230,.24)",
-                    borderRadius:
-                      "2px",
-                    background:
-                      "rgba(255,255,255,.035)",
-                    color:
-                      "#f2eee6",
-                    fontSize:
-                      ".95rem",
-                    fontWeight:
-                      400,
-                    letterSpacing:
-                      "normal",
-                    textTransform:
-                      "none",
-                  }}
-                  value={setAndCostumeDesign}
-                  onChange={(event) =>
-                    setSetAndCostumeDesign(event.target.value)
-                  }
-                />
-              </label>
-
-              <label
-                style={{
-                  display:
-                    "grid",
-                  gap:
-                    ".5rem",
-                  color:
-                    "rgba(242,238,230,.68)",
-                  fontSize:
-                    ".68rem",
-                  fontWeight:
-                    700,
-                  letterSpacing:
-                    ".08em",
-                  textTransform:
-                    "uppercase",
-                }}
-              >
-                Sound Design
-                <input
-                  style={{
-                    width:
-                      "100%",
-                    boxSizing:
-                      "border-box",
-                    minHeight:
-                      "2.8rem",
-                    padding:
-                      ".75rem .9rem",
-                    border:
-                      "1px solid rgba(242,238,230,.24)",
-                    borderRadius:
-                      "2px",
-                    background:
-                      "rgba(255,255,255,.035)",
-                    color:
-                      "#f2eee6",
-                    fontSize:
-                      ".95rem",
-                    fontWeight:
-                      400,
-                    letterSpacing:
-                      "normal",
-                    textTransform:
-                      "none",
-                  }}
-                  value={soundDesign}
-                  onChange={(event) =>
-                    setSoundDesign(event.target.value)
-                  }
-                />
-              </label>
-
-              <label
-                style={{
-                  display:
-                    "grid",
-                  gap:
-                    ".5rem",
-                  color:
-                    "rgba(242,238,230,.68)",
-                  fontSize:
-                    ".68rem",
-                  fontWeight:
-                    700,
-                  letterSpacing:
-                    ".08em",
-                  textTransform:
-                    "uppercase",
-                }}
-              >
-                Commissioned by
-                <input
-                  style={{
-                    width:
-                      "100%",
-                    boxSizing:
-                      "border-box",
-                    minHeight:
-                      "2.8rem",
-                    padding:
-                      ".75rem .9rem",
-                    border:
-                      "1px solid rgba(242,238,230,.24)",
-                    borderRadius:
-                      "2px",
-                    background:
-                      "rgba(255,255,255,.035)",
-                    color:
-                      "#f2eee6",
-                    fontSize:
-                      ".95rem",
-                    fontWeight:
-                      400,
-                    letterSpacing:
-                      "normal",
-                    textTransform:
-                      "none",
-                  }}
-                  value={
-                    commissionedBy
-                  }
-                  onChange={(
-                    event,
-                  ) =>
-                    setCommissionedBy(
-                      event
-                        .target
-                        .value,
-                    )
-                  }
-                />
-              </label>
-            </div>
-
-            <PasteCreditsPanel
-              existingCredits={
-                creditsForPaste
-              }
-              onAdd={
-                addPastedCredits
-              }
-              afterAddHint="They will be published with the production."
-            />
-
-            {extraCredits.length >
-            0 ? (
-              <div
-                style={{
-                  marginTop:
-                    "1.5rem",
-                }}
-              >
-                <p
-                  className="backstage-field-label"
-                  style={{
-                    margin:
-                      "0 0 .75rem",
-                  }}
-                >
-                  Other credits
-                </p>
-
-                <div
-                  style={{
-                    display:
-                      "grid",
-                    gap:
-                      ".5rem",
-                  }}
-                >
-                  {extraCredits.map(
-                    (
-                      credit,
-                      index,
-                    ) => (
-                      <div
-                        key={index}
-                        style={{
-                          display:
-                            "grid",
-                          gridTemplateColumns:
-                            "minmax(9rem, .8fr) minmax(12rem, 1fr) auto",
-                          gap:
-                            ".75rem",
-                          alignItems:
-                            "center",
-                        }}
+                <div className={np.creditGrid}>
+                  {creditFields.map(
+                    ([label, value, setValue]) => (
+                      <label
+                        key={label}
+                        className={sw.field}
                       >
+                        {label}
                         <input
-                          className="backstage-input"
-                          aria-label="Role"
-                          value={
-                            credit.role
-                          }
+                          className={sw.input}
+                          value={value}
                           onChange={(
                             event,
                           ) =>
-                            setExtraCredits(
-                              (current) =>
-                                current.map(
-                                  (
-                                    item,
-                                    itemIndex,
-                                  ) =>
-                                    itemIndex ===
-                                    index
-                                      ? {
-                                          ...item,
-                                          role: event
-                                            .target
-                                            .value,
-                                        }
-                                      : item,
-                                ),
+                            setValue(
+                              event
+                                .target
+                                .value,
                             )
                           }
                         />
-
-                        <input
-                          className="backstage-input"
-                          aria-label="Name"
-                          value={
-                            credit.name
-                          }
-                          onChange={(
-                            event,
-                          ) =>
-                            setExtraCredits(
-                              (current) =>
-                                current.map(
-                                  (
-                                    item,
-                                    itemIndex,
-                                  ) =>
-                                    itemIndex ===
-                                    index
-                                      ? {
-                                          ...item,
-                                          name: event
-                                            .target
-                                            .value,
-                                        }
-                                      : item,
-                                ),
-                            )
-                          }
-                        />
-
-                        <button
-                          type="button"
-                          className="backstage-button"
-                          onClick={() =>
-                            setExtraCredits(
-                              (current) =>
-                                current.filter(
-                                  (
-                                    _item,
-                                    itemIndex,
-                                  ) =>
-                                    itemIndex !==
-                                    index,
-                                ),
-                            )
-                          }
-                        >
-                          Remove
-                        </button>
-                      </div>
+                      </label>
                     ),
                   )}
                 </div>
-              </div>
-            ) : null}
 
-            <label
-              style={{
-                display:
-                  "grid",
-                gap:
-                  ".5rem",
-                marginTop:
-                  "1.5rem",
-                color:
-                  "rgba(242,238,230,.68)",
-                fontSize:
-                  ".68rem",
-                fontWeight:
-                  700,
-                letterSpacing:
-                  ".08em",
-                textTransform:
-                  "uppercase",
-              }}
-            >
-              Description
-              <textarea
-                style={{
-                  width:
-                    "100%",
-                  boxSizing:
-                    "border-box",
-                  padding:
-                    ".9rem",
-                  border:
-                    "1px solid rgba(242,238,230,.24)",
-                  borderRadius:
-                    "2px",
-                  background:
-                    "rgba(255,255,255,.035)",
-                  color:
-                    "#f2eee6",
-                  fontSize:
-                    ".95rem",
-                  fontWeight:
-                    400,
-                  letterSpacing:
-                    "normal",
-                  lineHeight:
-                    1.6,
-                  textTransform:
-                    "none",
-                  resize:
-                    "vertical",
-                }}
-                rows={
-                  7
-                }
-                value={
-                  description
-                }
-                onChange={(
-                  event,
-                ) =>
-                  setDescription(
-                    event
-                      .target
-                      .value,
-                  )
-                }
-              />
-            </label>
+                <div className={np.pasteWrap}>
+                  <PasteCreditsPanel
+                    existingCredits={
+                      creditsForPaste
+                    }
+                    onAdd={
+                      addPastedCredits
+                    }
+                    afterAddHint="They will be published with the production."
+                  />
+                </div>
+
+                {extraCredits.length >
+                0 ? (
+                  <div>
+                    <p className={np.subLabel}>
+                      Other credits
+                    </p>
+
+                    <div className={np.extraList}>
+                      {extraCredits.map(
+                        (
+                          credit,
+                          index,
+                        ) => (
+                          <div
+                            key={index}
+                            className={np.extraRow}
+                          >
+                            <input
+                              className={sw.input}
+                              aria-label="Role"
+                              value={
+                                credit.role
+                              }
+                              onChange={(
+                                event,
+                              ) =>
+                                setExtraCredits(
+                                  (current) =>
+                                    current.map(
+                                      (
+                                        item,
+                                        itemIndex,
+                                      ) =>
+                                        itemIndex ===
+                                        index
+                                          ? {
+                                              ...item,
+                                              role: event
+                                                .target
+                                                .value,
+                                            }
+                                          : item,
+                                    ),
+                                )
+                              }
+                            />
+
+                            <input
+                              className={sw.input}
+                              aria-label="Name"
+                              value={
+                                credit.name
+                              }
+                              onChange={(
+                                event,
+                              ) =>
+                                setExtraCredits(
+                                  (current) =>
+                                    current.map(
+                                      (
+                                        item,
+                                        itemIndex,
+                                      ) =>
+                                        itemIndex ===
+                                        index
+                                          ? {
+                                              ...item,
+                                              name: event
+                                                .target
+                                                .value,
+                                            }
+                                          : item,
+                                    ),
+                                )
+                              }
+                            />
+
+                            <button
+                              type="button"
+                              className={`${ci.btn} ${ci.btnQuiet}`}
+                              onClick={() =>
+                                setExtraCredits(
+                                  (current) =>
+                                    current.filter(
+                                      (
+                                        _item,
+                                        itemIndex,
+                                      ) =>
+                                        itemIndex !==
+                                        index,
+                                    ),
+                                )
+                              }
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        ),
+                      )}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            </div>
           </section>
 
-          <section className="backstage-section">
-            <div className="backstage-section-heading">
-              <h2>
-                Images
-              </h2>
-              <p>
-                {includedImages.length} included
-              </p>
+          <section>
+            <div className={ci.sectionHead}>
+              <div>
+                <p className={ci.eyebrow}>
+                  Step 3
+                </p>
+                <h2 className={ci.sectionTitle}>
+                  Images
+                </h2>
+              </div>
+              <div className={np.chips}>
+                <span
+                  className={`${ci.chip} ${ci.chipReady}`}
+                >
+                  <span
+                    className={ci.chipDot}
+                    aria-hidden="true"
+                  />
+                  {includedImages.length} included
+                </span>
+                <span
+                  className={
+                    heroIncluded
+                      ? `${ci.chip} ${ci.chipExisting}`
+                      : `${ci.chip} ${ci.chipAttention}`
+                  }
+                >
+                  <span
+                    className={ci.chipDot}
+                    aria-hidden="true"
+                  />
+                  {heroIncluded
+                    ? "Hero chosen"
+                    : "Choose an included hero image."}
+                </span>
+              </div>
             </div>
 
-            <div
-              style={{
-                display:
-                  "grid",
-                gridTemplateColumns:
-                  "repeat(auto-fill,minmax(180px,1fr))",
-                gap:
-                  "1rem",
-              }}
-            >
+            <p className={np.hint}>
+              Untick any photograph you don&apos;t want to publish, and choose one as the hero.
+            </p>
+
+            <div className={np.imageGrid}>
               {images.map(
                 (
                   image,
-                ) => (
-                  <article
-                    key={
-                      image.id
-                    }
-                    style={{
-                      border:
-                        image.id ===
-                        heroId
-                          ? "2px solid #c7a369"
-                          : "1px solid rgba(242,238,230,.18)",
-                      padding:
-                        ".65rem",
-                    }}
-                  >
-                    <img
-                      src={
-                        image.previewUrl
-                      }
-                      alt=""
-                      style={{
-                        display:
-                          "block",
-                        width:
-                          "100%",
-                        aspectRatio:
-                          "4 / 3",
-                        objectFit:
-                          "contain",
-                        background:
-                          "#080808",
-                      }}
-                    />
+                ) => {
+                  const isHero =
+                    image.id ===
+                    heroId;
+                  const tileClass = [
+                    np.tile,
+                    isHero
+                      ? np.tileHero
+                      : "",
+                    image.included
+                      ? ""
+                      : np.tileExcluded,
+                  ]
+                    .filter(Boolean)
+                    .join(" ");
 
-                    <p
-                      style={{
-                        fontSize:
-                          ".72rem",
-                        overflowWrap:
-                          "anywhere",
-                      }}
-                    >
-                      {
-                        image
-                          .file
-                          .name
+                  return (
+                    <article
+                      key={
+                        image.id
                       }
-                    </p>
-
-                    <label
-                      style={{
-                        display:
-                          "block",
-                      }}
+                      className={tileClass}
                     >
-                      <input
-                        type="checkbox"
-                        checked={
-                          image.included
+                      <div className={np.frame}>
+                        <img
+                          src={
+                            image.previewUrl
+                          }
+                          alt=""
+                        />
+                        {isHero ? (
+                          <span className={np.heroBadge}>
+                            HERO
+                          </span>
+                        ) : null}
+                      </div>
+
+                      <p
+                        className={np.fileName}
+                        title={image.file.name}
+                      >
+                        {
+                          image
+                            .file
+                            .name
                         }
-                        onChange={() =>
-                          setImages(
-                            (
-                              current,
-                            ) =>
-                              current.map(
+                      </p>
+
+                      <div className={np.tileControls}>
+                        <label className={np.check}>
+                          <input
+                            type="checkbox"
+                            checked={
+                              image.included
+                            }
+                            onChange={() =>
+                              setImages(
                                 (
-                                  candidate,
+                                  current,
                                 ) =>
-                                  candidate.id ===
-                                  image.id
-                                    ? {
-                                        ...candidate,
-                                        included:
-                                          !candidate.included,
-                                      }
-                                    : candidate,
-                              ),
-                          )
-                        }
-                      />{" "}
-                      Include
-                    </label>
+                                  current.map(
+                                    (
+                                      candidate,
+                                    ) =>
+                                      candidate.id ===
+                                      image.id
+                                        ? {
+                                            ...candidate,
+                                            included:
+                                              !candidate.included,
+                                          }
+                                        : candidate,
+                                  ),
+                              )
+                            }
+                          />
+                          Include
+                        </label>
 
-                    <label
-                      style={{
-                        display:
-                          "block",
-                        marginTop:
-                          ".45rem",
-                      }}
-                    >
-                      <input
-                        type="radio"
-                        name="hero"
-                        checked={
-                          heroId ===
-                          image.id
-                        }
-                        onChange={() =>
-                          setHeroId(
-                            image.id,
-                          )
-                        }
-                      />{" "}
-                      Hero
-                    </label>
-                  </article>
-                ),
+                        <label className={np.check}>
+                          <input
+                            type="radio"
+                            name="hero"
+                            checked={
+                              heroId ===
+                              image.id
+                            }
+                            onChange={() =>
+                              setHeroId(
+                                image.id,
+                              )
+                            }
+                          />
+                          Hero
+                        </label>
+                      </div>
+                    </article>
+                  );
+                },
               )}
             </div>
           </section>
 
-          <section className="backstage-section">
+          <section>
             {publishSucceeded ? (
               <div
                 role="status"
-                style={{
-                  marginBottom:
-                    "1.5rem",
-                  padding:
-                    "1.25rem 1.4rem",
-                  border:
-                    "1px solid rgba(199,163,105,.55)",
-                  background:
-                    "rgba(199,163,105,.08)",
-                }}
+                className={np.success}
               >
-                <strong
-                  style={{
-                    display:
-                      "block",
-                    marginBottom:
-                      ".4rem",
-                    color:
-                      "#c7a369",
-                    fontSize:
-                      ".78rem",
-                    letterSpacing:
-                      ".1em",
-                    textTransform:
-                      "uppercase",
-                  }}
-                >
+                <strong className={np.successTitle}>
                   Production published successfully
                 </strong>
 
@@ -3274,12 +2558,7 @@ export default function ProductionUpload() {
                       href={
                         publishedUrl
                       }
-                      style={{
-                        color:
-                          "#c7a369",
-                        fontWeight:
-                          700,
-                      }}
+                      className={np.goldLink}
                     >
                       View production
                     </a>
@@ -3287,18 +2566,59 @@ export default function ProductionUpload() {
                 ) : null}
               </div>
             ) : null}
+          </section>
 
-            <div
-              style={{
-                display:
-                  "flex",
-                justifyContent:
-                  "flex-end",
-              }}
-            >
+          <div
+            className={ci.batchBar}
+            role="region"
+            aria-label="Upload and publish"
+          >
+            <div className={ci.batchText}>
+              <p className={ci.batchLabel}>
+                Step 4 · Upload &amp; publish
+              </p>
+              <p className={ci.batchStatus}>
+                {isPublishing ? (
+                  <span
+                    className={ci.spinner}
+                    aria-hidden="true"
+                  />
+                ) : null}
+                <span className={np.barStatus}>
+                  {isPublishing && progress
+                    ? progress
+                    : `${includedImages.length} image${
+                        includedImages.length === 1
+                          ? ""
+                          : "s"
+                      } included${
+                        hero
+                          ? ` · hero: ${hero.file.name}`
+                          : ""
+                      }`}
+                </span>
+              </p>
+              {error && !isPublishing ? (
+                <p
+                  className={`${ci.batchResult} ${ci.batchResultFailed}`}
+                >
+                  {error}
+                </p>
+              ) : publishSucceeded ? (
+                <p className={ci.batchResult}>
+                  Published successfully.
+                </p>
+              ) : null}
+            </div>
+
+            <div className={ci.batchButtons}>
               <button
                 type="button"
-                className="backstage-button"
+                className={
+                  isPublishing
+                    ? `${ci.btnLg} ${ci.btnBusy}`
+                    : `${ci.btnLg} ${ci.btnGold}`
+                }
                 disabled={
                   isPublishing
                 }
@@ -3311,7 +2631,7 @@ export default function ProductionUpload() {
                   : "Upload & Publish"}
               </button>
             </div>
-          </section>
+          </div>
         </>
       ) : null}
     </div>
