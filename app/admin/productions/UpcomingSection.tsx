@@ -53,7 +53,9 @@ function Chips({ draft }: { draft: UpcomingSummary }) {
   );
 }
 
-function Item({ draft }: { draft: UpcomingSummary }) {
+type Variant = "productions" | "upload";
+
+function Item({ draft, variant = "productions" }: { draft: UpcomingSummary; variant?: Variant }) {
   const when = [draft.month ? MONTHS_SHORT[Number(draft.month) - 1] : "", draft.year].filter(Boolean).join(" ");
   const meta = [draft.venue.trim(), draft.company.trim(), when].filter(Boolean).join(" · ");
   const edited = formatEdited(draft.updatedAt);
@@ -79,6 +81,18 @@ function Item({ draft }: { draft: UpcomingSummary }) {
         </span>
         <Chips draft={draft} />
       </Link>
+      {variant === "upload" && draft.status === "draft" ? (
+        <span className={styles.itemActions}>
+          {/* A full page load so Upload & publish reads ?upcoming= and fills the form. */}
+          <a
+            className={styles.itemPublish}
+            href={`/admin/new-production?upcoming=${encodeURIComponent(draft.id)}`}
+            data-testid="upcoming-publish"
+          >
+            Photos ready — add &amp; publish →
+          </a>
+        </span>
+      ) : null}
     </li>
   );
 }
@@ -86,9 +100,11 @@ function Item({ draft }: { draft: UpcomingSummary }) {
 export default function UpcomingSection({
   drafts,
   loadError = false,
+  variant = "productions",
 }: {
   drafts: UpcomingSummary[];
   loadError?: boolean;
+  variant?: Variant;
 }) {
   const [showPublished, setShowPublished] = useState(false);
   const open = drafts.filter((draft) => draft.status === "draft");
@@ -110,8 +126,9 @@ export default function UpcomingSection({
           <span aria-hidden="true">+</span> New upcoming production
         </Link>
         <p className={styles.sectionNote}>
-          Start a production before the shoot — paste in the credits and anything you’ve been sent. It stays hidden
-          from the archive until you add the photos and publish.
+          {variant === "upload"
+            ? "Photos ready for one of these? Press “add & publish” and its details and credits are filled in for you — then just choose the photo folder."
+            : "Start a production before the shoot — paste in the credits and anything you’ve been sent. It stays hidden from the archive until you add the photos and publish."}
         </p>
       </div>
 
@@ -124,12 +141,12 @@ export default function UpcomingSection({
       ) : (
         <ul className={styles.list}>
           {open.map((draft) => (
-            <Item key={draft.id} draft={draft} />
+            <Item key={draft.id} draft={draft} variant={variant} />
           ))}
         </ul>
       )}
 
-      {published.length ? (
+      {variant === "productions" && published.length ? (
         <>
           <button
             type="button"

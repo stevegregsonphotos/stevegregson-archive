@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import ProductionUpload from "./ProductionUpload";
+import UpcomingSection from "../productions/UpcomingSection";
+import { summariseUpcoming, type UpcomingSummary } from "../../../lib/upcoming-productions";
+import { listUpcomingDrafts } from "../../../lib/upcoming-productions-repository";
 import styles from "../curated-archive-import/curated-import.module.css";
 import np from "./new-production.module.css";
 
@@ -11,7 +14,18 @@ export const metadata: Metadata = {
   },
 };
 
-export default function NewProductionPage() {
+export const dynamic = "force-dynamic";
+
+export default async function NewProductionPage() {
+  // Upcoming drafts are private and optional: never let them break this page.
+  let upcoming: UpcomingSummary[] = [];
+  let upcomingError = false;
+  try {
+    upcoming = (await listUpcomingDrafts()).map(summariseUpcoming);
+  } catch (error) {
+    console.error("Upcoming productions could not be loaded:", error);
+    upcomingError = true;
+  }
 
   return (
     <main className={styles.page}>
@@ -43,6 +57,8 @@ export default function NewProductionPage() {
           </p>
         </aside>
       </header>
+
+      <UpcomingSection drafts={upcoming} loadError={upcomingError} variant="upload" />
 
       <ProductionUpload />
     </main>

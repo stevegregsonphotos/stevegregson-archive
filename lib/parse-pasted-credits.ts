@@ -252,6 +252,11 @@ const ROLE_ALIASES: Record<string, string> = {
   "starring": "Cast",
   "featuring": "Cast",
   "with": "Cast",
+  book: "Book",
+  lyrics: "Lyrics",
+  music: "Music",
+  "music & lyrics": "Music & Lyrics",
+  "book & lyrics": "Book & Lyrics",
 };
 
 /**
@@ -598,6 +603,25 @@ function parseLine(line: string, inCast: boolean): LineKind {
     if (roleScore(head) >= 2 && looksLikeName(tail)) {
       return { kind: "pairs", pairs: [{ role: head, name: tail }] };
     }
+  }
+
+  // "Lighting Designer Sherry Coenen": a job title at the start of the line
+  // with no dash or colon before the name. Take the strongest-looking role
+  // (longest wins a tie) that leaves a plain name after it.
+  if (!inCast) {
+    const words = tidy(line).split(" ");
+    let best: { role: string; name: string; score: number; length: number } | null = null;
+    for (let k = 1; k <= Math.min(6, words.length - 1); k += 1) {
+      const role = words.slice(0, k).join(" ");
+      const name = words.slice(k).join(" ");
+      const score = roleScore(role);
+      if (score < 2) continue;
+      if (roleScore(name) > 0 || !looksLikeName(name)) continue;
+      if (!best || score > best.score || (score === best.score && k > best.length)) {
+        best = { role, name, score, length: k };
+      }
+    }
+    if (best) return { kind: "pairs", pairs: [{ role: best.role, name: best.name }] };
   }
 
   return { kind: "plain", text: tidy(line) };
