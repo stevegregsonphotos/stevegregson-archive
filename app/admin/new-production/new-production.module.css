@@ -1,0 +1,199 @@
+/*
+ * Backstage -> Upload & publish (New production). Builds on the Curated
+ * import styles (header, step bar, drop zone, messages, chips, bottom bar),
+ * the Selected Work field styles and the production editor cards. This file
+ * only adds what the upload page needs on top.
+ */
+
+.webpLine {
+  margin: 8px 0 0;
+  color: var(--soft);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+}
+
+.description {
+  min-height: 168px;
+  font-size: 14px;
+}
+
+.creditGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr));
+  gap: 16px;
+}
+
+.pasteWrap {
+  border-top: 1px solid var(--line);
+  padding-top: 4px;
+}
+
+.subLabel {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.extraList {
+  display: grid;
+  gap: 8px;
+}
+
+.extraRow {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.hint {
+  margin: 16px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.imageGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 180px), 1fr));
+  gap: 20px 14px;
+  margin-top: 18px;
+}
+
+.tile {
+  min-width: 0;
+  margin: 0;
+}
+
+.frame {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  border: 2px solid var(--line);
+  background: #080808;
+}
+
+.frame img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.tileHero .frame {
+  border-color: var(--gold);
+}
+
+.tileExcluded .frame img {
+  opacity: 0.3;
+}
+
+.tileExcluded .fileName {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.heroBadge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  padding: 3px 7px;
+  background: var(--gold);
+  color: var(--ground);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.fileName {
+  overflow: hidden;
+  margin: 8px 0 0;
+  color: var(--soft);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tileControls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin-top: 6px;
+}
+
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--soft);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.check input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--gold);
+}
+
+.success {
+  margin-top: 32px;
+  border: 1px solid rgba(199, 163, 105, 0.55);
+  padding: 18px 20px;
+  background: rgba(199, 163, 105, 0.08);
+  color: var(--soft);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.successTitle {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--gold);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.goldLink {
+  color: var(--gold);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.barStatus {
+  overflow: hidden;
+  min-width: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .extraRow {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .extraRow > button {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+
+  .imageGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
