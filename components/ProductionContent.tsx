@@ -154,10 +154,11 @@ export default function ProductionContent({
           <picture className="curated-production-hero-picture">
             <source
               media="(max-width: 760px)"
-              srcSet={getProductionCardImageUrl(
+              srcSet={`${getProductionCardImageUrl(
                 production.slug,
                 production.hero,
-              )}
+              )} 1000w, ${heroImageUrl} 2560w`}
+              sizes="100vw"
             />
             <img
               src={heroImageUrl}

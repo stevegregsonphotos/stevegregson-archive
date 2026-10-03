@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useState } from "react";
 
 import {
@@ -99,15 +98,17 @@ export function ProductionGallery({
                 }
                 aria-label={`Open photograph ${index + 2} from ${title} fullscreen`}
               >
-                <Image
-                  src={getProductionCardImageUrl(
-                    productionSlug,
-                    image.src,
-                  )}
+                {/* srcSet: sharp full-size copy on large/retina screens, light card copy elsewhere. */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={getProductionImageUrl(productionSlug, image.src)}
+                  srcSet={`${getProductionCardImageUrl(productionSlug, image.src)} 1000w, ${getProductionImageUrl(productionSlug, image.src)} 2560w`}
+                  sizes={presetSizes(layout, index)}
                   alt={image.alt}
                   width={2000}
                   height={1333}
-                  sizes={presetSizes(layout, index)}
+                  loading="lazy"
+                  decoding="async"
                 />
               </button>
             </figure>
@@ -142,15 +143,17 @@ export function ProductionGallery({
                 }
                 aria-label={`Open photograph ${index + 2} from ${title} fullscreen`}
               >
-                <Image
-                  src={getProductionCardImageUrl(
-                    productionSlug,
-                    image.src,
-                  )}
+                {/* srcSet: sharp full-size copy on large/retina screens, light card copy elsewhere. */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={getProductionImageUrl(productionSlug, image.src)}
+                  srcSet={`${getProductionCardImageUrl(productionSlug, image.src)} 1000w, ${getProductionImageUrl(productionSlug, image.src)} 2560w`}
+                  sizes="(max-width: 768px) calc(100vw - 2.8rem), 90vw"
                   alt={image.alt}
                   width={2000}
                   height={1333}
-                  sizes="(max-width: 768px) calc(100vw - 2.8rem), 90vw"
+                  loading="lazy"
+                  decoding="async"
                 />
               </button>
           </figure>
