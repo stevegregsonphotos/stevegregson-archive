@@ -366,6 +366,14 @@
   color: var(--danger);
 }
 
+/* Credits without the Website column (Productions › Upcoming). */
+@media (min-width: 601px) {
+  .creditsHead.creditsNoWebsite,
+  .creditRow.creditsNoWebsite {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) 32px;
+  }
+}
+
 @media (max-width: 600px) {
   .creditsHead {
     display: none;

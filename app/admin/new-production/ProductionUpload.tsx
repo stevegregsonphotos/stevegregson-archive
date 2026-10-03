@@ -1,12 +1,20 @@
 "use client";
 
 import {
+  useEffect,
   useMemo,
   useState,
 } from "react";
 
 import PasteCreditsPanel from "../../../components/admin/editor/PasteCreditsPanel";
-import type { PastedCredit } from "../../../lib/parse-pasted-credits";
+import {
+  normalisePastedRole,
+  type PastedCredit,
+} from "../../../lib/parse-pasted-credits";
+import type {
+  UpcomingDraft,
+  UpcomingSummary,
+} from "../../../lib/upcoming-productions";
 
 import ci from "../curated-archive-import/curated-import.module.css";
 import pe from "../edit-production/[slug]/production-edit.module.css";
@@ -982,6 +990,24 @@ export default function ProductionUpload() {
   ] =
     useState(false);
 
+  /* Productions › Upcoming: start from a private draft (?upcoming=<id>). */
+  const [
+    upcomingDraft,
+    setUpcomingDraft,
+  ] = useState<UpcomingDraft | null>(null);
+  const [
+    upcomingOptions,
+    setUpcomingOptions,
+  ] = useState<UpcomingSummary[]>([]);
+  const [
+    upcomingMessage,
+    setUpcomingMessage,
+  ] = useState("");
+  const [
+    upcomingAfterPublish,
+    setUpcomingAfterPublish,
+  ] = useState("");
+
   const pasteCreditFields: Record<
     string,
     [string, (update: (current: string) => string) => void]
@@ -1080,6 +1106,125 @@ export default function ProductionUpload() {
     }
   }
 
+  /** Fills the form from an upcoming draft, the same way details.txt does. */
+  function applyUpcomingDraft(
+    draft: UpcomingDraft,
+  ) {
+    const fieldNames: Record<string, string[]> = {};
+    const fieldKeys = Object.keys(pasteCreditFields);
+    const extras: PastedCredit[] = [];
+
+    for (const credit of draft.credits) {
+      const role = credit.role.trim();
+      const name = credit.name.trim();
+      if (!role || !name) continue;
+      const normalised = normalisePastedRole(role);
+      const key =
+        fieldKeys.find((fieldKey) => fieldKey === role) ??
+        fieldKeys.find((fieldKey) => fieldKey.toLowerCase() === role.toLowerCase()) ??
+        fieldKeys.find((fieldKey) => fieldKey.toLowerCase() === normalised.toLowerCase());
+      if (key) {
+        fieldNames[key] = [...(fieldNames[key] ?? []), name];
+      } else {
+        extras.push({ role, name });
+      }
+    }
+
+    for (const key of fieldKeys) {
+      const [, setField] = pasteCreditFields[key];
+      setField(() => (fieldNames[key] ?? []).join(", "));
+    }
+    setExtraCredits(extras);
+    setTitle(draft.title);
+    setVenue(draft.venue);
+    setMonth(draft.month);
+    setYear(draft.year);
+    setDescription(draft.description);
+    setUpcomingDraft(draft);
+    setUpcomingMessage(
+      `Details and credits filled in from your upcoming production “${draft.title.trim() || "Untitled"}”. Now choose the photo folder.`,
+    );
+  }
+
+  async function loadUpcomingDraft(
+    id: string,
+  ) {
+    try {
+      const response = await fetch(
+        `/api/admin/upcoming-productions?id=${encodeURIComponent(id)}`,
+        { cache: "no-store" },
+      );
+      const result = (await response.json()) as {
+        ok?: boolean;
+        message?: string;
+        draft?: UpcomingDraft;
+      };
+      if (!response.ok || !result.ok || !result.draft) {
+        throw new Error(result.message || "That upcoming production could not be loaded.");
+      }
+      applyUpcomingDraft(result.draft);
+    } catch (loadError) {
+      setUpcomingMessage(
+        loadError instanceof Error
+          ? loadError.message
+          : "That upcoming production could not be loaded.",
+      );
+    }
+  }
+
+  function clearUpcomingDraft() {
+    setUpcomingDraft(null);
+    setUpcomingMessage(
+      images.length
+        ? "No longer starting from an upcoming production. Choose the folder again to read its details file, or fill in the details below."
+        : "",
+    );
+  }
+
+  useEffect(() => {
+    let cancelled = false;
+    const id = new URLSearchParams(window.location.search).get("upcoming");
+
+    async function loadOptions() {
+      try {
+        const response = await fetch("/api/admin/upcoming-productions", { cache: "no-store" });
+        const result = (await response.json()) as { ok?: boolean; drafts?: UpcomingSummary[] };
+        if (!cancelled && response.ok && result.ok && result.drafts) {
+          setUpcomingOptions(result.drafts.filter((draft) => draft.status === "draft"));
+        }
+      } catch {
+        // The "Start from an upcoming production" list is optional.
+      }
+    }
+
+    async function loadStartingDraft(draftId: string) {
+      try {
+        const response = await fetch(
+          `/api/admin/upcoming-productions?id=${encodeURIComponent(draftId)}`,
+          { cache: "no-store" },
+        );
+        const result = (await response.json()) as { ok?: boolean; message?: string; draft?: UpcomingDraft };
+        if (cancelled) return;
+        if (!response.ok || !result.ok || !result.draft) {
+          setUpcomingMessage(result.message || "That upcoming production could not be loaded.");
+          return;
+        }
+        applyUpcomingDraft(result.draft);
+      } catch {
+        if (!cancelled) setUpcomingMessage("That upcoming production could not be loaded.");
+      }
+    }
+
+    void loadOptions();
+    if (id) void loadStartingDraft(id);
+
+    return () => {
+      cancelled = true;
+    };
+    // Runs once when the page opens.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const includedImages =
     useMemo(
       () =>
@@ -1160,7 +1305,11 @@ export default function ProductionUpload() {
     setPublishedUrl("");
     setPublishSucceeded(false);
     setDetailsFileName("");
-    setExtraCredits([]);
+
+    // Starting from an upcoming draft: keep its details and credits.
+    if (!upcomingDraft) {
+      setExtraCredits([]);
+    }
 
     const detailsFile =
       selectedFiles.find(
@@ -1191,7 +1340,15 @@ export default function ProductionUpload() {
       ) ??
       null;
 
-    if (detailsFile) {
+    if (detailsFile && upcomingDraft) {
+      setProgress(
+        `Found ${next.length.toLocaleString()} photograph${
+          next.length === 1
+            ? ""
+            : "s"
+        }. Kept the details from your upcoming production — ${detailsFile.name} in the folder was not used.`,
+      );
+    } else if (detailsFile) {
       try {
         const rawText =
           await detailsFile.text();
@@ -1789,6 +1946,34 @@ export default function ProductionUpload() {
         true,
       );
 
+      // Only now, after a successful publish, mark the upcoming draft done.
+      if (upcomingDraft) {
+        try {
+          const markResponse = await fetch(
+            "/api/admin/upcoming-productions",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                action: "published",
+                id: upcomingDraft.id,
+                url: finalized.production?.url ?? "",
+              }),
+            },
+          );
+          const marked = (await markResponse.json()) as { ok?: boolean };
+          setUpcomingAfterPublish(
+            markResponse.ok && marked.ok
+              ? "It has been moved out of your Upcoming list."
+              : "The production is published, but its Upcoming draft couldn’t be updated — you can delete the draft from Productions › Upcoming.",
+          );
+        } catch {
+          setUpcomingAfterPublish(
+            "The production is published, but its Upcoming draft couldn’t be updated — you can delete the draft from Productions › Upcoming.",
+          );
+        }
+      }
+
       setPublishedUrl(
         finalized.production
           ?.url ?? "",
@@ -1948,6 +2133,51 @@ export default function ProductionUpload() {
           </p>
         </div>
 
+        {upcomingOptions.length > 0 || upcomingDraft || upcomingMessage ? (
+          <div className={np.upcomingBar} data-testid="upcoming-start">
+            {upcomingOptions.length > 0 || upcomingDraft ? (
+              <label className={np.upcomingLabel}>
+                Start from an upcoming production
+                <select
+                  className={sw.select}
+                  value={upcomingDraft?.id ?? ""}
+                  disabled={isPublishing || publishSucceeded}
+                  onChange={(event) => {
+                    const id = event.target.value;
+                    if (id) {
+                      void loadUpcomingDraft(id);
+                    } else {
+                      clearUpcomingDraft();
+                    }
+                  }}
+                  data-testid="upcoming-select"
+                >
+                  <option value="">None — use the folder’s details file</option>
+                  {upcomingDraft &&
+                  !upcomingOptions.some((option) => option.id === upcomingDraft.id) ? (
+                    <option value={upcomingDraft.id}>
+                      {upcomingDraft.title.trim() || "Untitled"}
+                    </option>
+                  ) : null}
+                  {upcomingOptions.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {[option.title.trim() || "Untitled", option.venue.trim()].filter(Boolean).join(" · ")}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+            {upcomingMessage ? (
+              <p className={np.upcomingNote} role="status" data-testid="upcoming-message">
+                {upcomingMessage}
+                {upcomingDraft
+                  ? " If the folder has a details.txt, the details from your upcoming production are kept instead."
+                  : ""}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
         <div
           className={
             isPublishing
@@ -2074,7 +2304,7 @@ export default function ProductionUpload() {
               </div>
               <span
                 className={
-                  detailsFileName
+                  detailsFileName || upcomingDraft
                     ? `${ci.chip} ${ci.chipReady}`
                     : `${ci.chip} ${ci.chipExisting}`
                 }
@@ -2083,9 +2313,11 @@ export default function ProductionUpload() {
                   className={ci.chipDot}
                   aria-hidden="true"
                 />
-                {detailsFileName
-                  ? `Read from ${detailsFileName}`
-                  : "Required before publishing"}
+                {upcomingDraft
+                  ? "Filled in from Upcoming"
+                  : detailsFileName
+                    ? `Read from ${detailsFileName}`
+                    : "Required before publishing"}
               </span>
             </div>
 
@@ -2549,6 +2781,7 @@ export default function ProductionUpload() {
 
                 <span>
                   {title.trim()} is now live in the archive.
+                  {upcomingAfterPublish ? ` ${upcomingAfterPublish}` : ""}
                 </span>
 
                 {publishedUrl ? (
