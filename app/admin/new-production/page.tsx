@@ -26,8 +26,9 @@ export default function NewProductionPage() {
           </h1>
 
           <p className={styles.lead}>
-            Upload a ZIP containing production photographs and an accompanying
-            details file. This preview does not change the live archive.
+            Choose a production folder of photographs with its details file,
+            check the details, pick the hero and publish the production to the
+            archive.
           </p>
         </div>
 
