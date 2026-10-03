@@ -12,6 +12,8 @@ import {
   type ImageEditorSettings,
 } from "@/lib/client-image-editor";
 
+import styles from "./curated-import.module.css";
+
 type ExistingProduction = {
   slug: string;
   title: string;
@@ -2747,151 +2749,236 @@ export default function CuratedArchiveImportClient({
     );
   }
 
+  const hasStagedSelections =
+    Boolean(data && data.summary.total > 0);
+
+  const importRunning =
+    batchImporting ||
+    importingProduction !== null;
+
+  type StepState =
+    | "done"
+    | "current"
+    | "pending";
+
+  const chooseStepState: StepState =
+    uploading && !loading
+      ? "current"
+      : uploading || hasStagedSelections
+        ? "done"
+        : loading
+          ? "pending"
+          : "current";
+
+  const readinessStepState: StepState =
+    loading
+      ? "current"
+      : hasStagedSelections
+        ? "done"
+        : "pending";
+
+  const reviewStepState: StepState =
+    !hasStagedSelections || loading
+      ? "pending"
+      : importRunning
+        ? "done"
+        : "current";
+
+  const importStepState: StepState =
+    !hasStagedSelections || loading
+      ? "pending"
+      : importRunning
+        ? "current"
+        : batchResult &&
+            batchResult.failed.length === 0
+          ? "done"
+          : "pending";
+
+  const steps: Array<[string, string, StepState]> = [
+    ["01", "Choose curated folder", chooseStepState],
+    ["02", "Readiness check", readinessStepState],
+    ["03", "Review productions", reviewStepState],
+    ["04", "Import to the archive", importStepState],
+  ];
+
+  const filterDotClass: Record<StatusFilter, string> = {
+    all: "",
+    ready: styles.dotOk,
+    existing: styles.dotGold,
+    excluded: styles.dotOff,
+    attention: styles.dotBad,
+    locked: "",
+  };
+
+  const chipClass: Record<
+    PreflightProduction["status"],
+    string
+  > = {
+    ready: styles.chipReady,
+    existing: styles.chipExisting,
+    excluded: styles.chipExcluded,
+    attention: styles.chipAttention,
+  };
+
   return (
     <section
-      style={{
-        borderTop:
-          "1px solid rgba(242, 238, 230, 0.14)",
-        paddingTop: "2rem",
-      }}
+      className={
+        data
+          ? `${styles.screen} ${styles.screenWithBar}`
+          : styles.screen
+      }
     >
-      <p
-        style={{
-          margin: 0,
-          color: "#c7a369",
-          fontSize: "0.56rem",
-          fontWeight: 700,
-          letterSpacing: "0.18em",
-          textTransform: "uppercase",
-        }}
+      <ol
+        className={styles.steps}
+        aria-label="Curated import steps"
       >
-        Curated archive preflight
-      </p>
+        {steps.map(([number, label, state]) => (
+          <li
+            key={number}
+            className={
+              state === "done"
+                ? styles.stepDone
+                : state === "current"
+                  ? styles.stepCurrent
+                  : undefined
+            }
+            aria-current={
+              state === "current"
+                ? "step"
+                : undefined
+            }
+          >
+            <span className={styles.stepNumber}>
+              {number}
+            </span>
+            <span>{label}</span>
+            <span className={styles.stepState}>
+              {state === "done"
+                ? "Done"
+                : state === "current"
+                  ? "Now"
+                  : ""}
+            </span>
+          </li>
+        ))}
+      </ol>
 
-      <h2
-        style={{
-          margin: "0.8rem 0 0",
-          fontFamily:
-            '"Iowan Old Style", "Palatino Linotype", Georgia, serif',
-          fontSize:
-            "clamp(2rem, 4vw, 3.5rem)",
-          fontWeight: 400,
-          letterSpacing: "-0.04em",
-        }}
-      >
-        Archive readiness
-      </h2>
+      <div className={styles.sectionHead}>
+        <div>
+          <p className={styles.eyebrow}>
+            Curated archive preflight
+          </p>
 
-      <p
-        style={{
-          maxWidth: "46rem",
-          margin: "1rem 0 0",
-          color:
-            "rgba(242, 238, 230, 0.62)",
-          lineHeight: 1.7,
-        }}
-      >
-        This is a read-only scan of the
-        completed curated Archive output.
-        No OpenAI, Dropbox or Google Drive requests are
-        made by this preflight.
-      </p>
+          <h2 className={styles.sectionTitle}>
+            Archive readiness
+          </h2>
+        </div>
+
+        <p className={styles.sectionSub}>
+          This is a read-only scan of the
+          completed curated Archive output.
+          No OpenAI, Dropbox or Google Drive requests are
+          made by this preflight.
+        </p>
+      </div>
 
       <div
-        style={{
-          marginTop: "2rem",
-          padding: "1.25rem 1.35rem",
-          border:
-            "1px solid rgba(199, 163, 105, 0.28)",
-          background:
-            "rgba(199, 163, 105, 0.045)",
-        }}
+        className={
+          uploading
+            ? `${styles.dropzone} ${styles.dropzoneBusy}`
+            : styles.dropzone
+        }
       >
-        <p
-          style={{
-            margin: 0,
-            color: "#c7a369",
-            fontSize: "0.58rem",
-            fontWeight: 700,
-            letterSpacing: "0.14em",
-            textTransform: "uppercase",
-          }}
-        >
-          Choose curated folder
-        </p>
-        <p
-          style={{
-            margin: "0.55rem 0 1rem",
-            color:
-              "rgba(242, 238, 230, 0.62)",
-            fontSize: "0.75rem",
-            lineHeight: 1.55,
-          }}
-        >
-          Choose the main completed curator output folder containing all
-          production folders, or choose one individual production folder.
-          Backstage will automatically find each final-selection.json and its
-          selected-web-staging images, and ignore all other curator files.
-        </p>
         <input
           type="file"
           // @ts-expect-error - supported by Chromium/WebKit browsers
           webkitdirectory=""
           multiple
           disabled={uploading}
+          aria-label="Choose curated folder"
           onChange={(event) =>
             void uploadCuratedFolder(
               event.currentTarget.files,
             )
           }
-          style={{
-            display: "block",
-            width: "100%",
-            border:
-              "1px solid rgba(242, 238, 230, 0.25)",
-            padding: "1rem",
-            background:
-              "rgba(255, 255, 255, 0.03)",
-            color: "inherit",
-            opacity: uploading ? 0.55 : 1,
-          }}
+          className={styles.dropInput}
         />
-        {uploading ? (
-          <p
-            style={{
-              margin: "0.75rem 0 0",
-              color:
-                "rgba(242, 238, 230, 0.55)",
-              fontSize: "0.7rem",
-            }}
+
+        <span
+          className={styles.dropIcon}
+          aria-hidden="true"
+        >
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
           >
-            {uploadProgressText ||
-              "Preparing and staging selected folder…"}
+            <path d="M3 6.5h6l2 2h10v10H3z" />
+          </svg>
+        </span>
+
+        <div className={styles.dropText}>
+          <p className={styles.dropTitle}>
+            Choose curated folder
           </p>
-        ) : null}
+          <p className={styles.dropSub}>
+            Choose the main completed curator output folder containing all
+            production folders, or choose one individual production folder.
+            Backstage will automatically find each final-selection.json and its
+            selected-web-staging images, and ignore all other curator files.
+          </p>
+        </div>
+
+        <div className={styles.dropPick}>
+          {hasStagedSelections && data ? (
+            <span className={styles.dropStaged}>
+              <b>Staged</b>
+              {data.summary.total.toLocaleString()} final
+              selection
+              {data.summary.total === 1 ? "" : "s"}
+            </span>
+          ) : null}
+
+          <span
+            className={
+              hasStagedSelections
+                ? styles.btnLg
+                : `${styles.btnLg} ${styles.btnGold}`
+            }
+            aria-hidden="true"
+          >
+            Choose folder…
+          </span>
+        </div>
       </div>
 
+      {uploading ? (
+        <p className={styles.msg}>
+          <span
+            className={styles.spinner}
+            aria-hidden="true"
+          />
+          {uploadProgressText ||
+            "Preparing and staging selected folder…"}
+        </p>
+      ) : null}
+
       {loading ? (
-        <p
-          style={{
-            margin: "2rem 0 0",
-            color:
-              "rgba(242, 238, 230, 0.55)",
-          }}
-        >
+        <p className={styles.msg}>
+          <span
+            className={styles.spinner}
+            aria-hidden="true"
+          />
           Scanning curated Archive…
         </p>
       ) : null}
 
       {error ? (
         <div
-          style={{
-            marginTop: "2rem",
-            padding: "1rem 1.25rem",
-            border:
-              "1px solid rgba(220, 100, 100, 0.35)",
-            color: "#f0b2aa",
-          }}
+          className={`${styles.msg} ${styles.msgError}`}
         >
           {error}
         </div>
@@ -2899,15 +2986,7 @@ export default function CuratedArchiveImportClient({
 
       {data ? (
         <>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns:
-                "repeat(auto-fit, minmax(9rem, 1fr))",
-              gap: "0.8rem",
-              marginTop: "2.25rem",
-            }}
-          >
+          <div className={styles.filters}>
             {(
               [
                 [
@@ -2954,109 +3033,355 @@ export default function CuratedArchiveImportClient({
                       setStatusFilter(filter)
                     }
                     aria-pressed={active}
-                    style={{
-                      minHeight: "7rem",
-                      padding: "1rem 1.1rem",
-                      border: active
-                        ? "1px solid rgba(199, 163, 105, 0.72)"
-                        : "1px solid rgba(242, 238, 230, 0.12)",
-                      background: active
-                        ? "rgba(199, 163, 105, 0.09)"
-                        : "rgba(242, 238, 230, 0.025)",
-                      color: "inherit",
-                      textAlign: "left",
-                      cursor: "pointer",
-                      font: "inherit",
-                    }}
+                    className={styles.filter}
                   >
-                <p
-                  style={{
-                    margin: 0,
-                    color: "#c7a369",
-                    fontSize: "0.52rem",
-                    fontWeight: 700,
-                    letterSpacing:
-                      "0.15em",
-                    textTransform:
-                      "uppercase",
-                  }}
-                >
-                  {label}
-                </p>
+                    <span className={styles.filterLabel}>
+                      {filterDotClass[filter] ? (
+                        <span
+                          className={`${styles.dot} ${filterDotClass[filter]}`}
+                          aria-hidden="true"
+                        />
+                      ) : null}
+                      {label}
+                    </span>
 
-                <p
-                  style={{
-                    margin:
-                      "0.7rem 0 0",
-                    fontFamily:
-                      '"Iowan Old Style", "Palatino Linotype", Georgia, serif',
-                    fontSize: "2.25rem",
-                    lineHeight: 1,
-                  }}
-                >
-                  {value}
-                </p>
+                    <span className={styles.filterValue}>
+                      {value}
+                    </span>
                   </button>
                 );
               },
             )}
           </div>
 
-          <p
-            style={{
-              margin: "1rem 0 0",
-              color:
-                "rgba(242, 238, 230, 0.42)",
-              fontSize: "0.7rem",
-            }}
-          >
-            Existing website productions:
-            {" "}
-            {existingProductions.length}
-          </p>
+          <div className={styles.metaLine}>
+            <span>
+              Showing {rows.length} of{" "}
+              {data.summary.total} final selection
+              {data.summary.total === 1 ? "" : "s"}
+            </span>
+
+            <span>
+              Existing website productions:
+              {" "}
+              <b>{existingProductions.length}</b>
+            </span>
+          </div>
+
+          {rows.length > 0 ? (
+            <div className={styles.table}>
+              <div
+                className={styles.thead}
+                aria-hidden="true"
+              >
+                <span>Pick</span>
+                <span>Production</span>
+                <span>Status</span>
+                <span>Access</span>
+                <span className={styles.theadActions}>
+                  Actions
+                </span>
+              </div>
+
+              {rows.map(
+                (production) => {
+                  const isReady =
+                    production.status === "ready";
+                  const isSelected =
+                    isReady &&
+                    selectedReadyFolders.includes(
+                      production.folder,
+                    );
+                  const isImporting =
+                    importingProduction ===
+                    production.folder;
+                  const isChangingAccess =
+                    changingAccess ===
+                    production.production;
+
+                  return (
+                    <article
+                      key={production.folder}
+                      className={[
+                        styles.row,
+                        isSelected
+                          ? styles.rowSelected
+                          : "",
+                        production.status ===
+                        "excluded"
+                          ? styles.rowExcluded
+                          : "",
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
+                    >
+                      <div className={styles.cellSelect}>
+                        {isReady ? (
+                          <label className={styles.check}>
+                            <input
+                              type="checkbox"
+                              checked={
+                                selectedReadyFolders.includes(
+                                  production.folder,
+                                )
+                              }
+                              disabled={batchImporting}
+                              onChange={() =>
+                                toggleReadySelection(
+                                  production.folder,
+                                )
+                              }
+                            />
+                            Select
+                          </label>
+                        ) : null}
+                      </div>
+
+                      <div className={styles.cellProduction}>
+                        <p className={styles.prodKicker}>
+                          {production.venue}
+                          {production.venue &&
+                          production.year
+                            ? " · "
+                            : ""}
+                          {production.month
+                            ? `${
+                                MONTHS[
+                                  production
+                                    .month
+                                ]
+                              } `
+                            : ""}
+                          {production.year ??
+                            ""}
+                        </p>
+
+                        <h3 className={styles.prodTitle}>
+                          {production.title ||
+                            production.production}
+                        </h3>
+
+                        <p className={styles.prodMeta}>
+                          {
+                            production.selectedCount
+                          }{" "}
+                          selected image
+                          {production.selectedCount ===
+                          1
+                            ? ""
+                            : "s"}
+                          {production.heroIndex
+                            ? ` · Hero #${String(
+                                production.heroIndex,
+                              ).padStart(
+                                4,
+                                "0",
+                              )}`
+                            : ""}
+                        </p>
+
+                        {(production.folders?.length ?? 1) > 1 ? (
+                          <p className={styles.prodDup}>
+                            Duplicate curator entries collapsed: {production.folders?.length} source folders
+                          </p>
+                        ) : null}
+
+                        {production.existingSlug ? (
+                          <p className={styles.prodSlug}>
+                            /
+                            {
+                              production.existingSlug
+                            }
+                          </p>
+                        ) : null}
+
+                        {production.issues
+                          .length > 0 ? (
+                          <div className={styles.issues}>
+                            {production.issues.map(
+                              (issue) => (
+                                <p key={issue}>
+                                  {issue}
+                                </p>
+                              ),
+                            )}
+                          </div>
+                        ) : null}
+                      </div>
+
+                      <div className={styles.cellStatus}>
+                        <span
+                          className={`${styles.chip} ${chipClass[production.status]}`}
+                        >
+                          <span
+                            className={styles.chipDot}
+                            aria-hidden="true"
+                          />
+                          {statusLabel(
+                            production.status,
+                          )}
+                        </span>
+                      </div>
+
+                      <div className={styles.cellAccess}>
+                        <p
+                          className={
+                            production.locked
+                              ? `${styles.accessState} ${styles.accessLocked}`
+                              : styles.accessState
+                          }
+                        >
+                          <span
+                            className={styles.dot}
+                            aria-hidden="true"
+                          />
+                          {production.locked
+                            ? "Locked"
+                            : "Public"}
+                          <small>
+                            {" · "}
+                            {production.accessSource ===
+                            "manual"
+                              ? "Manual override"
+                              : "Automatic"}
+                          </small>
+                        </p>
+
+                        <div className={styles.accessButtons}>
+                          <button
+                            type="button"
+                            className={styles.btnSmall}
+                            disabled={isChangingAccess}
+                            onClick={() =>
+                              void changeAccess(
+                                production,
+                                production.locked
+                                  ? "public"
+                                  : "password",
+                              )
+                            }
+                            style={{
+                              cursor: isChangingAccess
+                                ? "wait"
+                                : "pointer",
+                            }}
+                          >
+                            {isChangingAccess
+                              ? "Changing…"
+                              : production.locked
+                                ? "Unlock"
+                                : "Lock"}
+                          </button>
+
+                          {production.accessSource ===
+                          "manual" ? (
+                            <button
+                              type="button"
+                              className={`${styles.btnSmall} ${styles.btnQuiet}`}
+                              disabled={isChangingAccess}
+                              onClick={() =>
+                                void changeAccess(
+                                  production,
+                                  "automatic",
+                                )
+                              }
+                              style={{
+                                cursor: isChangingAccess
+                                  ? "wait"
+                                  : "pointer",
+                              }}
+                            >
+                              Reset to automatic
+                            </button>
+                          ) : null}
+                        </div>
+                      </div>
+
+                      <div className={styles.cellActions}>
+                        {isReady ? (
+                          <button
+                            type="button"
+                            className={
+                              isImporting
+                                ? `${styles.btn} ${styles.btnBusy}`
+                                : `${styles.btn} ${styles.btnGold}`
+                            }
+                            disabled={isImporting}
+                            onClick={() =>
+                              void importProduction(
+                                production,
+                              )
+                            }
+                          >
+                            {isImporting
+                              ? importProgressText ||
+                                "Importing…"
+                              : "Import"}
+                          </button>
+                        ) : null}
+
+                        <a
+                          className={styles.btn}
+                          href={`/admin/curated-archive-import/edit/${encodeURIComponent(
+                            production.folder,
+                          )}`}
+                        >
+                          Edit
+                        </a>
+
+                        <button
+                          type="button"
+                          className={styles.btn}
+                          onClick={() =>
+                            void changeExclusion(
+                              production,
+                              production.status !==
+                                "excluded",
+                            )
+                          }
+                        >
+                          {production.status ===
+                          "excluded"
+                            ? "Include"
+                            : "Exclude"}
+                        </button>
+
+                        <button
+                          type="button"
+                          className={`${styles.btn} ${styles.btnDanger}`}
+                          onClick={() =>
+                            void deleteStagedProduction(
+                              production,
+                            )
+                          }
+                        >
+                          Delete from upload
+                        </button>
+                      </div>
+                    </article>
+                  );
+                },
+              )}
+            </div>
+          ) : null}
 
           <div
-            style={{
-              marginTop: "1.5rem",
-              padding: "1.25rem 1.35rem",
-              border:
-                "1px solid rgba(199, 163, 105, 0.28)",
-              background:
-                "rgba(199, 163, 105, 0.045)",
-              display: "flex",
-              justifyContent:
-                "space-between",
-              alignItems: "center",
-              gap: "1.5rem",
-              flexWrap: "wrap",
-            }}
+            className={styles.batchBar}
+            role="region"
+            aria-label="Batch curated import"
           >
-            <div>
-              <p
-                style={{
-                  margin: 0,
-                  color: "#c7a369",
-                  fontSize: "0.58rem",
-                  fontWeight: 700,
-                  letterSpacing:
-                    "0.14em",
-                  textTransform:
-                    "uppercase",
-                }}
-              >
+            <div className={styles.batchText}>
+              <p className={styles.batchLabel}>
                 Batch curated import
               </p>
 
-              <p
-                style={{
-                  margin:
-                    "0.5rem 0 0",
-                  color:
-                    "rgba(242, 238, 230, 0.62)",
-                  fontSize: "0.75rem",
-                  lineHeight: 1.5,
-                }}
-              >
+              <p className={styles.batchStatus}>
+                {batchImporting ? (
+                  <span
+                    className={styles.spinner}
+                    aria-hidden="true"
+                  />
+                ) : null}
                 {batchProgress
                   ? `Importing ${batchProgress.current} of ${batchProgress.total} — ${batchProgress.title}`
                   : `${data.summary.ready} Ready production${data.summary.ready === 1 ? "" : "s"} available to import.`}
@@ -3064,18 +3389,11 @@ export default function CuratedArchiveImportClient({
 
               {batchResult ? (
                 <p
-                  style={{
-                    margin:
-                      "0.45rem 0 0",
-                    color:
-                      batchResult.failed
-                        .length > 0
-                        ? "#f0b2aa"
-                        : "rgba(242, 238, 230, 0.72)",
-                    fontSize:
-                      "0.68rem",
-                    lineHeight: 1.5,
-                  }}
+                  className={
+                    batchResult.failed.length > 0
+                      ? `${styles.batchResult} ${styles.batchResultFailed}`
+                      : styles.batchResult
+                  }
                 >
                   Imported{" "}
                   {batchResult.imported}.
@@ -3098,17 +3416,10 @@ export default function CuratedArchiveImportClient({
               ) : null}
             </div>
 
-            <div
-              style={{
-                display: "flex",
-                gap: "0.6rem",
-                flexWrap: "wrap",
-                justifyContent: "flex-end",
-              }}
-            >
+            <div className={styles.batchButtons}>
               <button
                 type="button"
-                className="backstage-button"
+                className={styles.btnLg}
                 disabled={
                   batchImporting ||
                   rows.every(
@@ -3123,7 +3434,7 @@ export default function CuratedArchiveImportClient({
 
               <button
                 type="button"
-                className="backstage-button"
+                className={styles.btnLg}
                 disabled={
                   batchImporting ||
                   selectedReadyFolders.length === 0
@@ -3137,30 +3448,7 @@ export default function CuratedArchiveImportClient({
 
               <button
                 type="button"
-                className="backstage-button"
-                disabled={
-                  batchImporting ||
-                  selectedReadyFolders.length === 0
-                }
-                onClick={() =>
-                  void importSelectedReady()
-                }
-                style={{
-                  opacity:
-                    batchImporting ||
-                    selectedReadyFolders.length === 0
-                      ? 0.5
-                      : 1,
-                }}
-              >
-                {batchImporting
-                  ? "Importing…"
-                  : `Import Selected (${selectedReadyFolders.length})`}
-              </button>
-
-              <button
-                type="button"
-                className="backstage-button"
+                className={styles.btnLg}
                 disabled={
                   batchImporting ||
                   data.summary.ready === 0
@@ -3173,505 +3461,26 @@ export default function CuratedArchiveImportClient({
                   ? "Importing…"
                   : `Import All Ready (${data.summary.ready})`}
               </button>
+
+              <button
+                type="button"
+                className={`${styles.btnLg} ${styles.btnGold}`}
+                disabled={
+                  batchImporting ||
+                  selectedReadyFolders.length === 0
+                }
+                onClick={() =>
+                  void importSelectedReady()
+                }
+              >
+                {batchImporting
+                  ? "Importing…"
+                  : `Import Selected (${selectedReadyFolders.length})`}
+              </button>
             </div>
-          </div>
-
-          <div
-            style={{
-              marginTop: "3rem",
-              borderTop:
-                "1px solid rgba(242, 238, 230, 0.12)",
-            }}
-          >
-            {rows.map(
-              (production) => (
-                <article
-                  key={production.folder}
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns:
-                      "minmax(0, 1fr) auto",
-                    gap: "1.5rem",
-                    padding:
-                      "1.35rem 0",
-                    borderBottom:
-                      "1px solid rgba(242, 238, 230, 0.1)",
-                  }}
-                >
-                  <div>
-                    <p
-                      style={{
-                        margin: 0,
-                        color:
-                          "rgba(242, 238, 230, 0.42)",
-                        fontSize:
-                          "0.54rem",
-                        fontWeight: 700,
-                        letterSpacing:
-                          "0.13em",
-                        textTransform:
-                          "uppercase",
-                      }}
-                    >
-                      {production.venue}
-                      {production.venue &&
-                      production.year
-                        ? " · "
-                        : ""}
-                      {production.month
-                        ? `${
-                            MONTHS[
-                              production
-                                .month
-                            ]
-                          } `
-                        : ""}
-                      {production.year ??
-                        ""}
-                    </p>
-
-                    <h3
-                      style={{
-                        margin:
-                          "0.45rem 0 0",
-                        fontFamily:
-                          '"Iowan Old Style", "Palatino Linotype", Georgia, serif',
-                        fontSize:
-                          "1.55rem",
-                        fontWeight: 400,
-                        letterSpacing:
-                          "-0.025em",
-                      }}
-                    >
-                      {production.title ||
-                        production.production}
-                    </h3>
-
-                    <p
-                      style={{
-                        margin:
-                          "0.55rem 0 0",
-                        color:
-                          "rgba(242, 238, 230, 0.46)",
-                        fontSize:
-                          "0.68rem",
-                      }}
-                    >
-                      {
-                        production.selectedCount
-                      }{" "}
-                      selected image
-                      {production.selectedCount ===
-                      1
-                        ? ""
-                        : "s"}
-                      {production.heroIndex
-                        ? ` · Hero #${String(
-                            production.heroIndex,
-                          ).padStart(
-                            4,
-                            "0",
-                          )}`
-                        : ""}
-                    </p>
-
-                    {(production.folders?.length ?? 1) > 1 ? (
-                      <p style={{ margin: "0.35rem 0 0", color: "rgba(199, 163, 105, 0.72)", fontSize: "0.62rem" }}>
-                        Duplicate curator entries collapsed: {production.folders?.length} source folders
-                      </p>
-                    ) : null}
-
-                    {production.issues
-                      .length > 0 ? (
-                      <div
-                        style={{
-                          marginTop:
-                            "0.65rem",
-                        }}
-                      >
-                        {production.issues.map(
-                          (issue) => (
-                            <p
-                              key={
-                                issue
-                              }
-                              style={{
-                                margin:
-                                  "0.2rem 0 0",
-                                color:
-                                  "rgba(240, 178, 170, 0.78)",
-                                fontSize:
-                                  "0.68rem",
-                              }}
-                            >
-                              {issue}
-                            </p>
-                          ),
-                        )}
-                      </div>
-                    ) : null}
-                  </div>
-
-                  <div
-                    style={{
-                      alignSelf:
-                        "center",
-                      textAlign:
-                        "right",
-                    }}
-                  >
-                    <span
-                      style={{
-                        display:
-                          "inline-block",
-                        padding:
-                          "0.4rem 0.6rem",
-                        border:
-                          "1px solid rgba(199, 163, 105, 0.3)",
-                        color:
-                          production.status ===
-                          "attention"
-                            ? "#f0b2aa"
-                            : "#c7a369",
-                        fontSize:
-                          "0.5rem",
-                        fontWeight: 700,
-                        letterSpacing:
-                          "0.13em",
-                        textTransform:
-                          "uppercase",
-                      }}
-                    >
-                      {statusLabel(
-                        production.status,
-                      )}
-                    </span>
-
-                    <div
-                      style={{
-                        marginTop:
-                          "0.55rem",
-                      }}
-                    >
-                      <p
-                        style={{
-                          margin: 0,
-                          color:
-                            production.locked
-                              ? "#c7a369"
-                              : "rgba(242, 238, 230, 0.48)",
-                          fontSize:
-                            "0.55rem",
-                          fontWeight: 700,
-                          letterSpacing:
-                            "0.13em",
-                          textTransform:
-                            "uppercase",
-                        }}
-                      >
-                        {production.locked
-                          ? "Locked"
-                          : "Public"}
-                        {" · "}
-                        {production.accessSource ===
-                        "manual"
-                          ? "Manual override"
-                          : "Automatic"}
-                      </p>
-
-                      <div
-                        style={{
-                          display: "flex",
-                          justifyContent:
-                            "flex-end",
-                          flexWrap: "wrap",
-                          gap: "0.4rem",
-                          marginTop:
-                            "0.45rem",
-                        }}
-                      >
-                        {production.status ===
-                        "ready" ? (
-                          <label
-                            style={{
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: "0.35rem",
-                              padding: "0.35rem 0.45rem",
-                              border: "1px solid rgba(242, 238, 230, 0.16)",
-                              color: "rgba(242, 238, 230, 0.72)",
-                              fontSize: "0.5rem",
-                              fontWeight: 700,
-                              letterSpacing: "0.08em",
-                              textTransform: "uppercase",
-                              cursor: "pointer",
-                            }}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={
-                                selectedReadyFolders.includes(
-                                  production.folder,
-                                )
-                              }
-                              disabled={batchImporting}
-                              onChange={() =>
-                                toggleReadySelection(
-                                  production.folder,
-                                )
-                              }
-                            />
-                            Select
-                          </label>
-                        ) : null}
-
-                        {production.status ===
-                        "ready" ? (
-                          <button
-                            type="button"
-                            className="backstage-button"
-                            disabled={
-                              importingProduction ===
-                              production.folder
-                            }
-                            onClick={() =>
-                              void importProduction(
-                                production,
-                              )
-                            }
-                            style={{
-                              cursor:
-                                importingProduction ===
-                                production.folder
-                                  ? "wait"
-                                  : "pointer",
-                              opacity:
-                                importingProduction ===
-                                production.folder
-                                  ? 0.55
-                                  : 1,
-                            }}
-                          >
-                            {importingProduction ===
-                            production.folder
-                              ? importProgressText ||
-                                "Importing…"
-                              : "Import"}
-                          </button>
-                        ) : null}
-
-                        <button
-                          type="button"
-                          className="backstage-button"
-                          onClick={() =>
-                            void changeExclusion(
-                              production,
-                              production.status !==
-                                "excluded",
-                            )
-                          }
-                        >
-                          {production.status ===
-                          "excluded"
-                            ? "Include"
-                            : "Exclude"}
-                        </button>
-
-                        <button
-                          type="button"
-                          className="backstage-button"
-                          onClick={() =>
-                            void deleteStagedProduction(
-                              production,
-                            )
-                          }
-                          style={{
-                            borderColor:
-                              "rgba(220, 100, 100, 0.35)",
-                            color:
-                              "#f0b2aa",
-                          }}
-                        >
-                          Delete from upload
-                        </button>
-
-                        <a
-                          className="backstage-button"
-                          href={`/admin/curated-archive-import/edit/${encodeURIComponent(
-                            production.folder,
-                          )}`}
-                          style={{
-                            textDecoration:
-                              "none",
-                          }}
-                        >
-                          Edit
-                        </a>
-
-                        <button
-                          type="button"
-                          disabled={
-                            changingAccess ===
-                            production.production
-                          }
-                          onClick={() =>
-                            void changeAccess(
-                              production,
-                              production.locked
-                                ? "public"
-                                : "password",
-                            )
-                          }
-                          style={{
-                            padding:
-                              "0.35rem 0.55rem",
-                            border:
-                              "1px solid rgba(199, 163, 105, 0.32)",
-                            background:
-                              "transparent",
-                            color:
-                              "#c7a369",
-                            cursor:
-                              changingAccess ===
-                              production.production
-                                ? "wait"
-                                : "pointer",
-                            font:
-                              "inherit",
-                            fontSize:
-                              "0.5rem",
-                            fontWeight: 700,
-                            letterSpacing:
-                              "0.1em",
-                            textTransform:
-                              "uppercase",
-                            opacity:
-                              changingAccess ===
-                              production.production
-                                ? 0.55
-                                : 1,
-                          }}
-                        >
-                          {changingAccess ===
-                          production.production
-                            ? "Changing…"
-                            : production.locked
-                              ? "Unlock"
-                              : "Lock"}
-                        </button>
-
-                        {production.accessSource ===
-                        "manual" ? (
-                          <button
-                            type="button"
-                            disabled={
-                              changingAccess ===
-                              production.production
-                            }
-                            onClick={() =>
-                              void changeAccess(
-                                production,
-                                "automatic",
-                              )
-                            }
-                            style={{
-                              padding:
-                                "0.35rem 0.55rem",
-                              border:
-                                "1px solid rgba(242, 238, 230, 0.16)",
-                              background:
-                                "transparent",
-                              color:
-                                "rgba(242, 238, 230, 0.62)",
-                              cursor:
-                                changingAccess ===
-                                production.production
-                                  ? "wait"
-                                  : "pointer",
-                              font:
-                                "inherit",
-                              fontSize:
-                                "0.5rem",
-                              fontWeight: 700,
-                              letterSpacing:
-                                "0.1em",
-                              textTransform:
-                                "uppercase",
-                              opacity:
-                                changingAccess ===
-                                production.production
-                                  ? 0.55
-                                  : 1,
-                            }}
-                          >
-                            Reset to automatic
-                          </button>
-                        ) : null}
-                      </div>
-                    </div>
-
-                    {production.existingSlug ? (
-                      <p
-                        style={{
-                          margin:
-                            "0.55rem 0 0",
-                          color:
-                            "rgba(242, 238, 230, 0.4)",
-                          fontSize:
-                            "0.6rem",
-                        }}
-                      >
-                        /
-                        {
-                          production.existingSlug
-                        }
-                      </p>
-                    ) : null}
-                  </div>
-                </article>
-              ),
-            )}
           </div>
         </>
       ) : null}
-
-      <div
-        style={{
-          marginTop: "2.5rem",
-          padding: "1.25rem 1.5rem",
-          border:
-            "1px solid rgba(199, 163, 105, 0.28)",
-          background:
-            "rgba(199, 163, 105, 0.045)",
-        }}
-      >
-        <p
-          style={{
-            margin: 0,
-            color: "#c7a369",
-            fontSize: "0.64rem",
-            fontWeight: 700,
-            letterSpacing: "0.12em",
-            textTransform: "uppercase",
-          }}
-        >
-          Zero-AI import path
-        </p>
-
-        <p
-          style={{
-            margin: "0.65rem 0 0",
-            color:
-              "rgba(242, 238, 230, 0.68)",
-            lineHeight: 1.65,
-          }}
-        >
-          Curated Archive Import does not
-          call the vision review or
-          image-analysis endpoints used
-          by general Bulk Import.
-        </p>
-      </div>
     </section>
   );
 }
