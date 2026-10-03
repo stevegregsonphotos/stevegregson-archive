@@ -307,3 +307,32 @@
   letter-spacing: 0;
   text-transform: none;
 }
+
+/* Upload & publish: "photos ready" action under each upcoming production. */
+.itemActions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 20px 14px;
+  margin-top: -4px;
+}
+
+.itemPublish {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid var(--gold);
+  background: var(--gold);
+  color: #11100f;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-decoration: none;
+}
+
+.itemPublish:hover,
+.itemPublish:focus-visible {
+  background: transparent;
+  color: var(--gold);
+}
