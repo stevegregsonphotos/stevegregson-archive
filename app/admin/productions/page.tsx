@@ -4,6 +4,9 @@ import {
   getAdminProductionSummaries,
 } from "../../../lib/productions-repository";
 
+import { summariseUpcoming, type UpcomingSummary } from "../../../lib/upcoming-productions";
+import { listUpcomingDrafts } from "../../../lib/upcoming-productions-repository";
+
 import ProductionManager from "./ProductionManager";
 
 export const dynamic = "force-dynamic";
@@ -22,6 +25,16 @@ export default async function ProductionsAdminPage() {
     await getAdminProductionSummaries();
 
   const productions = productionSummaries;
+
+  // Upcoming drafts are private and optional: never let them break this page.
+  let upcoming: UpcomingSummary[] = [];
+  let upcomingError = false;
+  try {
+    upcoming = (await listUpcomingDrafts()).map(summariseUpcoming);
+  } catch (error) {
+    console.error("Upcoming productions could not be loaded:", error);
+    upcomingError = true;
+  }
 
   const years = productions.map(
     (production) => production.year,
@@ -55,6 +68,8 @@ export default async function ProductionsAdminPage() {
     <ProductionManager
       productions={productionSummaries}
       metrics={metrics}
+      upcoming={upcoming}
+      upcomingError={upcomingError}
     />
   );
 }

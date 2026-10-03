@@ -268,7 +268,24 @@ export default function DetailsTab({
   );
 }
 
-function CreditsCard({ credits, change }: { credits: ProductionCredit[]; change: Change }) {
+type CreditsChange<D extends { credits: ProductionCredit[] }> = (
+  label: string,
+  key: string | undefined,
+  mutate: (doc: D) => D,
+) => void;
+
+/** The Credits panel, shared with Productions › Upcoming. */
+export function CreditsCard<D extends { credits: ProductionCredit[] }>({
+  credits,
+  change,
+  afterAddHint = "Press Save & publish to put them on the site.",
+  showWebsites = true,
+}: {
+  credits: ProductionCredit[];
+  change: CreditsChange<D>;
+  afterAddHint?: string;
+  showWebsites?: boolean;
+}) {
   const [directory, setDirectory] = useState<DirectoryData | null>(null);
 
   useEffect(() => {
@@ -334,10 +351,13 @@ function CreditsCard({ credits, change }: { credits: ProductionCredit[]; change:
       </div>
 
       <div data-testid="credits-table">
-        <div className={styles.creditsHead} aria-hidden="true">
+        <div
+          className={showWebsites ? styles.creditsHead : `${styles.creditsHead} ${styles.creditsNoWebsite}`}
+          aria-hidden="true"
+        >
           <span>Role</span>
           <span>Name</span>
-          <span>Website</span>
+          {showWebsites ? <span>Website</span> : null}
           <span />
         </div>
         {credits.length === 0 ? (
@@ -346,7 +366,11 @@ function CreditsCard({ credits, change }: { credits: ProductionCredit[]; change:
           </p>
         ) : null}
         {credits.map((credit, index) => (
-          <div className={styles.creditRow} key={index} data-testid="credit-row">
+          <div
+            className={showWebsites ? styles.creditRow : `${styles.creditRow} ${styles.creditsNoWebsite}`}
+            key={index}
+            data-testid="credit-row"
+          >
             <input
               className={styles.creditInput}
               aria-label={`Role ${index + 1}`}
@@ -361,13 +385,15 @@ function CreditsCard({ credits, change }: { credits: ProductionCredit[]; change:
               value={credit.name}
               onChange={(event) => update(index, "name", event.target.value)}
             />
-            <input
-              className={styles.creditInput}
-              aria-label={`Website ${index + 1}`}
-              placeholder="Website (optional)"
-              value={credit.website ?? ""}
-              onChange={(event) => update(index, "website", event.target.value)}
-            />
+            {showWebsites ? (
+              <input
+                className={styles.creditInput}
+                aria-label={`Website ${index + 1}`}
+                placeholder="Website (optional)"
+                value={credit.website ?? ""}
+                onChange={(event) => update(index, "website", event.target.value)}
+              />
+            ) : null}
             <button
               type="button"
               className={styles.removeX}
@@ -385,7 +411,9 @@ function CreditsCard({ credits, change }: { credits: ProductionCredit[]; change:
         ))}
       </div>
 
-      <p className={styles.help}>Websites fill in automatically when a name is already in your directory.</p>
+      {showWebsites ? (
+        <p className={styles.help}>Websites fill in automatically when a name is already in your directory.</p>
+      ) : null}
 
       <div className={styles.creditTools}>
         <button
@@ -407,7 +435,7 @@ function CreditsCard({ credits, change }: { credits: ProductionCredit[]; change:
         <PasteCreditsPanel
           existingCredits={credits}
           onAdd={addPasted}
-          afterAddHint="Press Save & publish to put them on the site."
+          afterAddHint={afterAddHint}
         />
       </div>
     </section>

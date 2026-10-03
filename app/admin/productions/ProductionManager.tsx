@@ -9,6 +9,10 @@ import {
   useState,
 } from "react";
 
+import type { UpcomingSummary } from "../../../lib/upcoming-productions";
+
+import UpcomingSection from "./UpcomingSection";
+
 type ProductionSummary = {
   slug: string;
   title: string;
@@ -31,6 +35,8 @@ type ProductionMetrics = {
 type ProductionManagerProps = {
   productions: ProductionSummary[];
   metrics: ProductionMetrics;
+  upcoming?: UpcomingSummary[];
+  upcomingError?: boolean;
 };
 
 type SortOption =
@@ -83,6 +89,8 @@ function compareProductionDates(
 export default function ProductionManager({
   productions,
   metrics,
+  upcoming = [],
+  upcomingError = false,
 }: ProductionManagerProps) {
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] =
@@ -432,6 +440,11 @@ export default function ProductionManager({
             </span>
           </Link>
         </header>
+
+        <UpcomingSection
+          drafts={upcoming}
+          loadError={upcomingError}
+        />
 
         <section
           className="production-manager-metrics"
