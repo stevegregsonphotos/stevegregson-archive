@@ -9,6 +9,7 @@ import {
   publishCuratedProduction,
 } from "@/lib/curated-archive/publish-production";
 
+import { revalidateProductionContent } from "@/lib/revalidate-public-content";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -352,6 +353,10 @@ export async function POST(request: Request) {
   ).length;
 
   const failed = results.length - published;
+
+  if (published > 0) {
+    revalidateProductionContent();
+  }
 
   return Response.json(
     {

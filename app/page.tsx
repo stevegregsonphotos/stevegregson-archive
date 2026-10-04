@@ -10,8 +10,8 @@ import {
   getSelectedWorkImageUrl,
 } from "../lib/selected-work-image-url";
 import {
-  getSelectedWork,
-} from "../lib/selected-work-repository";
+  getCachedSelectedWork,
+} from "../lib/public-data-cache";
 
 export const metadata: Metadata = {
   title: {
@@ -115,7 +115,7 @@ const workCards: Array<{
 
 export default async function Home() {
   const portfolio =
-    await getSelectedWork() as SelectedWorkData;
+    await getCachedSelectedWork() as SelectedWorkData;
 
   return (
     <main className="homepage">

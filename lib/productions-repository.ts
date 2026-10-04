@@ -728,6 +728,71 @@ export async function getProductions():
   return sortProductions(productions);
 }
 
+export type ProductionSitemapImages = {
+  slug: string;
+  hero: string;
+  images: string[];
+};
+
+/**
+ * Just the photo filenames of every public production, in gallery order,
+ * for the sitemap. Much lighter than getProductions(), which also loads
+ * blur placeholders and edit settings for every photograph.
+ */
+export async function getPublicProductionSitemapImages():
+  Promise<ProductionSitemapImages[]> {
+  const sql = getSql();
+
+  const [productionRows, imageRows] =
+    await Promise.all([
+      sql`
+        SELECT id, slug, hero_display_filename AS hero
+        FROM productions
+        WHERE deleted_at IS NULL
+          AND COALESCE(access, 'public') <> 'password'
+      `,
+      sql`
+        SELECT i.production_id, i.display_filename
+        FROM production_images i
+        INNER JOIN productions p
+          ON p.id = i.production_id
+          AND p.deleted_at IS NULL
+          AND COALESCE(p.access, 'public') <> 'password'
+        WHERE i.deleted_at IS NULL
+        ORDER BY i.production_id, i.position
+      `,
+    ]);
+
+  const imagesByProduction =
+    new Map<string, string[]>();
+
+  for (const row of imageRows as Array<{
+    production_id: string;
+    display_filename: string;
+  }>) {
+    const images =
+      imagesByProduction.get(
+        row.production_id,
+      ) ?? [];
+    images.push(row.display_filename);
+    imagesByProduction.set(
+      row.production_id,
+      images,
+    );
+  }
+
+  return (productionRows as Array<{
+    id: string;
+    slug: string;
+    hero: string;
+  }>).map((row) => ({
+    slug: row.slug,
+    hero: row.hero,
+    images:
+      imagesByProduction.get(row.id) ?? [],
+  }));
+}
+
 export function getProductionFromData(
   productions: Production[],
   slug: string,

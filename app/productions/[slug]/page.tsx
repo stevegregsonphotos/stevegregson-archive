@@ -6,17 +6,15 @@ import {
 
 import ProductionContent from "../../../components/ProductionContent";
 import ProtectedProduction from "../../../components/ProtectedProduction";
-import {
-  getDirectory,
-} from "../../../lib/directory-repository";
 import { getProductionImageUrl } from "../../../lib/production-image-url";
+import { getNextProductionFromData } from "../../../lib/productions-repository";
 import {
-  getNextProductionFromData,
-  getProduction,
-  getProductionAccessSummary,
-  getProductionSlugRedirect,
-  getPublicProductionNavigation,
-} from "../../../lib/productions-repository";
+  getCachedDirectory,
+  getCachedProductionAccessSummary,
+  getCachedProductionSlugRedirect,
+  getCachedPublicProduction,
+  getCachedPublicProductionNavigation,
+} from "../../../lib/public-data-cache";
 import {
   getDirectoryData,
   MIN_VENUE_PRODUCTIONS,
@@ -25,7 +23,7 @@ import {
 import { canonicalVenue } from "../../../lib/venues";
 import { serviceLinkFor } from "../../../lib/sectors";
 
-export const revalidate = 3600;
+export const revalidate = false; // Rebuilt only when Backstage changes something (on-demand revalidation).
 
 export async function generateStaticParams() {
   return [];
@@ -43,7 +41,7 @@ export async function generateMetadata({
   const { slug } = await params;
 
   const production =
-    await getProductionAccessSummary(
+    await getCachedProductionAccessSummary(
       slug,
     );
 
@@ -118,11 +116,11 @@ export default async function ProductionPage({
   const { slug } = await params;
 
   const production =
-    await getProduction(slug);
+    await getCachedPublicProduction(slug);
 
   if (!production) {
     const redirectSlug =
-      await getProductionSlugRedirect(
+      await getCachedProductionSlugRedirect(
         slug,
       );
 
@@ -163,8 +161,8 @@ export default async function ProductionPage({
     directory,
     peopleDirectory,
   ] = await Promise.all([
-    getPublicProductionNavigation(),
-    getDirectory(),
+    getCachedPublicProductionNavigation(),
+    getCachedDirectory(),
     getDirectoryData(),
   ]);
 

@@ -22,7 +22,7 @@ import {
   type PersonEntry,
 } from "../../../lib/people-directory";
 
-export const revalidate = 3600;
+export const revalidate = false; // Rebuilt only when Backstage changes something (on-demand revalidation).
 
 export async function generateStaticParams() {
   return [];

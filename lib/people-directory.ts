@@ -1,10 +1,8 @@
 import { cache } from "react";
 
 import type { ProductionCredit } from "../content/productions/types";
-import {
-  getArchiveProductions,
-  type ArchiveProduction,
-} from "./productions-repository";
+import type { ArchiveProduction } from "./productions-repository";
+import { getCachedArchiveProductions } from "./public-data-cache";
 import {
   PERSON_ALIASES,
   personIdentity,
@@ -292,7 +290,12 @@ export function buildDirectory(productions: ArchiveProduction[]) {
 /** Venue pages are only worth having once a venue has more than one production. */
 export const MIN_VENUE_PRODUCTIONS = 2;
 
-export const getDirectoryData = cache(async () => buildDirectory(await getArchiveProductions()));
+/**
+ * For public pages. The archive comes from the cross-request Data Cache
+ * (lib/public-data-cache.ts), so regenerating one of ~900 people/venue
+ * pages no longer reloads every production and credit from Neon.
+ */
+export const getDirectoryData = cache(async () => buildDirectory(await getCachedArchiveProductions()));
 
 export function primaryRoleLabel(person: PersonEntry) {
   const group = ROLE_GROUPS.find((item) => item.key === person.groups[0]);

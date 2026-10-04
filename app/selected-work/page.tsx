@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import SelectedWorkShowcase from "../../components/SelectedWorkShowcase";
-import { getSelectedWorkPage } from "../../lib/selected-work-page-repository";
+import { getCachedSelectedWorkPage } from "../../lib/public-data-cache";
 
 import styles from "./selected-work-preview.module.css";
 
@@ -38,10 +38,10 @@ export const metadata: Metadata = {
 };
 
 // Saving in Backstage refreshes this page straight away; this is a fallback.
-export const revalidate = 3600;
+export const revalidate = false; // Rebuilt only when Backstage changes something (on-demand revalidation).
 
 export default async function SelectedWorkPage() {
-  const { page } = await getSelectedWorkPage();
+  const { page } = await getCachedSelectedWorkPage();
 
   return (
     <main className={styles.page}>

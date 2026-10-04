@@ -5,6 +5,7 @@ import {
 import {
   moveProductionWithinArchiveMonth,
 } from "@/lib/productions-repository";
+import { revalidateProductionContent } from "@/lib/revalidate-public-content";
 
 import { NextResponse } from "next/server";
 
@@ -85,6 +86,11 @@ export async function POST(
         },
         { status: 409 },
       );
+    }
+
+    // The archive page lists productions in this order.
+    if (result.moved) {
+      revalidateProductionContent();
     }
 
     return NextResponse.json({

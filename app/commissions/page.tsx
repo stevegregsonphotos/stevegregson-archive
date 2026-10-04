@@ -16,16 +16,16 @@ import {
 } from "../../components/services/ServiceParts";
 import { getSectorData } from "../../lib/sectors";
 import { getDirectoryData } from "../../lib/people-directory";
-import {
-  getSelectedWork,
-  type SelectedWorkData,
-} from "../../lib/selected-work-repository";
+import type { SelectedWorkData } from "../../lib/selected-work-repository";
 import { automaticCommissionsPictures } from "../../lib/commissions-pictures";
-import { getCommissionsImages } from "../../lib/selected-work-page-repository";
+import {
+  getCachedCommissionsImages,
+  getCachedSelectedWork,
+} from "../../lib/public-data-cache";
 
 type Picture = { src: string; alt: string };
 
-export const revalidate = 3600;
+export const revalidate = false; // Rebuilt only when Backstage changes something (on-demand revalidation).
 
 const PAGE_URL = "/commissions";
 const TITLE = "Commissioning Theatre Photography";
@@ -199,8 +199,8 @@ export default async function CommissionsPage() {
   const [{ dramaSchools, opera, totalProductions }, directory, portfolio, chosen] = await Promise.all([
     getSectorData(),
     getDirectoryData(),
-    getSelectedWork().catch(() => ({ production: [], rehearsal: [], campaign: [] }) as SelectedWorkData),
-    getCommissionsImages(),
+    getCachedSelectedWork().catch(() => ({ production: [], rehearsal: [], campaign: [] }) as SelectedWorkData),
+    getCachedCommissionsImages(),
   ]);
 
   // Pictures chosen in Backstage win; otherwise the page picks automatically.

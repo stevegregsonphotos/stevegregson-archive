@@ -12,7 +12,7 @@ import {
   yearRange,
 } from "../../lib/people-directory";
 
-export const revalidate = 3600;
+export const revalidate = false; // Rebuilt only when Backstage changes something (on-demand revalidation).
 
 const DESCRIPTION =
   "Theatres and venues photographed by London theatre photographer Steve Gregson, with every production shot at each one.";

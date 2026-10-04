@@ -1,4 +1,4 @@
-import { revalidatePath } from "next/cache";
+import { revalidateSelectedWorkContent } from "@/lib/revalidate-public-content";
 
 import {
   createUnauthorizedResponse,
@@ -138,7 +138,7 @@ export async function PUT(request: Request) {
       }
 
       await saveSelectedWorkPage(page);
-      revalidatePath("/selected-work");
+      revalidateSelectedWorkContent();
       return Response.json({ ok: true, page });
     }
 
@@ -153,7 +153,7 @@ export async function PUT(request: Request) {
       }
 
       await saveCommissionsImages(commissions);
-      revalidatePath("/commissions");
+      revalidateSelectedWorkContent();
       return Response.json({ ok: true, commissions });
     }
 

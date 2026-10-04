@@ -3,8 +3,8 @@ import Link from "next/link";
 
 import MarketingPrGallery from "../../components/MarketingPrGallery";
 import {
-  getSelectedWork,
-} from "../../lib/selected-work-repository";
+  getCachedSelectedWork,
+} from "../../lib/public-data-cache";
 
 import styles from "../selected-work/selected-work.module.css";
 
@@ -80,7 +80,7 @@ const workNavigation: WorkNavigationItem[] = [
 
 export default async function MarketingPrPage() {
   const portfolio =
-    await getSelectedWork() as SelectedWorkData;
+    await getCachedSelectedWork() as SelectedWorkData;
 
   const campaignImages =
     portfolio.campaign ?? [];
