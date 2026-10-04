@@ -22,7 +22,7 @@ import { getProductionImageUrl } from "../../lib/production-image-url";
 import { productionCountLabel, yearRange } from "../../lib/people-directory";
 import { getSectorData } from "../../lib/sectors";
 
-export const revalidate = 3600;
+export const revalidate = 86400;
 
 const PAGE_URL = "/opera-photography";
 const TITLE = "Opera Photography";

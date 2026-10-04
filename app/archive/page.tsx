@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
 
 import {
-  getAdminProductionSummaries,
-  getArchiveProductions,
-} from "../../lib/productions-repository";
+  getCachedArchiveProductions,
+  getCachedProductionSummaries,
+} from "../../lib/public-data-cache";
 import { getDirectoryData } from "../../lib/people-directory";
 
 import ArchiveExplorer from "./ArchiveExplorer";
 
-export const revalidate = 3600;
+export const revalidate = 86400;
 
 export const metadata: Metadata = {
   title: "Theatre Photography Archive",
@@ -42,8 +42,8 @@ export const metadata: Metadata = {
 export default async function ArchivePage() {
   const [productions, summaries, directory] =
     await Promise.all([
-      getArchiveProductions(),
-      getAdminProductionSummaries(),
+      getCachedArchiveProductions(),
+      getCachedProductionSummaries(),
       getDirectoryData(),
     ]);
 

@@ -1,7 +1,7 @@
 import "server-only";
 
 import { getProductionCardImageUrl } from "./production-image-url";
-import { getSectorData } from "./sectors";
+import { getLiveSectorData } from "./sectors";
 import {
   getSelectedWorkDisplayUrl,
   getSelectedWorkPreviewUrl,
@@ -71,7 +71,7 @@ export function automaticCommissionsPictures(
 /** For Backstage: each box's picture now, and whether it was picked by hand. */
 export async function getCommissionsPicturesForEditor() {
   const [{ dramaSchools, opera }, portfolio, chosen] = await Promise.all([
-    getSectorData(),
+    getLiveSectorData(),
     getSelectedWork().catch(() => ({ production: [], rehearsal: [], campaign: [] }) as SelectedWorkData),
     getCommissionsImages(),
   ]);

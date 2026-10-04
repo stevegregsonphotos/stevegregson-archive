@@ -5,10 +5,12 @@ import {
   type ArchiveProduction,
 } from "./productions-repository";
 import {
+  buildDirectory,
   getDirectoryData,
   MIN_VENUE_PRODUCTIONS,
   type DirectoryProduction,
 } from "./people-directory";
+import { getCachedArchiveProductions } from "./public-data-cache";
 import { canonicalVenue } from "./venues";
 
 /**
@@ -109,11 +111,25 @@ function byNewest(a: DirectoryProduction, b: DirectoryProduction) {
   return b.year - a.year || (b.month ?? 0) - (a.month ?? 0) || a.title.localeCompare(b.title);
 }
 
+/** For public pages: built from the cached archive (lib/public-data-cache.ts). */
 export const getSectorData = cache(async () => {
   const [productions, directory] = await Promise.all([
-    getArchiveProductions(),
+    getCachedArchiveProductions(),
     getDirectoryData(),
   ]);
+  return buildSectorData(productions, directory);
+});
+
+/** For Backstage: the same figures from live data. */
+export async function getLiveSectorData() {
+  const productions = await getArchiveProductions();
+  return buildSectorData(productions, buildDirectory(productions));
+}
+
+function buildSectorData(
+  productions: ArchiveProduction[],
+  directory: ReturnType<typeof buildDirectory>,
+) {
 
   const venuePages = new Set(
     directory.venues
@@ -206,7 +222,7 @@ export const getSectorData = cache(async () => {
     // Everything listed in the archive, including private client galleries.
     totalProductions: productions.length,
   };
-});
+}
 
 /** Unique "schools" a drama school venue belongs to, for the venue page link. */
 export function isDramaSchoolVenue(venueName: string) {

@@ -1,4 +1,7 @@
-import { revalidateProductionContent } from "@/lib/revalidate-public-content";
+import {
+  revalidateProductionContent,
+  revalidatePublicArchive,
+} from "@/lib/revalidate-public-content";
 import {
   createUnauthorizedResponse,
   isBackstageRequestAuthenticated,
@@ -246,6 +249,9 @@ export async function POST(request: Request) {
   const copiedFilenames: string[] = [];
   let activeSlug: string | null = null;
   let copiedSlugPrefix: string | null = null;
+  // Set once Neon has the update, so a later failure (e.g. the slug
+  // rename) still clears the public cache for the part that was saved.
+  let publicDataChanged = false;
   try {
     const body = (await request.json()) as UpdateRequest;
     if (typeof body.slug !== "string" || !isSafeSlug(body.slug)) {
@@ -687,6 +693,7 @@ export async function POST(request: Request) {
      * rollback handler if the later slug migration fails.
      */
     copiedFilenames.length = 0;
+    publicDataChanged = true;
 
     const deleteConcurrency = 8;
 
@@ -807,6 +814,10 @@ export async function POST(request: Request) {
       ...(galleryLayoutWarning ? { galleryLayoutWarning } : {}),
     });
   } catch (error) {
+    if (publicDataChanged) {
+      revalidatePublicArchive();
+    }
+
     if (copiedSlugPrefix) {
       await deleteProductionImages(
         copiedSlugPrefix,

@@ -6,29 +6,29 @@ import {
   ROLE_GROUPS,
 } from "../lib/people-directory";
 import { getProductionImageUrl } from "../lib/production-image-url";
-import {
-  getProductionIndex,
-  getProductions,
-} from "../lib/productions-repository";
+import { getPublicProductionSitemapImages } from "../lib/productions-repository";
+import { getCachedProductionIndex } from "../lib/public-data-cache";
 
-export const revalidate = 3600;
+export const revalidate = 86400;
 
 const siteUrl = "https://www.stevegregson.com";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [productions, fullProductions] = await Promise.all([
-    getProductionIndex(),
-    getProductions(),
+  // The photo list is read live (lean query, no blur data) rather than kept
+  // in the Data Cache, where a large archive could pass the 2MB item limit.
+  // The sitemap itself is only rebuilt once a day or after a Backstage edit.
+  const [productions, sitemapImages] = await Promise.all([
+    getCachedProductionIndex(),
+    getPublicProductionSitemapImages(),
   ]);
 
   // Every public photograph, listed under its production page, so Google
   // Images can find the whole archive (Google reads up to 1,000 per page).
   const imagesBySlug = new Map<string, string[]>();
-  for (const production of fullProductions) {
-    if (production.access === "password") continue;
+  for (const production of sitemapImages) {
     const files = [
       production.hero,
-      ...production.images.map((image) => image.src),
+      ...production.images,
     ].filter(Boolean);
     const urls: string[] = [];
     for (const file of new Set(files)) {

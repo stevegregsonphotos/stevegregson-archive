@@ -11,12 +11,17 @@ import {
   type SelectedWorkPageContent,
 } from "./selected-work-page";
 
-export async function getSelectedWorkPage(): Promise<{
+/** Reads one site_content value; the public site passes a cached reader. */
+type SiteContentReader = <T>(key: string) => Promise<T | null>;
+
+export async function getSelectedWorkPage(
+  readContent: SiteContentReader = getSiteContent,
+): Promise<{
   page: SelectedWorkPageContent;
   saved: boolean;
 }> {
   try {
-    const stored = await getSiteContent<unknown>(SELECTED_WORK_PAGE_KEY);
+    const stored = await readContent<unknown>(SELECTED_WORK_PAGE_KEY);
     const cleaned = stored ? cleanSelectedWorkPage(stored) : null;
     if (cleaned) return { page: cleaned, saved: true };
   } catch (error) {
@@ -30,9 +35,11 @@ export async function saveSelectedWorkPage(page: SelectedWorkPageContent) {
   await saveSiteContent(SELECTED_WORK_PAGE_KEY, page);
 }
 
-export async function getCommissionsImages(): Promise<CommissionsImages> {
+export async function getCommissionsImages(
+  readContent: SiteContentReader = getSiteContent,
+): Promise<CommissionsImages> {
   try {
-    const stored = await getSiteContent<unknown>(COMMISSIONS_IMAGES_KEY);
+    const stored = await readContent<unknown>(COMMISSIONS_IMAGES_KEY);
     return (stored && cleanCommissionsImages(stored)) || {};
   } catch (error) {
     console.error("Could not read the Commissions image settings", error);
