@@ -383,7 +383,7 @@ export async function POST(
           ),
       );
 
-    revalidateProductionContent();
+    revalidateProductionContent(payload.slug);
 
     return Response.json({
       ok: true,

@@ -10,6 +10,7 @@ import { getProductionImageUrl } from "../../../lib/production-image-url";
 import { getNextProductionFromData } from "../../../lib/productions-repository";
 import {
   getCachedDirectory,
+  getCachedProductionIndex,
   getCachedProductionAccessSummary,
   getCachedProductionSlugRedirect,
   getCachedPublicProduction,
@@ -25,8 +26,20 @@ import { serviceLinkFor } from "../../../lib/sectors";
 
 export const revalidate = false; // Rebuilt only when Backstage changes something (on-demand revalidation).
 
+/*
+ * Build every production page while the site is being published, in one
+ * go, instead of one at a time as visitors and search robots arrive (each
+ * of which used to wake the database). New productions published later
+ * are still built on their first visit.
+ */
 export async function generateStaticParams() {
-  return [];
+  try {
+    const index = await getCachedProductionIndex();
+    return index.map(({ slug }) => ({ slug }));
+  } catch (error) {
+    console.error("Production pages could not be listed for prebuilding:", error);
+    return [];
+  }
 }
 
 type ProductionPageProps = {
