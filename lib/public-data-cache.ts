@@ -53,12 +53,12 @@ export const PUBLIC_SELECTED_WORK_TAG = "public-selected-work";
 
 const archiveOptions = {
   tags: [PUBLIC_ARCHIVE_TAG],
-  revalidate: false,
+  revalidate: false as const,
 };
 
 const selectedWorkOptions = {
   tags: [PUBLIC_SELECTED_WORK_TAG],
-  revalidate: false,
+  revalidate: false as const,
 };
 
 // --- Archive-wide lists (small: no photographs) ---------------------------
