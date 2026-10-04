@@ -9,7 +9,7 @@ import { getProductionImageUrl } from "../lib/production-image-url";
 import { getPublicProductionSitemapImages } from "../lib/productions-repository";
 import { getCachedProductionIndex } from "../lib/public-data-cache";
 
-export const revalidate = 86400;
+export const revalidate = false; // Rebuilt only when Backstage changes something (on-demand revalidation).
 
 const siteUrl = "https://www.stevegregson.com";
 

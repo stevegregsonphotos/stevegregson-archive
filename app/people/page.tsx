@@ -13,7 +13,7 @@ import {
   ROLE_GROUPS,
 } from "../../lib/people-directory";
 
-export const revalidate = 86400;
+export const revalidate = false; // Rebuilt only when Backstage changes something (on-demand revalidation).
 
 const DESCRIPTION =
   "Directors, designers, choreographers and theatre-makers photographed by London theatre photographer Steve Gregson, with every production they worked on.";

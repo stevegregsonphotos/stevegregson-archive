@@ -25,7 +25,7 @@ import {
 
 type Picture = { src: string; alt: string };
 
-export const revalidate = 86400;
+export const revalidate = false; // Rebuilt only when Backstage changes something (on-demand revalidation).
 
 const PAGE_URL = "/commissions";
 const TITLE = "Commissioning Theatre Photography";

@@ -38,7 +38,7 @@ export const metadata: Metadata = {
 };
 
 // Saving in Backstage refreshes this page straight away; this is a fallback.
-export const revalidate = 86400;
+export const revalidate = false; // Rebuilt only when Backstage changes something (on-demand revalidation).
 
 export default async function SelectedWorkPage() {
   const { page } = await getCachedSelectedWorkPage();

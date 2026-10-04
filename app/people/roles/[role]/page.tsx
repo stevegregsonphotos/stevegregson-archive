@@ -12,7 +12,7 @@ import {
   ROLE_GROUPS,
 } from "../../../../lib/people-directory";
 
-export const revalidate = 86400;
+export const revalidate = false; // Rebuilt only when Backstage changes something (on-demand revalidation).
 
 export async function generateStaticParams() {
   return ROLE_GROUPS.map((group) => ({ role: group.key }));

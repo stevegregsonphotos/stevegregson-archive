@@ -23,7 +23,7 @@ import {
 import { canonicalVenue } from "../../../lib/venues";
 import { serviceLinkFor } from "../../../lib/sectors";
 
-export const revalidate = 86400;
+export const revalidate = false; // Rebuilt only when Backstage changes something (on-demand revalidation).
 
 export async function generateStaticParams() {
   return [];

@@ -50,16 +50,15 @@ export const PUBLIC_ARCHIVE_TAG = "public-archive";
 /** Selected Work images and the Selected Work / Commissions page settings. */
 export const PUBLIC_SELECTED_WORK_TAG = "public-selected-work";
 
-const ONE_DAY = 86400;
 
 const archiveOptions = {
   tags: [PUBLIC_ARCHIVE_TAG],
-  revalidate: ONE_DAY,
+  revalidate: false,
 };
 
 const selectedWorkOptions = {
   tags: [PUBLIC_SELECTED_WORK_TAG],
-  revalidate: ONE_DAY,
+  revalidate: false,
 };
 
 // --- Archive-wide lists (small: no photographs) ---------------------------

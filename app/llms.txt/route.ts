@@ -4,7 +4,7 @@ import { getSectorData } from "../../lib/sectors";
  * A plain-English summary for AI assistants (ChatGPT, Perplexity, Claude,
  * Google's AI answers), following the llms.txt convention.
  */
-export const revalidate = 86400;
+export const revalidate = false; // Rebuilt only when Backstage changes something (on-demand revalidation).
 
 const SITE = "https://www.stevegregson.com";
 
