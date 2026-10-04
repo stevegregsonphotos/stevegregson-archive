@@ -1095,6 +1095,35 @@ export async function productionExists(
   return Boolean(rows[0]);
 }
 
+/** Every old production address (lower-case) and the slug it now points to. */
+export async function getProductionSlugRedirects(): Promise<
+  Record<string, string>
+> {
+  const sql = getSql();
+
+  const rows = await sql`
+    SELECT lower(r.old_slug) AS "oldSlug", p.slug
+    FROM production_slug_redirects r
+    INNER JOIN productions p
+      ON p.id = r.production_id
+      AND p.deleted_at IS NULL
+  `;
+
+  const redirects: Record<string, string> = {};
+
+  for (const row of rows as { oldSlug: unknown; slug: unknown }[]) {
+    if (
+      typeof row.oldSlug === "string" &&
+      typeof row.slug === "string" &&
+      !Object.hasOwn(redirects, row.oldSlug)
+    ) {
+      redirects[row.oldSlug] = row.slug;
+    }
+  }
+
+  return redirects;
+}
+
 export async function getProductionSlugRedirect(
   oldSlug: string,
 ) {

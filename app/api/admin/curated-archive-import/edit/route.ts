@@ -11,7 +11,7 @@ import {
   readCuratedImportDirectFile,
 } from "@/lib/curated-archive/staging";
 
-import { revalidatePublicArchive } from "@/lib/revalidate-public-content";
+import { revalidateArchiveLists } from "@/lib/revalidate-public-content";
 import fs from "node:fs/promises";
 import path from "node:path";
 import {
@@ -1756,7 +1756,7 @@ export async function POST(
         credits,
       );
     // Directory links appear on public production pages.
-    revalidatePublicArchive();
+    revalidateArchiveLists();
   } catch (directoryError) {
     console.error(
       "Directory sync failed:",

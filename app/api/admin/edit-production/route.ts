@@ -797,7 +797,8 @@ export async function POST(request: Request) {
         : "The global website directory could not be updated.";
     }
 
-    revalidateProductionContent(saved.slug);
+    // Old and new address, in case the production was renamed.
+    revalidateProductionContent([slug, saved.slug]);
 
     return Response.json({
       ok: true,

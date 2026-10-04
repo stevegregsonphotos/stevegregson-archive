@@ -61,7 +61,7 @@ export async function POST(request: Request) {
         "The production record was removed, but some old R2 objects could not be cleaned up.";
     }
 
-    revalidateProductionContent();
+    revalidateProductionContent(body.slug);
 
     return Response.json({
       ok: true,

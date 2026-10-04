@@ -10,7 +10,7 @@ import {
   getProduction,
   getProductionAccessSummary,
   getProductionIndex,
-  getProductionSlugRedirect,
+  getProductionSlugRedirects,
   getPublicProductionNavigation,
 } from "./productions-repository";
 import {
@@ -32,7 +32,7 @@ import { getSiteContent } from "./site-content-repository";
  *
  * Freshness: Backstage calls revalidateTag() for these tags after every
  * change (lib/revalidate-public-content.ts), so edits still appear at once.
- * The one-day revalidate is only a safety net.
+ * Nothing expires on a timer: data only refreshes when Backstage changes it.
  *
  * Only public pages, the sitemap and llms.txt use these. Backstage screens,
  * password unlock routes and proofing keep reading live data directly from
@@ -44,7 +44,11 @@ import { getSiteContent } from "./site-content-repository";
  * are cached one production at a time.
  */
 
-/** Productions, credits, directory links and production gallery layouts. */
+/**
+ * Archive-wide lists: the production index, archive and navigation lists,
+ * photo counts, directory links and old-address redirects. Each production's
+ * own data has its own tag (see "One production at a time" below).
+ */
 export const PUBLIC_ARCHIVE_TAG = "public-archive";
 
 /** Selected Work images and the Selected Work / Commissions page settings. */
@@ -97,49 +101,116 @@ export const getCachedDirectory = unstable_cache(
 // --- One production at a time ---------------------------------------------
 
 /*
- * Slugs are passed through exactly as the page received them; the
- * repository functions normalise them as before.
+ * Each production's own data is tagged with that production alone (plus a
+ * catch-all tag for rare bulk changes). Editing one production therefore
+ * refreshes only that production's data: every other production page can
+ * rebuild itself from this cache without waking the database.
  */
-const getCachedPublicProductionBySlug = unstable_cache(
-  async (slug: string): Promise<Production | null> => {
-    const production = await getProduction(slug);
 
-    if (!production) {
-      return null;
-    }
+/** Catch-all tag on every per-production entry, for bulk changes. */
+export const PUBLIC_PRODUCTION_PAGES_TAG = "public-production-pages";
 
-    // The encrypted gallery password is never needed to render the public
-    // page (password checks happen in the live unlock route), so keep it
-    // out of the shared cache.
-    const { accessPasswordEncrypted: _omit, ...publicProduction } = production;
-    void _omit;
-    return publicProduction;
-  },
-  ["public-production-by-slug"],
-  archiveOptions,
-);
+/** Same normalising rule the repository functions use for slugs. */
+export function normaliseProductionSlug(slug: string): string | null {
+  try {
+    const normalised = decodeURIComponent(slug).trim().toLowerCase();
+    return normalised || null;
+  } catch {
+    return null;
+  }
+}
+
+/** Tag for one production's cached data. */
+export function productionCacheTag(slug: string) {
+  return `public-production:${normaliseProductionSlug(slug) ?? slug}`;
+}
+
+function cachedForProduction<T>(
+  name: string,
+  slug: string,
+  read: (slug: string) => Promise<T>,
+) {
+  return unstable_cache(read, [name], {
+    tags: [PUBLIC_PRODUCTION_PAGES_TAG, productionCacheTag(slug)],
+    revalidate: false as const,
+  })(slug);
+}
+
+/*
+ * Every live production slug, from the small cached index. Addresses that
+ * aren't productions (typos, robots guessing URLs) are turned away here
+ * instead of each one costing a database look-up.
+ */
+async function isKnownProductionSlug(slug: string) {
+  const index = await getCachedProductionIndex();
+  return index.some((entry) => entry.slug.toLowerCase() === slug);
+}
+
+async function readPublicProduction(slug: string): Promise<Production | null> {
+  const production = await getProduction(slug);
+
+  if (!production) {
+    return null;
+  }
+
+  // The encrypted gallery password is never needed to render the public
+  // page (password checks happen in the live unlock route), so keep it
+  // out of the shared cache.
+  const { accessPasswordEncrypted: _omit, ...publicProduction } = production;
+  void _omit;
+  return publicProduction;
+}
 
 /** The production page's data, without the encrypted access password. */
 export async function getCachedPublicProduction(slug: string) {
-  return (await getCachedPublicProductionBySlug(slug)) ?? undefined;
-}
+  const normalised = normaliseProductionSlug(slug);
 
-const getCachedProductionAccessSummaryBySlug = unstable_cache(
-  async (slug: string) =>
-    (await getProductionAccessSummary(slug)) ?? null,
-  ["public-production-access-summary"],
-  archiveOptions,
-);
+  if (!normalised || !(await isKnownProductionSlug(normalised))) {
+    return undefined;
+  }
+
+  return (
+    (await cachedForProduction(
+      "public-production-by-slug",
+      normalised,
+      readPublicProduction,
+    )) ?? undefined
+  );
+}
 
 export async function getCachedProductionAccessSummary(slug: string) {
-  return (await getCachedProductionAccessSummaryBySlug(slug)) ?? undefined;
+  const normalised = normaliseProductionSlug(slug);
+
+  if (!normalised || !(await isKnownProductionSlug(normalised))) {
+    return undefined;
+  }
+
+  return (
+    (await cachedForProduction(
+      "public-production-access-summary",
+      normalised,
+      async (value) => (await getProductionAccessSummary(value)) ?? null,
+    )) ?? undefined
+  );
 }
 
-export const getCachedProductionSlugRedirect = unstable_cache(
-  (slug: string) => getProductionSlugRedirect(slug),
-  ["public-production-slug-redirect"],
+/** Old production addresses and where they now point (one small list). */
+const getCachedProductionSlugRedirects = unstable_cache(
+  () => getProductionSlugRedirects(),
+  ["public-production-slug-redirects"],
   archiveOptions,
 );
+
+export async function getCachedProductionSlugRedirect(slug: string) {
+  const normalised = normaliseProductionSlug(slug);
+
+  if (!normalised) {
+    return null;
+  }
+
+  const redirects = await getCachedProductionSlugRedirects();
+  return Object.hasOwn(redirects, normalised) ? redirects[normalised] : null;
+}
 
 // --- Selected Work and page settings --------------------------------------
 
