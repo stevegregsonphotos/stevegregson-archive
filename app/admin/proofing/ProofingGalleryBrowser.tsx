@@ -9,6 +9,8 @@ import {
   useRouter,
 } from "next/navigation";
 
+import styles from "./proofing-galleries.module.css";
+
 type GalleryStatus =
   | "draft"
   | "live"
@@ -87,17 +89,6 @@ function matchesFilter(
     default:
       return true;
   }
-}
-
-function formatDate(value: string) {
-  return new Date(value).toLocaleDateString(
-    "en-GB",
-    {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    },
-  );
 }
 
 function statusLabel(
@@ -189,24 +180,19 @@ export default function ProofingGalleryBrowser({
       count: counts.all,
     },
     {
-      id: "unarchived",
-      label: "Unarchived",
-      count: counts.unarchived,
-    },
-    {
       id: "active",
       label: "Active",
       count: counts.active,
     },
     {
+      id: "prereleased",
+      label: "Pre-released",
+      count: counts.prereleased,
+    },
+    {
       id: "inactive",
       label: "Inactive",
       count: counts.inactive,
-    },
-    {
-      id: "prereleased",
-      label: "Pre-Released",
-      count: counts.prereleased,
     },
     {
       id: "archived",
@@ -450,13 +436,44 @@ export default function ProofingGalleryBrowser({
     }
   }
 
+  function formatCardDate(value: string) {
+    return new Date(value).toLocaleDateString("en-GB", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  }
+
+  function stateClass(gallery: GalleryBrowserItem) {
+    const label = statusLabel(gallery);
+
+    if (label === "Pre-Released") {
+      return `${styles.state} ${styles.stateDraft}`;
+    }
+
+    if (label === "Inactive" || label === "Archived") {
+      return `${styles.state} ${styles.stateOff}`;
+    }
+
+    return styles.state;
+  }
+
   return (
-    <div className="sp-gallery-browser">
-      <div className="sp-gallery-search-row">
-        <div className="sp-gallery-search">
-          <span aria-hidden="true">
-            ⌕
-          </span>
+    <div>
+      <div className={styles.toolbar}>
+        <label className={styles.search}>
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            aria-hidden="true"
+          >
+            <circle cx="11" cy="11" r="7" />
+            <path d="m20 20-3.5-3.5" />
+          </svg>
 
           <input
             type="search"
@@ -467,12 +484,10 @@ export default function ProofingGalleryBrowser({
             placeholder="Search gallery, client or venue…"
             aria-label="Search galleries"
           />
-        </div>
-      </div>
+        </label>
 
-      <div className="sp-gallery-browser-controls">
         <div
-          className="sp-gallery-filters"
+          className={styles.filters}
           role="tablist"
           aria-label="Gallery filters"
         >
@@ -481,17 +496,11 @@ export default function ProofingGalleryBrowser({
               key={item.id}
               type="button"
               role="tab"
-              aria-selected={
-                filter === item.id
-              }
+              aria-selected={filter === item.id}
               className={
-                filter === item.id
-                  ? "is-active"
-                  : ""
+                filter === item.id ? styles.on : undefined
               }
-              onClick={() =>
-                setFilter(item.id)
-              }
+              onClick={() => setFilter(item.id)}
             >
               {item.label}
               <span>{item.count}</span>
@@ -499,159 +508,124 @@ export default function ProofingGalleryBrowser({
           ))}
         </div>
 
-        <div className="sp-gallery-view-controls">
-          <span>
-            {visibleGalleries.length}{" "}
-            {visibleGalleries.length === 1
-              ? "gallery"
-              : "galleries"}
-          </span>
-
+        <div className={styles.views}>
           <button
             type="button"
-            className={
-              view === "grid"
-                ? "is-active"
-                : ""
-            }
+            className={view === "grid" ? styles.on : undefined}
             aria-label="Grid view"
+            aria-pressed={view === "grid"}
             onClick={() => setView("grid")}
           >
-            <span className="sp-gallery-grid-icon">
-              <i />
-              <i />
-              <i />
-              <i />
-            </span>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" aria-hidden="true">
+              <rect width="6" height="6" />
+              <rect x="8" width="6" height="6" />
+              <rect y="8" width="6" height="6" />
+              <rect x="8" y="8" width="6" height="6" />
+            </svg>
           </button>
 
           <button
             type="button"
-            className={
-              view === "list"
-                ? "is-active"
-                : ""
-            }
+            className={view === "list" ? styles.on : undefined}
             aria-label="List view"
+            aria-pressed={view === "list"}
             onClick={() => setView("list")}
           >
-            <span className="sp-gallery-list-icon">
-              <i />
-              <i />
-              <i />
-            </span>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" aria-hidden="true">
+              <rect width="14" height="2" />
+              <rect y="6" width="14" height="2" />
+              <rect y="12" width="14" height="2" />
+            </svg>
           </button>
         </div>
       </div>
 
       {visibleGalleries.length === 0 ? (
-        <div className="sp-gallery-empty">
-          <p>
-            No galleries match this view.
-          </p>
+        <div className={styles.empty}>
+          <p>No galleries match this view.</p>
         </div>
       ) : (
         <div
           className={
             view === "grid"
-              ? "sp-gallery-cards"
-              : "sp-gallery-cards is-list"
+              ? styles.cards
+              : `${styles.cards} ${styles.list}`
           }
         >
-          {visibleGalleries.map(
-            (gallery) => (
-              <article
-                key={gallery.id}
-                className="sp-gallery-card"
-              >
+          {visibleGalleries.map((gallery) => {
+            const label = statusLabel(gallery);
+            const isOff =
+              label === "Inactive" || label === "Archived";
+
+            return (
+              <article key={gallery.id} className={styles.card}>
                 <Link
                   href={`/admin/proofing/${gallery.id}`}
-                  className="sp-gallery-card-main"
+                  className={styles.cardMain}
                 >
-                  <div className="sp-gallery-card-image">
+                  <div
+                    className={
+                      isOff
+                        ? `${styles.image} ${styles.dimmed}`
+                        : styles.image
+                    }
+                  >
                     {gallery.coverImageUrl ? (
-                      <img
-                        src={
-                          gallery.coverImageUrl
-                        }
-                        alt=""
-                      />
+                      <img src={gallery.coverImageUrl} alt="" />
                     ) : (
-                      <div className="sp-gallery-card-placeholder">
-                        <span>
-                          No photographs
-                        </span>
+                      <div className={styles.placeholder}>
+                        <span>No photographs</span>
                       </div>
                     )}
+
+                    <span className={stateClass(gallery)}>
+                      <i aria-hidden="true" />
+                      {label === "Pre-Released" ? "Pre-released" : label}
+                    </span>
+
+                    <span className={styles.photoCount}>
+                      {gallery.imageCount}{" "}
+                      {gallery.imageCount === 1 ? "photo" : "photos"}
+                    </span>
                   </div>
 
-                  <div className="sp-gallery-card-copy">
-                    <div className="sp-gallery-card-title-row">
-                      <h2>
-                        {gallery.title}
-                      </h2>
+                  <div className={styles.copy}>
+                    <h2>{gallery.title}</h2>
 
-                    </div>
+                    <p className={styles.meta}>
+                      {formatCardDate(gallery.createdAt)}
+                      {" · "}
+                      {gallery.clientName ? (
+                        <b>{gallery.clientName}</b>
+                      ) : (
+                        <span>No client</span>
+                      )}
+                      {gallery.venue ? (
+                        <>
+                          {" · "}
+                          {gallery.venue}
+                        </>
+                      ) : null}
+                    </p>
+                  </div>
 
-                    <div className="sp-gallery-card-details">
-                      <div>
-                        <span>
-                          {formatDate(
-                            gallery.createdAt,
-                          )}
-                        </span>
-
-                        <span>
-                          {gallery.imageCount}{" "}
-                          {gallery.imageCount === 1
-                            ? "photo"
-                            : "photos"}
-                        </span>
-                      </div>
-
-                      <div className="sp-gallery-card-client">
-                        {gallery.clientName ? (
-                          <span>
-                            {gallery.clientName}
-                          </span>
-                        ) : (
-                          <span className="is-muted">
-                            No client
-                          </span>
-                        )}
-
-                        {gallery.venue ? (
-                          <span>
-                            {gallery.venue}
-                          </span>
-                        ) : null}
-                      </div>
-                    </div>
-
-                    <div className="sp-gallery-card-footer">
-                      <span
-                        className={`sp-gallery-state sp-gallery-state-${gallery.status}`}
-                      >
-                        {statusLabel(gallery)}
+                  <div className={styles.foot}>
+                    <span className={styles.stats}>
+                      <span>
+                        <b>{gallery.visitorCount}</b>{" "}
+                        {gallery.visitorCount === 1 ? "visitor" : "visitors"}
                       </span>
 
-                      <div>
-                        <span>
-                          {gallery.visitorCount}{" "}
-                          {gallery.visitorCount === 1
-                            ? "visitor"
-                            : "visitors"}
-                        </span>
+                      <span className={styles.heart}>
+                        <b>{gallery.favouriteCount}</b> ♥
+                      </span>
+                    </span>
 
-                        <span>
-                          {gallery.favouriteCount} ♥
-                        </span>
-                      </div>
-                    </div>
+                    <span className={styles.open}>Open →</span>
                   </div>
                 </Link>
 
-                <details className="sp-gallery-card-actions">
+                <details className={styles.actions}>
                   <summary
                     aria-label={`Actions for ${gallery.title}`}
                     title="Gallery actions"
@@ -659,28 +633,22 @@ export default function ProofingGalleryBrowser({
                     ⋮
                   </summary>
 
-                  <div
-                    className="sp-gallery-card-actions-menu"
-                    role="menu"
-                  >
+                  <div className={styles.menu} role="menu">
                     <button
                       type="button"
                       role="menuitem"
                       onClick={(event) =>
-                        void shareGallery(
-                          gallery,
-                          event.currentTarget,
-                        )
+                        void shareGallery(gallery, event.currentTarget)
                       }
                     >
-                      Share Gallery
+                      Share gallery
                     </button>
 
                     <Link
                       role="menuitem"
                       href={`/admin/proofing/${gallery.id}?tab=selections`}
                     >
-                      View Visitors &amp; Selections
+                      Visitors &amp; selections
                     </Link>
 
                     <Link
@@ -688,20 +656,17 @@ export default function ProofingGalleryBrowser({
                       href={`/proofing/${gallery.slug}`}
                       target="_blank"
                     >
-                      Preview Gallery
+                      Preview gallery ↗
                     </Link>
 
                     <button
                       type="button"
                       role="menuitem"
                       onClick={(event) =>
-                        void copyGalleryUrl(
-                          gallery,
-                          event.currentTarget,
-                        )
+                        void copyGalleryUrl(gallery, event.currentTarget)
                       }
                     >
-                      Copy Gallery URL
+                      Copy gallery link
                     </button>
 
                     <Link
@@ -715,31 +680,22 @@ export default function ProofingGalleryBrowser({
                       type="button"
                       role="menuitem"
                       onClick={(event) =>
-                        void toggleGalleryStatus(
-                          gallery,
-                          event.currentTarget,
-                        )
+                        void toggleGalleryStatus(gallery, event.currentTarget)
                       }
                     >
                       {gallery.status === "live"
-                        ? "Deactivate Gallery"
-                        : "Reactivate Gallery"}
+                        ? "Deactivate gallery"
+                        : "Reactivate gallery"}
                     </button>
 
-                    <div
-                      className="sp-gallery-card-actions-divider"
-                      aria-hidden="true"
-                    />
+                    <div className={styles.menuDivider} aria-hidden="true" />
 
                     <button
                       type="button"
                       role="menuitem"
-                      className="is-destructive"
+                      className={styles.danger}
                       onClick={(event) =>
-                        void deleteGallery(
-                          gallery,
-                          event.currentTarget,
-                        )
+                        void deleteGallery(gallery, event.currentTarget)
                       }
                     >
                       Delete
@@ -747,8 +703,8 @@ export default function ProofingGalleryBrowser({
                   </div>
                 </details>
               </article>
-            ),
-          )}
+            );
+          })}
         </div>
       )}
     </div>

@@ -4,7 +4,10 @@ import {
   getProofingWatermarks,
 } from "../../../../lib/proofing/watermarks";
 
+import Link from "next/link";
+
 import WatermarkLibraryClient from "./WatermarkLibraryClient";
+import styles from "./watermarks.module.css";
 
 export const metadata: Metadata = {
   title:
@@ -22,23 +25,23 @@ export default async function WatermarksPage() {
     await getProofingWatermarks();
 
   return (
-    <main className="proofing-admin watermark-admin-page">
-      <header className="watermark-admin-header">
-        <p className="proofing-section-label">
-          Client Proofing
-        </p>
+    <main className={styles.page}>
+      <Link href="/admin/proofing" className={styles.back}>
+        ← Proofing galleries
+      </Link>
 
-        <h1>Watermarks</h1>
+      <header>
+        <p className={styles.eyebrow}>Client proofing</p>
 
-        <p>
-          Manage reusable watermark designs for your
-          private client proofing galleries.
+        <h1 className={styles.title}>Watermarks</h1>
+
+        <p className={styles.lead}>
+          Reusable watermarks for your private proofing galleries.
+          Choose one in a gallery&apos;s settings.
         </p>
       </header>
 
-      <WatermarkLibraryClient
-        initialWatermarks={watermarks}
-      />
+      <WatermarkLibraryClient initialWatermarks={watermarks} />
     </main>
   );
 }

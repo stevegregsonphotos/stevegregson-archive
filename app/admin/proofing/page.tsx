@@ -20,8 +20,13 @@ import {
 
 import ProofingGalleryBrowser from "./ProofingGalleryBrowser";
 import NewGalleryModal from "./NewGalleryModal";
+import styles from "./proofing-galleries.module.css";
 
 export const dynamic = "force-dynamic";
+
+function visitedInLastDay(value: string) {
+  return Date.now() - new Date(value).getTime() < 24 * 60 * 60 * 1000;
+}
 
 export default async function ProofingPage() {
   async function createGallery(
@@ -339,162 +344,184 @@ export default async function ProofingPage() {
     },
   );
 
+  const recentVisits = galleryActivity
+    .flatMap((activityGallery) =>
+      activityGallery.visitors.map((visitor) => ({
+        galleryId: activityGallery.galleryId,
+        galleryTitle: activityGallery.galleryTitle,
+        visitor,
+      })),
+    )
+    .sort(
+      (first, second) =>
+        new Date(second.visitor.lastSeenAt).getTime() -
+        new Date(first.visitor.lastSeenAt).getTime(),
+    )
+    .slice(0, 3);
+
   return (
-    <main className="sp-galleries-page">
-      <div className="sp-galleries-shell">
-        <header className="sp-galleries-header">
-          <div className="sp-galleries-heading">
-            <div
-              className="sp-galleries-heading-icon"
-              aria-hidden="true"
-            >
-              <span />
-              <span />
-            </div>
+    <main className={styles.page}>
+      <header className={styles.head}>
+        <div>
+          <p className={styles.eyebrow}>Client proofing</p>
 
+          <h1 className={styles.title}>Galleries</h1>
+
+          <p className={styles.lead}>
+            Upload proofs, send them to your client and see
+            what they pick.
+          </p>
+        </div>
+
+        <div className={styles.headActions}>
+          <Link
+            href="/admin/proofing/watermarks"
+            className={styles.textLink}
+          >
+            Watermarks
+          </Link>
+
+          <NewGalleryModal
+            createGallery={createGallery}
+            contacts={contacts}
+            companies={companies}
+          />
+        </div>
+      </header>
+
+      {galleryActivity.length > 0 ? (
+        <section
+          className={styles.activity}
+          aria-label="Recent gallery activity"
+        >
+          <div className={styles.activityTop}>
             <div>
-              <p className="proofing-eyebrow">
-                Client proofing
-              </p>
+              <p className={styles.label}>Recent activity</p>
 
-              <h1>Galleries</h1>
-
-              <p>
-                Manage your galleries and
-                deliver proofs to your clients.
-              </p>
-            </div>
-          </div>
-
-          <div className="sp-galleries-header-actions">
-            <Link
-              href="/admin/proofing/watermarks"
-              className="sp-galleries-text-action"
-            >
-              Watermarks
-            </Link>
-
-            <NewGalleryModal
-              createGallery={createGallery}
-              contacts={contacts}
-                companies={companies}
-            />
-          </div>
-        </header>
-
-        {galleryActivity.length > 0 ? (
-          <details className="sp-gallery-activity-list">
-            <summary className="sp-gallery-activity-list-heading">
-              <span className="proofing-eyebrow">
-                Gallery activity
-              </span>
-
-              <strong>
-                {galleryActivity.length}
-                {" "}
+              <strong className={styles.activityCount}>
+                {galleryActivity.length}{" "}
                 {galleryActivity.length === 1
                   ? "gallery visited"
                   : "galleries visited"}
               </strong>
+            </div>
+          </div>
+
+          {recentVisits.map(
+            ({ galleryId, galleryTitle, visitor }) => (
+              <div
+                key={`${galleryId}-${visitor.id}`}
+                className={styles.activityRow}
+              >
+                <span className={styles.activityWho}>
+                  <span
+                    className={
+                      visitedInLastDay(visitor.lastSeenAt)
+                        ? `${styles.dot} ${styles.dotRecent}`
+                        : styles.dot
+                    }
+                    aria-hidden="true"
+                  />
+                  {visitor.email}
+                </span>
+
+                <Link
+                  href={`/admin/proofing/${galleryId}?tab=selections`}
+                  className={styles.activityGallery}
+                >
+                  {galleryTitle}
+                </Link>
+
+                <span className={styles.fav}>
+                  {visitor.selection.favourites.length} ♥
+                </span>
+
+                <time
+                  className={styles.when}
+                  dateTime={visitor.lastSeenAt}
+                >
+                  {formatActivityDate(visitor.lastSeenAt)}
+                </time>
+              </div>
+            ),
+          )}
+
+          <details className={styles.allActivity}>
+            <summary>
+              View all activity
+              <span className={styles.chev} aria-hidden="true">
+                ▾
+              </span>
             </summary>
 
-            <div className="sp-gallery-activity-list-body">
-              {galleryActivity.map(
-              (activityGallery) => (
+            <div className={styles.allActivityBody}>
+              {galleryActivity.map((activityGallery) => (
                 <details
                   key={activityGallery.galleryId}
-                  className="sp-gallery-activity-item"
+                  className={styles.galleryActivity}
                 >
                   <summary>
-                    <div className="sp-gallery-activity-item-summary">
-                      <div>
-                        <strong>
-                          {activityGallery.galleryTitle}
-                        </strong>
+                    <strong>{activityGallery.galleryTitle}</strong>
 
-                        <span>
-                          {activityGallery.visitors.length}
-                          {" "}
-                          {activityGallery.visitors.length === 1
-                            ? "visitor"
-                            : "visitors"}
-                        </span>
-                      </div>
-
-                      <span className="sp-gallery-activity-view">
-                        View Activity
-                      </span>
-                    </div>
+                    <span>
+                      {activityGallery.visitors.length}{" "}
+                      {activityGallery.visitors.length === 1
+                        ? "visitor"
+                        : "visitors"}
+                    </span>
                   </summary>
 
-                  <div className="sp-gallery-activity-table">
-                    <div className="sp-gallery-activity-row sp-gallery-activity-header">
+                  <div className={styles.visitorTable}>
+                    <div
+                      className={`${styles.visitorRow} ${styles.visitorHeader}`}
+                    >
                       <span>Email</span>
                       <span>Favourites</span>
-                      <span>Last Activity</span>
+                      <span>Last activity</span>
                     </div>
 
-                    {activityGallery.visitors.map(
-                      (visitor) => (
-                        <div
-                          key={visitor.id}
-                          className="sp-gallery-activity-row"
-                        >
-                          <span>
-                            {visitor.email}
-                          </span>
+                    {activityGallery.visitors.map((visitor) => (
+                      <div
+                        key={visitor.id}
+                        className={styles.visitorRow}
+                      >
+                        <span>{visitor.email}</span>
 
-                          <span className="sp-gallery-activity-favourites">
-                            {
-                              visitor.selection
-                                .favourites.length
-                            }
-                          </span>
+                        <span className={styles.fav}>
+                          {visitor.selection.favourites.length}
+                        </span>
 
-                          <time
-                            dateTime={
-                              visitor.lastSeenAt
-                            }
-                          >
-                            {formatActivityDate(
-                              visitor.lastSeenAt,
-                            )}
-                          </time>
-                        </div>
-                      ),
-                    )}
+                        <time dateTime={visitor.lastSeenAt}>
+                          {formatActivityDate(visitor.lastSeenAt)}
+                        </time>
+                      </div>
+                    ))}
                   </div>
                 </details>
-              ),
-            )}
+              ))}
             </div>
           </details>
-        ) : null}
+        </section>
+      ) : null}
 
-        {galleries.length === 0 ? (
-          <section className="sp-gallery-first">
-            <h2>
-              Create your first gallery
-            </h2>
+      {galleries.length === 0 ? (
+        <section className={styles.first}>
+          <h2>Create your first gallery</h2>
 
-            <p>
-              Upload photographs, invite a
-              client and collect their
-              selections.
-            </p>
+          <p>
+            Upload photographs, invite a client and collect
+            their selections.
+          </p>
 
-            <NewGalleryModal
-              createGallery={createGallery}
-              contacts={contacts}
-                companies={companies}
-            />
-          </section>
-        ) : (
-          <ProofingGalleryBrowser
-            galleries={galleryItems}
+          <NewGalleryModal
+            createGallery={createGallery}
+            contacts={contacts}
+            companies={companies}
           />
-        )}
-      </div>
+        </section>
+      ) : (
+        <ProofingGalleryBrowser galleries={galleryItems} />
+      )}
     </main>
   );
 }

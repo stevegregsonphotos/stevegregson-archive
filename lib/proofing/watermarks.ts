@@ -129,3 +129,39 @@ export async function getProofingWatermark(
       )
     : undefined;
 }
+
+export async function renameProofingWatermark(
+  id: string,
+  name: string,
+) {
+  const sql = getSql();
+
+  const rows = await sql`
+    UPDATE proofing_watermarks
+    SET name = ${name}, updated_at = NOW()
+    WHERE id = ${id}
+    RETURNING id, name, filename, created_at, updated_at
+  `;
+
+  const row = rows[0];
+
+  return row
+    ? mapWatermark(
+        row as Parameters<typeof mapWatermark>[0],
+      )
+    : undefined;
+}
+
+export async function deleteProofingWatermarkRecord(
+  id: string,
+) {
+  const sql = getSql();
+
+  const rows = await sql`
+    DELETE FROM proofing_watermarks
+    WHERE id = ${id}
+    RETURNING id
+  `;
+
+  return rows.length > 0;
+}

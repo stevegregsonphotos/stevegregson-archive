@@ -30,9 +30,20 @@ function isActiveRoute(
     return pathname === "/admin";
   }
 
-  return (
-    pathname === href ||
-    pathname.startsWith(`${href}/`)
+  const matches = (candidate: string) =>
+    pathname === candidate ||
+    pathname.startsWith(`${candidate}/`);
+
+  if (!matches(href)) {
+    return false;
+  }
+
+  // A more specific menu item wins (e.g. Watermarks lives under Proofing).
+  return !navigation.some(
+    (item) =>
+      item.href !== href &&
+      item.href.startsWith(`${href}/`) &&
+      matches(item.href),
   );
 }
 
