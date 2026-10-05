@@ -542,6 +542,72 @@ function statusLabel(
 export default function CuratedArchiveImportClient({
   existingProductions,
 }: CuratedArchiveImportClientProps) {
+  /*
+   * Arriving from Productions › Upcoming (?upcoming=<id>): remember the
+   * draft so each production's Edit link can fill in its details.
+   */
+  const [upcomingStart, setUpcomingStart] =
+    useState<{
+      id: string;
+      title: string;
+    } | null>(null);
+
+  useEffect(() => {
+    const id =
+      new URLSearchParams(
+        window.location.search,
+      ).get("upcoming");
+
+    if (!id) {
+      return;
+    }
+
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const response =
+          await fetch(
+            `/api/admin/upcoming-productions?id=${encodeURIComponent(
+              id,
+            )}`,
+            {
+              cache: "no-store",
+            },
+          );
+
+        const result =
+          (await response.json()) as {
+            ok?: boolean;
+            draft?: {
+              id: string;
+              title: string;
+            };
+          };
+
+        if (
+          !cancelled &&
+          response.ok &&
+          result.ok &&
+          result.draft
+        ) {
+          setUpcomingStart({
+            id: result.draft.id,
+            title:
+              result.draft.title.trim() ||
+              "Untitled",
+          });
+        }
+      } catch {
+        // Optional: the import works without it.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const [data, setData] =
     useState<PreflightResponse | null>(
       null,
@@ -2828,6 +2894,23 @@ export default function CuratedArchiveImportClient({
           : styles.screen
       }
     >
+      {upcomingStart ? (
+        <p
+          className={styles.msg}
+          role="status"
+          data-testid="curated-upcoming-start"
+          style={{
+            margin: "0 0 16px",
+          }}
+        >
+          Starting from your upcoming production “{upcomingStart.title}”.
+          Choose its curated folder below, then click Edit on the
+          production: its details and credits will be filled in from
+          the upcoming production for you to check and save before
+          importing.
+        </p>
+      ) : null}
+
       <ol
         className={styles.steps}
         aria-label="Curated import steps"
@@ -3324,7 +3407,13 @@ export default function CuratedArchiveImportClient({
                           className={styles.btn}
                           href={`/admin/curated-archive-import/edit/${encodeURIComponent(
                             production.folder,
-                          )}`}
+                          )}${
+                            upcomingStart
+                              ? `?upcoming=${encodeURIComponent(
+                                  upcomingStart.id,
+                                )}`
+                              : ""
+                          }`}
                         >
                           Edit
                         </a>

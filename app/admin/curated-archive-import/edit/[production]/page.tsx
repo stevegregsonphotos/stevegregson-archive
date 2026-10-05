@@ -2,6 +2,7 @@
 
 import {
   useEffect,
+  useRef,
   useState,
 } from "react";
 import {
@@ -12,6 +13,10 @@ import {
 import CreditsEditor from "../../../../../components/admin/editor/CreditsEditor";
 import ImageEditor from "../../../../../components/admin/image-editor/ImageEditor";
 import type { ImageEditorSettings } from "@/lib/client-image-editor";
+import type {
+  UpcomingDraft,
+  UpcomingSummary,
+} from "@/lib/upcoming-productions";
 
 type Credit = {
   role: string;
@@ -43,6 +48,7 @@ type CuratedProduction = {
   heroIndex: number | null;
   selectedCount: number;
   images: CuratedImage[];
+  upcomingId?: string | null;
 };
 
 type LoadResult = {
@@ -104,6 +110,19 @@ export default function CuratedProductionEditPage() {
 
   const [images, setImages] =
     useState<CuratedImage[]>([]);
+
+  /* Productions › Upcoming: use a private draft's details and credits. */
+  const [upcomingOptions, setUpcomingOptions] =
+    useState<UpcomingSummary[]>([]);
+
+  const [linkedUpcomingId, setLinkedUpcomingId] =
+    useState("");
+
+  const [upcomingNote, setUpcomingNote] =
+    useState("");
+
+  const [upcomingLoading, setUpcomingLoading] =
+    useState(false);
 
   const [heroIndex, setHeroIndex] =
     useState<number | null>(null);
@@ -195,6 +214,9 @@ export default function CuratedProductionEditPage() {
         setHeroIndex(
           production.heroIndex,
         );
+        setLinkedUpcomingId(
+          production.upcomingId ?? "",
+        );
       } catch (error) {
         if (cancelled) {
           return;
@@ -249,7 +271,9 @@ export default function CuratedProductionEditPage() {
           JSON.stringify(credits) !==
             JSON.stringify(
               original.credits,
-            )
+            ) ||
+          linkedUpcomingId !==
+            (original.upcomingId ?? "")
         ),
     );
 
@@ -705,6 +729,10 @@ export default function CuratedProductionEditPage() {
       setCredits(
         production.credits,
       );
+      setLinkedUpcomingId(
+        production.upcomingId ?? "",
+      );
+      setUpcomingNote("");
 
       setMessage(
         "Curated edits removed. Researched metadata restored.",
@@ -721,6 +749,209 @@ export default function CuratedProductionEditPage() {
       setSaving(false);
     }
   }
+
+  /** Loads the Upcoming list once, for the picker. */
+  useEffect(() => {
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const response =
+          await fetch(
+            "/api/admin/upcoming-productions",
+            {
+              cache: "no-store",
+            },
+          );
+
+        const result =
+          (await response.json()) as {
+            ok?: boolean;
+            drafts?: UpcomingSummary[];
+          };
+
+        if (
+          !cancelled &&
+          response.ok &&
+          result.ok &&
+          Array.isArray(result.drafts)
+        ) {
+          setUpcomingOptions(
+            result.drafts,
+          );
+        }
+      } catch {
+        // The picker is optional; the page works without it.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  /**
+   * Fills the details and credits from an upcoming draft. Blank fields in
+   * the draft keep what the curator researched. Nothing is saved until
+   * "Save curated changes".
+   */
+  async function applyUpcomingDraft(
+    id: string,
+  ) {
+    clearMessage();
+
+    if (!id) {
+      setLinkedUpcomingId("");
+      setUpcomingNote(
+        "No longer linked to an upcoming production. The details below are unchanged.",
+      );
+      return;
+    }
+
+    setUpcomingLoading(true);
+
+    try {
+      const response =
+        await fetch(
+          `/api/admin/upcoming-productions?id=${encodeURIComponent(
+            id,
+          )}`,
+          {
+            cache: "no-store",
+          },
+        );
+
+      const result =
+        (await response.json()) as {
+          ok?: boolean;
+          message?: string;
+          draft?: UpcomingDraft;
+        };
+
+      if (
+        !response.ok ||
+        !result.ok ||
+        !result.draft
+      ) {
+        throw new Error(
+          result.message ||
+            "That upcoming production could not be loaded.",
+        );
+      }
+
+      const draft =
+        result.draft;
+
+      if (draft.title.trim()) {
+        setTitle(draft.title.trim());
+      }
+
+      if (draft.venue.trim()) {
+        setVenue(draft.venue.trim());
+      }
+
+      if (draft.month) {
+        setMonth(draft.month);
+      }
+
+      if (draft.year) {
+        setYear(draft.year);
+      }
+
+      if (draft.description.trim()) {
+        setDescription(
+          draft.description.trim(),
+        );
+      }
+
+      const draftCredits =
+        draft.credits
+          .map((credit) => ({
+            role: credit.role.trim(),
+            name: credit.name.trim(),
+            ...(credit.website?.trim()
+              ? {
+                  website:
+                    credit.website.trim(),
+                }
+              : {}),
+          }))
+          .filter(
+            (credit) =>
+              credit.role &&
+              credit.name,
+          );
+
+      if (draftCredits.length > 0) {
+        setCredits(draftCredits);
+      }
+
+      setLinkedUpcomingId(draft.id);
+      setUpcomingNote(
+        `Details and credits filled in from your upcoming production “${
+          draft.title.trim() ||
+          "Untitled"
+        }”${
+          draftCredits.length === 0
+            ? " (it has no credits yet, so the researched credits were kept)"
+            : ""
+        }. Check them, then save. It will leave your Upcoming list when this production is imported.`,
+      );
+    } catch (error) {
+      setUpcomingNote(
+        error instanceof Error
+          ? error.message
+          : "That upcoming production could not be loaded.",
+      );
+    } finally {
+      setUpcomingLoading(false);
+    }
+  }
+
+  /*
+   * Arriving from Productions › Upcoming (?upcoming=<id>): fill the form
+   * from that draft straight away, unless this production is already
+   * linked to one.
+   */
+  const autoAppliedUpcoming =
+    useRef(false);
+
+  useEffect(() => {
+    if (
+      autoAppliedUpcoming.current ||
+      !original
+    ) {
+      return;
+    }
+
+    autoAppliedUpcoming.current = true;
+
+    const requested =
+      new URLSearchParams(
+        window.location.search,
+      ).get("upcoming");
+
+    if (
+      requested &&
+      !original.upcomingId
+    ) {
+      // After this render: the draft is fetched, then the form is filled.
+      void Promise.resolve().then(
+        () =>
+          applyUpcomingDraft(
+            requested,
+          ),
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [original]);
+
+  const upcomingChoices =
+    upcomingOptions.filter(
+      (draft) =>
+        draft.status === "draft" ||
+        draft.id === linkedUpcomingId,
+    );
 
   async function saveChanges() {
     if (
@@ -797,6 +1028,8 @@ export default function CuratedProductionEditPage() {
               description:
                 description.trim(),
               credits,
+              upcomingId:
+                linkedUpcomingId || null,
             }),
           },
         );
@@ -827,6 +1060,8 @@ export default function CuratedProductionEditPage() {
           description.trim(),
         credits,
         edited: true,
+        upcomingId:
+          linkedUpcomingId || null,
       };
 
       setOriginal(
@@ -834,7 +1069,9 @@ export default function CuratedProductionEditPage() {
       );
 
       setMessage(
-        "Curated production changes saved.",
+        linkedUpcomingId
+          ? "Curated production changes saved. The upcoming production will leave your Upcoming list when this is imported."
+          : "Curated production changes saved.",
       );
       setMessageType("success");
     } catch (error) {
@@ -1063,6 +1300,105 @@ export default function CuratedProductionEditPage() {
         >
           Production Details
         </h2>
+
+        {upcomingChoices.length > 0 ||
+        linkedUpcomingId ||
+        upcomingNote ? (
+          <div
+            style={{
+              marginTop: "1.5rem",
+              padding: "1rem 1.25rem",
+              border:
+                "1px solid rgba(199, 163, 105, 0.45)",
+              background:
+                "rgba(199, 163, 105, 0.06)",
+            }}
+          >
+            <label
+              className="backstage-field"
+              style={{
+                maxWidth: "36rem",
+              }}
+            >
+              <span className="backstage-field-label">
+                Use details from an upcoming production
+              </span>
+
+              <select
+                className="backstage-input"
+                value={linkedUpcomingId}
+                disabled={
+                  saving ||
+                  upcomingLoading
+                }
+                onChange={(event) =>
+                  void applyUpcomingDraft(
+                    event.target.value,
+                  )
+                }
+                data-testid="curated-upcoming-select"
+              >
+                <option value="">
+                  None — use the researched details
+                </option>
+
+                {linkedUpcomingId &&
+                !upcomingChoices.some(
+                  (draft) =>
+                    draft.id ===
+                    linkedUpcomingId,
+                ) ? (
+                  <option
+                    value={
+                      linkedUpcomingId
+                    }
+                  >
+                    Linked upcoming production
+                  </option>
+                ) : null}
+
+                {upcomingChoices.map(
+                  (draft) => (
+                    <option
+                      key={draft.id}
+                      value={draft.id}
+                    >
+                      {[
+                        draft.title.trim() ||
+                          "Untitled",
+                        draft.venue.trim(),
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                      {draft.status ===
+                      "published"
+                        ? " (published)"
+                        : ""}
+                    </option>
+                  ),
+                )}
+              </select>
+            </label>
+
+            <p
+              role="status"
+              style={{
+                margin: "0.75rem 0 0",
+                color:
+                  "rgba(242, 238, 230, 0.72)",
+                fontSize: "0.85rem",
+                lineHeight: 1.5,
+              }}
+            >
+              {upcomingLoading
+                ? "Loading the upcoming production…"
+                : upcomingNote ||
+                  (linkedUpcomingId
+                    ? "Linked to an upcoming production. It will leave your Upcoming list when this production is imported."
+                    : "Choose one to fill in the title, venue, date, description and credits from the private draft you made before the shoot. The photos, hero and order stay as curated.")}
+            </p>
+          </div>
+        ) : null}
 
         <div
           style={{
