@@ -1,9 +1,13 @@
 "use client";
 
 import {
+  DragEvent,
   FormEvent,
+  useEffect,
   useState,
 } from "react";
+
+import styles from "./watermarks.module.css";
 
 type Watermark = {
   id: string;
@@ -119,6 +123,33 @@ export default function WatermarkLibraryClient({
   const [message, setMessage] =
     useState<string | null>(null);
 
+  const [messageOk, setMessageOk] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [previewUrl, setPreviewUrl] =
+    useState<string | null>(null);
+
+  // Free the preview's memory when the page closes.
+  useEffect(
+    () => () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    },
+    [previewUrl],
+  );
+
+  function chooseFile(next: File | null) {
+    setFile(next);
+    setMessage(null);
+    setPreviewUrl(next ? URL.createObjectURL(next) : null);
+  }
+
+  function handleDrop(event: DragEvent<HTMLLabelElement>) {
+    event.preventDefault();
+    setIsDragging(false);
+    chooseFile(event.dataTransfer.files?.[0] ?? null);
+  }
+
   async function uploadWatermark(
     event: FormEvent<HTMLFormElement>,
   ) {
@@ -130,6 +161,7 @@ export default function WatermarkLibraryClient({
 
     setIsUploading(true);
     setMessage(null);
+    setMessageOk(false);
 
     try {
       await validateWatermarkFile(file);
@@ -224,6 +256,7 @@ export default function WatermarkLibraryClient({
 
       setName("");
       setFile(null);
+      setPreviewUrl(null);
 
       const input =
         document.getElementById(
@@ -234,6 +267,7 @@ export default function WatermarkLibraryClient({
         input.value = "";
       }
 
+      setMessageOk(true);
       setMessage("Watermark uploaded.");
     } catch (error) {
       setMessage(
@@ -247,154 +281,194 @@ export default function WatermarkLibraryClient({
   }
 
   return (
-    <div className="watermark-library">
-      <section className="watermark-library-upload">
-        <div>
-          <p className="proofing-section-label">
-            Add watermark
-          </p>
+    <>
+      <section className={styles.upload} aria-label="Add a watermark">
+        <div className={styles.uploadCopy}>
+          <p className={styles.label}>Add a watermark</p>
 
-          <h2>Upload watermark</h2>
+          <h2>Upload a new watermark</h2>
 
           <p>
-            Upload a transparent PNG to make it
-            available across your proofing galleries.
+            It becomes available to every proofing gallery straight
+            away.
           </p>
+
+          <ul className={styles.tips}>
+            <li>PNG file with a transparent background</li>
+            <li>Up to 10 MB</li>
+            <li>White artwork works best on most theatre photos</li>
+          </ul>
         </div>
 
-        <form
-          onSubmit={uploadWatermark}
-          className="watermark-upload-form"
-        >
+        <form onSubmit={uploadWatermark} className={styles.form}>
           <div>
-            <label htmlFor="watermark-name">
+            <label
+              htmlFor="watermark-name"
+              className={`${styles.label} ${styles.fieldLabel}`}
+            >
               Name
             </label>
 
             <input
               id="watermark-name"
               type="text"
+              className={styles.textInput}
               value={name}
-              onChange={(event) =>
-                setName(event.target.value)
-              }
+              onChange={(event) => setName(event.target.value)}
               placeholder="e.g. Steve Gregson White"
             />
           </div>
 
           <div>
-            <label htmlFor="watermark-file">
+            <span className={`${styles.label} ${styles.fieldLabel}`}>
               PNG file
-            </label>
+            </span>
 
-            <input
-              id="watermark-file"
-              type="file"
-              accept="image/png"
-              required
-              onChange={(event) =>
-                setFile(
-                  event.target.files?.[0] ??
-                    null,
-                )
+            <label
+              className={
+                isDragging
+                  ? `${styles.drop} ${styles.dropActive}`
+                  : styles.drop
               }
-            />
+              onDragOver={(event) => {
+                event.preventDefault();
+                setIsDragging(true);
+              }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={handleDrop}
+            >
+              <input
+                id="watermark-file"
+                type="file"
+                accept="image/png"
+                onChange={(event) =>
+                  chooseFile(event.target.files?.[0] ?? null)
+                }
+              />
+
+              {previewUrl ? (
+                <>
+                  <div className={styles.chosen}>
+                    <div className={styles.swatchDark}>
+                      <img src={previewUrl} alt="Chosen watermark on dark" />
+                    </div>
+
+                    <div className={styles.swatchLight}>
+                      <img src={previewUrl} alt="Chosen watermark on light" />
+                    </div>
+                  </div>
+
+                  <small>
+                    Drop another PNG or <u>choose a different file</u>
+                  </small>
+                </>
+              ) : (
+                <>
+                  <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
+                    <path d="M12 16V4m0 0-4.5 4.5M12 4l4.5 4.5" />
+                    <path d="M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4" />
+                  </svg>
+
+                  <strong>
+                    Drop your PNG here or <u>choose a file</u>
+                  </strong>
+
+                  <small>You&apos;ll see a preview before uploading</small>
+                </>
+              )}
+            </label>
           </div>
 
-          <button
-            type="submit"
-            disabled={
-              !file || isUploading
-            }
-          >
-            {isUploading
-              ? "Uploading…"
-              : "Upload watermark"}
-          </button>
+          <div className={styles.formFoot}>
+            <span className={styles.fileName}>
+              {file ? <b>{file.name}</b> : "No file chosen yet"}
+            </span>
+
+            <button
+              type="submit"
+              className={styles.submit}
+              disabled={!file || isUploading}
+            >
+              {isUploading ? "Uploading…" : "Upload watermark"}
+            </button>
+          </div>
 
           {message ? (
-            <p className="watermark-upload-message">
+            <p
+              className={
+                messageOk
+                  ? `${styles.message} ${styles.messageOk}`
+                  : styles.message
+              }
+              role="status"
+            >
               {message}
             </p>
           ) : null}
         </form>
       </section>
 
-      <section className="watermark-library-list">
-        <div className="watermark-library-heading">
+      <section aria-label="Your watermarks">
+        <div className={styles.libHead}>
           <div>
-            <p className="proofing-section-label">
-              Library
-            </p>
-
+            <p className={styles.label}>Library</p>
             <h2>Your watermarks</h2>
           </div>
 
-          <span>
+          <span className={styles.label}>
             {watermarks.length} watermark
-            {watermarks.length === 1
-              ? ""
-              : "s"}
+            {watermarks.length === 1 ? "" : "s"}
           </span>
         </div>
 
         {watermarks.length === 0 ? (
-          <div className="watermark-library-empty">
-            <p>
-              No watermark files have been uploaded
-              yet.
-            </p>
+          <div className={styles.empty}>
+            <p>No watermark files have been uploaded yet.</p>
           </div>
         ) : (
-          <div className="watermark-library-grid">
-            {watermarks.map(
-              (watermark) => (
-                <article
-                  key={watermark.id}
-                  className="watermark-library-card"
-                >
-                  <div className="watermark-library-preview">
-                    <div className="watermark-library-preview-dark">
-                      <img
-                        src={`/api/admin/proofing/watermarks/image?id=${encodeURIComponent(
-                          watermark.id,
-                        )}`}
-                        alt=""
-                      />
+          <div className={styles.lib}>
+            {watermarks.map((watermark) => {
+              const src = `/api/admin/proofing/watermarks/image?id=${encodeURIComponent(
+                watermark.id,
+              )}`;
+
+              return (
+                <article key={watermark.id} className={styles.card}>
+                  <div className={styles.swatches}>
+                    <div className={`${styles.swatch} ${styles.swatchPhoto}`}>
+                      <img className={styles.photo} src="/backstage/watermark-sample.webp" alt="" />
+                      <img className={styles.mark} src={src} alt="" />
+                      <em>On a photo</em>
                     </div>
 
-                    <div className="watermark-library-preview-light">
-                      <img
-                        src={`/api/admin/proofing/watermarks/image?id=${encodeURIComponent(
-                          watermark.id,
-                        )}`}
-                        alt=""
-                      />
+                    <div className={`${styles.swatch} ${styles.swatchDark}`}>
+                      <img className={styles.mark} src={src} alt="" />
+                      <em>Dark</em>
+                    </div>
+
+                    <div className={`${styles.swatch} ${styles.swatchLight}`}>
+                      <img className={styles.mark} src={src} alt="" />
+                      <em>Light</em>
                     </div>
                   </div>
 
-                  <div className="watermark-library-card-copy">
+                  <div className={styles.cardCopy}>
                     <h3>{watermark.name}</h3>
 
                     <p>
                       Uploaded{" "}
-                      {new Date(
-                        watermark.createdAt,
-                      ).toLocaleDateString(
+                      {new Date(watermark.createdAt).toLocaleDateString(
                         "en-GB",
-                        {
-                          dateStyle:
-                            "medium",
-                        },
+                        { dateStyle: "medium" },
                       )}
                     </p>
                   </div>
                 </article>
-              ),
-            )}
+              );
+            })}
           </div>
         )}
       </section>
-    </div>
+    </>
   );
 }
