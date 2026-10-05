@@ -36,6 +36,11 @@ export type CuratedArchiveOverride = {
   credits?: CuratedArchiveCredit[];
   images?: CuratedArchiveImageOverride;
   excluded?: boolean;
+  /**
+   * Productions › Upcoming draft whose details were used for this
+   * production. Marked as published when the production is imported.
+   */
+  upcomingId?: string;
 };
 
 function getSql() {

@@ -22,6 +22,12 @@ import {
 import {
   productionExists,
 } from "@/lib/productions-repository";
+import {
+  getCuratedArchiveOverrides,
+} from "@/lib/curated-archive-overrides-repository";
+import {
+  markUpcomingDraftPublished,
+} from "@/lib/upcoming-productions-repository";
 
 import {
   revalidateProductionContent,
@@ -69,6 +75,47 @@ function isPublishedImageMetadata(
       candidate.blurDataURL,
     )
   );
+}
+
+/*
+ * If this curated production's details came from a Productions › Upcoming
+ * draft, move that draft out of the Upcoming list now it is published.
+ * Never fails the publish: the production is already live at this point.
+ */
+async function markLinkedUpcomingPublished(
+  production: string,
+  url: string,
+) {
+  try {
+    const overrides =
+      await getCuratedArchiveOverrides();
+    const upcomingId =
+      overrides[production]?.upcomingId;
+
+    if (!upcomingId) {
+      return null;
+    }
+
+    await markUpcomingDraftPublished(
+      upcomingId,
+      url,
+    );
+
+    return {
+      id: upcomingId,
+      marked: true,
+    };
+  } catch (error) {
+    console.error(
+      "Could not mark the linked upcoming production as published:",
+      error,
+    );
+
+    return {
+      id: null,
+      marked: false,
+    };
+  }
 }
 
 async function getPrepared(
@@ -449,11 +496,18 @@ export async function POST(
         payload.slug,
       );
 
+      const upcoming =
+        await markLinkedUpcomingPublished(
+          prepared.production,
+          result.production.url,
+        );
+
       return NextResponse.json({
         ok: true,
         message:
           `${payload.title} was published from the curated archive.`,
         ...result,
+        upcoming,
       });
     }
 

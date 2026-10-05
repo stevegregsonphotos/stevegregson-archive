@@ -206,14 +206,15 @@ export default function UpcomingDraftPage() {
     }
   }
 
-  async function addPhotosAndPublish() {
+  async function addPhotosAndPublish(route: "upload" | "curated" = "upload") {
     let target = draft;
     if (dirty || !target) {
       target = await save();
       if (!target) return;
     }
     leavingRef.current = true;
-    window.location.assign(`/admin/new-production?upcoming=${encodeURIComponent(target.id)}`);
+    const page = route === "curated" ? "/admin/curated-archive-import" : "/admin/new-production";
+    window.location.assign(`${page}?upcoming=${encodeURIComponent(target.id)}`);
   }
 
   /* ---------- Render ---------- */
@@ -474,7 +475,8 @@ export default function UpcomingDraftPage() {
                   </ul>
                   <p className={pe.help}>
                     Opens Upload &amp; publish with these details and credits already filled in — you just choose the
-                    photo folder.
+                    photo folder. If Claude has curated the photos, use Curated import instead: choose the main
+                    curated folder and it keeps Claude&rsquo;s picks, hero and order while using these details.
                     {missing.length
                       ? ` Publishing will also need the ${missing.join(", ")}; you can add ${missing.length === 1 ? "it" : "them"} here or there.`
                       : ""}
@@ -489,6 +491,15 @@ export default function UpcomingDraftPage() {
                       data-testid="add-photos-publish"
                     >
                       Add photos &amp; publish →
+                    </button>
+                    <button
+                      type="button"
+                      className={sw.btn}
+                      disabled={saving}
+                      onClick={() => void addPhotosAndPublish("curated")}
+                      data-testid="add-curated-photos"
+                    >
+                      Use a curated folder →
                     </button>
                   </div>
                 </section>

@@ -12,6 +12,7 @@ import {
 } from "@/lib/curated-archive/staging";
 
 import { revalidateArchiveLists } from "@/lib/revalidate-public-content";
+import { isValidUpcomingId } from "@/lib/upcoming-productions";
 import fs from "node:fs/promises";
 import path from "node:path";
 import {
@@ -44,6 +45,7 @@ type EditPayload = {
   year?: unknown;
   description?: unknown;
   credits?: unknown;
+  upcomingId?: unknown;
 };
 
 type MetadataMap =
@@ -491,6 +493,8 @@ async function loadCuratedProduction(
           Boolean(
             override?.images,
           ),
+        upcomingId:
+          override?.upcomingId ?? null,
       };
     } catch {
       continue;
@@ -729,6 +733,8 @@ async function loadDirectCuratedProduction(
         Boolean(override?.images),
       heroIndex: effectiveHeroIndex,
       images: effectiveImages,
+      upcomingId:
+        override?.upcomingId ?? null,
     };
   } catch {
     return null;
@@ -973,6 +979,7 @@ export async function DELETE(
       year: _year,
       description: _description,
       credits: _credits,
+      upcomingId: _upcomingId,
       ...remainingOverride
     } = existingOverride;
 
@@ -1535,6 +1542,28 @@ export async function POST(
   const month = Number(body.month);
   const year = Number(body.year);
 
+  /*
+   * Optional: the Productions › Upcoming draft these details came from.
+   * Omitted keeps the existing link; null or "" clears it.
+   */
+  if (
+    body.upcomingId !== undefined &&
+    body.upcomingId !== null &&
+    body.upcomingId !== "" &&
+    !isValidUpcomingId(body.upcomingId)
+  ) {
+    return NextResponse.json(
+      {
+        ok: false,
+        message:
+          "That upcoming production could not be found.",
+      },
+      {
+        status: 400,
+      },
+    );
+  }
+
   if (!production) {
     return NextResponse.json(
       {
@@ -1725,14 +1754,31 @@ export async function POST(
   const existingOverride =
     overrides[production] ?? {};
 
+  const {
+    upcomingId: previousUpcomingId,
+    ...overrideWithoutUpcoming
+  } = existingOverride;
+
+  const upcomingId =
+    body.upcomingId === undefined
+      ? previousUpcomingId
+      : isValidUpcomingId(body.upcomingId)
+        ? body.upcomingId
+        : undefined;
+
   overrides[production] = {
-    ...existingOverride,
+    ...overrideWithoutUpcoming,
     title,
     venue,
     month,
     year,
     description,
     credits,
+    ...(upcomingId
+      ? {
+          upcomingId,
+        }
+      : {}),
   };
 
   await setCuratedArchiveOverride(
