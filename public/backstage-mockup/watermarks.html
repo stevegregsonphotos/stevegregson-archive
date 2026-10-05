@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Watermarks (mock-up)</title>
+<link rel="stylesheet" href="_shared.css">
+<style>
+.back{display:inline-block;margin-bottom:22px;color:var(--muted);font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;text-decoration:none}
+.back:hover{color:var(--cream)}
+
+/* Upload */
+.upload{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:0;margin-top:36px;border:1px solid var(--line);border-left:3px solid var(--gold);background:var(--panel)}
+.upload-copy{padding:32px 36px;display:flex;flex-direction:column;gap:14px}
+.upload-copy h2{margin:0;font-family:var(--serif);font-weight:400;font-size:36px;letter-spacing:-.03em;line-height:1.05}
+.upload-copy p{margin:0;color:var(--soft);font-size:14px;line-height:1.6;max-width:30rem}
+.tips{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:8px;font-size:13px;color:var(--muted)}
+.tips li{display:flex;gap:10px}
+.tips li::before{content:"✓";color:var(--gold);font-weight:700}
+.upload-form{padding:32px 36px;border-left:1px solid var(--line);display:flex;flex-direction:column;gap:18px}
+.field label{display:block;margin-bottom:8px}
+.field input[type=text]{width:100%;height:46px;padding:0 14px;border:1px solid var(--line-strong);background:var(--ground);color:var(--cream);font:inherit;font-size:14px;outline:none}
+.field input[type=text]:focus{border-color:var(--gold)}
+.field .drop{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;min-height:170px;border:1px dashed var(--button-line);background:repeating-conic-gradient(#1d1c1a 0 25%,#191816 0 50%) 0 0/18px 18px;text-align:center;padding:24px;cursor:pointer;transition:border-color .15s}
+.drop:hover{border-color:var(--gold)}
+.drop svg{color:var(--gold)}
+.drop strong{font-size:15px;font-weight:600}
+.drop strong u{color:var(--gold);text-decoration-thickness:1px;text-underline-offset:3px}
+.drop span{color:var(--muted);font-size:12px}
+.form-foot{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.form-foot small{color:var(--muted);font-size:12px}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+
+/* Library */
+.lib-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin:56px 0 18px;padding-bottom:16px;border-bottom:1px solid var(--line)}
+.lib-head h2{margin:8px 0 0;font-family:var(--serif);font-weight:400;font-size:36px;letter-spacing:-.03em;line-height:1}
+.lib{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+.wm{border:1px solid var(--line);background:var(--panel);transition:border-color .15s}
+.wm:hover{border-color:var(--line-strong)}
+.swatches{display:grid;grid-template-columns:1.4fr 1fr 1fr;height:190px}
+.sw{position:relative;display:grid;place-items:center;overflow:hidden}
+.sw svg{width:72%;height:auto;position:relative}
+.sw.photo{background:#000}
+.sw.photo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.95}
+.sw.dark{background:#0b0b0a}
+.sw.light{background:#ece8df}
+.sw em{position:absolute;left:10px;bottom:8px;font-style:normal;font-size:9px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.75);text-shadow:0 1px 2px rgba(0,0,0,.6)}
+.sw.light em{color:#6d675e;text-shadow:none}
+.wm-copy{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 20px;border-top:1px solid var(--line)}
+.wm-copy h3{margin:0;font-family:var(--serif);font-weight:400;font-size:22px;letter-spacing:-.02em}
+.wm-copy p{margin:4px 0 0;color:var(--muted);font-size:12px}
+.wm-copy .tag{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);border:1px solid var(--line-strong);padding:5px 8px;white-space:nowrap}
+
+@media (max-width:1000px){.upload{grid-template-columns:1fr}.upload-form{border-left:0;border-top:1px solid var(--line)}.lib{grid-template-columns:1fr}}
+@media (max-width:760px){.upload-copy,.upload-form{padding:24px 20px}.swatches{height:150px}}
+</style>
+</head>
+<body>
+<p class="mock-note">Mock-up only — look, not function. Watermark artwork and photo are stand-ins; uploading works exactly as it does today.</p>
+<header class="app-header">
+  <a class="brand" href="#"><span>Steve Gregson</span><span>Backstage</span></a>
+  <nav class="app-nav" aria-label="Backstage navigation">
+    <a href="#">Dashboard</a><a href="#">Upload &amp; publish</a><a href="#">Curated import</a><a href="#">Productions</a>
+    <a href="proofing.html">Proofing</a><a href="#">Selected Work</a><a href="#">Clients</a><a href="#" aria-current="page">Watermarks</a><a href="#">Settings</a>
+  </nav>
+  <div class="app-utils"><a href="#">View website ↗</a><button type="button">Sign out</button></div>
+</header>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="wm-word" viewBox="0 0 300 90"><text x="0" y="40" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" font-weight="800" font-size="40" letter-spacing="-1">Steve</text><text x="0" y="84" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" font-weight="800" font-size="40" letter-spacing="-1">Gregson</text></symbol>
+    <symbol id="wm-badge" viewBox="0 0 200 200"><circle cx="100" cy="100" r="92" fill="none" stroke-width="7" stroke="currentColor"/><text x="100" y="96" text-anchor="middle" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" font-weight="800" font-size="40" letter-spacing="-1">Steve</text><text x="100" y="134" text-anchor="middle" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" font-weight="600" font-size="20" letter-spacing="2">GREGSON</text></symbol>
+  </defs>
+</svg>
+
+<main class="page">
+  <a class="back" href="proofing.html">← Proofing galleries</a>
+  <div class="head">
+    <div>
+      <p class="eyebrow">Client proofing</p>
+      <h1>Watermarks</h1>
+      <p class="lead">Reusable watermarks for your private proofing galleries. Choose one in a gallery's settings.</p>
+    </div>
+  </div>
+
+  <section class="upload" aria-label="Add a watermark">
+    <div class="upload-copy">
+      <p class="label" style="margin:0">Add a watermark</p>
+      <h2>Upload a new watermark</h2>
+      <p>It becomes available to every proofing gallery straight away.</p>
+      <ul class="tips">
+        <li>PNG file with a transparent background</li>
+        <li>Up to 10 MB</li>
+        <li>White artwork works best on most theatre photos</li>
+      </ul>
+    </div>
+    <form class="upload-form" onsubmit="return false">
+      <div class="field">
+        <label class="label" for="n">Name</label>
+        <input id="n" type="text" placeholder="e.g. Steve Gregson White">
+      </div>
+      <div class="field">
+        <span class="label" style="display:block;margin-bottom:8px">PNG file</span>
+        <label class="drop">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 16V4m0 0-4.5 4.5M12 4l4.5 4.5"/><path d="M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"/></svg>
+          <strong>Drop your PNG here or <u>choose a file</u></strong>
+          <span>You'll see a preview before uploading</span>
+        </label>
+      </div>
+      <div class="form-foot">
+        <small>No file chosen yet</small>
+        <button class="btn btn-gold" disabled>Upload watermark</button>
+      </div>
+    </form>
+  </section>
+
+  <div class="lib-head">
+    <div><p class="label" style="margin:0">Library</p><h2>Your watermarks</h2></div>
+    <span class="label">4 watermarks</span>
+  </div>
+
+  <div class="lib">
+    <article class="wm">
+      <div class="swatches">
+        <div class="sw photo"><img src="assets/salome-kneel.webp" alt=""><svg viewBox="0 0 300 90" fill="#fff" opacity=".8"><use href="#wm-word"/></svg><em>On a photo</em></div>
+        <div class="sw dark"><svg viewBox="0 0 300 90" fill="#fff"><use href="#wm-word"/></svg><em>Dark</em></div>
+        <div class="sw light"><svg viewBox="0 0 300 90" fill="#fff"><use href="#wm-word"/></svg><em>Light</em></div>
+      </div>
+      <div class="wm-copy"><div><h3>Steve Gregson White</h3><p>Uploaded 14 Sep 2026</p></div></div>
+    </article>
+    <article class="wm">
+      <div class="swatches">
+        <div class="sw photo"><img src="assets/eden.webp" alt=""><svg viewBox="0 0 300 90" fill="#111" opacity=".8"><use href="#wm-word"/></svg><em>On a photo</em></div>
+        <div class="sw dark"><svg viewBox="0 0 300 90" fill="#111"><use href="#wm-word"/></svg><em>Dark</em></div>
+        <div class="sw light"><svg viewBox="0 0 300 90" fill="#111"><use href="#wm-word"/></svg><em>Light</em></div>
+      </div>
+      <div class="wm-copy"><div><h3>Steve Gregson Black</h3><p>Uploaded 14 Sep 2026</p></div></div>
+    </article>
+    <article class="wm">
+      <div class="swatches">
+        <div class="sw photo"><img src="assets/sherlock.webp" alt=""><svg viewBox="0 0 200 200" fill="#fff" color="#fff" opacity=".8" style="width:46%"><use href="#wm-badge"/></svg><em>On a photo</em></div>
+        <div class="sw dark"><svg viewBox="0 0 200 200" fill="#fff" color="#fff" style="width:52%"><use href="#wm-badge"/></svg><em>Dark</em></div>
+        <div class="sw light"><svg viewBox="0 0 200 200" fill="#fff" color="#fff" style="width:52%"><use href="#wm-badge"/></svg><em>Light</em></div>
+      </div>
+      <div class="wm-copy"><div><h3>Badge White</h3><p>Uploaded 15 Sep 2026</p></div></div>
+    </article>
+    <article class="wm">
+      <div class="swatches">
+        <div class="sw photo"><img src="assets/dance.webp" alt=""><svg viewBox="0 0 200 200" fill="#111" color="#111" opacity=".8" style="width:46%"><use href="#wm-badge"/></svg><em>On a photo</em></div>
+        <div class="sw dark"><svg viewBox="0 0 200 200" fill="#111" color="#111" style="width:52%"><use href="#wm-badge"/></svg><em>Dark</em></div>
+        <div class="sw light"><svg viewBox="0 0 200 200" fill="#111" color="#111" style="width:52%"><use href="#wm-badge"/></svg><em>Light</em></div>
+      </div>
+      <div class="wm-copy"><div><h3>Badge Black</h3><p>Uploaded 15 Sep 2026</p></div></div>
+    </article>
+  </div>
+</main>
+</body>
+</html>
