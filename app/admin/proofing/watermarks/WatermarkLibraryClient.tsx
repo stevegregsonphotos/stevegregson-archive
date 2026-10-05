@@ -124,6 +124,116 @@ export default function WatermarkLibraryClient({
     useState<string | null>(null);
 
   const [messageOk, setMessageOk] = useState(false);
+
+  const [editingId, setEditingId] =
+    useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [busyId, setBusyId] =
+    useState<string | null>(null);
+  const [cardMessage, setCardMessage] = useState<{
+    id: string;
+    text: string;
+  } | null>(null);
+
+  async function manageWatermark(
+    body: Record<string, string>,
+  ) {
+    const response = await fetch(
+      "/api/admin/proofing/watermarks/manage",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      },
+    );
+
+    const result = (await response.json()) as {
+      ok?: boolean;
+      message?: string;
+      watermark?: Watermark;
+    };
+
+    if (!response.ok || !result.ok) {
+      throw new Error(
+        result.message ?? "The watermark could not be changed.",
+      );
+    }
+
+    return result;
+  }
+
+  async function saveRename(watermark: Watermark) {
+    const nextName = editName.trim();
+
+    if (!nextName || nextName === watermark.name) {
+      setEditingId(null);
+      return;
+    }
+
+    setBusyId(watermark.id);
+    setCardMessage(null);
+
+    try {
+      const result = await manageWatermark({
+        action: "rename",
+        id: watermark.id,
+        name: nextName,
+      });
+
+      setWatermarks((current) =>
+        current.map((item) =>
+          item.id === watermark.id && result.watermark
+            ? result.watermark
+            : item,
+        ),
+      );
+      setEditingId(null);
+    } catch (error) {
+      setCardMessage({
+        id: watermark.id,
+        text:
+          error instanceof Error
+            ? error.message
+            : "The watermark could not be renamed.",
+      });
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function removeWatermark(watermark: Watermark) {
+    const confirmed = window.confirm(
+      `Delete the watermark "${watermark.name}"?\n\nThis can't be undone.`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setBusyId(watermark.id);
+    setCardMessage(null);
+
+    try {
+      await manageWatermark({
+        action: "delete",
+        id: watermark.id,
+      });
+
+      setWatermarks((current) =>
+        current.filter((item) => item.id !== watermark.id),
+      );
+    } catch (error) {
+      setCardMessage({
+        id: watermark.id,
+        text:
+          error instanceof Error
+            ? error.message
+            : "The watermark could not be deleted.",
+      });
+    } finally {
+      setBusyId(null);
+    }
+  }
   const [isDragging, setIsDragging] = useState(false);
   const [previewUrl, setPreviewUrl] =
     useState<string | null>(null);
@@ -453,15 +563,84 @@ export default function WatermarkLibraryClient({
                   </div>
 
                   <div className={styles.cardCopy}>
-                    <h3>{watermark.name}</h3>
+                    {editingId === watermark.id ? (
+                      <form
+                        className={styles.renameForm}
+                        onSubmit={(event) => {
+                          event.preventDefault();
+                          void saveRename(watermark);
+                        }}
+                      >
+                        <input
+                          className={styles.textInput}
+                          value={editName}
+                          onChange={(event) => setEditName(event.target.value)}
+                          aria-label="Watermark name"
+                          maxLength={100}
+                          autoFocus
+                        />
 
-                    <p>
-                      Uploaded{" "}
-                      {new Date(watermark.createdAt).toLocaleDateString(
-                        "en-GB",
-                        { dateStyle: "medium" },
-                      )}
-                    </p>
+                        <button
+                          type="submit"
+                          className={styles.smallGold}
+                          disabled={busyId === watermark.id}
+                        >
+                          {busyId === watermark.id ? "Saving…" : "Save"}
+                        </button>
+
+                        <button
+                          type="button"
+                          className={styles.textButton}
+                          onClick={() => setEditingId(null)}
+                        >
+                          Cancel
+                        </button>
+                      </form>
+                    ) : (
+                      <div className={styles.cardRow}>
+                        <div>
+                          <h3>{watermark.name}</h3>
+
+                          <p>
+                            Uploaded{" "}
+                            {new Date(watermark.createdAt).toLocaleDateString(
+                              "en-GB",
+                              { dateStyle: "medium" },
+                            )}
+                          </p>
+                        </div>
+
+                        <div className={styles.cardActions}>
+                          <button
+                            type="button"
+                            className={styles.textButton}
+                            disabled={busyId === watermark.id}
+                            onClick={() => {
+                              setEditingId(watermark.id);
+                              setEditName(watermark.name);
+                              setCardMessage(null);
+                            }}
+                          >
+                            Rename
+                          </button>
+
+                          <button
+                            type="button"
+                            className={`${styles.textButton} ${styles.dangerButton}`}
+                            disabled={busyId === watermark.id}
+                            onClick={() => void removeWatermark(watermark)}
+                          >
+                            {busyId === watermark.id ? "Deleting…" : "Delete"}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {cardMessage?.id === watermark.id ? (
+                      <p className={styles.cardMessage} role="alert">
+                        {cardMessage.text}
+                      </p>
+                    ) : null}
                   </div>
                 </article>
               );
