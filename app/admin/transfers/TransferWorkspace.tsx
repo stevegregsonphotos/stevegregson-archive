@@ -103,18 +103,20 @@ export default function TransferWorkspace({ initialTransfers }: { initialTransfe
           const job = signed.jobs[i];
           const queued = batch[i];
           setProgress("Uploading " + (uploaded + 1) + " of " + queue.length + " · " + queued.file.name);
-          const put = await fetch(
-            job.uploadUrl,
-            {
-              method: "PUT",
-              headers: {
-                "Content-Type":
-                  queued.file.type ||
-                  "application/octet-stream",
+          let put: Response;
+          try {
+            put = await fetch(
+              job.uploadUrl,
+              {
+                method: "PUT",
+                body: queued.file,
               },
-              body: queued.file,
-            },
-          );
+            );
+          } catch {
+            throw new Error(
+              "Direct storage upload could not be reached. Check the transfer bucket CORS configuration.",
+            );
+          }
           if (!put.ok) {
             throw new Error(
               "Upload failed for " +
