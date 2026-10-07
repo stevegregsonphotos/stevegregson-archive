@@ -16,6 +16,7 @@ const navigation = [
   { label: "Curated import", href: "/admin/curated-archive-import" },
   { label: "Productions", href: "/admin/productions" },
   { label: "Proofing", href: "/admin/proofing" },
+  { label: "Transfers", href: "/admin/transfers" },
   { label: "Selected Work", href: "/admin/selected-work" },
   { label: "Clients", href: "/admin/clients" },
   { label: "Watermarks", href: "/admin/proofing/watermarks" },
