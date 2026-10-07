@@ -1,14 +1,10 @@
 import {
-  AbortMultipartUploadCommand,
-  CompleteMultipartUploadCommand,
-  CreateMultipartUploadCommand,
   DeleteObjectsCommand,
   GetObjectCommand,
   HeadObjectCommand,
   ListObjectsV2Command,
   PutObjectCommand,
   S3Client,
-  UploadPartCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
@@ -66,103 +62,14 @@ export async function createTransferUploadUrl(
 
   return {
     objectKey,
-    uploadUrl: await getSignedUrl(getClient(), command, { expiresIn: 60 * 60 }),
+    uploadUrl: await getSignedUrl(
+      getClient(),
+      command,
+      { expiresIn: 15 * 60 },
+    ),
   };
 }
 
-
-export async function putTransferObject(
-  objectKey: string,
-  body: Uint8Array,
-  contentType: string,
-) {
-  await getClient().send(
-    new PutObjectCommand({
-      Bucket: getBucket(),
-      Key: objectKey,
-      Body: body,
-      ContentType: contentType || "application/octet-stream",
-      CacheControl: "private, no-store",
-    }),
-  );
-}
-
-
-export async function beginTransferMultipartUpload(
-  objectKey: string,
-  contentType: string,
-) {
-  const response = await getClient().send(
-    new CreateMultipartUploadCommand({
-      Bucket: getBucket(),
-      Key: objectKey,
-      ContentType: contentType || "application/octet-stream",
-      CacheControl: "private, no-store",
-    }),
-  );
-
-  if (!response.UploadId) {
-    throw new Error("R2 did not return a multipart upload ID.");
-  }
-
-  return response.UploadId;
-}
-
-export async function uploadTransferMultipartPart(
-  objectKey: string,
-  uploadId: string,
-  partNumber: number,
-  body: Uint8Array,
-) {
-  const response = await getClient().send(
-    new UploadPartCommand({
-      Bucket: getBucket(),
-      Key: objectKey,
-      UploadId: uploadId,
-      PartNumber: partNumber,
-      Body: body,
-    }),
-  );
-
-  if (!response.ETag) {
-    throw new Error("R2 did not return an ETag for the uploaded part.");
-  }
-
-  return response.ETag;
-}
-
-export async function completeTransferMultipartUpload(
-  objectKey: string,
-  uploadId: string,
-  parts: Array<{ partNumber: number; etag: string }>,
-) {
-  await getClient().send(
-    new CompleteMultipartUploadCommand({
-      Bucket: getBucket(),
-      Key: objectKey,
-      UploadId: uploadId,
-      MultipartUpload: {
-        Parts: parts.map((part) => ({
-          PartNumber: part.partNumber,
-          ETag: part.etag,
-        })),
-      },
-    }),
-  );
-}
-
-export async function abortTransferMultipartUpload(
-  objectKey: string,
-  uploadId: string,
-) {
-  await getClient().send(
-    new AbortMultipartUploadCommand({
-      Bucket: getBucket(),
-      Key: objectKey,
-      UploadId: uploadId,
-    }),
-  );
-}
 
 export async function transferObjectExists(objectKey: string) {
   try {
