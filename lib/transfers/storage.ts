@@ -17,16 +17,16 @@ function requiredEnv(name: string) {
 function getClient() {
   return new S3Client({
     region: "auto",
-    endpoint: requiredEnv("R2_ENDPOINT"),
+    endpoint: requiredEnv("TRANSFER_R2_ENDPOINT"),
     credentials: {
-      accessKeyId: requiredEnv("R2_ACCESS_KEY_ID"),
-      secretAccessKey: requiredEnv("R2_SECRET_ACCESS_KEY"),
+      accessKeyId: requiredEnv("TRANSFER_R2_ACCESS_KEY_ID"),
+      secretAccessKey: requiredEnv("TRANSFER_R2_SECRET_ACCESS_KEY"),
     },
   });
 }
 
 function getBucket() {
-  return requiredEnv("R2_BUCKET_NAME");
+  return requiredEnv("TRANSFER_R2_BUCKET_NAME");
 }
 
 function namespace() {
