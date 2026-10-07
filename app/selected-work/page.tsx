@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import SelectedWorkShowcase from "../../components/SelectedWorkShowcase";
+import PhotoLicenseJsonLd from "../../components/PhotoLicenseJsonLd";
 import { getCachedSelectedWorkPage } from "../../lib/public-data-cache";
 
 import styles from "./selected-work-preview.module.css";
@@ -45,6 +46,7 @@ export default async function SelectedWorkPage() {
 
   return (
     <main className={styles.page}>
+      <PhotoLicenseJsonLd pagePath="/selected-work" photos={page.items.map((item) => ({ src: item.src, alt: item.alt }))} />
       <section className={styles.introduction}>
         <p className={styles.eyebrow}>Selected Work</p>
 
