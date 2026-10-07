@@ -105,45 +105,153 @@ export default function TransferWorkspace({ initialTransfers }: { initialTransfe
           setProgress("Uploading " + (uploaded + 1) + " of " + queue.length + " · " + queued.file.name);
           const isPreview =
             window.location.hostname.endsWith(".vercel.app");
-          const put = await fetch(
-            isPreview
-              ? "/api/admin/transfers/upload?transferId=" +
-                  encodeURIComponent(transferId) +
-                  "&fileId=" +
-                  encodeURIComponent(job.id)
-              : job.uploadUrl,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type":
-                  queued.file.type ||
-                  "application/octet-stream",
+
+          if (isPreview) {
+            const control = async (
+              payload: Record<string, unknown>,
+            ) => {
+              const response = await fetch(
+                "/api/admin/transfers/upload",
+                {
+                  method: "POST",
+                  headers: {
+                    "Content-Type":
+                      "application/json",
+                  },
+                  body: JSON.stringify({
+                    transferId,
+                    fileId: job.id,
+                    ...payload,
+                  }),
+                },
+              );
+              const result =
+                await response.json().catch(
+                  () => null,
+                );
+              if (!response.ok) {
+                throw new Error(
+                  result?.message ||
+                    "Preview upload control failed (HTTP " +
+                      response.status +
+                      ").",
+                );
+              }
+              return result;
+            };
+
+            const begun = await control({
+              action: "begin",
+              contentType:
+                queued.file.type ||
+                "application/octet-stream",
+            });
+            const uploadId =
+              String(begun.uploadId || "");
+            const objectKey =
+              String(begun.objectKey || "");
+
+            try {
+              const chunkSize =
+                3 * 1024 * 1024;
+              const parts: Array<{
+                partNumber: number;
+                etag: string;
+              }> = [];
+
+              for (
+                let offset = 0,
+                  partNumber = 1;
+                offset < queued.file.size;
+                offset += chunkSize,
+                  partNumber += 1
+              ) {
+                const part = await fetch(
+                  "/api/admin/transfers/upload?transferId=" +
+                    encodeURIComponent(
+                      transferId,
+                    ) +
+                    "&fileId=" +
+                    encodeURIComponent(
+                      job.id,
+                    ) +
+                    "&uploadId=" +
+                    encodeURIComponent(
+                      uploadId,
+                    ) +
+                    "&partNumber=" +
+                    partNumber,
+                  {
+                    method: "PUT",
+                    body: queued.file.slice(
+                      offset,
+                      Math.min(
+                        queued.file.size,
+                        offset +
+                          chunkSize,
+                      ),
+                    ),
+                  },
+                );
+                const result =
+                  await part
+                    .json()
+                    .catch(() => null);
+                if (!part.ok) {
+                  throw new Error(
+                    result?.message ||
+                      "Upload failed for " +
+                        queued.file.name +
+                        " (HTTP " +
+                        part.status +
+                        ").",
+                  );
+                }
+                parts.push({
+                  partNumber,
+                  etag: result.etag,
+                });
+              }
+
+              await control({
+                action: "complete",
+                uploadId,
+                parts,
+              });
+            } catch (error) {
+              await control({
+                action: "abort",
+                uploadId,
+              }).catch(() => null);
+              throw error;
+            }
+
+            committed.push({
+              ...job,
+              objectKey,
+            });
+          } else {
+            const put = await fetch(
+              job.uploadUrl,
+              {
+                method: "PUT",
+                headers: {
+                  "Content-Type":
+                    queued.file.type ||
+                    "application/octet-stream",
+                },
+                body: queued.file,
               },
-              body: queued.file,
-            },
-          );
-          if (!put.ok) {
-            const detail = isPreview
-              ? await put.json().catch(() => null)
-              : null;
-            throw new Error(
-              detail?.message ||
+            );
+            if (!put.ok) {
+              throw new Error(
                 "Upload failed for " +
                   queued.file.name +
                   " (HTTP " +
                   put.status +
                   ").",
-            );
-          }
-          if (isPreview) {
-            const uploaded =
-              await put.json();
-            committed.push({
-              ...job,
-              objectKey:
-                uploaded.objectKey,
-            });
-          } else {
+              );
+            }
             committed.push(job);
           }
           uploaded += 1;
@@ -186,10 +294,10 @@ export default function TransferWorkspace({ initialTransfers }: { initialTransfe
         <div className={styles.pickers}>
           <label>
             <input type="file" multiple onChange={(e) => setQueue((q) => [...q, ...inputFiles(e.target.files)])} />
-            <span className={styles.plus}>+</span><strong>Add files</strong>
+            <span className={styles.plus}>+</span><strong>{queue.length > 0 ? "Add more files" : "Add files"}</strong>
           </label>
           <button type="button" onClick={() => folderRef.current?.click()}>
-            <span className={styles.folder}>▰</span><strong>Add folders</strong>
+            <span className={styles.folder}>▰</span><strong>{queue.length > 0 ? "Add more folders" : "Add folders"}</strong>
           </button>
           <input
             ref={folderRef}
