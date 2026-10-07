@@ -127,7 +127,13 @@ function getClient() {
     forcePathStyle:
       firstEnv(
         "TRANSFER_STORAGE_FORCE_PATH_STYLE",
-      ) === "true",
+      )
+        ? firstEnv(
+            "TRANSFER_STORAGE_FORCE_PATH_STYLE",
+          ) === "true"
+        : config.endpoint.includes(
+            "backblazeb2.com",
+          ),
     credentials: {
       accessKeyId:
         config.accessKeyId,
@@ -184,7 +190,7 @@ export function getTransferObjectKey(
 export async function createTransferUploadUrl(
   transferId: string,
   fileId: string,
-  contentType: string,
+  _contentType: string,
 ) {
   const objectKey =
     getTransferObjectKey(
@@ -196,11 +202,6 @@ export async function createTransferUploadUrl(
     new PutObjectCommand({
       Bucket: getBucket(),
       Key: objectKey,
-      ContentType:
-        contentType ||
-        "application/octet-stream",
-      CacheControl:
-        "private, no-store",
     });
 
   return {
