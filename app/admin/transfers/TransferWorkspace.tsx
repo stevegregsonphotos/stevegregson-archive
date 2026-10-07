@@ -103,13 +103,49 @@ export default function TransferWorkspace({ initialTransfers }: { initialTransfe
           const job = signed.jobs[i];
           const queued = batch[i];
           setProgress("Uploading " + (uploaded + 1) + " of " + queue.length + " · " + queued.file.name);
-          const put = await fetch(job.uploadUrl, {
-            method: "PUT",
-            headers: { "Content-Type": queued.file.type || "application/octet-stream" },
-            body: queued.file,
-          });
-          if (!put.ok) throw new Error("Upload failed for " + queued.file.name + ".");
-          committed.push(job);
+          const isPreview =
+            window.location.hostname.endsWith(".vercel.app");
+          const put = await fetch(
+            isPreview
+              ? "/api/admin/transfers/upload?transferId=" +
+                  encodeURIComponent(transferId) +
+                  "&fileId=" +
+                  encodeURIComponent(job.id)
+              : job.uploadUrl,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type":
+                  queued.file.type ||
+                  "application/octet-stream",
+              },
+              body: queued.file,
+            },
+          );
+          if (!put.ok) {
+            const detail = isPreview
+              ? await put.json().catch(() => null)
+              : null;
+            throw new Error(
+              detail?.message ||
+                "Upload failed for " +
+                  queued.file.name +
+                  " (HTTP " +
+                  put.status +
+                  ").",
+            );
+          }
+          if (isPreview) {
+            const uploaded =
+              await put.json();
+            committed.push({
+              ...job,
+              objectKey:
+                uploaded.objectKey,
+            });
+          } else {
+            committed.push(job);
+          }
           uploaded += 1;
         }
 
