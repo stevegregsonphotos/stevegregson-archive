@@ -244,6 +244,21 @@ const nextConfig: NextConfig = {
         destination: "/",
         permanent: true,
       },
+      {
+        source: "/actors-headshots",
+        destination: "/contact",
+        permanent: true,
+      },
+      {
+        source: "/copy-of-home-1",
+        destination: "/",
+        permanent: true,
+      },
+      {
+        source: "/tandc",
+        destination: "/policies/terms",
+        permanent: true,
+      },
     ];
   },
 
