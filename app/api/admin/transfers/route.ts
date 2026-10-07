@@ -13,6 +13,7 @@ import {
 import {
   createTransferUploadUrl,
   deleteTransferObjects,
+  getTransferStorageConfiguration,
   transferObjectExists,
 } from "@/lib/transfers/storage";
 import { sendTransferEmails } from "@/lib/transfers/email";
@@ -39,7 +40,30 @@ export async function POST(request: Request) {
 
   const action = text(body.action);
 
+  if (action === "storage-status") {
+    const storage =
+      getTransferStorageConfiguration();
+    return NextResponse.json({
+      ok: true,
+      storage,
+    });
+  }
+
   if (action === "create") {
+    const storage =
+      getTransferStorageConfiguration();
+    if (!storage.configured) {
+      return NextResponse.json(
+        {
+          ok: false,
+          code:
+            "TRANSFER_STORAGE_NOT_CONFIGURED",
+          message:
+            "Transfer storage is not configured yet. Add the dedicated transfer-storage credentials before sending files.",
+        },
+        { status: 503 },
+      );
+    }
     const title = text(body.title);
     const senderEmail = text(body.senderEmail);
     const recipientEmails = Array.isArray(body.recipientEmails)
@@ -57,6 +81,21 @@ export async function POST(request: Request) {
   }
 
   if (action === "presign-batch") {
+    const storage =
+      getTransferStorageConfiguration();
+    if (!storage.configured) {
+      return NextResponse.json(
+        {
+          ok: false,
+          code:
+            "TRANSFER_STORAGE_NOT_CONFIGURED",
+          message:
+            "Transfer storage is not configured yet.",
+        },
+        { status: 503 },
+      );
+    }
+
     const transferId = text(body.transferId);
     const files = Array.isArray(body.files) ? body.files : [];
     if (!transferId || files.length === 0 || files.length > 50) {
