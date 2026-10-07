@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import "../directory.css";
+import PhotoLicenseJsonLd from "../../components/PhotoLicenseJsonLd";
 import "../services.css";
 import {
   breadcrumbJsonLd,
@@ -91,6 +92,13 @@ export default async function OperaPhotographyPage() {
 
   return (
     <main className="dir-page">
+      <PhotoLicenseJsonLd
+        pagePath="/opera-photography"
+        photos={productions.map((production) => ({
+          src: getProductionImageUrl(production.slug, production.hero),
+          alt: production.heroAlt || production.title,
+        }))}
+      />
       <JsonLd
         data={{
           "@context": "https://schema.org",
