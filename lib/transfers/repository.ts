@@ -97,8 +97,8 @@ function mapEvent(row: EventRow): TransferDownloadEvent {
 async function hydrate(row: RecordRow): Promise<TransferRecord> {
   const sql = getSql();
   const [files, events] = await Promise.all([
-    sql("SELECT id, transfer_id, original_name, relative_path, object_key, size_bytes, content_type, created_at FROM transfer_files WHERE transfer_id = $1 ORDER BY created_at, id", [row.id]),
-    sql("SELECT id, transfer_id, file_id, recipient_email, event_type, created_at FROM transfer_download_events WHERE transfer_id = $1 ORDER BY created_at DESC", [row.id]),
+    sql.query("SELECT id, transfer_id, original_name, relative_path, object_key, size_bytes, content_type, created_at FROM transfer_files WHERE transfer_id = $1 ORDER BY created_at, id", [row.id]),
+    sql.query("SELECT id, transfer_id, file_id, recipient_email, event_type, created_at FROM transfer_download_events WHERE transfer_id = $1 ORDER BY created_at DESC", [row.id]),
   ]);
   const expired = new Date(row.expires_at).getTime() <= Date.now();
   const allowed = ["uploading", "active", "disabled", "expired"];
