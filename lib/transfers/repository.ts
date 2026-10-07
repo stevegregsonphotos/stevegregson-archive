@@ -18,12 +18,12 @@ async function ensureSchema() {
   if (schemaPromise) return schemaPromise;
   schemaPromise = (async () => {
     const sql = getSql();
-    await sql("CREATE TABLE IF NOT EXISTS transfer_records (id text PRIMARY KEY, environment text NOT NULL, token text NOT NULL, title text NOT NULL, message text NOT NULL DEFAULT '', sender_email text NOT NULL, recipients jsonb NOT NULL DEFAULT '[]'::jsonb, status text NOT NULL DEFAULT 'uploading', created_at timestamptz NOT NULL DEFAULT now(), finalized_at timestamptz, expires_at timestamptz NOT NULL, file_count integer NOT NULL DEFAULT 0, total_size_bytes bigint NOT NULL DEFAULT 0, password_hash text)");
-    await sql("CREATE UNIQUE INDEX IF NOT EXISTS transfer_records_env_token_idx ON transfer_records(environment, token)");
-    await sql("CREATE TABLE IF NOT EXISTS transfer_files (id text PRIMARY KEY, transfer_id text NOT NULL REFERENCES transfer_records(id) ON DELETE CASCADE, original_name text NOT NULL, relative_path text NOT NULL, object_key text NOT NULL, size_bytes bigint NOT NULL, content_type text NOT NULL, created_at timestamptz NOT NULL DEFAULT now())");
-    await sql("CREATE INDEX IF NOT EXISTS transfer_files_transfer_idx ON transfer_files(transfer_id, created_at)");
-    await sql("CREATE TABLE IF NOT EXISTS transfer_download_events (id text PRIMARY KEY, transfer_id text NOT NULL REFERENCES transfer_records(id) ON DELETE CASCADE, file_id text, recipient_email text, event_type text NOT NULL, created_at timestamptz NOT NULL DEFAULT now())");
-    await sql("CREATE INDEX IF NOT EXISTS transfer_download_events_transfer_idx ON transfer_download_events(transfer_id, created_at DESC)");
+    await sql.query("CREATE TABLE IF NOT EXISTS transfer_records (id text PRIMARY KEY, environment text NOT NULL, token text NOT NULL, title text NOT NULL, message text NOT NULL DEFAULT '', sender_email text NOT NULL, recipients jsonb NOT NULL DEFAULT '[]'::jsonb, status text NOT NULL DEFAULT 'uploading', created_at timestamptz NOT NULL DEFAULT now(), finalized_at timestamptz, expires_at timestamptz NOT NULL, file_count integer NOT NULL DEFAULT 0, total_size_bytes bigint NOT NULL DEFAULT 0, password_hash text)");
+    await sql.query("CREATE UNIQUE INDEX IF NOT EXISTS transfer_records_env_token_idx ON transfer_records(environment, token)");
+    await sql.query("CREATE TABLE IF NOT EXISTS transfer_files (id text PRIMARY KEY, transfer_id text NOT NULL REFERENCES transfer_records(id) ON DELETE CASCADE, original_name text NOT NULL, relative_path text NOT NULL, object_key text NOT NULL, size_bytes bigint NOT NULL, content_type text NOT NULL, created_at timestamptz NOT NULL DEFAULT now())");
+    await sql.query("CREATE INDEX IF NOT EXISTS transfer_files_transfer_idx ON transfer_files(transfer_id, created_at)");
+    await sql.query("CREATE TABLE IF NOT EXISTS transfer_download_events (id text PRIMARY KEY, transfer_id text NOT NULL REFERENCES transfer_records(id) ON DELETE CASCADE, file_id text, recipient_email text, event_type text NOT NULL, created_at timestamptz NOT NULL DEFAULT now())");
+    await sql.query("CREATE INDEX IF NOT EXISTS transfer_download_events_transfer_idx ON transfer_download_events(transfer_id, created_at DESC)");
   })();
   return schemaPromise;
 }
@@ -127,7 +127,7 @@ export async function createTransfer(input: {
   const token = randomBytes(18).toString("base64url");
   const cleanRecipients = [...new Set(input.recipientEmails.map((email) => email.trim().toLowerCase()).filter(Boolean))];
   const passwordHash = input.password?.trim() ? hashPassword(input.password.trim()) : null;
-  const rows = await sql(
+  const rows = await sql.query(
     "INSERT INTO transfer_records (id, environment, token, title, message, sender_email, recipients, status, created_at, expires_at, password_hash) VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,'uploading',now(),$8,$9) RETURNING id, token, title, message, sender_email, recipients, status, created_at, finalized_at, expires_at, file_count, total_size_bytes, password_hash",
     [id, environment(), token, input.title.trim(), input.message?.trim() ?? "", input.senderEmail.trim().toLowerCase(), JSON.stringify(cleanRecipients.map((email) => ({ email }))), input.expiresAt, passwordHash],
   );
@@ -141,7 +141,7 @@ export async function addTransferFiles(transferId: string, files: Array<{
   await ensureSchema();
   const sql = getSql();
   for (const file of files) {
-    await sql(
+    await sql.query(
       "INSERT INTO transfer_files (id, transfer_id, original_name, relative_path, object_key, size_bytes, content_type, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,now()) ON CONFLICT (id) DO NOTHING",
       [file.id, transferId, file.originalName, file.relativePath, file.objectKey, file.sizeBytes, file.contentType],
     );
@@ -151,7 +151,7 @@ export async function addTransferFiles(transferId: string, files: Array<{
 export async function finalizeTransfer(transferId: string) {
   await ensureSchema();
   const sql = getSql();
-  await sql(
+  await sql.query(
     "UPDATE transfer_records SET status='active', finalized_at=now(), file_count=(SELECT count(*)::integer FROM transfer_files WHERE transfer_id=$1), total_size_bytes=(SELECT COALESCE(sum(size_bytes),0) FROM transfer_files WHERE transfer_id=$1) WHERE id=$1 AND environment=$2",
     [transferId, environment()],
   );
@@ -161,7 +161,7 @@ export async function finalizeTransfer(transferId: string) {
 export async function getTransferById(id: string) {
   await ensureSchema();
   const sql = getSql();
-  const rows = await sql(
+  const rows = await sql.query(
     "SELECT id, token, title, message, sender_email, recipients, status, created_at, finalized_at, expires_at, file_count, total_size_bytes, password_hash FROM transfer_records WHERE id=$1 AND environment=$2 LIMIT 1",
     [id, environment()],
   );
@@ -171,7 +171,7 @@ export async function getTransferById(id: string) {
 export async function getTransferByToken(token: string) {
   await ensureSchema();
   const sql = getSql();
-  const rows = await sql(
+  const rows = await sql.query(
     "SELECT id, token, title, message, sender_email, recipients, status, created_at, finalized_at, expires_at, file_count, total_size_bytes, password_hash FROM transfer_records WHERE token=$1 AND environment=$2 LIMIT 1",
     [token, environment()],
   );
@@ -181,7 +181,7 @@ export async function getTransferByToken(token: string) {
 export async function listTransfers() {
   await ensureSchema();
   const sql = getSql();
-  const rows = await sql(
+  const rows = await sql.query(
     "SELECT id, token, title, message, sender_email, recipients, status, created_at, finalized_at, expires_at, file_count, total_size_bytes, password_hash FROM transfer_records WHERE environment=$1 AND status<>'uploading' ORDER BY created_at DESC LIMIT 500",
     [environment()],
   );
@@ -191,7 +191,7 @@ export async function listTransfers() {
 export async function getTransferPasswordHash(token: string) {
   await ensureSchema();
   const sql = getSql();
-  const rows = await sql(
+  const rows = await sql.query(
     "SELECT password_hash FROM transfer_records WHERE token=$1 AND environment=$2 LIMIT 1",
     [token, environment()],
   );
@@ -203,7 +203,7 @@ export async function recordTransferDownload(input: {
 }) {
   await ensureSchema();
   const sql = getSql();
-  await sql(
+  await sql.query(
     "INSERT INTO transfer_download_events (id, transfer_id, file_id, recipient_email, event_type, created_at) VALUES ($1,$2,$3,$4,$5,now())",
     [crypto.randomUUID(), input.transferId, input.fileId ?? null, input.recipientEmail?.trim().toLowerCase() || null, input.eventType],
   );
@@ -212,17 +212,17 @@ export async function recordTransferDownload(input: {
 export async function disableTransfer(id: string) {
   await ensureSchema();
   const sql = getSql();
-  await sql("UPDATE transfer_records SET status='disabled' WHERE id=$1 AND environment=$2", [id, environment()]);
+  await sql.query("UPDATE transfer_records SET status='disabled' WHERE id=$1 AND environment=$2", [id, environment()]);
 }
 
 export async function extendTransfer(id: string, expiresAt: string) {
   await ensureSchema();
   const sql = getSql();
-  await sql("UPDATE transfer_records SET expires_at=$1, status=CASE WHEN status='expired' THEN 'active' ELSE status END WHERE id=$2 AND environment=$3", [expiresAt, id, environment()]);
+  await sql.query("UPDATE transfer_records SET expires_at=$1, status=CASE WHEN status='expired' THEN 'active' ELSE status END WHERE id=$2 AND environment=$3", [expiresAt, id, environment()]);
 }
 
 export async function deleteTransferRecord(id: string) {
   await ensureSchema();
   const sql = getSql();
-  await sql("DELETE FROM transfer_records WHERE id=$1 AND environment=$2", [id, environment()]);
+  await sql.query("DELETE FROM transfer_records WHERE id=$1 AND environment=$2", [id, environment()]);
 }
