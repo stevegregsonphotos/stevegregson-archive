@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import PhotoLicenseJsonLd from "../../components/PhotoLicenseJsonLd";
 import Link from "next/link";
 
 export const metadata: Metadata = {
@@ -35,6 +36,15 @@ export default function AboutPage() {
   return (
     <>
       <main className="about">
+        <PhotoLicenseJsonLd
+          pagePath="/about"
+          photos={[
+            {
+              src: "/images/portrait/steve-gregson.webp",
+              alt: "Steve Gregson, theatre and performing arts photographer",
+            },
+          ]}
+        />
         <section className="hero">
           <div className="intro">
             <p className="eyebrow">About Steve</p>
