@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import PhotoLicenseJsonLd from "../../components/PhotoLicenseJsonLd";
+import { getProductionImageUrl } from "../../lib/production-image-url";
 
 import {
   getCachedArchiveProductions,
@@ -77,6 +79,13 @@ export default async function ArchivePage() {
 
   return (
     <main className="archive-page">
+      <PhotoLicenseJsonLd
+        pagePath="/archive"
+        photos={productions.map((production) => ({
+          src: getProductionImageUrl(production.slug, production.hero),
+          alt: production.heroAlt || production.title,
+        }))}
+      />
       <section className="archive-search-position">
         <ArchiveExplorer
           productions={sortedProductions}

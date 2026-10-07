@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import "../directory.css";
+import PhotoLicenseJsonLd from "../../components/PhotoLicenseJsonLd";
 import "../services.css";
 import {
   breadcrumbJsonLd,
@@ -262,6 +263,13 @@ export default async function CommissionsPage() {
 
   return (
     <main className="dir-page svc-page">
+      <PhotoLicenseJsonLd
+        pagePath="/commissions"
+        photos={[
+          ...(hero ? [hero] : []),
+          ...tiles.flatMap((tile) => tile.picture ? [tile.picture] : []),
+        ]}
+      />
       <JsonLd
         data={{
           "@context": "https://schema.org",

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import "../../directory.css";
+import PhotoLicenseJsonLd from "../../../components/PhotoLicenseJsonLd";
 import {
   breadcrumbJsonLd,
   Breadcrumbs,
@@ -90,6 +91,13 @@ export default async function VenuePage({ params }: VenuePageProps) {
 
   return (
     <main className="dir-page">
+      <PhotoLicenseJsonLd
+        pagePath={`/venues/${venue.slug}`}
+        photos={venue.productions.map((production) => ({
+          src: getProductionImageUrl(production.slug, production.hero),
+          alt: production.heroAlt || production.title,
+        }))}
+      />
       <JsonLd
         data={{
           "@context": "https://schema.org",

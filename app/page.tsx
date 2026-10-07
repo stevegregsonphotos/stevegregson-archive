@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import PhotoLicenseJsonLd from "../components/PhotoLicenseJsonLd";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -119,6 +120,16 @@ export default async function Home() {
 
   return (
     <main className="homepage">
+      <PhotoLicenseJsonLd
+        pagePath="/"
+        photos={[
+          { src: "/images/homepage-hero.webp", alt: "A dramatic theatre production photographed by Steve Gregson" },
+          { src: "/images/homepage-hero-mobile.webp", alt: "A dramatic theatre production photographed by Steve Gregson" },
+          { src: getProductionImageUrl("godspell", "GODSPELL-Genesis-58.webp"), alt: "A dramatic live theatre performance photographed by Steve Gregson" },
+          { src: "/images/rehearsals/voice-of-the-turtle.webp", alt: "Actors photographed during rehearsal by Steve Gregson" },
+          { src: "/images/Marketing-PR/alice-in-wonderland.webp", alt: "Alice in Wonderland campaign photography by Steve Gregson" },
+        ]}
+      />
       <section className="homepage-hero">
         <picture className="homepage-hero-picture">
           <source

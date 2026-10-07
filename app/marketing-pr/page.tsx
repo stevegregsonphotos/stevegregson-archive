@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import MarketingPrGallery from "../../components/MarketingPrGallery";
+import PhotoLicenseJsonLd from "../../components/PhotoLicenseJsonLd";
+import { getSelectedWorkImageUrl } from "../../lib/selected-work-image-url";
 import {
   getCachedSelectedWork,
 } from "../../lib/public-data-cache";
@@ -86,6 +88,7 @@ export default async function MarketingPrPage() {
     portfolio.campaign ?? [];
   return (
     <main className={styles.page}>
+      <PhotoLicenseJsonLd pagePath="/marketing-pr" photos={campaignImages.map((image) => ({ src: getSelectedWorkImageUrl("campaign", image.filename), alt: image.alt }))} />
       <nav
         className={`${styles.sectionNavigation} ${styles.secondarySectionNavigation}`}
         aria-label="Photography collections"
