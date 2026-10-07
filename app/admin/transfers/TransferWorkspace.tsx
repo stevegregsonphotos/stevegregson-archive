@@ -103,157 +103,28 @@ export default function TransferWorkspace({ initialTransfers }: { initialTransfe
           const job = signed.jobs[i];
           const queued = batch[i];
           setProgress("Uploading " + (uploaded + 1) + " of " + queue.length + " · " + queued.file.name);
-          const isPreview =
-            window.location.hostname.endsWith(".vercel.app");
-
-          if (isPreview) {
-            const control = async (
-              payload: Record<string, unknown>,
-            ) => {
-              const response = await fetch(
-                "/api/admin/transfers/upload",
-                {
-                  method: "POST",
-                  headers: {
-                    "Content-Type":
-                      "application/json",
-                  },
-                  body: JSON.stringify({
-                    transferId,
-                    fileId: job.id,
-                    ...payload,
-                  }),
-                },
-              );
-              const result =
-                await response.json().catch(
-                  () => null,
-                );
-              if (!response.ok) {
-                throw new Error(
-                  result?.message ||
-                    "Preview upload control failed (HTTP " +
-                      response.status +
-                      ").",
-                );
-              }
-              return result;
-            };
-
-            const begun = await control({
-              action: "begin",
-              contentType:
-                queued.file.type ||
-                "application/octet-stream",
-            });
-            const uploadId =
-              String(begun.uploadId || "");
-            const objectKey =
-              String(begun.objectKey || "");
-
-            try {
-              const chunkSize =
-                3 * 1024 * 1024;
-              const parts: Array<{
-                partNumber: number;
-                etag: string;
-              }> = [];
-
-              for (
-                let offset = 0,
-                  partNumber = 1;
-                offset < queued.file.size;
-                offset += chunkSize,
-                  partNumber += 1
-              ) {
-                const part = await fetch(
-                  "/api/admin/transfers/upload?transferId=" +
-                    encodeURIComponent(
-                      transferId,
-                    ) +
-                    "&fileId=" +
-                    encodeURIComponent(
-                      job.id,
-                    ) +
-                    "&uploadId=" +
-                    encodeURIComponent(
-                      uploadId,
-                    ) +
-                    "&partNumber=" +
-                    partNumber,
-                  {
-                    method: "PUT",
-                    body: queued.file.slice(
-                      offset,
-                      Math.min(
-                        queued.file.size,
-                        offset +
-                          chunkSize,
-                      ),
-                    ),
-                  },
-                );
-                const result =
-                  await part
-                    .json()
-                    .catch(() => null);
-                if (!part.ok) {
-                  throw new Error(
-                    result?.message ||
-                      "Upload failed for " +
-                        queued.file.name +
-                        " (HTTP " +
-                        part.status +
-                        ").",
-                  );
-                }
-                parts.push({
-                  partNumber,
-                  etag: result.etag,
-                });
-              }
-
-              await control({
-                action: "complete",
-                uploadId,
-                parts,
-              });
-            } catch (error) {
-              await control({
-                action: "abort",
-                uploadId,
-              }).catch(() => null);
-              throw error;
-            }
-
-            committed.push({
-              ...job,
-              objectKey,
-            });
-          } else {
-            const put = await fetch(
-              job.uploadUrl,
-              {
-                method: "PUT",
-                headers: {
-                  "Content-Type":
-                    queued.file.type ||
-                    "application/octet-stream",
-                },
-                body: queued.file,
+          const put = await fetch(
+            job.uploadUrl,
+            {
+              method: "PUT",
+              headers: {
+                "Content-Type":
+                  queued.file.type ||
+                  "application/octet-stream",
               },
+              body: queued.file,
+            },
+          );
+          if (!put.ok) {
+            throw new Error(
+              "Upload failed for " +
+                queued.file.name +
+                " (HTTP " +
+                put.status +
+                ").",
             );
-            if (!put.ok) {
-              throw new Error(
-                "Upload failed for " +
-                  queued.file.name +
-                  " (HTTP " +
-                  put.status +
-                  ").",
-              );
-            }
-            committed.push(job);
           }
+          committed.push(job);
           uploaded += 1;
         }
 
