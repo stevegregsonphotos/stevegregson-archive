@@ -126,7 +126,7 @@ const nextConfig: NextConfig = {
       // Old stevegregsonphotos.com pages still in search results.
       {
         source: "/theatrephotography",
-        destination: "/selected-work",
+        destination: "/archive",
         permanent: true,
       },
       {
@@ -191,12 +191,12 @@ const nextConfig: NextConfig = {
       },
       {
         source: "/theatrephotographer",
-        destination: "/selected-work",
+        destination: "/archive",
         permanent: true,
       },
       {
         source: "/backstage",
-        destination: "/rehearsals",
+        destination: "/archive",
         permanent: true,
       },
       {
@@ -210,13 +210,23 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
       {
+        source: "/theatrepublicity",
+        destination: "/marketing-pr",
+        permanent: true,
+      },
+      {
+        source: "/privacy-policy",
+        destination: "/policies/privacy",
+        permanent: true,
+      },
+      {
         source: "/portraitphotography",
         destination: "/people",
         permanent: true,
       },
       {
         source: "/mens-headshots",
-        destination: "/contact",
+        destination: "/",
         permanent: true,
       },
       {
@@ -226,12 +236,12 @@ const nextConfig: NextConfig = {
       },
       {
         source: "/my-approach",
-        destination: "/contact",
+        destination: "/",
         permanent: true,
       },
       {
         source: "/packages2022",
-        destination: "/contact",
+        destination: "/",
         permanent: true,
       },
     ];
