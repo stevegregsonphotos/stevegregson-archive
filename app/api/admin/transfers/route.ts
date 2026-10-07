@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { isBackstageAuthorized } from "@/lib/backstage-auth";
+import { isBackstageRequestAuthenticated } from "@/lib/backstage-auth";
 import {
   addTransferFiles,
   createTransfer,
@@ -25,13 +25,13 @@ function text(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-export async function GET() {
-  if (!(await isBackstageAuthorized())) return unauthorized();
+export async function GET(request: Request) {
+  if (!isBackstageRequestAuthenticated(request)) return unauthorized();
   return NextResponse.json({ ok: true, transfers: await listTransfers() });
 }
 
 export async function POST(request: Request) {
-  if (!(await isBackstageAuthorized())) return unauthorized();
+  if (!isBackstageRequestAuthenticated(request)) return unauthorized();
 
   let body: Record<string, unknown>;
   try { body = await request.json() as Record<string, unknown>; }
