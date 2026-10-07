@@ -62,6 +62,53 @@ export default function ProductionContent({
         },
       ];
 
+  const archiveImages = [
+    {
+      src: production.hero,
+      alt: production.heroAlt,
+    },
+    ...production.images.map((image) => ({
+      src: image.src,
+      alt: image.alt,
+    })),
+  ].filter(
+    (image, index, images) =>
+      images.findIndex(
+        (candidate) =>
+          candidate.src === image.src,
+      ) === index,
+  );
+
+  const imageStructuredData =
+    archiveImages.map((image, index) => {
+      const imageUrl =
+        getProductionImageUrl(
+          production.slug,
+          image.src,
+        );
+
+      return {
+        "@type": "ImageObject",
+        "@id":
+          `${productionUrl}#image-${index + 1}`,
+        contentUrl: imageUrl,
+        url: imageUrl,
+        caption: image.alt,
+        creator: {
+          "@id":
+            "https://www.stevegregson.com/#steve-gregson",
+        },
+        creditText:
+          "Steve Gregson Photography",
+        copyrightNotice:
+          "© Steve Gregson Photography",
+        license:
+          "https://www.stevegregson.com/policies/terms",
+        acquireLicensePage:
+          "https://www.stevegregson.com/contact",
+      };
+    });
+
   const structuredData = {
     "@context": "https://schema.org",
     "@graph": [
@@ -86,29 +133,14 @@ export default function ProductionContent({
           "@type": "Place",
           name: production.venue,
         },
-        image: {
-          "@id": `${productionUrl}#hero-image`,
-        },
+        image: imageStructuredData.map(
+          (image) => ({
+            "@id": image["@id"],
+          }),
+        ),
         mainEntityOfPage: productionUrl,
       },
-      {
-        "@type": "ImageObject",
-        "@id": `${productionUrl}#hero-image`,
-        contentUrl: heroImageUrl,
-        url: heroImageUrl,
-        caption: production.heroAlt,
-        creator: {
-          "@id":
-            "https://www.stevegregson.com/#steve-gregson",
-        },
-        creditText: "Steve Gregson",
-        copyrightNotice:
-          "© Steve Gregson Photography",
-        license:
-          "https://www.stevegregson.com/policies/terms",
-        acquireLicensePage:
-          "https://www.stevegregson.com/contact",
-      },
+      ...imageStructuredData,
       {
         "@type": "BreadcrumbList",
         "@id": `${productionUrl}#breadcrumb`,
