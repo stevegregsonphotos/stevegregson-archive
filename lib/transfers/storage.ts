@@ -66,6 +66,23 @@ export async function createTransferUploadUrl(
   };
 }
 
+
+export async function putTransferObject(
+  objectKey: string,
+  body: Uint8Array,
+  contentType: string,
+) {
+  await getClient().send(
+    new PutObjectCommand({
+      Bucket: getBucket(),
+      Key: objectKey,
+      Body: body,
+      ContentType: contentType || "application/octet-stream",
+      CacheControl: "private, no-store",
+    }),
+  );
+}
+
 export async function transferObjectExists(objectKey: string) {
   try {
     await getClient().send(new HeadObjectCommand({
