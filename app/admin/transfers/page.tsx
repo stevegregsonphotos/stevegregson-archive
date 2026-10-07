@@ -9,6 +9,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+// This route is intentionally isolated to the feature/backstage-transfers preview branch.
 export default async function TransfersPage() {
   const transfers = await listTransfers();
   return <TransferWorkspace initialTransfers={transfers} />;
