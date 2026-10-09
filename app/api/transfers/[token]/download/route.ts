@@ -6,6 +6,7 @@ import {
   verifyTransferPassword,
 } from "@/lib/transfers/repository";
 import { createTransferDownloadUrl } from "@/lib/transfers/storage";
+import { createClientArchiveDownloadUrl } from "@/lib/client-archive/storage";
 
 export async function POST(
   request: Request,
@@ -35,6 +36,8 @@ export async function POST(
   await recordTransferDownload({
     transferId: transfer.id, fileId: file.id, recipientEmail, eventType: "file",
   });
-  const url = await createTransferDownloadUrl(file.objectKey, file.originalName);
+  const url = file.source === "archive"
+    ? await createClientArchiveDownloadUrl(file.objectKey, file.originalName)
+    : await createTransferDownloadUrl(file.objectKey, file.originalName);
   return NextResponse.json({ ok: true, url });
 }
