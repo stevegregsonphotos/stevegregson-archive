@@ -13,13 +13,14 @@ export const metadata: Metadata = {
 type LoginPageProps = {
   searchParams: Promise<{
     error?: string;
+    next?: string;
   }>;
 };
 
 export default async function LoginPage({
   searchParams,
 }: LoginPageProps) {
-  const { error } = await searchParams;
+  const { error, next } = await searchParams;
 
   const errorMessage =
     error === "invalid"
@@ -61,6 +62,9 @@ export default async function LoginPage({
           method="post"
           className="backstage-login-form"
         >
+          {next?.startsWith("/") && !next.startsWith("//") ? (
+            <input type="hidden" name="next" value={next} />
+          ) : null}
           <div className="backstage-login-form-heading">
             <p>Authorised access</p>
             <h2>Sign in</h2>
