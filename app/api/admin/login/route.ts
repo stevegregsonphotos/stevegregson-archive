@@ -79,8 +79,11 @@ export async function POST(
         request,
       );
 
+      const requestUrl = new URL(request.url);
       const loginUrl = new URL(
-        "/admin/login",
+        requestUrl.hostname === "transfers.stevegregson.com"
+          ? "/admin/login?next=/"
+          : "/admin/login",
         request.url,
       );
 
@@ -136,8 +139,11 @@ export async function POST(
       error,
     );
 
+    const requestUrl = new URL(request.url);
     const loginUrl = new URL(
-      "/admin/login",
+      requestUrl.hostname === "transfers.stevegregson.com"
+        ? "/admin/login?next=/"
+        : "/admin/login",
       request.url,
     );
 
