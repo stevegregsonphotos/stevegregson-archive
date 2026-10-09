@@ -177,18 +177,27 @@ export async function uploadQueue<J extends { uploadUrl: string }>(
   report();
 }
 
-/** Uploads queued files into a transfer, saving them to it after every batch. */
-export function uploadFilesToTransfer(
+/**
+ * Uploads queued files into a transfer, saving them to it after every batch.
+ * Returns each queued file's new id, in the same order as the queue.
+ */
+export async function uploadFilesToTransfer(
   transferId: string,
   queue: QueuedFile[],
   onProgress: (progress: UploadProgress) => void,
 ) {
-  return uploadQueue<Job>(
+  const ids: string[] = [];
+  await uploadQueue<Job>(
     queue,
     (items) => signFiles(transferId, items),
-    (jobs) => postTransferAction({ action: "commit-batch", transferId, files: jobs }).then(() => undefined),
+    async (jobs) => {
+      await postTransferAction({ action: "commit-batch", transferId, files: jobs });
+      // The saved id is the last part of the storage key.
+      ids.push(...jobs.map((job) => job.objectKey.split("/").pop() || job.id));
+    },
     onProgress,
   );
+  return ids;
 }
 
 /** Warns Steve before closing the tab mid-upload. Returns a function to stop warning. */

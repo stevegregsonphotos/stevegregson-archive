@@ -42,6 +42,8 @@ export type TransferRecord = {
   /** Set once the files have been cleared from storage after expiry. */
   filesPurgedAt?: string;
   backgroundFileIds: string[];
+  /** Files that have a web-sized background copy ready. */
+  backdropFileIds: string[];
   files: TransferFile[];
   downloads: TransferDownloadEvent[];
 };

@@ -69,7 +69,7 @@ export async function sendTransferEmails(transfer: TransferRecord, publicUrl: st
       ].join("\n"),
       html:
         '<div style="font-family:Arial,sans-serif;color:#171615;line-height:1.65;max-width:620px;margin:auto;">' +
-        '<p style="font-size:12px;letter-spacing:1.4px;text-transform:uppercase;color:#8b7656;">Steve Gregson Photography</p>' +
+        '<p style="margin:0 0 28px;"><img src="https://www.stevegregson.com/images/branding/steve-gregson-logo.jpg" width="150" alt="Steve Gregson Photography" style="display:block;width:150px;height:auto;border:0;"></p>' +
         '<h1 style="font-size:32px;font-weight:400;margin:0 0 20px;">Steve Gregson sent you files</h1>' +
         '<p style="font-size:20px;"><strong>' + esc(transfer.title) + '</strong></p>' +
         '<p style="color:#666;">' + fileSummary + "</p>" +

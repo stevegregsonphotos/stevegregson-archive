@@ -22,10 +22,20 @@ import {
   getTransferObjectSize,
   isTransferObjectKey,
   createTransferViewUrl,
+  createImageUploadUrl,
+  getBrandBackgroundKey,
+  getTransferBackdropKey,
 } from "@/lib/transfers/storage";
+import {
+  addBrandBackground,
+  listBrandBackgrounds,
+  removeBrandBackground,
+  reorderBrandBackgrounds,
+} from "@/lib/transfers/brand-repository";
+import { markTransferBackdropReady } from "@/lib/transfers/repository";
 import { sendTransferEmails } from "@/lib/transfers/email";
 import { cleanUpAbandonedTransfers } from "@/lib/transfers/cleanup";
-import { isTransferImage } from "@/lib/transfers/backgrounds";
+import { isTransferImage, isWebImage } from "@/lib/transfers/backgrounds";
 import {
   getClientArchiveFilesByKeys,
   listClientArchiveFilesRecursive,
@@ -55,11 +65,32 @@ function validExpiry(body: Record<string, unknown>) {
 
 export async function GET(request: Request) {
   if (!isBackstageRequestAuthenticated(request)) return unauthorized();
-  return NextResponse.json({ ok: true, transfers: await listTransfers() });
+  try {
+    return NextResponse.json({ ok: true, transfers: await listTransfers() });
+  } catch (error) {
+    return serverError(error);
+  }
+}
+
+/** Always answer with a readable message, never a blank error page. */
+function serverError(error: unknown) {
+  console.error("Transfers request failed", error);
+  return NextResponse.json(
+    { ok: false, message: "Something went wrong: " + (error instanceof Error ? error.message : "unknown error") },
+    { status: 500 },
+  );
 }
 
 export async function POST(request: Request) {
   if (!isBackstageRequestAuthenticated(request)) return unauthorized();
+  try {
+    return await handlePost(request);
+  } catch (error) {
+    return serverError(error);
+  }
+}
+
+async function handlePost(request: Request) {
 
   let body: Record<string, unknown>;
   try { body = await request.json() as Record<string, unknown>; }
@@ -67,14 +98,88 @@ export async function POST(request: Request) {
 
   const action = text(body.action);
 
+  // ---- Steve's default backgrounds -------------------------------------
+  if (action === "brand-list") {
+    const items = await listBrandBackgrounds();
+    const backgrounds = await Promise.all(items.map(async (item) => ({
+      id: item.id, width: item.width, height: item.height,
+      url: await createTransferViewUrl(item.objectKey).catch(() => ""),
+    })));
+    return NextResponse.json({ ok: true, backgrounds });
+  }
+
+  if (action === "brand-presign") {
+    const id = crypto.randomUUID();
+    return NextResponse.json({ ok: true, id, uploadUrl: await createImageUploadUrl(getBrandBackgroundKey(id)) });
+  }
+
+  if (action === "brand-commit") {
+    const id = text(body.id);
+    const objectKey = getBrandBackgroundKey(id);
+    const size = await getTransferObjectSize(objectKey);
+    if (!size) return NextResponse.json({ ok: false, message: "That image didn't finish uploading." }, { status: 409 });
+    await addBrandBackground({ id, objectKey, width: Number(body.width) || 0, height: Number(body.height) || 0 });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "brand-delete") {
+    const objectKey = await removeBrandBackground(text(body.id));
+    if (objectKey) await deleteTransferObject(objectKey).catch(() => {});
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "brand-reorder") {
+    const ids = Array.isArray(body.ids) ? body.ids.map(text).filter(Boolean) : [];
+    await reorderBrandBackgrounds(ids);
+    return NextResponse.json({ ok: true });
+  }
+
+  // ---- Web-sized background copies of a transfer's own photos ------------
+  if (action === "backdrop-presign" || action === "backdrop-commit") {
+    const transferId = text(body.transferId);
+    const fileId = text(body.fileId);
+    const transfer = await getTransferById(transferId);
+    const file = transfer?.files.find((candidate) => candidate.id === fileId && isTransferImage(candidate));
+    if (!transfer || !file || !["uploading", "active"].includes(transfer.status)) {
+      return NextResponse.json({ ok: false, message: "Image not found." }, { status: 404 });
+    }
+    const key = getTransferBackdropKey(transferId, fileId);
+    if (action === "backdrop-presign") {
+      return NextResponse.json({ ok: true, uploadUrl: await createImageUploadUrl(key) });
+    }
+    if (!(await getTransferObjectSize(key))) {
+      return NextResponse.json({ ok: false, message: "The background copy didn't finish uploading." }, { status: 409 });
+    }
+    await markTransferBackdropReady(transferId, fileId);
+    return NextResponse.json({ ok: true });
+  }
+
   if (action === "set-backgrounds") {
     const transferId = text(body.transferId);
     const fileIds = Array.isArray(body.fileIds) ? body.fileIds.map(text).filter(Boolean) : [];
     const existing = await getTransferById(transferId);
-    if (!existing || existing.status !== "active") return NextResponse.json({ ok: false, message: "Transfer is not available for editing." }, { status: 404 });
+    if (!existing || !["uploading", "active"].includes(existing.status)) return NextResponse.json({ ok: false, message: "Transfer is not available for editing." }, { status: 404 });
     const transfer = await setTransferBackgrounds(transferId, fileIds);
     if (!transfer) return NextResponse.json({ ok: false, message: "Transfer not found." }, { status: 404 });
     return NextResponse.json({ ok: true, transfer });
+  }
+
+  if (action === "background-previews") {
+    // Thumbnails for the background picker, in one request.
+    const transferId = text(body.transferId);
+    const transfer = await getTransferById(transferId);
+    if (!transfer) return NextResponse.json({ ok: false, message: "Transfer not found." }, { status: 404 });
+    const images = transfer.files.filter((file) => isTransferImage(file) && (isWebImage(file) || transfer.backdropFileIds.includes(file.id))).slice(0, 120);
+    const previews = await Promise.all(images.map(async (file) => {
+      const hasBackdrop = transfer.backdropFileIds.includes(file.id);
+      const url = hasBackdrop
+        ? await createTransferViewUrl(getTransferBackdropKey(transfer.id, file.id))
+        : file.source === "archive"
+          ? await (await import("@/lib/client-archive/storage")).createClientArchiveViewUrl(file.objectKey)
+          : await createTransferViewUrl(file.objectKey);
+      return { fileId: file.id, name: file.relativePath || file.originalName, url, hasBackdrop };
+    }));
+    return NextResponse.json({ ok: true, previews, total: transfer.files.filter(isTransferImage).length });
   }
 
   if (action === "background-preview") {
@@ -83,10 +188,12 @@ export async function POST(request: Request) {
     const transfer = await getTransferById(transferId);
     const file = transfer?.files.find((candidate) => candidate.id === fileId && isTransferImage(candidate));
     if (!transfer || transfer.status !== "active" || !file) return NextResponse.json({ ok: false, message: "Image not found." }, { status: 404 });
-    const url = file.source === "archive"
-      ? await (await import("@/lib/client-archive/storage")).createClientArchiveViewUrl(file.objectKey)
-      : await createTransferViewUrl(file.objectKey);
-    return NextResponse.json({ ok: true, url });
+    const url = transfer.backdropFileIds.includes(file.id)
+      ? await createTransferViewUrl(getTransferBackdropKey(transfer.id, file.id))
+      : file.source === "archive"
+        ? await (await import("@/lib/client-archive/storage")).createClientArchiveViewUrl(file.objectKey)
+        : await createTransferViewUrl(file.objectKey);
+    return NextResponse.json({ ok: true, url, hasBackdrop: transfer.backdropFileIds.includes(file.id) });
   }
 
   if (action === "storage-status") {
@@ -267,6 +374,7 @@ export async function POST(request: Request) {
     const removed = await removeTransferFile(transferId, fileId);
     if (!removed) return NextResponse.json({ ok: false, message: "File could not be removed." }, { status: 409 });
     if (removed.source === "upload") await deleteTransferObject(removed.objectKey);
+    await deleteTransferObject(getTransferBackdropKey(transferId, fileId)).catch(() => {});
     const updated = await refreshTransferTotals(transferId);
     return NextResponse.json({ ok: true, transfer: updated });
   }

@@ -361,3 +361,18 @@ export async function deleteTransferObjects(
     continuationToken
   );
 }
+
+/** Web-sized copy of a transfer photo, used as a background on the client page. */
+export function getTransferBackdropKey(transferId: string, fileId: string) {
+  return getTransferObjectKey(transferId, "backdrop-" + safeSegment(fileId) + ".jpg");
+}
+
+/** Steve's own default backgrounds live outside any one transfer. */
+export function getBrandBackgroundKey(id: string) {
+  return (process.env.VERCEL_ENV === "production" ? "transfer-brand" : "transfer-brand-preview") + "/" + safeSegment(id) + ".jpg";
+}
+
+export async function createImageUploadUrl(objectKey: string) {
+  const command = new PutObjectCommand({ Bucket: getBucket(), Key: objectKey, ContentType: "image/jpeg" });
+  return getSignedUrl(getClient(), command, { expiresIn: 60 * 60 });
+}

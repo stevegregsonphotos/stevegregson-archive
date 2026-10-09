@@ -15,6 +15,11 @@ import {
   type QueuedFile,
 } from "@/lib/transfers/upload-client";
 import { useFileDrop } from "@/lib/transfers/use-file-drop";
+import { canMakeBackdrop, uploadTransferBackdrop } from "@/lib/transfers/backdrop-client";
+import { MAX_BACKGROUNDS } from "@/lib/transfers/backgrounds";
+
+/** How many of the queued photos are offered as background choices. */
+const PICKABLE_LIMIT = 60;
 
 const ARCHIVE_SELECTION_KEY = "backstage-transfer-archive-selection";
 const EMPTY_SELECTION = { objectKeys: [] as string[], folderPaths: [] as string[] };
@@ -59,6 +64,8 @@ export default function TransferWorkspace({ initialTransfers }: { initialTransfe
   const [sending, setSending] = useState(false);
   const [progress, setProgress] = useState("");
   const [resultUrl, setResultUrl] = useState("");
+  // Queue positions of photos picked as client-page backgrounds (in pick order).
+  const [backgroundPicks, setBackgroundPicks] = useState<number[]>([]);
   const folderRef = useRef<HTMLInputElement | null>(null);
   const { dragging, dropProps } = useFileDrop((files) => setQueue((q) => [...q, ...files]), !sending);
 
@@ -81,6 +88,28 @@ export default function TransferWorkspace({ initialTransfers }: { initialTransfe
   }, [search, transfers]);
 
   const totalBytes = queue.reduce((sum, item) => sum + item.file.size, 0);
+
+  // Small on-screen previews of the queued photos, so one can be picked as the background.
+  const pickable = useMemo(
+    () => queue
+      .map((item, index) => ({ index, item }))
+      .filter(({ item }) => canMakeBackdrop(item.file))
+      .slice(0, PICKABLE_LIMIT)
+      .map(({ index, item }) => ({ index, name: item.relativePath, url: URL.createObjectURL(item.file) })),
+    [queue],
+  );
+  useEffect(() => () => pickable.forEach((p) => URL.revokeObjectURL(p.url)), [pickable]);
+
+  function togglePick(index: number) {
+    setBackgroundPicks((current) => current.includes(index)
+      ? current.filter((i) => i !== index)
+      : current.length >= MAX_BACKGROUNDS ? current : [...current, index]);
+  }
+
+  function clearQueue() {
+    setQueue([]);
+    setBackgroundPicks([]);
+  }
 
   async function refresh() {
     try {
@@ -122,7 +151,16 @@ export default function TransferWorkspace({ initialTransfers }: { initialTransfe
       }
 
       if (queue.length) {
-        await uploadFilesToTransfer(transferId, queue, (p) => setProgress(describeProgress(p)));
+        const uploadedIds = await uploadFilesToTransfer(transferId, queue, (p) => setProgress(describeProgress(p)));
+        const picks = backgroundPicks.filter((index) => uploadedIds[index]);
+        if (picks.length) {
+          await postTransferAction({ action: "set-backgrounds", transferId, fileIds: picks.map((index) => uploadedIds[index]) });
+          // Light, web-sized copies so the client page opens quickly. Not fatal if one fails.
+          for (let i = 0; i < picks.length; i += 1) {
+            setProgress("Preparing the client page background " + (i + 1) + " of " + picks.length + "…");
+            await uploadTransferBackdrop(transferId, uploadedIds[picks[i]], queue[picks[i]].file).catch(() => {});
+          }
+        }
       }
 
       setProgress("Finishing transfer…");
@@ -132,7 +170,7 @@ export default function TransferWorkspace({ initialTransfers }: { initialTransfe
       }>({ action: "finalize", transferId });
       transferId = "";
       setResultUrl(finish.publicUrl);
-      setQueue([]); setArchiveSelection(EMPTY_SELECTION); clearArchiveSelection(); setTitle(""); setMessage(""); setPassword("");
+      clearQueue(); setArchiveSelection(EMPTY_SELECTION); clearArchiveSelection(); setTitle(""); setMessage(""); setPassword("");
       if (finish.email?.previewSuppressed) setProgress("Ready · emails aren't sent from previews, so copy the link below.");
       else if (finish.email?.failed.length) setProgress("Transfer is live, but the email to " + finish.email.failed.join(", ") + " didn't send. Copy the link below and send it yourself.");
       else setProgress("Sent");
@@ -195,7 +233,34 @@ export default function TransferWorkspace({ initialTransfers }: { initialTransfe
           <div className={styles.queue}>
             <span>{queue.length} {queue.length === 1 ? "file" : "files"}</span>
             <span>{bytes(totalBytes)}</span>
-            <button type="button" onClick={() => setQueue([])}>Clear</button>
+            <button type="button" onClick={clearQueue}>Clear</button>
+          </div>
+        )}
+
+        {pickable.length > 0 && (
+          <div className={styles.sendBackgrounds}>
+            <p>Client page background</p>
+            <small>
+              {backgroundPicks.length
+                ? "Your client will see the picked photograph" + (backgroundPicks.length === 1 ? "" : "s") + " full-screen, in this order."
+                : <>Tap photographs to show them full-screen on the client&rsquo;s page, or leave as is to use your <Link href="/admin/transfers/backgrounds">default backgrounds</Link>.</>}
+            </small>
+            <div className={styles.sendPickGrid}>
+              {pickable.map((photo) => {
+                const position = backgroundPicks.indexOf(photo.index);
+                return (
+                  <button type="button" key={photo.index} aria-pressed={position >= 0} title={photo.name} onClick={() => togglePick(photo.index)} disabled={sending}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={photo.url} alt="" loading="lazy" decoding="async" />
+                    {position >= 0 ? <em>{position + 1}</em> : null}
+                  </button>
+                );
+              })}
+            </div>
+            <div className={styles.sendDefault}>
+              <span>{backgroundPicks.length ? backgroundPicks.length + " of up to " + MAX_BACKGROUNDS + " picked" : "Using your default backgrounds"}</span>
+              {backgroundPicks.length ? <button type="button" onClick={() => setBackgroundPicks([])}>Use defaults</button> : null}
+            </div>
           </div>
         )}
 
@@ -213,13 +278,17 @@ export default function TransferWorkspace({ initialTransfers }: { initialTransfe
           {sending ? "Transferring…" : "Transfer"}
         </button>
         {progress && <p className={styles.progress} aria-live="polite">{progress}</p>}
-        {resultUrl && <div className={styles.result}><input readOnly value={resultUrl} /><button type="button" onClick={() => navigator.clipboard.writeText(resultUrl).catch(() => {})}>Copy link</button></div>}
+        {resultUrl && <div className={styles.result}><input readOnly value={resultUrl} /><button type="button" onClick={() => navigator.clipboard.writeText(resultUrl).catch(() => {})}>Copy link</button><a className={styles.resultOpen} href={resultUrl} target="_blank" rel="noopener">Open ↗</a></div>}
       </section>
 
       <section className={styles.history}>
         <div className={styles.historyHead}>
           <div><p>Steve Gregson</p><h2>Transfers</h2></div>
-          <span>{transfers.length} sent</span>
+          <div className={styles.historyLinks}>
+            <Link href="/admin/transfers/backgrounds">Client page backgrounds</Link>
+            <a href="/transfer/preview" target="_blank" rel="noopener">Preview client page ↗</a>
+            <span>{transfers.length} sent</span>
+          </div>
         </div>
         <div className={styles.tabs}><button className={styles.activeTab}>Sent</button><button disabled>Requested</button><button disabled>Received</button></div>
         <label className={styles.search}><span>⌕</span><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by title, file name, or email" /></label>

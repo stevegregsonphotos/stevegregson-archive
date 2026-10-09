@@ -93,11 +93,5 @@ export const config = {
   matcher: [
     "/admin/:path*",
     "/api/admin/:path*",
-    // transfers.stevegregson.com/ is rewritten to the Backstage Transfers
-    // screen AFTER the proxy runs, so it must be protected here explicitly.
-    {
-      source: "/",
-      has: [{ type: "host", value: "transfers.stevegregson.com" }],
-    },
   ],
 };

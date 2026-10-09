@@ -1,7 +1,7 @@
 import { neon } from "@neondatabase/serverless";
 import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import type { TransferDownloadEvent, TransferFile, TransferRecord, TransferRecipient } from "./types";
-import { isTransferImage } from "./backgrounds";
+import { MAX_BACKGROUNDS, isTransferImage } from "./backgrounds";
 
 function getSql() {
   const databaseUrl = process.env.DATABASE_URL;
@@ -28,6 +28,7 @@ async function ensureSchema() {
     await sql.query("CREATE TABLE IF NOT EXISTS transfer_download_events (id text PRIMARY KEY, transfer_id text NOT NULL REFERENCES transfer_records(id) ON DELETE CASCADE, file_id text, recipient_email text, event_type text NOT NULL, created_at timestamptz NOT NULL DEFAULT now())");
     await sql.query("CREATE INDEX IF NOT EXISTS transfer_download_events_transfer_idx ON transfer_download_events(transfer_id, created_at DESC)");
     await sql.query("ALTER TABLE transfer_records ADD COLUMN IF NOT EXISTS files_purged_at timestamptz");
+    await sql.query("ALTER TABLE transfer_records ADD COLUMN IF NOT EXISTS backdrop_file_ids jsonb NOT NULL DEFAULT '[]'::jsonb");
     await sql.query("CREATE INDEX IF NOT EXISTS transfer_files_object_key_idx ON transfer_files(object_key)");
   })();
   return schemaPromise;
@@ -71,6 +72,7 @@ type RecordRow = {
   finalized_at: string | Date | null; expires_at: string | Date; file_count: number;
   total_size_bytes: string | number; password_hash: string | null; background_file_ids?: unknown;
   files_purged_at?: string | Date | null;
+  backdrop_file_ids?: unknown;
 };
 type FileRow = {
   id: string; transfer_id: string; original_name: string; relative_path: string;
@@ -118,6 +120,7 @@ function buildRecord(row: RecordRow, files: FileRow[], events: EventRow[]): Tran
     expiresAt: iso(row.expires_at)!, fileCount: Number(row.file_count) || 0,
     totalSizeBytes: Number(row.total_size_bytes) || 0, hasPassword: Boolean(row.password_hash),
     ...(row.files_purged_at ? { filesPurgedAt: iso(row.files_purged_at) } : {}),
+    backdropFileIds: Array.isArray(row.backdrop_file_ids) ? row.backdrop_file_ids.filter((value): value is string => typeof value === "string") : [],
     backgroundFileIds: Array.isArray(row.background_file_ids) ? row.background_file_ids.filter((value): value is string => typeof value === "string") : [],
     files: files.map(mapFile),
     downloads: events.map(mapEvent),
@@ -160,7 +163,7 @@ export async function createTransfer(input: {
   const cleanRecipients = [...new Set(input.recipientEmails.map((email) => email.trim().toLowerCase()).filter(Boolean))];
   const passwordHash = input.password?.trim() ? hashPassword(input.password.trim()) : null;
   const rows = await sql.query(
-    "INSERT INTO transfer_records (id, environment, token, title, message, sender_email, recipients, status, created_at, expires_at, password_hash) VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,'uploading',now(),$8,$9) RETURNING id, token, title, message, sender_email, recipients, status, created_at, finalized_at, expires_at, file_count, total_size_bytes, password_hash, background_file_ids, files_purged_at",
+    "INSERT INTO transfer_records (id, environment, token, title, message, sender_email, recipients, status, created_at, expires_at, password_hash) VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,'uploading',now(),$8,$9) RETURNING id, token, title, message, sender_email, recipients, status, created_at, finalized_at, expires_at, file_count, total_size_bytes, password_hash, background_file_ids, files_purged_at, backdrop_file_ids",
     [id, environment(), token, input.title.trim(), input.message?.trim() ?? "", input.senderEmail.trim().toLowerCase(), JSON.stringify(cleanRecipients.map((email) => ({ email }))), input.expiresAt, passwordHash],
   );
   return hydrate(rows[0] as RecordRow);
@@ -198,7 +201,7 @@ export async function removeTransferFile(
     [fileId, transferId, environment()],
   );
   if (rows[0]) {
-    await sql.query("UPDATE transfer_records SET background_file_ids = background_file_ids - $1 WHERE id=$2 AND environment=$3", [fileId, transferId, environment()]);
+    await sql.query("UPDATE transfer_records SET background_file_ids = background_file_ids - $1, backdrop_file_ids = backdrop_file_ids - $1 WHERE id=$2 AND environment=$3", [fileId, transferId, environment()]);
   }
   return rows[0]
     ? {
@@ -257,7 +260,7 @@ export async function getTransferById(id: string) {
   await ensureSchema();
   const sql = getSql();
   const rows = await sql.query(
-    "SELECT id, token, title, message, sender_email, recipients, status, created_at, finalized_at, expires_at, file_count, total_size_bytes, password_hash, background_file_ids, files_purged_at FROM transfer_records WHERE id=$1 AND environment=$2 LIMIT 1",
+    "SELECT id, token, title, message, sender_email, recipients, status, created_at, finalized_at, expires_at, file_count, total_size_bytes, password_hash, background_file_ids, files_purged_at, backdrop_file_ids FROM transfer_records WHERE id=$1 AND environment=$2 LIMIT 1",
     [id, environment()],
   );
   return rows[0] ? hydrate(rows[0] as RecordRow) : undefined;
@@ -267,7 +270,7 @@ export async function getTransferByToken(token: string) {
   await ensureSchema();
   const sql = getSql();
   const rows = await sql.query(
-    "SELECT id, token, title, message, sender_email, recipients, status, created_at, finalized_at, expires_at, file_count, total_size_bytes, password_hash, background_file_ids, files_purged_at FROM transfer_records WHERE token=$1 AND environment=$2 LIMIT 1",
+    "SELECT id, token, title, message, sender_email, recipients, status, created_at, finalized_at, expires_at, file_count, total_size_bytes, password_hash, background_file_ids, files_purged_at, backdrop_file_ids FROM transfer_records WHERE token=$1 AND environment=$2 LIMIT 1",
     [token, environment()],
   );
   return rows[0] ? hydrate(rows[0] as RecordRow) : undefined;
@@ -277,7 +280,7 @@ export async function listTransfers() {
   await ensureSchema();
   const sql = getSql();
   const rows = await sql.query(
-    "SELECT id, token, title, message, sender_email, recipients, status, created_at, finalized_at, expires_at, file_count, total_size_bytes, password_hash, background_file_ids, files_purged_at FROM transfer_records WHERE environment=$1 AND status<>'uploading' ORDER BY created_at DESC LIMIT 500",
+    "SELECT id, token, title, message, sender_email, recipients, status, created_at, finalized_at, expires_at, file_count, total_size_bytes, password_hash, background_file_ids, files_purged_at, backdrop_file_ids FROM transfer_records WHERE environment=$1 AND status<>'uploading' ORDER BY created_at DESC LIMIT 500",
     [environment()],
   );
   return hydrateMany(rows as RecordRow[]);
@@ -330,7 +333,7 @@ export async function setTransferBackgrounds(id: string, fileIds: string[]) {
   const transfer = await getTransferById(id);
   if (!transfer) return undefined;
   const unique = Array.from(new Set(fileIds));
-  const valid = unique.filter((fileId) => transfer.files.some((file) => file.id === fileId && isTransferImage(file))).slice(0, 12);
+  const valid = unique.filter((fileId) => transfer.files.some((file) => file.id === fileId && isTransferImage(file))).slice(0, MAX_BACKGROUNDS);
   await sql.query("UPDATE transfer_records SET background_file_ids=$1::jsonb WHERE id=$2 AND environment=$3", [JSON.stringify(valid), id, environment()]);
   return getTransferById(id);
 }
@@ -397,4 +400,14 @@ export async function removeArchiveFilesFromTransfers(keyPrefix: string) {
   );
   const affected = [...new Set((rows as Array<{ transfer_id: string }>).map((row) => row.transfer_id))];
   for (const id of affected) await refreshTransferTotals(id);
+}
+
+/** Notes that a web-sized background copy of this file now exists. */
+export async function markTransferBackdropReady(id: string, fileId: string) {
+  await ensureSchema();
+  const sql = getSql();
+  await sql.query(
+    "UPDATE transfer_records SET backdrop_file_ids = (SELECT COALESCE(jsonb_agg(DISTINCT v), '[]'::jsonb) FROM jsonb_array_elements_text(backdrop_file_ids || jsonb_build_array($1::text)) AS v) WHERE id=$2 AND environment=$3",
+    [fileId, id, environment()],
+  );
 }
