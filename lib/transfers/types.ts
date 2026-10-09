@@ -1,4 +1,4 @@
-"server-only";
+
 
 export type TransferRecipient = {
   email: string;
@@ -42,4 +42,24 @@ export type TransferRecord = {
   backgroundFileIds: string[];
   files: TransferFile[];
   downloads: TransferDownloadEvent[];
+};
+
+/** What a client sees on a transfer link — never includes emails, storage keys or history. */
+export type PublicTransferFile = {
+  id: string;
+  name: string;
+  sizeBytes: number;
+};
+
+export type PublicTransferView = {
+  token: string;
+  title: string;
+  available: boolean;
+  locked: boolean;
+  message: string;
+  fileCount: number;
+  totalSizeBytes: number;
+  expiresAt: string;
+  files: PublicTransferFile[];
+  backgroundUrls: string[];
 };

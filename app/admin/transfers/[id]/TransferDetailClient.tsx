@@ -1,31 +1,25 @@
 "use client";
 
 import { useRef, useState } from "react";
+import Link from "next/link";
 import type { TransferRecord } from "@/lib/transfers/types";
 import { TRANSFER_BRAND_BACKGROUNDS, isTransferImage } from "@/lib/transfers/backgrounds";
 import styles from "../transfers.module.css";
-
-type QueuedFile = { file: File; relativePath: string };
-
-function bytes(value: number) {
-  const units = ["B", "KB", "MB", "GB", "TB"];
-  let size = value, unit = 0;
-  while (size >= 1024 && unit < units.length - 1) { size /= 1024; unit += 1; }
-  return (size >= 10 || unit === 0 ? size.toFixed(0) : size.toFixed(1)) + " " + units[unit];
-}
+import {
+  describeProgress,
+  filesFromInput as inputFiles,
+  formatBytes as bytes,
+  oversizedFiles,
+  postTransferAction,
+  uploadFilesToTransfer,
+  warnBeforeLeaving,
+  type QueuedFile,
+} from "@/lib/transfers/upload-client";
 
 function date(value: string) {
   return new Intl.DateTimeFormat("en-GB", {
     dateStyle: "medium", timeStyle: "short", timeZone: "Europe/London",
   }).format(new Date(value));
-}
-
-function inputFiles(list: FileList | null): QueuedFile[] {
-  if (!list) return [];
-  return Array.from(list).map((file) => ({
-    file,
-    relativePath: (file as File & { webkitRelativePath?: string }).webkitRelativePath || file.name,
-  }));
 }
 
 export default function TransferDetailClient({ initialTransfer, publicUrl }: {
@@ -39,48 +33,31 @@ export default function TransferDetailClient({ initialTransfer, publicUrl }: {
   const [backgroundUrls, setBackgroundUrls] = useState<Record<string,string>>({});
   const folderRef = useRef<HTMLInputElement | null>(null);
 
-  async function post(body: Record<string, unknown>) {
-    const response = await fetch("/api/admin/transfers", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    const data = await response.json().catch(() => ({ ok: false, message: "The server returned an invalid response." }));
-    if (!response.ok || !data.ok) throw new Error(data.message || "Transfer update failed.");
-    return data;
-  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const post = (body: Record<string, unknown>) => postTransferAction<any>(body);
 
   async function addQueued() {
     if (!queue.length) return;
+    const tooBig = oversizedFiles(queue);
+    if (tooBig.length) {
+      setMessage("These files are over 5 GB and can't be added in one piece yet: " + tooBig.slice(0, 3).join(", ") + ".");
+      return;
+    }
     setBusy(true); setMessage("");
+    const stopWarning = warnBeforeLeaving();
     try {
-      const batchSize = 20;
-      for (let start = 0; start < queue.length; start += batchSize) {
-        const batch = queue.slice(start, start + batchSize);
-        const signed = await post({
-          action: "presign-batch", transferId: transfer.id,
-          files: batch.map(({ file, relativePath }) => ({
-            name: file.name, relativePath, size: file.size,
-            type: file.type || "application/octet-stream",
-          })),
-        });
-        const committed = [];
-        for (let i = 0; i < batch.length; i += 1) {
-          const job = signed.jobs[i];
-          const queued = batch[i];
-          setMessage("Uploading " + (start + i + 1) + " of " + queue.length + " · " + queued.file.name);
-          const put = await fetch(job.uploadUrl, { method: "PUT", body: queued.file });
-          if (!put.ok) throw new Error("Upload failed for " + queued.file.name + " (HTTP " + put.status + ").");
-          committed.push(job);
-        }
-        await post({ action: "commit-batch", transferId: transfer.id, files: committed });
-      }
-      const refreshed = await post({ action: "refresh-files", transferId: transfer.id });
-      setTransfer(refreshed.transfer);
+      await uploadFilesToTransfer(transfer.id, queue, (p) => setMessage(describeProgress(p)));
       setQueue([]);
       setMessage("Files added.");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Could not add files.");
-    } finally { setBusy(false); }
+      setMessage((error instanceof Error ? error.message : "Could not add files.") + " Any files that finished are already in the transfer.");
+    } finally {
+      // Show whatever made it in, even after a failure part-way through.
+      const refreshed = await post({ action: "refresh-files", transferId: transfer.id }).catch(() => null);
+      if (refreshed?.transfer) setTransfer(refreshed.transfer);
+      stopWarning();
+      setBusy(false);
+    }
   }
 
   async function removeFile(fileId: string) {
@@ -108,7 +85,7 @@ export default function TransferDetailClient({ initialTransfer, publicUrl }: {
   const imageFiles = transfer.files.filter(isTransferImage);
   const latestDownload = transfer.downloads[0];
   return <main className={styles.detail}>
-    <a className={styles.detailBack} href="/admin/transfers">← Back to Transfers</a>
+    <Link className={styles.detailBack} href="/admin/transfers">← Back to Transfers</Link>
     <header className={styles.detailHero}>
       <div>
         <p className={styles.detailEyebrow}>Steve Gregson · Transfer</p>

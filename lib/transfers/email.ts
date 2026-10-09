@@ -24,14 +24,33 @@ function bytes(value: number) {
   return (size >= 10 || unit === 0 ? size.toFixed(0) : size.toFixed(1)) + " " + units[unit];
 }
 
-export async function sendTransferEmails(transfer: TransferRecord, publicUrl: string) {
+export type TransferEmailResult = {
+  sent: number;
+  failed: string[];
+  previewSuppressed: boolean;
+};
+
+/**
+ * Emails each recipient. Never throws: the transfer is already live when this
+ * runs, so failures are reported back for Steve to follow up by copying the link.
+ */
+export async function sendTransferEmails(transfer: TransferRecord, publicUrl: string): Promise<TransferEmailResult> {
   if (process.env.VERCEL_ENV !== "production") {
-    return { sent: 0, previewSuppressed: true };
+    return { sent: 0, failed: [], previewSuppressed: true };
   }
 
-  const { apiKey, from, photographerEmail } = config();
+  let settings: ReturnType<typeof config>;
+  try {
+    settings = config();
+  } catch (error) {
+    console.error(error);
+    return { sent: 0, failed: transfer.recipients.map((r) => r.email), previewSuppressed: false };
+  }
+  const { apiKey, from, photographerEmail } = settings;
   const resend = new Resend(apiKey);
   let sent = 0;
+  const failed: string[] = [];
+  const fileSummary = transfer.fileCount + (transfer.fileCount === 1 ? " file" : " files") + " · " + bytes(transfer.totalSizeBytes);
   const availableUntil = new Intl.DateTimeFormat("en-GB", {
     dateStyle: "long", timeZone: "Europe/London",
   }).format(new Date(transfer.expiresAt));
@@ -43,25 +62,29 @@ export async function sendTransferEmails(transfer: TransferRecord, publicUrl: st
       replyTo: photographerEmail,
       subject: "Steve Gregson sent you files — " + transfer.title,
       text: [
-        "Steve Gregson sent you files.", "", transfer.title,
-        transfer.fileCount + " files · " + bytes(transfer.totalSizeBytes), "",
-        transfer.message, "", publicUrl, "", "Available until " + availableUntil + ".",
+        "Steve Gregson sent you files.", "", transfer.title, fileSummary, "",
+        ...(transfer.message ? [transfer.message, ""] : []),
+        publicUrl, "", "Available until " + availableUntil + ".",
         "", "Steve Gregson Photography",
-      ].filter(Boolean).join("\n"),
+      ].join("\n"),
       html:
         '<div style="font-family:Arial,sans-serif;color:#171615;line-height:1.65;max-width:620px;margin:auto;">' +
         '<p style="font-size:12px;letter-spacing:1.4px;text-transform:uppercase;color:#8b7656;">Steve Gregson Photography</p>' +
         '<h1 style="font-size:32px;font-weight:400;margin:0 0 20px;">Steve Gregson sent you files</h1>' +
         '<p style="font-size:20px;"><strong>' + esc(transfer.title) + '</strong></p>' +
-        '<p style="color:#666;">' + transfer.fileCount + " files · " + bytes(transfer.totalSizeBytes) + "</p>" +
+        '<p style="color:#666;">' + fileSummary + "</p>" +
         (transfer.message ? "<p>" + esc(transfer.message) + "</p>" : "") +
         '<p style="margin:32px 0;"><a href="' + esc(publicUrl) + '" style="display:inline-block;padding:14px 22px;background:#171615;color:#fff;text-decoration:none;">Get your files</a></p>' +
         '<p style="color:#777;font-size:13px;">Available until ' + availableUntil + ".</p></div>",
-    });
+    }).catch((error: unknown) => ({ error: { message: error instanceof Error ? error.message : String(error) } }));
 
-    if (result.error) throw new Error("Transfer email to " + recipient.email + " failed: " + result.error.message);
-    sent += 1;
+    if (result.error) {
+      console.error("Transfer email to " + recipient.email + " failed: " + result.error.message);
+      failed.push(recipient.email);
+    } else {
+      sent += 1;
+    }
   }
 
-  return { sent, previewSuppressed: false };
+  return { sent, failed, previewSuppressed: false };
 }

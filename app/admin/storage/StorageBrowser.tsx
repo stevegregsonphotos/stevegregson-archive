@@ -258,8 +258,11 @@ export default function StorageBrowser() {
     }
   }
 
+  // Load the top folder once the page is in the browser.
   useEffect(() => {
-    void load("");
+    const timer = window.setTimeout(() => void load(""), 0);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function search() {

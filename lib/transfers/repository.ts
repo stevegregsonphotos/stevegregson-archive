@@ -98,12 +98,10 @@ function mapEvent(row: EventRow): TransferDownloadEvent {
   };
 }
 
-async function hydrate(row: RecordRow): Promise<TransferRecord> {
-  const sql = getSql();
-  const [files, events] = await Promise.all([
-    sql.query("SELECT id, transfer_id, original_name, relative_path, object_key, source, size_bytes, content_type, created_at FROM transfer_files WHERE transfer_id = $1 ORDER BY created_at, id", [row.id]),
-    sql.query("SELECT id, transfer_id, file_id, recipient_email, event_type, created_at FROM transfer_download_events WHERE transfer_id = $1 ORDER BY created_at DESC", [row.id]),
-  ]);
+const FILE_COLUMNS = "id, transfer_id, original_name, relative_path, object_key, source, size_bytes, content_type, created_at";
+const EVENT_COLUMNS = "id, transfer_id, file_id, recipient_email, event_type, created_at";
+
+function buildRecord(row: RecordRow, files: FileRow[], events: EventRow[]): TransferRecord {
   const expired = new Date(row.expires_at).getTime() <= Date.now();
   const allowed = ["uploading", "active", "disabled", "expired"];
   return {
@@ -117,9 +115,34 @@ async function hydrate(row: RecordRow): Promise<TransferRecord> {
     expiresAt: iso(row.expires_at)!, fileCount: Number(row.file_count) || 0,
     totalSizeBytes: Number(row.total_size_bytes) || 0, hasPassword: Boolean(row.password_hash),
     backgroundFileIds: Array.isArray(row.background_file_ids) ? row.background_file_ids.filter((value): value is string => typeof value === "string") : [],
-    files: (files as FileRow[]).map(mapFile),
-    downloads: (events as EventRow[]).map(mapEvent),
+    files: files.map(mapFile),
+    downloads: events.map(mapEvent),
   };
+}
+
+async function hydrate(row: RecordRow): Promise<TransferRecord> {
+  const sql = getSql();
+  const [files, events] = await Promise.all([
+    sql.query("SELECT " + FILE_COLUMNS + " FROM transfer_files WHERE transfer_id = $1 ORDER BY created_at, id", [row.id]),
+    sql.query("SELECT " + EVENT_COLUMNS + " FROM transfer_download_events WHERE transfer_id = $1 ORDER BY created_at DESC", [row.id]),
+  ]);
+  return buildRecord(row, files as FileRow[], events as EventRow[]);
+}
+
+/** Loads many transfers with 2 extra queries in total (not 2 per transfer). */
+async function hydrateMany(rows: RecordRow[]): Promise<TransferRecord[]> {
+  if (!rows.length) return [];
+  const sql = getSql();
+  const ids = rows.map((row) => row.id);
+  const [files, events] = await Promise.all([
+    sql.query("SELECT " + FILE_COLUMNS + " FROM transfer_files WHERE transfer_id = ANY($1::text[]) ORDER BY created_at, id", [ids]),
+    sql.query("SELECT " + EVENT_COLUMNS + " FROM transfer_download_events WHERE transfer_id = ANY($1::text[]) ORDER BY created_at DESC", [ids]),
+  ]);
+  const filesBy = new Map<string, FileRow[]>();
+  for (const file of files as FileRow[]) filesBy.set(file.transfer_id, [...(filesBy.get(file.transfer_id) ?? []), file]);
+  const eventsBy = new Map<string, EventRow[]>();
+  for (const event of events as EventRow[]) eventsBy.set(event.transfer_id, [...(eventsBy.get(event.transfer_id) ?? []), event]);
+  return rows.map((row) => buildRecord(row, filesBy.get(row.id) ?? [], eventsBy.get(row.id) ?? []));
 }
 
 export async function createTransfer(input: {
@@ -143,14 +166,21 @@ export async function addTransferFiles(transferId: string, files: Array<{
   id: string; originalName: string; relativePath: string; objectKey: string;
   source?: "upload" | "archive"; sizeBytes: number; contentType: string;
 }>) {
+  if (!files.length) return;
   await ensureSchema();
   const sql = getSql();
-  for (const file of files) {
-    await sql.query(
-      "INSERT INTO transfer_files (id, transfer_id, original_name, relative_path, object_key, source, size_bytes, content_type, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,now()) ON CONFLICT (id) DO NOTHING",
-      [file.id, transferId, file.originalName, file.relativePath, file.objectKey, file.source ?? "upload", file.sizeBytes, file.contentType],
-    );
-  }
+  // One database round trip per batch instead of one per file.
+  await sql.query(
+    "INSERT INTO transfer_files (id, transfer_id, original_name, relative_path, object_key, source, size_bytes, content_type, created_at) " +
+    "SELECT f.id, $1, f.original_name, f.relative_path, f.object_key, f.source, f.size_bytes, f.content_type, now() + (f.ord * interval '1 microsecond') " +
+    "FROM jsonb_to_recordset($2::jsonb) AS f(id text, original_name text, relative_path text, object_key text, source text, size_bytes bigint, content_type text, ord integer) " +
+    "ON CONFLICT (id) DO NOTHING",
+    [transferId, JSON.stringify(files.map((file, ord) => ({
+      id: file.id, original_name: file.originalName, relative_path: file.relativePath,
+      object_key: file.objectKey, source: file.source ?? "upload", size_bytes: file.sizeBytes,
+      content_type: file.contentType, ord,
+    })))],
+  );
 }
 
 export async function removeTransferFile(
@@ -186,14 +216,37 @@ export async function refreshTransferTotals(
   return getTransferById(transferId);
 }
 
+/**
+ * Marks an uploading transfer as sent. Returns undefined if it was already
+ * sent (so emails are never sent twice) or has no files.
+ */
 export async function finalizeTransfer(transferId: string) {
   await ensureSchema();
   const sql = getSql();
-  await sql.query(
-    "UPDATE transfer_records SET status='active', finalized_at=now(), file_count=(SELECT count(*)::integer FROM transfer_files WHERE transfer_id=$1), total_size_bytes=(SELECT COALESCE(sum(size_bytes),0) FROM transfer_files WHERE transfer_id=$1) WHERE id=$1 AND environment=$2",
+  const rows = await sql.query(
+    "UPDATE transfer_records SET status='active', finalized_at=now(), file_count=(SELECT count(*)::integer FROM transfer_files WHERE transfer_id=$1), total_size_bytes=(SELECT COALESCE(sum(size_bytes),0) FROM transfer_files WHERE transfer_id=$1) WHERE id=$1 AND environment=$2 AND status='uploading' AND EXISTS (SELECT 1 FROM transfer_files WHERE transfer_id=$1) RETURNING id",
     [transferId, environment()],
   );
-  return getTransferById(transferId);
+  return rows[0] ? getTransferById(transferId) : undefined;
+}
+
+/** Transfers that started uploading but never finished (e.g. a closed tab). */
+export async function listAbandonedTransferIds(olderThanHours = 24) {
+  await ensureSchema();
+  const sql = getSql();
+  const rows = await sql.query(
+    "SELECT id FROM transfer_records WHERE environment=$1 AND status='uploading' AND created_at < now() - ($2 * interval '1 hour') LIMIT 50",
+    [environment(), olderThanHours],
+  );
+  return (rows as Array<{ id: string }>).map((row) => row.id);
+}
+
+/** Deletes a transfer record only while it is still uploading. */
+export async function deleteUploadingTransferRecord(id: string) {
+  await ensureSchema();
+  const sql = getSql();
+  const rows = await sql.query("DELETE FROM transfer_records WHERE id=$1 AND environment=$2 AND status='uploading' RETURNING id", [id, environment()]);
+  return Boolean(rows[0]);
 }
 
 export async function getTransferById(id: string) {
@@ -223,7 +276,7 @@ export async function listTransfers() {
     "SELECT id, token, title, message, sender_email, recipients, status, created_at, finalized_at, expires_at, file_count, total_size_bytes, password_hash, background_file_ids FROM transfer_records WHERE environment=$1 AND status<>'uploading' ORDER BY created_at DESC LIMIT 500",
     [environment()],
   );
-  return Promise.all((rows as RecordRow[]).map(hydrate));
+  return hydrateMany(rows as RecordRow[]);
 }
 
 export async function getTransferPasswordHash(token: string) {

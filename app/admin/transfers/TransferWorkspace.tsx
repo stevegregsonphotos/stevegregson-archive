@@ -4,14 +4,37 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import type { TransferRecord } from "@/lib/transfers/types";
 import styles from "./transfers.module.css";
+import {
+  describeProgress,
+  filesFromInput as inputFiles,
+  formatBytes as bytes,
+  oversizedFiles,
+  postTransferAction,
+  uploadFilesToTransfer,
+  warnBeforeLeaving,
+  type QueuedFile,
+} from "@/lib/transfers/upload-client";
 
-type QueuedFile = { file: File; relativePath: string };
+const ARCHIVE_SELECTION_KEY = "backstage-transfer-archive-selection";
+const EMPTY_SELECTION = { objectKeys: [] as string[], folderPaths: [] as string[] };
 
-function bytes(value: number) {
-  const units = ["B", "KB", "MB", "GB", "TB"];
-  let size = value, unit = 0;
-  while (size >= 1024 && unit < units.length - 1) { size /= 1024; unit += 1; }
-  return (size >= 10 || unit === 0 ? size.toFixed(0) : size.toFixed(1)) + " " + units[unit];
+function readArchiveSelection() {
+  if (typeof window === "undefined") return EMPTY_SELECTION;
+  try {
+    const raw = sessionStorage.getItem(ARCHIVE_SELECTION_KEY);
+    if (!raw) return EMPTY_SELECTION;
+    const parsed = JSON.parse(raw) as { objectKeys?: unknown; folderPaths?: unknown };
+    return {
+      objectKeys: Array.isArray(parsed.objectKeys) ? parsed.objectKeys.filter((v): v is string => typeof v === "string") : [],
+      folderPaths: Array.isArray(parsed.folderPaths) ? parsed.folderPaths.filter((v): v is string => typeof v === "string") : [],
+    };
+  } catch {
+    return EMPTY_SELECTION;
+  }
+}
+
+function clearArchiveSelection() {
+  try { sessionStorage.removeItem(ARCHIVE_SELECTION_KEY); } catch { /* ignore */ }
 }
 
 function date(value: string) {
@@ -21,18 +44,10 @@ function date(value: string) {
   }).format(new Date(value));
 }
 
-function inputFiles(list: FileList | null): QueuedFile[] {
-  if (!list) return [];
-  return Array.from(list).map((file) => ({
-    file,
-    relativePath: (file as File & { webkitRelativePath?: string }).webkitRelativePath || file.name,
-  }));
-}
-
 export default function TransferWorkspace({ initialTransfers }: { initialTransfers: TransferRecord[] }) {
   const [transfers, setTransfers] = useState(initialTransfers);
   const [queue, setQueue] = useState<QueuedFile[]>([]);
-  const [archiveSelection, setArchiveSelection] = useState<{ objectKeys: string[]; folderPaths: string[] }>({ objectKeys: [], folderPaths: [] });
+  const [archiveSelection, setArchiveSelection] = useState<{ objectKeys: string[]; folderPaths: string[] }>(EMPTY_SELECTION);
   const [recipient, setRecipient] = useState("");
   const [senderEmail, setSenderEmail] = useState("info@stevegregson.com");
   const [title, setTitle] = useState("");
@@ -45,18 +60,13 @@ export default function TransferWorkspace({ initialTransfers }: { initialTransfe
   const [resultUrl, setResultUrl] = useState("");
   const folderRef = useRef<HTMLInputElement | null>(null);
 
+  // The Storage screen hands over its selection via sessionStorage; read it
+  // once the page is in the browser.
   useEffect(() => {
-    const raw = sessionStorage.getItem("backstage-transfer-archive-selection");
-    if (!raw) return;
-    try {
-      const parsed = JSON.parse(raw) as { objectKeys?: unknown; folderPaths?: unknown };
-      setArchiveSelection({
-        objectKeys: Array.isArray(parsed.objectKeys) ? parsed.objectKeys.filter((v): v is string => typeof v === "string") : [],
-        folderPaths: Array.isArray(parsed.folderPaths) ? parsed.folderPaths.filter((v): v is string => typeof v === "string") : [],
-      });
-    } catch {
-      sessionStorage.removeItem("backstage-transfer-archive-selection");
-    }
+    const selection = readArchiveSelection();
+    if (!selection.objectKeys.length && !selection.folderPaths.length) return;
+    const timer = window.setTimeout(() => setArchiveSelection(selection), 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   const filtered = useMemo(() => {
@@ -71,116 +81,71 @@ export default function TransferWorkspace({ initialTransfers }: { initialTransfe
   const totalBytes = queue.reduce((sum, item) => sum + item.file.size, 0);
 
   async function refresh() {
-    const response = await fetch("/api/admin/transfers", { cache: "no-store" });
-    const data = await response.json();
-    if (data.ok) setTransfers(data.transfers);
+    try {
+      const response = await fetch("/api/admin/transfers", { cache: "no-store" });
+      const data = await response.json();
+      if (data.ok) setTransfers(data.transfers);
+    } catch {
+      // The list will catch up on the next page load.
+    }
   }
 
   async function send() {
     if ((!queue.length && !archiveSelection.objectKeys.length && !archiveSelection.folderPaths.length) || !recipient.trim() || !title.trim()) return;
+    const tooBig = oversizedFiles(queue);
+    if (tooBig.length) {
+      setProgress("These files are over 5 GB and can't be sent in one piece yet: " + tooBig.slice(0, 3).join(", ") + (tooBig.length > 3 ? " and " + (tooBig.length - 3) + " more" : "") + ".");
+      return;
+    }
     setSending(true);
     setResultUrl("");
+    const stopWarning = warnBeforeLeaving();
+    let transferId = "";
     try {
-      const expiresAt = new Date(Date.now() + Number(expiryDays) * 86400000).toISOString();
       setProgress("Creating transfer…");
-      const createdResponse = await fetch("/api/admin/transfers", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "create", title, message, senderEmail,
-          recipientEmails: recipient.split(/[,\n;]/).map((v) => v.trim()).filter(Boolean),
-          expiresAt, password,
-        }),
+      const created = await postTransferAction<{ transfer: TransferRecord }>({
+        action: "create", title, message, senderEmail,
+        recipientEmails: recipient.split(/[,\n;]/).map((v) => v.trim()).filter(Boolean),
+        expiryDays: Number(expiryDays), password,
       });
-      const created = await createdResponse.json();
-      if (!created.ok) throw new Error(created.message || "Could not create transfer.");
-      const transferId = created.transfer.id;
+      transferId = created.transfer.id;
 
       if (archiveSelection.objectKeys.length || archiveSelection.folderPaths.length) {
         setProgress("Attaching files from Storage…");
-        const archiveResponse = await fetch("/api/admin/transfers", {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "attach-archive", transferId,
-            objectKeys: archiveSelection.objectKeys,
-            folderPaths: archiveSelection.folderPaths,
-          }),
+        await postTransferAction({
+          action: "attach-archive", transferId,
+          objectKeys: archiveSelection.objectKeys,
+          folderPaths: archiveSelection.folderPaths,
         });
-        const archive = await archiveResponse.json();
-        if (!archive.ok) throw new Error(archive.message || "Could not attach archive files.");
       }
 
-      const batchSize = 20;
-      let uploaded = 0;
-      for (let start = 0; start < queue.length; start += batchSize) {
-        const batch = queue.slice(start, start + batchSize);
-        setProgress("Preparing " + (start + 1) + "–" + Math.min(start + batch.length, queue.length) + " of " + queue.length + "…");
-        const signResponse = await fetch("/api/admin/transfers", {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "presign-batch", transferId,
-            files: batch.map(({ file, relativePath }) => ({
-              name: file.name, relativePath, size: file.size,
-              type: file.type || "application/octet-stream",
-            })),
-          }),
-        });
-        const signed = await signResponse.json();
-        if (!signed.ok) throw new Error(signed.message || "Could not prepare upload.");
-
-        const committed = [];
-        for (let i = 0; i < batch.length; i += 1) {
-          const job = signed.jobs[i];
-          const queued = batch[i];
-          setProgress("Uploading " + (uploaded + 1) + " of " + queue.length + " · " + queued.file.name);
-          let put: Response;
-          try {
-            put = await fetch(
-              job.uploadUrl,
-              {
-                method: "PUT",
-                body: queued.file,
-              },
-            );
-          } catch {
-            throw new Error(
-              "Direct storage upload could not be reached. Check the transfer bucket CORS configuration.",
-            );
-          }
-          if (!put.ok) {
-            throw new Error(
-              "Upload failed for " +
-                queued.file.name +
-                " (HTTP " +
-                put.status +
-                ").",
-            );
-          }
-          committed.push(job);
-          uploaded += 1;
-        }
-
-        const commitResponse = await fetch("/api/admin/transfers", {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "commit-batch", transferId, files: committed }),
-        });
-        const commit = await commitResponse.json();
-        if (!commit.ok) throw new Error(commit.message || "Could not verify uploaded files.");
+      if (queue.length) {
+        await uploadFilesToTransfer(transferId, queue, (p) => setProgress(describeProgress(p)));
       }
 
       setProgress("Finishing transfer…");
-      const finishResponse = await fetch("/api/admin/transfers", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "finalize", transferId }),
-      });
-      const finish = await finishResponse.json();
-      if (!finish.ok) throw new Error(finish.message || "Could not finish transfer.");
+      const finish = await postTransferAction<{
+        publicUrl: string;
+        email?: { sent: number; failed: string[]; previewSuppressed: boolean };
+      }>({ action: "finalize", transferId });
+      transferId = "";
       setResultUrl(finish.publicUrl);
-      setQueue([]); setArchiveSelection({ objectKeys: [], folderPaths: [] }); sessionStorage.removeItem("backstage-transfer-archive-selection"); setTitle(""); setMessage(""); setPassword("");
-      setProgress(finish.email?.previewSuppressed ? "Ready · preview email suppressed" : "Sent");
+      setQueue([]); setArchiveSelection(EMPTY_SELECTION); clearArchiveSelection(); setTitle(""); setMessage(""); setPassword("");
+      if (finish.email?.previewSuppressed) setProgress("Ready · emails aren't sent from previews, so copy the link below.");
+      else if (finish.email?.failed.length) setProgress("Transfer is live, but the email to " + finish.email.failed.join(", ") + " didn't send. Copy the link below and send it yourself.");
+      else setProgress("Sent");
       await refresh();
     } catch (error) {
-      setProgress(error instanceof Error ? error.message : "Transfer failed.");
+      const reason = error instanceof Error ? error.message : "Transfer failed.";
+      if (transferId) {
+        // Tidy up the half-finished transfer so nothing is left behind.
+        await postTransferAction({ action: "abort", transferId }).catch(() => {});
+        setProgress(reason + " Nothing was sent; your files are still selected, so you can press Transfer to try again.");
+      } else {
+        setProgress(reason);
+      }
     } finally {
+      stopWarning();
       setSending(false);
     }
   }
@@ -214,7 +179,7 @@ export default function TransferWorkspace({ initialTransfers }: { initialTransfe
         {(archiveSelection.objectKeys.length > 0 || archiveSelection.folderPaths.length > 0) && (
           <div className={styles.queue}>
             <span>From Storage: {archiveSelection.objectKeys.length} files · {archiveSelection.folderPaths.length} folders</span>
-            <button type="button" onClick={() => { setArchiveSelection({ objectKeys: [], folderPaths: [] }); sessionStorage.removeItem("backstage-transfer-archive-selection"); }}>Clear</button>
+            <button type="button" onClick={() => { setArchiveSelection(EMPTY_SELECTION); clearArchiveSelection(); }}>Clear</button>
           </div>
         )}
 
@@ -240,7 +205,7 @@ export default function TransferWorkspace({ initialTransfers }: { initialTransfe
           {sending ? "Transferring…" : "Transfer"}
         </button>
         {progress && <p className={styles.progress} aria-live="polite">{progress}</p>}
-        {resultUrl && <div className={styles.result}><input readOnly value={resultUrl} /><button type="button" onClick={() => navigator.clipboard.writeText(resultUrl)}>Copy link</button></div>}
+        {resultUrl && <div className={styles.result}><input readOnly value={resultUrl} /><button type="button" onClick={() => navigator.clipboard.writeText(resultUrl).catch(() => {})}>Copy link</button></div>}
       </section>
 
       <section className={styles.history}>

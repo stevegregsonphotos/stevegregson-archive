@@ -4,10 +4,12 @@ import {
   addTransferFiles,
   createTransfer,
   deleteTransferRecord,
+  deleteUploadingTransferRecord,
   disableTransfer,
   extendTransfer,
   finalizeTransfer,
   getTransferById,
+  listAbandonedTransferIds,
   listTransfers,
   refreshTransferTotals,
   removeTransferFile,
@@ -18,8 +20,8 @@ import {
   deleteTransferObject,
   deleteTransferObjects,
   getTransferStorageConfiguration,
+  getTransferObjectSize,
   isTransferObjectKey,
-  transferObjectExists,
   createTransferViewUrl,
 } from "@/lib/transfers/storage";
 import { sendTransferEmails } from "@/lib/transfers/email";
@@ -35,6 +37,31 @@ function unauthorized() {
 
 function text(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
+}
+
+const MAX_EXPIRY_DAYS = 365;
+
+/** Accepts a number of days (preferred) or an ISO date; returns a safe ISO date or "". */
+function validExpiry(body: Record<string, unknown>) {
+  const days = Number(body.expiryDays);
+  const date = Number.isFinite(days) && days > 0
+    ? new Date(Date.now() + Math.min(days, MAX_EXPIRY_DAYS) * 86_400_000)
+    : new Date(text(body.expiresAt));
+  const time = date.getTime();
+  if (!Number.isFinite(time) || time <= Date.now() || time > Date.now() + MAX_EXPIRY_DAYS * 86_400_000 + 86_400_000) return "";
+  return date.toISOString();
+}
+
+/** Removes transfers whose upload never finished (closed tab, lost connection). */
+async function cleanUpAbandonedTransfers() {
+  try {
+    for (const id of await listAbandonedTransferIds(24)) {
+      await deleteTransferObjects(id);
+      await deleteUploadingTransferRecord(id);
+    }
+  } catch (error) {
+    console.error("Transfer clean-up skipped", error);
+  }
 }
 
 export async function GET(request: Request) {
@@ -102,10 +129,18 @@ export async function POST(request: Request) {
     const recipientEmails = Array.isArray(body.recipientEmails)
       ? body.recipientEmails.map(text).filter(Boolean)
       : [];
-    const expiresAt = text(body.expiresAt);
+    const expiresAt = validExpiry(body);
+    const badEmail = [senderEmail, ...recipientEmails].find((email) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email));
     if (!title || !senderEmail || recipientEmails.length === 0 || !expiresAt) {
-      return NextResponse.json({ ok: false, message: "Title, sender, recipient and expiry are required." }, { status: 400 });
+      return NextResponse.json({ ok: false, message: "Title, sender, recipient and a valid expiry are required." }, { status: 400 });
     }
+    if (badEmail) {
+      return NextResponse.json({ ok: false, message: "\"" + badEmail + "\" doesn't look like an email address." }, { status: 400 });
+    }
+    if (recipientEmails.length > 50) {
+      return NextResponse.json({ ok: false, message: "Send to 50 people or fewer at once." }, { status: 400 });
+    }
+    await cleanUpAbandonedTransfers();
     const transfer = await createTransfer({
       title, senderEmail, recipientEmails, expiresAt,
       message: text(body.message), password: text(body.password),
@@ -150,7 +185,7 @@ export async function POST(request: Request) {
       const relativePath = text(file.relativePath) || originalName;
       const sizeBytes = Number(file.size) || 0;
       const contentType = text(file.type) || "application/octet-stream";
-      const signed = await createTransferUploadUrl(transferId, id, contentType);
+      const signed = await createTransferUploadUrl(transferId, id);
       return { id, originalName, relativePath, sizeBytes, contentType, ...signed };
     }));
     return NextResponse.json({ ok: true, jobs });
@@ -159,29 +194,47 @@ export async function POST(request: Request) {
   if (action === "commit-batch") {
     const transferId = text(body.transferId);
     const files = Array.isArray(body.files) ? body.files : [];
-    if (!transferId || files.length === 0) {
+    if (!transferId || files.length === 0 || files.length > 50) {
       return NextResponse.json({ ok: false, message: "Uploaded file metadata is required." }, { status: 400 });
+    }
+    const transfer = await getTransferById(transferId);
+    if (!transfer || !["uploading", "active"].includes(transfer.status)) {
+      return NextResponse.json({ ok: false, message: "Transfer is not available for editing." }, { status: 404 });
     }
     const valid = [];
     for (const item of files) {
       const file = item as Record<string, unknown>;
       const objectKey = text(file.objectKey);
-      if (
-        !objectKey ||
-        !isTransferObjectKey(transferId, objectKey) ||
-        !(await transferObjectExists(objectKey))
-      ) {
+      const storedSize = objectKey && isTransferObjectKey(transferId, objectKey)
+        ? await getTransferObjectSize(objectKey)
+        : undefined;
+      if (storedSize === undefined) {
         return NextResponse.json({ ok: false, message: "One or more uploaded files could not be verified." }, { status: 409 });
       }
+      const originalName = text(file.originalName) || "file";
       valid.push({
-        id: text(file.id), originalName: text(file.originalName),
-        relativePath: text(file.relativePath), objectKey,
-        sizeBytes: Number(file.sizeBytes) || 0,
+        // The file id is the last part of its storage key, so the two can't disagree.
+        id: objectKey.split("/").pop()!,
+        originalName,
+        relativePath: text(file.relativePath) || originalName,
+        objectKey,
+        sizeBytes: storedSize,
         contentType: text(file.contentType) || "application/octet-stream",
       });
     }
     await addTransferFiles(transferId, valid);
     return NextResponse.json({ ok: true, committed: valid.length });
+  }
+
+  if (action === "abort") {
+    // Only an unfinished transfer can be aborted; sent transfers use "delete".
+    const transferId = text(body.transferId);
+    const transfer = await getTransferById(transferId);
+    if (transfer?.status === "uploading") {
+      await deleteTransferObjects(transferId);
+      await deleteUploadingTransferRecord(transferId);
+    }
+    return NextResponse.json({ ok: true });
   }
 
   if (action === "attach-archive") {
@@ -232,7 +285,7 @@ export async function POST(request: Request) {
   if (action === "finalize") {
     const transferId = text(body.transferId);
     const transfer = await finalizeTransfer(transferId);
-    if (!transfer) return NextResponse.json({ ok: false, message: "Transfer not found." }, { status: 404 });
+    if (!transfer) return NextResponse.json({ ok: false, message: "This transfer has no files yet, or has already been sent." }, { status: 409 });
     const origin = new URL(request.url).origin;
     const configuredBase = process.env.TRANSFER_PUBLIC_BASE_URL?.trim().replace(/\/$/, "");
     const publicBase =
@@ -241,6 +294,8 @@ export async function POST(request: Request) {
         ? "https://transfers.stevegregson.com"
         : origin + "/transfer");
     const publicUrl = publicBase + "/" + transfer.token;
+    // The transfer is live at this point, so an email problem must not look
+    // like the whole transfer failed — report it and let Steve copy the link.
     const email = await sendTransferEmails(transfer, publicUrl);
     return NextResponse.json({ ok: true, transfer, publicUrl, email });
   }
@@ -251,7 +306,9 @@ export async function POST(request: Request) {
   }
 
   if (action === "extend") {
-    await extendTransfer(text(body.transferId), text(body.expiresAt));
+    const expiresAt = validExpiry(body);
+    if (!expiresAt) return NextResponse.json({ ok: false, message: "Choose a future expiry date within a year." }, { status: 400 });
+    await extendTransfer(text(body.transferId), expiresAt);
     return NextResponse.json({ ok: true });
   }
 

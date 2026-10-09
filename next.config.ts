@@ -70,6 +70,7 @@ const nextConfig: NextConfig = {
         source: "/transfer/:path*",
         headers: noIndexHeaders,
       },
+
     ];
 
     if (
@@ -94,7 +95,9 @@ const nextConfig: NextConfig = {
           destination: "/admin/transfers",
         },
         {
-          source: "/:token",
+          // Only transfer links (long random codes) are rewritten, so paths
+          // like /admin, /favicon.ico and /robots.txt keep working.
+          source: "/:token([A-Za-z0-9_-]{20,64})",
           has: [{ type: "host", value: "transfers.stevegregson.com" }],
           destination: "/transfer/:token",
         },
@@ -104,6 +107,12 @@ const nextConfig: NextConfig = {
 
   async redirects() {
     return [
+      // Early transfer links used /files/<code>; keep them working.
+      {
+        source: "/files/:token",
+        destination: "/transfer/:token",
+        permanent: false,
+      },
       // The old Production page merged into Selected Work (October 2026).
       {
         source: "/production",

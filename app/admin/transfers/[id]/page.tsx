@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { getTransferById } from "@/lib/transfers/repository";
 import TransferDetailClient from "./TransferDetailClient";
+import { requireBackstagePage } from "@/lib/backstage-page-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +11,7 @@ export default async function TransferDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  await requireBackstagePage("/admin/transfers/" + encodeURIComponent(id));
   const transfer = await getTransferById(id);
   if (!transfer) notFound();
 

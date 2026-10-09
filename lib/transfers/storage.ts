@@ -8,6 +8,7 @@ import {
   S3Client,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { attachmentDisposition } from "./disposition";
 
 type TransferStorageConfig = {
   endpoint: string;
@@ -203,7 +204,6 @@ export function isTransferObjectKey(
 export async function createTransferUploadUrl(
   transferId: string,
   fileId: string,
-  _contentType: string,
 ) {
   const objectKey =
     getTransferObjectKey(
@@ -224,8 +224,9 @@ export async function createTransferUploadUrl(
         getClient(),
         command,
         {
-          expiresIn:
-            15 * 60,
+          // Long enough for a large batch on a slow connection; these links
+          // only ever exist inside Steve's logged-in Backstage.
+          expiresIn: 6 * 60 * 60,
         },
       ),
   };
@@ -242,53 +243,26 @@ export async function deleteTransferObject(
   );
 }
 
-export async function transferObjectExists(
+/** Returns the stored size in bytes, or undefined if the object isn't there. */
+export async function getTransferObjectSize(
   objectKey: string,
-) {
+): Promise<number | undefined> {
   try {
-    await getClient().send(
+    const head = await getClient().send(
       new HeadObjectCommand({
         Bucket: getBucket(),
         Key: objectKey,
       }),
     );
-
-    return true;
+    return Number(head.ContentLength) || 0;
   } catch (error) {
     const status =
-      typeof error === "object" &&
-      error !== null &&
-      "$metadata" in error
-        ? (
-            error as {
-              $metadata?: {
-                httpStatusCode?: number;
-              };
-            }
-          ).$metadata
-            ?.httpStatusCode
+      typeof error === "object" && error !== null && "$metadata" in error
+        ? (error as { $metadata?: { httpStatusCode?: number } }).$metadata?.httpStatusCode
         : undefined;
-
-    if (status === 404) {
-      return false;
-    }
-
+    if (status === 404) return undefined;
     throw error;
   }
-}
-
-function safeDownloadFilename(
-  value: string,
-) {
-  return (
-    value
-      .replace(
-        /[\r\n"]/g,
-        "",
-      )
-      .trim() ||
-    "download"
-  );
 }
 
 export async function createTransferViewUrl(objectKey: string) {
@@ -305,11 +279,7 @@ export async function createTransferDownloadUrl(
       Bucket: getBucket(),
       Key: objectKey,
       ResponseContentDisposition:
-        'attachment; filename="' +
-        safeDownloadFilename(
-          filename,
-        ) +
-        '"',
+        attachmentDisposition(filename),
       ResponseCacheControl:
         "private, no-store",
     });

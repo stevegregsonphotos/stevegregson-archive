@@ -7,6 +7,7 @@ import {
   S3Client,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { attachmentDisposition } from "@/lib/transfers/disposition";
 
 function env(...names: string[]) {
   for (const name of names) {
@@ -128,13 +129,12 @@ export async function createClientArchiveViewUrl(objectKey: string) {
 
 export async function createClientArchiveDownloadUrl(objectKey: string, name: string) {
   if (!isClientArchiveKey(objectKey)) throw new Error("Invalid archive object.");
-  const filename = name.replace(/[\r\n"]/g, "").trim() || "download";
   return getSignedUrl(
     client(),
     new GetObjectCommand({
       Bucket: config().bucketName,
       Key: objectKey,
-      ResponseContentDisposition: 'attachment; filename="' + filename + '"',
+      ResponseContentDisposition: attachmentDisposition(name),
       ResponseCacheControl: "private, no-store",
     }),
     { expiresIn: 900 },
