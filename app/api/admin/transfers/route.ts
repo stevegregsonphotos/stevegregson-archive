@@ -9,9 +9,12 @@ import {
   finalizeTransfer,
   getTransferById,
   listTransfers,
+  refreshTransferTotals,
+  removeTransferFile,
 } from "@/lib/transfers/repository";
 import {
   createTransferUploadUrl,
+  deleteTransferObject,
   deleteTransferObjects,
   getTransferStorageConfiguration,
   transferObjectExists,
@@ -102,8 +105,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, message: "A transfer and 1–50 files are required." }, { status: 400 });
     }
     const transfer = await getTransferById(transferId);
-    if (!transfer || transfer.status !== "uploading") {
-      return NextResponse.json({ ok: false, message: "Transfer is not available for upload." }, { status: 404 });
+    if (!transfer || !["uploading", "active"].includes(transfer.status)) {
+      return NextResponse.json({ ok: false, message: "Transfer is not available for editing." }, { status: 404 });
     }
 
     const jobs = await Promise.all(files.map(async (item) => {
@@ -141,6 +144,31 @@ export async function POST(request: Request) {
     }
     await addTransferFiles(transferId, valid);
     return NextResponse.json({ ok: true, committed: valid.length });
+  }
+
+  if (action === "refresh-files") {
+    const transferId = text(body.transferId);
+    const transfer = await refreshTransferTotals(transferId);
+    if (!transfer) return NextResponse.json({ ok: false, message: "Transfer not found." }, { status: 404 });
+    return NextResponse.json({ ok: true, transfer });
+  }
+
+  if (action === "remove-file") {
+    const transferId = text(body.transferId);
+    const fileId = text(body.fileId);
+    const transfer = await getTransferById(transferId);
+    if (!transfer || transfer.status !== "active") {
+      return NextResponse.json({ ok: false, message: "Transfer is not available for editing." }, { status: 404 });
+    }
+    if (transfer.files.length <= 1) {
+      return NextResponse.json({ ok: false, message: "A transfer must contain at least one file." }, { status: 409 });
+    }
+    const file = transfer.files.find((candidate) => candidate.id === fileId);
+    if (!file) return NextResponse.json({ ok: false, message: "File not found." }, { status: 404 });
+    await deleteTransferObject(file.objectKey);
+    await removeTransferFile(transferId, fileId);
+    const updated = await refreshTransferTotals(transferId);
+    return NextResponse.json({ ok: true, transfer: updated });
   }
 
   if (action === "finalize") {
