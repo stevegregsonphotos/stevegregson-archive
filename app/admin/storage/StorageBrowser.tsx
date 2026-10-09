@@ -38,6 +38,8 @@ export default function StorageBrowser() {
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
+  const [selectedFolders, setSelectedFolders] = useState<string[]>([]);
   const folderRef = useRef<HTMLInputElement | null>(null);
 
   async function load(path = listing.path) {
@@ -49,6 +51,8 @@ export default function StorageBrowser() {
       setListing(data.listing);
       setMessage("");
       setLoaded(true);
+      setSelectedFiles([]);
+      setSelectedFolders([]);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not load storage.");
     } finally {
@@ -128,6 +132,24 @@ export default function StorageBrowser() {
     }
   }
 
+
+  function toggleFile(objectKey: string) {
+    setSelectedFiles((current) => current.includes(objectKey) ? current.filter((key) => key !== objectKey) : [...current, objectKey]);
+  }
+
+  function toggleFolder(path: string) {
+    setSelectedFolders((current) => current.includes(path) ? current.filter((item) => item !== path) : [...current, path]);
+  }
+
+  function sendSelection() {
+    if (!selectedFiles.length && !selectedFolders.length) return;
+    sessionStorage.setItem("backstage-transfer-archive-selection", JSON.stringify({
+      objectKeys: selectedFiles,
+      folderPaths: selectedFolders,
+    }));
+    window.location.assign("/admin/transfers?archive=1");
+  }
+
   const crumbs = listing.path ? listing.path.split("/") : [];
 
   return (
@@ -139,6 +161,7 @@ export default function StorageBrowser() {
           <span>Long-term client files in Backblaze B2. Uploads and downloads travel directly between this browser and storage.</span>
         </div>
         <div className={styles.actions}>
+          {(selectedFiles.length > 0 || selectedFolders.length > 0) && <button type="button" onClick={sendSelection}>Send selected ({selectedFiles.length + selectedFolders.length})</button>}
           <label><input type="file" multiple onChange={(e) => void upload(e.target.files)} />+ Add files</label>
           <button type="button" onClick={() => folderRef.current?.click()}>+ Add folder</button>
           <input ref={folderRef} className={styles.hidden} type="file" multiple {...({ webkitdirectory: "", directory: "" } as React.InputHTMLAttributes<HTMLInputElement>)} onChange={(e) => void upload(e.target.files, true)} />
@@ -160,14 +183,18 @@ export default function StorageBrowser() {
 
       <section className={styles.grid} aria-busy={busy}>
         {filtered.folders.map((folder) => (
-          <button className={styles.folder} type="button" key={folder.path} onClick={() => void load(folder.path)}>
-            <span className={styles.folderIcon}>▰</span>
-            <strong>{folder.name}</strong>
-            <small>Folder</small>
-          </button>
+          <article className={styles.folder} key={folder.path}>
+            <label className={styles.select}><input type="checkbox" checked={selectedFolders.includes(folder.path)} onChange={() => toggleFolder(folder.path)} /> Select</label>
+            <button className={styles.folderOpen} type="button" onClick={() => void load(folder.path)}>
+              <span className={styles.folderIcon}>▰</span>
+              <strong>{folder.name}</strong>
+              <small>Folder</small>
+            </button>
+          </article>
         ))}
         {filtered.files.map((file) => (
           <article className={styles.file} key={file.objectKey}>
+            <label className={styles.select}><input type="checkbox" checked={selectedFiles.includes(file.objectKey)} onChange={() => toggleFile(file.objectKey)} /> Select</label>
             <div className={styles.thumb}>
               {file.isImage && file.viewUrl ? <img src={file.viewUrl} alt="" /> : <span>FILE</span>}
             </div>

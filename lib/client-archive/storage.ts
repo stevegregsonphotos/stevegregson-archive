@@ -131,3 +131,69 @@ export async function deleteClientArchiveFile(objectKey: string) {
   if (!isClientArchiveKey(objectKey)) throw new Error("Invalid archive object.");
   await client().send(new DeleteObjectCommand({ Bucket: config().bucketName, Key: objectKey }));
 }
+
+function inferContentType(name: string) {
+  const ext = name.toLowerCase().split(".").pop() || "";
+  const types: Record<string, string> = {
+    jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp",
+    gif: "image/gif", tif: "image/tiff", tiff: "image/tiff", heic: "image/heic",
+    pdf: "application/pdf", zip: "application/zip", txt: "text/plain", csv: "text/csv",
+  };
+  return types[ext] || "application/octet-stream";
+}
+
+export async function listClientArchiveFilesRecursive(path: string, limit = 5000) {
+  const clean = cleanPath(path);
+  const prefix = ns() + "/" + (clean ? clean + "/" : "");
+  const files: Array<{
+    name: string; path: string; objectKey: string; sizeBytes: number; contentType: string;
+  }> = [];
+  let continuationToken: string | undefined;
+
+  do {
+    const page = await client().send(new ListObjectsV2Command({
+      Bucket: config().bucketName,
+      Prefix: prefix,
+      ContinuationToken: continuationToken,
+    }));
+    for (const item of page.Contents || []) {
+      if (!item.Key || item.Key === prefix) continue;
+      const relative = item.Key.slice((ns() + "/").length);
+      const name = relative.split("/").pop() || relative;
+      files.push({
+        name,
+        path: relative,
+        objectKey: item.Key,
+        sizeBytes: Number(item.Size) || 0,
+        contentType: inferContentType(name),
+      });
+      if (files.length > limit) throw new Error("This folder contains more than " + limit + " files.");
+    }
+    continuationToken = page.IsTruncated ? page.NextContinuationToken : undefined;
+  } while (continuationToken);
+
+  return files;
+}
+
+export async function getClientArchiveFilesByKeys(keys: string[]) {
+  if (keys.length > 5000) throw new Error("Too many archive files selected.");
+  const unique = [...new Set(keys)];
+  const results = [];
+  for (const objectKey of unique) {
+    if (!isClientArchiveKey(objectKey)) throw new Error("Invalid archive object.");
+    const head = await client().send(new (await import("@aws-sdk/client-s3")).HeadObjectCommand({
+      Bucket: config().bucketName,
+      Key: objectKey,
+    }));
+    const relative = objectKey.slice((ns() + "/").length);
+    const name = relative.split("/").pop() || relative;
+    results.push({
+      name,
+      path: relative,
+      objectKey,
+      sizeBytes: Number(head.ContentLength) || 0,
+      contentType: head.ContentType || inferContentType(name),
+    });
+  }
+  return results;
+}

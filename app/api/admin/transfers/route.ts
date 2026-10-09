@@ -20,6 +20,10 @@ import {
   transferObjectExists,
 } from "@/lib/transfers/storage";
 import { sendTransferEmails } from "@/lib/transfers/email";
+import {
+  getClientArchiveFilesByKeys,
+  listClientArchiveFilesRecursive,
+} from "@/lib/client-archive/storage";
 
 function unauthorized() {
   return NextResponse.json({ ok: false, message: "Unauthorized." }, { status: 401 });
@@ -150,6 +154,25 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, committed: valid.length });
   }
 
+  if (action === "attach-archive") {
+    const transferId = text(body.transferId);
+    const objectKeys = Array.isArray(body.objectKeys) ? body.objectKeys.map(text).filter(Boolean) : [];
+    const folderPaths = Array.isArray(body.folderPaths) ? body.folderPaths.map(text).filter(Boolean) : [];
+    if (!transferId || (!objectKeys.length && !folderPaths.length)) return NextResponse.json({ ok: false, message: "Choose archive files or folders to attach." }, { status: 400 });
+    const transfer = await getTransferById(transferId);
+    if (!transfer || !["uploading", "active"].includes(transfer.status)) return NextResponse.json({ ok: false, message: "Transfer is not available for editing." }, { status: 404 });
+    const direct = await getClientArchiveFilesByKeys(objectKeys);
+    const nested = [];
+    for (const folderPath of folderPaths) nested.push(...await listClientArchiveFilesRecursive(folderPath, 5000));
+    const archiveFiles = [...new Map([...direct, ...nested].map((file) => [file.objectKey, file])).values()];
+    if (!archiveFiles.length || transfer.files.length + archiveFiles.length > 5000) return NextResponse.json({ ok: false, message: archiveFiles.length ? "This transfer would exceed its 5,000 file limit." : "No files were found in that archive selection." }, { status: 409 });
+    await addTransferFiles(transferId, archiveFiles.map((file) => ({
+      id: crypto.randomUUID(), originalName: file.name, relativePath: file.path,
+      objectKey: file.objectKey, source: "archive" as const, sizeBytes: file.sizeBytes, contentType: file.contentType,
+    })));
+    return NextResponse.json({ ok: true, attached: archiveFiles.length, transfer: await refreshTransferTotals(transferId) });
+  }
+
   if (action === "refresh-files") {
     const transferId = text(body.transferId);
     const transfer = await refreshTransferTotals(transferId);
@@ -169,8 +192,9 @@ export async function POST(request: Request) {
     }
     const file = transfer.files.find((candidate) => candidate.id === fileId);
     if (!file) return NextResponse.json({ ok: false, message: "File not found." }, { status: 404 });
-    await deleteTransferObject(file.objectKey);
-    await removeTransferFile(transferId, fileId);
+    const removed = await removeTransferFile(transferId, fileId);
+    if (!removed) return NextResponse.json({ ok: false, message: "File could not be removed." }, { status: 409 });
+    if (removed.source === "upload") await deleteTransferObject(removed.objectKey);
     const updated = await refreshTransferTotals(transferId);
     return NextResponse.json({ ok: true, transfer: updated });
   }

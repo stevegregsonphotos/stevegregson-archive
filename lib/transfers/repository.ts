@@ -20,7 +20,8 @@ async function ensureSchema() {
     const sql = getSql();
     await sql.query("CREATE TABLE IF NOT EXISTS transfer_records (id text PRIMARY KEY, environment text NOT NULL, token text NOT NULL, title text NOT NULL, message text NOT NULL DEFAULT '', sender_email text NOT NULL, recipients jsonb NOT NULL DEFAULT '[]'::jsonb, status text NOT NULL DEFAULT 'uploading', created_at timestamptz NOT NULL DEFAULT now(), finalized_at timestamptz, expires_at timestamptz NOT NULL, file_count integer NOT NULL DEFAULT 0, total_size_bytes bigint NOT NULL DEFAULT 0, password_hash text)");
     await sql.query("CREATE UNIQUE INDEX IF NOT EXISTS transfer_records_env_token_idx ON transfer_records(environment, token)");
-    await sql.query("CREATE TABLE IF NOT EXISTS transfer_files (id text PRIMARY KEY, transfer_id text NOT NULL REFERENCES transfer_records(id) ON DELETE CASCADE, original_name text NOT NULL, relative_path text NOT NULL, object_key text NOT NULL, size_bytes bigint NOT NULL, content_type text NOT NULL, created_at timestamptz NOT NULL DEFAULT now())");
+    await sql.query("CREATE TABLE IF NOT EXISTS transfer_files (id text PRIMARY KEY, transfer_id text NOT NULL REFERENCES transfer_records(id) ON DELETE CASCADE, original_name text NOT NULL, relative_path text NOT NULL, object_key text NOT NULL, source text NOT NULL DEFAULT 'upload', size_bytes bigint NOT NULL, content_type text NOT NULL, created_at timestamptz NOT NULL DEFAULT now())");
+    await sql.query("ALTER TABLE transfer_files ADD COLUMN IF NOT EXISTS source text NOT NULL DEFAULT 'upload'");
     await sql.query("CREATE INDEX IF NOT EXISTS transfer_files_transfer_idx ON transfer_files(transfer_id, created_at)");
     await sql.query("CREATE TABLE IF NOT EXISTS transfer_download_events (id text PRIMARY KEY, transfer_id text NOT NULL REFERENCES transfer_records(id) ON DELETE CASCADE, file_id text, recipient_email text, event_type text NOT NULL, created_at timestamptz NOT NULL DEFAULT now())");
     await sql.query("CREATE INDEX IF NOT EXISTS transfer_download_events_transfer_idx ON transfer_download_events(transfer_id, created_at DESC)");
@@ -68,7 +69,7 @@ type RecordRow = {
 };
 type FileRow = {
   id: string; transfer_id: string; original_name: string; relative_path: string;
-  object_key: string; size_bytes: string | number; content_type: string; created_at: string | Date;
+  object_key: string; source: string; size_bytes: string | number; content_type: string; created_at: string | Date;
 };
 type EventRow = {
   id: string; transfer_id: string; file_id: string | null; recipient_email: string | null;
@@ -79,6 +80,7 @@ function mapFile(row: FileRow): TransferFile {
   return {
     id: row.id, transferId: row.transfer_id, originalName: row.original_name,
     relativePath: row.relative_path, objectKey: row.object_key,
+    source: row.source === "archive" ? "archive" : "upload",
     sizeBytes: Number(row.size_bytes) || 0, contentType: row.content_type,
     createdAt: iso(row.created_at)!,
   };
@@ -97,7 +99,7 @@ function mapEvent(row: EventRow): TransferDownloadEvent {
 async function hydrate(row: RecordRow): Promise<TransferRecord> {
   const sql = getSql();
   const [files, events] = await Promise.all([
-    sql.query("SELECT id, transfer_id, original_name, relative_path, object_key, size_bytes, content_type, created_at FROM transfer_files WHERE transfer_id = $1 ORDER BY created_at, id", [row.id]),
+    sql.query("SELECT id, transfer_id, original_name, relative_path, object_key, source, size_bytes, content_type, created_at FROM transfer_files WHERE transfer_id = $1 ORDER BY created_at, id", [row.id]),
     sql.query("SELECT id, transfer_id, file_id, recipient_email, event_type, created_at FROM transfer_download_events WHERE transfer_id = $1 ORDER BY created_at DESC", [row.id]),
   ]);
   const expired = new Date(row.expires_at).getTime() <= Date.now();
@@ -136,14 +138,14 @@ export async function createTransfer(input: {
 
 export async function addTransferFiles(transferId: string, files: Array<{
   id: string; originalName: string; relativePath: string; objectKey: string;
-  sizeBytes: number; contentType: string;
+  source?: "upload" | "archive"; sizeBytes: number; contentType: string;
 }>) {
   await ensureSchema();
   const sql = getSql();
   for (const file of files) {
     await sql.query(
-      "INSERT INTO transfer_files (id, transfer_id, original_name, relative_path, object_key, size_bytes, content_type, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,now()) ON CONFLICT (id) DO NOTHING",
-      [file.id, transferId, file.originalName, file.relativePath, file.objectKey, file.sizeBytes, file.contentType],
+      "INSERT INTO transfer_files (id, transfer_id, original_name, relative_path, object_key, source, size_bytes, content_type, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,now()) ON CONFLICT (id) DO NOTHING",
+      [file.id, transferId, file.originalName, file.relativePath, file.objectKey, file.source ?? "upload", file.sizeBytes, file.contentType],
     );
   }
 }
@@ -155,11 +157,14 @@ export async function removeTransferFile(
   await ensureSchema();
   const sql = getSql();
   const rows = await sql.query(
-    "DELETE FROM transfer_files USING transfer_records WHERE transfer_files.id=$1 AND transfer_files.transfer_id=$2 AND transfer_records.id=transfer_files.transfer_id AND transfer_records.environment=$3 RETURNING transfer_files.object_key",
+    "DELETE FROM transfer_files USING transfer_records WHERE transfer_files.id=$1 AND transfer_files.transfer_id=$2 AND transfer_records.id=transfer_files.transfer_id AND transfer_records.environment=$3 RETURNING transfer_files.object_key, transfer_files.source",
     [fileId, transferId, environment()],
   );
   return rows[0]
-    ? (rows[0] as { object_key: string }).object_key
+    ? {
+        objectKey: (rows[0] as { object_key: string }).object_key,
+        source: ((rows[0] as { source: string }).source === "archive" ? "archive" : "upload") as "archive" | "upload",
+      }
     : undefined;
 }
 

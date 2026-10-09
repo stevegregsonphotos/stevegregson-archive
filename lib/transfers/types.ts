@@ -10,6 +10,7 @@ export type TransferFile = {
   originalName: string;
   relativePath: string;
   objectKey: string;
+  source?: "upload" | "archive";
   sizeBytes: number;
   contentType: string;
   createdAt: string;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import type { TransferRecord } from "@/lib/transfers/types";
 import styles from "./transfers.module.css";
@@ -32,6 +32,7 @@ function inputFiles(list: FileList | null): QueuedFile[] {
 export default function TransferWorkspace({ initialTransfers }: { initialTransfers: TransferRecord[] }) {
   const [transfers, setTransfers] = useState(initialTransfers);
   const [queue, setQueue] = useState<QueuedFile[]>([]);
+  const [archiveSelection, setArchiveSelection] = useState<{ objectKeys: string[]; folderPaths: string[] }>({ objectKeys: [], folderPaths: [] });
   const [recipient, setRecipient] = useState("");
   const [senderEmail, setSenderEmail] = useState("info@stevegregson.com");
   const [title, setTitle] = useState("");
@@ -43,6 +44,20 @@ export default function TransferWorkspace({ initialTransfers }: { initialTransfe
   const [progress, setProgress] = useState("");
   const [resultUrl, setResultUrl] = useState("");
   const folderRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    const raw = sessionStorage.getItem("backstage-transfer-archive-selection");
+    if (!raw) return;
+    try {
+      const parsed = JSON.parse(raw) as { objectKeys?: unknown; folderPaths?: unknown };
+      setArchiveSelection({
+        objectKeys: Array.isArray(parsed.objectKeys) ? parsed.objectKeys.filter((v): v is string => typeof v === "string") : [],
+        folderPaths: Array.isArray(parsed.folderPaths) ? parsed.folderPaths.filter((v): v is string => typeof v === "string") : [],
+      });
+    } catch {
+      sessionStorage.removeItem("backstage-transfer-archive-selection");
+    }
+  }, []);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -62,7 +77,7 @@ export default function TransferWorkspace({ initialTransfers }: { initialTransfe
   }
 
   async function send() {
-    if (!queue.length || !recipient.trim() || !title.trim()) return;
+    if ((!queue.length && !archiveSelection.objectKeys.length && !archiveSelection.folderPaths.length) || !recipient.trim() || !title.trim()) return;
     setSending(true);
     setResultUrl("");
     try {
@@ -79,6 +94,20 @@ export default function TransferWorkspace({ initialTransfers }: { initialTransfe
       const created = await createdResponse.json();
       if (!created.ok) throw new Error(created.message || "Could not create transfer.");
       const transferId = created.transfer.id;
+
+      if (archiveSelection.objectKeys.length || archiveSelection.folderPaths.length) {
+        setProgress("Attaching files from Storage…");
+        const archiveResponse = await fetch("/api/admin/transfers", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "attach-archive", transferId,
+            objectKeys: archiveSelection.objectKeys,
+            folderPaths: archiveSelection.folderPaths,
+          }),
+        });
+        const archive = await archiveResponse.json();
+        if (!archive.ok) throw new Error(archive.message || "Could not attach archive files.");
+      }
 
       const batchSize = 20;
       let uploaded = 0;
@@ -146,7 +175,7 @@ export default function TransferWorkspace({ initialTransfers }: { initialTransfe
       const finish = await finishResponse.json();
       if (!finish.ok) throw new Error(finish.message || "Could not finish transfer.");
       setResultUrl(finish.publicUrl);
-      setQueue([]); setTitle(""); setMessage(""); setPassword("");
+      setQueue([]); setArchiveSelection({ objectKeys: [], folderPaths: [] }); sessionStorage.removeItem("backstage-transfer-archive-selection"); setTitle(""); setMessage(""); setPassword("");
       setProgress(finish.email?.previewSuppressed ? "Ready · preview email suppressed" : "Sent");
       await refresh();
     } catch (error) {
@@ -182,6 +211,13 @@ export default function TransferWorkspace({ initialTransfers }: { initialTransfe
           />
         </div>
 
+        {(archiveSelection.objectKeys.length > 0 || archiveSelection.folderPaths.length > 0) && (
+          <div className={styles.queue}>
+            <span>From Storage: {archiveSelection.objectKeys.length} files · {archiveSelection.folderPaths.length} folders</span>
+            <button type="button" onClick={() => { setArchiveSelection({ objectKeys: [], folderPaths: [] }); sessionStorage.removeItem("backstage-transfer-archive-selection"); }}>Clear</button>
+          </div>
+        )}
+
         {queue.length > 0 && (
           <div className={styles.queue}>
             <span>{queue.length} {queue.length === 1 ? "file" : "files"}</span>
@@ -200,7 +236,7 @@ export default function TransferWorkspace({ initialTransfers }: { initialTransfe
           <label><span>Password</span><input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Optional" /></label>
         </div>
 
-        <button className={styles.transferButton} type="button" disabled={sending || !queue.length || !recipient.trim() || !title.trim()} onClick={send}>
+        <button className={styles.transferButton} type="button" disabled={sending || (!queue.length && !archiveSelection.objectKeys.length && !archiveSelection.folderPaths.length) || !recipient.trim() || !title.trim()} onClick={send}>
           {sending ? "Transferring…" : "Transfer"}
         </button>
         {progress && <p className={styles.progress} aria-live="polite">{progress}</p>}
