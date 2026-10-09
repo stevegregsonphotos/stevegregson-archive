@@ -94,6 +94,7 @@ export default function StorageBrowser(){
     <button className={styles.allFiles} type="button" onClick={()=>void load("")}>▦ <span>All files</span></button>
     <div className={styles.tree}>
      {listing.path&&<button type="button" onClick={()=>void load("")}>⌂ Storage</button>}
+     {crumbs.map((crumb,index)=>{const path=crumbs.slice(0,index+1).join("/");return <button type="button" key={path} onClick={()=>void load(path)}><span>⌄</span> 📁 {crumb}</button>})}
      {listing.folders.map(folder=><button type="button" key={folder.path} onClick={()=>void load(folder.path)}><span>›</span> 📁 {folder.name}</button>)}
     </div>
    </aside>
