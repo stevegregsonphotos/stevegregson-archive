@@ -81,6 +81,23 @@ const nextConfig: NextConfig = {
     return headers;
   },
 
+  async rewrites() {
+    return {
+      beforeFiles: [
+        {
+          source: "/",
+          has: [{ type: "host", value: "transfers.stevegregson.com" }],
+          destination: "/admin/transfers",
+        },
+        {
+          source: "/:token",
+          has: [{ type: "host", value: "transfers.stevegregson.com" }],
+          destination: "/transfer/:token",
+        },
+      ],
+    };
+  },
+
   async redirects() {
     return [
       // The old Production page merged into Selected Work (October 2026).

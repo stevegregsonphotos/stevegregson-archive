@@ -23,7 +23,7 @@ export default async function TransferDetailPage({
   return (
     <TransferDetailClient
       initialTransfer={transfer}
-      publicUrl={siteUrl + "/transfer/" + transfer.token}
+      publicUrl={(process.env.TRANSFER_PUBLIC_BASE_URL?.trim().replace(/\/$/, "") || siteUrl + "/transfer") + "/" + transfer.token}
     />
   );
 }

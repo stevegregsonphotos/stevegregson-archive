@@ -76,6 +76,7 @@ export async function listClientArchive(path = "", cursor?: string) {
     if (!item.Key || item.Key === prefix) return [];
     const relative = item.Key.slice((ns() + "/").length);
     const name = relative.split("/").pop() || relative;
+    if (name === ".folder") return [];
     return [{
       name,
       path: relative,
@@ -86,6 +87,18 @@ export async function listClientArchive(path = "", cursor?: string) {
     }];
   });
   return { path: clean, folders, files, nextCursor: page.NextContinuationToken, truncated: Boolean(page.IsTruncated) };
+}
+
+export async function createClientArchiveFolder(path: string) {
+  const clean = cleanPath(path);
+  if (!clean) throw new Error("A folder name is required.");
+  const key = ns() + "/" + clean + "/.folder";
+  await client().send(new PutObjectCommand({
+    Bucket: config().bucketName,
+    Key: key,
+    Body: "",
+    ContentType: "application/x-directory",
+  }));
 }
 
 export async function createClientArchiveUploadUrl(path: string) {
@@ -197,4 +210,68 @@ export async function getClientArchiveFilesByKeys(keys: string[]) {
     });
   }
   return results;
+}
+
+export async function searchClientArchive(query: string, limit = 200) {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return { folders: [], files: [] };
+
+  const prefix = ns() + "/";
+  const folders = new Map<string, { name: string; path: string }>();
+  const files: Array<{
+    name: string;
+    path: string;
+    objectKey: string;
+    sizeBytes: number;
+    lastModified?: string;
+    isImage: boolean;
+  }> = [];
+  let continuationToken: string | undefined;
+
+  do {
+    const page = await client().send(new ListObjectsV2Command({
+      Bucket: config().bucketName,
+      Prefix: prefix,
+      ContinuationToken: continuationToken,
+    }));
+
+    for (const item of page.Contents || []) {
+      if (!item.Key || item.Key === prefix) continue;
+      const relative = item.Key.slice(prefix.length);
+      const parts = relative.split("/").filter(Boolean);
+      const name = parts[parts.length - 1] || relative;
+
+      for (let index = 0; index < Math.max(0, parts.length - 1); index += 1) {
+        const path = parts.slice(0, index + 1).join("/");
+        const folderName = parts[index];
+        if (folderName.toLowerCase().includes(needle)) {
+          folders.set(path, { name: folderName, path });
+        }
+      }
+
+      if (name !== ".folder" && name.toLowerCase().includes(needle)) {
+        files.push({
+          name,
+          path: relative,
+          objectKey: item.Key,
+          sizeBytes: Number(item.Size) || 0,
+          lastModified: item.LastModified?.toISOString(),
+          isImage: /\.(jpe?g|png|webp|gif|tiff?|heic)$/i.test(name),
+        });
+      }
+
+      if (folders.size + files.length >= limit) {
+        continuationToken = undefined;
+        break;
+      }
+    }
+
+    if (folders.size + files.length >= limit) break;
+    continuationToken = page.IsTruncated ? page.NextContinuationToken : undefined;
+  } while (continuationToken);
+
+  return {
+    folders: [...folders.values()].slice(0, limit),
+    files: files.slice(0, Math.max(0, limit - folders.size)),
+  };
 }

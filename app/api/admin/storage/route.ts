@@ -2,11 +2,13 @@ import { NextResponse } from "next/server";
 import { isBackstageRequestAuthenticated } from "@/lib/backstage-auth";
 import {
   createClientArchiveDownloadUrl,
+  createClientArchiveFolder,
   createClientArchiveUploadUrl,
   createClientArchiveViewUrl,
   deleteClientArchiveFile,
   isClientArchiveKey,
   listClientArchive,
+  searchClientArchive,
 } from "@/lib/client-archive/storage";
 
 function unauthorized() {
@@ -21,6 +23,15 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const path = text(url.searchParams.get("path"));
   const cursor = text(url.searchParams.get("cursor"));
+  const query = text(url.searchParams.get("q"));
+  if (query) {
+    const results = await searchClientArchive(query);
+    const files = await Promise.all(results.files.map(async (file) => ({
+      ...file,
+      ...(file.isImage ? { viewUrl: await createClientArchiveViewUrl(file.objectKey) } : {}),
+    })));
+    return NextResponse.json({ ok: true, search: { ...results, files } });
+  }
   const listing = await listClientArchive(path, cursor || undefined);
   const files = await Promise.all(listing.files.map(async (file) => ({
     ...file,
@@ -38,6 +49,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, message: "Invalid request." }, { status: 400 });
   }
   const action = text(body.action);
+
+  if (action === "create-folder") {
+    const path = text(body.path);
+    if (!path) return NextResponse.json({ ok: false, message: "A folder name is required." }, { status: 400 });
+    await createClientArchiveFolder(path);
+    return NextResponse.json({ ok: true });
+  }
 
   if (action === "presign-upload-batch") {
     const paths = Array.isArray(body.paths)

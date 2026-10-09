@@ -209,7 +209,10 @@ export async function POST(request: Request) {
     const transfer = await finalizeTransfer(transferId);
     if (!transfer) return NextResponse.json({ ok: false, message: "Transfer not found." }, { status: 404 });
     const origin = new URL(request.url).origin;
-    const publicUrl = origin + "/transfer/" + transfer.token;
+    const publicBase = process.env.TRANSFER_PUBLIC_BASE_URL?.trim().replace(/\/$/, "");
+    const publicUrl = publicBase
+      ? publicBase + "/" + transfer.token
+      : origin + "/transfer/" + transfer.token;
     const email = await sendTransferEmails(transfer, publicUrl);
     return NextResponse.json({ ok: true, transfer, publicUrl, email });
   }
