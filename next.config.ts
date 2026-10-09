@@ -66,6 +66,11 @@ const nextConfig: NextConfig = {
         source: "/proofing/:path*",
         headers: noIndexHeaders,
       },
+      {
+        source: "/transfer/:path*",
+        headers: noIndexHeaders,
+      },
+
     ];
 
     if (
@@ -83,6 +88,26 @@ const nextConfig: NextConfig = {
 
   async redirects() {
     return [
+      // transfers.stevegregson.com: the bare address opens Backstage Transfers
+      // (behind the login) and short links open the client download page.
+      {
+        source: "/",
+        has: [{ type: "host", value: "transfers.stevegregson.com" }],
+        destination: "/admin/transfers",
+        permanent: false,
+      },
+      {
+        source: "/:token([A-Za-z0-9_-]{20,64})",
+        has: [{ type: "host", value: "transfers.stevegregson.com" }],
+        destination: "/transfer/:token",
+        permanent: false,
+      },
+      // Early transfer links used /files/<code>; keep them working.
+      {
+        source: "/files/:token",
+        destination: "/transfer/:token",
+        permanent: false,
+      },
       // The old Production page merged into Selected Work (October 2026).
       {
         source: "/production",

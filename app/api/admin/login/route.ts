@@ -24,8 +24,11 @@ export async function POST(
         request,
       )
     ) {
+      const requestUrl = new URL(request.url);
       const loginUrl = new URL(
-        "/admin/login",
+        requestUrl.hostname === "transfers.stevegregson.com"
+          ? "/admin/login?next=/"
+          : "/admin/login",
         request.url,
       );
 
@@ -76,8 +79,11 @@ export async function POST(
         request,
       );
 
+      const requestUrl = new URL(request.url);
       const loginUrl = new URL(
-        "/admin/login",
+        requestUrl.hostname === "transfers.stevegregson.com"
+          ? "/admin/login?next=/"
+          : "/admin/login",
         request.url,
       );
 
@@ -101,9 +107,20 @@ export async function POST(
     const session =
       createBackstageSession(username);
 
+    const requestUrl = new URL(request.url);
+    const nextValue = formData.get("next");
+    const nextPath =
+      typeof nextValue === "string" &&
+      nextValue.startsWith("/") &&
+      !nextValue.startsWith("//")
+        ? nextValue
+        : requestUrl.hostname === "transfers.stevegregson.com"
+          ? "/"
+          : "/admin";
+
     const response =
       NextResponse.redirect(
-        new URL("/admin", request.url),
+        new URL(nextPath, request.url),
         {
           status: 303,
         },
@@ -122,8 +139,11 @@ export async function POST(
       error,
     );
 
+    const requestUrl = new URL(request.url);
     const loginUrl = new URL(
-      "/admin/login",
+      requestUrl.hostname === "transfers.stevegregson.com"
+        ? "/admin/login?next=/"
+        : "/admin/login",
       request.url,
     );
 

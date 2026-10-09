@@ -19,8 +19,10 @@ export default function PublicChrome({
   const isBackstage =
     pathname === "/admin" ||
     pathname.startsWith("/admin/");
+  // Client file-transfer pages are full-screen and carry their own branding.
+  const isTransferPage = pathname.startsWith("/transfer/");
 
-  if (isBackstage) {
+  if (isBackstage || isTransferPage) {
     return <>{children}</>;
   }
 
