@@ -101,13 +101,14 @@ async function signFiles(transferId: string, items: QueuedFile[]) {
 }
 
 /**
- * Uploads every queued file into a transfer: 3 at a time, with live byte
- * progress, up to 3 attempts per file (with a fresh upload link on retry),
- * and the files saved to the transfer after every batch of 20.
+ * Uploads every queued file: 3 at a time, with live byte progress and up to 3
+ * attempts per file (with a fresh upload link on retry). `sign` gets upload
+ * links for a batch of up to 20; `afterBatch` runs once each batch is up.
  */
-export async function uploadFilesToTransfer(
-  transferId: string,
+export async function uploadQueue<J extends { uploadUrl: string }>(
   queue: QueuedFile[],
+  sign: (items: QueuedFile[]) => Promise<J[]>,
+  afterBatch: (jobs: J[]) => Promise<void>,
   onProgress: (progress: UploadProgress) => void,
 ) {
   const totalBytes = queue.reduce((sum, item) => sum + item.file.size, 0);
@@ -125,8 +126,8 @@ export async function uploadFilesToTransfer(
 
   for (let start = 0; start < queue.length; start += BATCH_SIZE) {
     const batch = queue.slice(start, start + BATCH_SIZE);
-    const jobs = await signFiles(transferId, batch);
-    const finished: Job[] = new Array(batch.length);
+    const jobs = await sign(batch);
+    const finished: J[] = new Array(batch.length);
     let next = 0;
 
     const worker = async () => {
@@ -157,7 +158,7 @@ export async function uploadFilesToTransfer(
             }
             await pause(1500 * attempt);
             // A fresh link in case the old one expired or was rejected.
-            job = (await signFiles(transferId, [queued]))[0];
+            job = (await sign([queued]))[0];
           }
         }
 
@@ -169,11 +170,25 @@ export async function uploadFilesToTransfer(
     };
 
     await Promise.all(Array.from({ length: Math.min(PARALLEL_UPLOADS, batch.length) }, worker));
-    await postTransferAction({ action: "commit-batch", transferId, files: finished });
+    await afterBatch(finished);
   }
 
   current = "";
   report();
+}
+
+/** Uploads queued files into a transfer, saving them to it after every batch. */
+export function uploadFilesToTransfer(
+  transferId: string,
+  queue: QueuedFile[],
+  onProgress: (progress: UploadProgress) => void,
+) {
+  return uploadQueue<Job>(
+    queue,
+    (items) => signFiles(transferId, items),
+    (jobs) => postTransferAction({ action: "commit-batch", transferId, files: jobs }).then(() => undefined),
+    onProgress,
+  );
 }
 
 /** Warns Steve before closing the tab mid-upload. Returns a function to stop warning. */
@@ -184,4 +199,55 @@ export function warnBeforeLeaving() {
   };
   window.addEventListener("beforeunload", handler);
   return () => window.removeEventListener("beforeunload", handler);
+}
+
+// ---- Drag and drop -------------------------------------------------------
+
+type Entry = {
+  isFile: boolean;
+  isDirectory: boolean;
+  name: string;
+  fullPath: string;
+  file?: (resolve: (file: File) => void, reject: (error: unknown) => void) => void;
+  createReader?: () => { readEntries: (resolve: (entries: Entry[]) => void, reject: (error: unknown) => void) => void };
+};
+
+async function readFolder(entry: Entry): Promise<Entry[]> {
+  const reader = entry.createReader!();
+  const all: Entry[] = [];
+  // Browsers hand folder contents over in chunks (about 100 at a time).
+  for (;;) {
+    const chunk = await new Promise<Entry[]>((resolve, reject) => reader.readEntries(resolve, reject));
+    if (!chunk.length) return all;
+    all.push(...chunk);
+  }
+}
+
+async function walk(entry: Entry, out: QueuedFile[]) {
+  if (entry.isFile && entry.file) {
+    const file = await new Promise<File>((resolve, reject) => entry.file!(resolve, reject));
+    // Skip macOS housekeeping files.
+    if (file.name === ".DS_Store" || file.name.startsWith("._")) return;
+    out.push({ file, relativePath: entry.fullPath.replace(/^\//, "") || file.name });
+  } else if (entry.isDirectory) {
+    for (const child of await readFolder(entry)) await walk(child, out);
+  }
+}
+
+/** Files (including whole dropped folders, keeping their structure) from a drop. */
+export async function filesFromDrop(data: DataTransfer): Promise<QueuedFile[]> {
+  const entries = Array.from(data.items || [])
+    .map((item) => (item.webkitGetAsEntry?.() ?? null) as unknown as Entry | null)
+    .filter((entry): entry is Entry => Boolean(entry));
+  if (!entries.length) {
+    return Array.from(data.files || []).map((file) => ({ file, relativePath: file.name }));
+  }
+  const out: QueuedFile[] = [];
+  for (const entry of entries) await walk(entry, out);
+  return out;
+}
+
+/** True while something being dragged over the page is files (not text etc.). */
+export function isFileDrag(event: { dataTransfer: DataTransfer | null }) {
+  return Array.from(event.dataTransfer?.types || []).includes("Files");
 }

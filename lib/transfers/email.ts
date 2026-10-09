@@ -88,3 +88,34 @@ export async function sendTransferEmails(transfer: TransferRecord, publicUrl: st
 
   return { sent, failed, previewSuppressed: false };
 }
+
+/** Tells Steve the first time a client downloads from a transfer. Never throws. */
+export async function sendFirstDownloadNotice(transfer: TransferRecord, adminUrl: string, fileName: string) {
+  if (process.env.VERCEL_ENV !== "production") return;
+  try {
+    const { apiKey, from, photographerEmail } = config();
+    const when = new Intl.DateTimeFormat("en-GB", {
+      dateStyle: "long", timeStyle: "short", timeZone: "Europe/London",
+    }).format(new Date());
+    const result = await new Resend(apiKey).emails.send({
+      from: "Steve Gregson Transfers <" + from + ">",
+      to: photographerEmail,
+      subject: "Downloaded: " + transfer.title,
+      text: [
+        "Your transfer \"" + transfer.title + "\" has been downloaded for the first time.", "",
+        "First file: " + fileName,
+        "Sent to: " + transfer.recipients.map((r) => r.email).join(", "),
+        "When: " + when, "",
+        adminUrl,
+      ].join("\n"),
+      html:
+        '<div style="font-family:Arial,sans-serif;color:#171615;line-height:1.6;max-width:560px;">' +
+        "<p>Your transfer <strong>" + esc(transfer.title) + "</strong> has been downloaded for the first time.</p>" +
+        '<p style="color:#555;">First file: ' + esc(fileName) + "<br>Sent to: " + esc(transfer.recipients.map((r) => r.email).join(", ")) + "<br>When: " + esc(when) + "</p>" +
+        '<p><a href="' + esc(adminUrl) + '">View the transfer in Backstage</a></p></div>',
+    });
+    if (result.error) console.error("Download notice failed: " + result.error.message);
+  } catch (error) {
+    console.error("Download notice failed", error);
+  }
+}

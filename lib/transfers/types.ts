@@ -39,6 +39,8 @@ export type TransferRecord = {
   fileCount: number;
   totalSizeBytes: number;
   hasPassword: boolean;
+  /** Set once the files have been cleared from storage after expiry. */
+  filesPurgedAt?: string;
   backgroundFileIds: string[];
   files: TransferFile[];
   downloads: TransferDownloadEvent[];

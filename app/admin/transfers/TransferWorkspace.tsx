@@ -14,6 +14,7 @@ import {
   warnBeforeLeaving,
   type QueuedFile,
 } from "@/lib/transfers/upload-client";
+import { useFileDrop } from "@/lib/transfers/use-file-drop";
 
 const ARCHIVE_SELECTION_KEY = "backstage-transfer-archive-selection";
 const EMPTY_SELECTION = { objectKeys: [] as string[], folderPaths: [] as string[] };
@@ -59,6 +60,7 @@ export default function TransferWorkspace({ initialTransfers }: { initialTransfe
   const [progress, setProgress] = useState("");
   const [resultUrl, setResultUrl] = useState("");
   const folderRef = useRef<HTMLInputElement | null>(null);
+  const { dragging, dropProps } = useFileDrop((files) => setQueue((q) => [...q, ...files]), !sending);
 
   // The Storage screen hands over its selection via sessionStorage; read it
   // once the page is in the browser.
@@ -152,7 +154,11 @@ export default function TransferWorkspace({ initialTransfers }: { initialTransfe
 
   return (
     <main className={styles.page}>
-      <section className={styles.send}>
+      <section
+        className={styles.send + " " + styles.dropZone + (dragging ? " " + styles.dropActive : "")}
+        data-drop-label="Drop files or folders to add them"
+        {...dropProps}
+      >
         <div className={styles.sendHead}>
           <p>Steve Gregson Delivery</p>
           <h1>Send files</h1>
@@ -175,6 +181,8 @@ export default function TransferWorkspace({ initialTransfers }: { initialTransfe
             onChange={(e) => setQueue((q) => [...q, ...inputFiles(e.target.files)])}
           />
         </div>
+
+        <p className={styles.dropHint}>or drag files and folders anywhere here</p>
 
         {(archiveSelection.objectKeys.length > 0 || archiveSelection.folderPaths.length > 0) && (
           <div className={styles.queue}>
@@ -224,7 +232,7 @@ export default function TransferWorkspace({ initialTransfers }: { initialTransfe
                 <div>
                   <h3>{transfer.title}</h3>
                   <p>{transfer.recipients.map((r) => r.email).join(", ")}</p>
-                  <p>Sent {date(transfer.finalizedAt || transfer.createdAt)} · {bytes(transfer.totalSizeBytes)} ({transfer.fileCount} files) · <strong>{downloaded ? "Downloaded " + date(transfer.downloads[0].createdAt) : transfer.status === "expired" ? "Expired" : "Not downloaded"}</strong></p>
+                  <p>Sent {date(transfer.finalizedAt || transfer.createdAt)} · {bytes(transfer.totalSizeBytes)} ({transfer.fileCount} files) · <strong>{transfer.filesPurgedAt ? "Expired · files cleared" : downloaded ? "Downloaded " + date(transfer.downloads[0].createdAt) : transfer.status === "expired" ? "Expired" : transfer.status === "disabled" ? "Disabled" : "Not downloaded"}</strong></p>
                 </div>
                 <span aria-hidden="true">›</span>
               </Link>

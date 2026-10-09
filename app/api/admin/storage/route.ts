@@ -5,11 +5,23 @@ import {
   createClientArchiveFolder,
   createClientArchiveUploadUrl,
   createClientArchiveViewUrl,
-  deleteClientArchiveFile,
   isClientArchiveKey,
   listClientArchive,
   searchClientArchive,
+  archiveKeyFor,
 } from "@/lib/client-archive/storage";
+import {
+  applyPairs,
+  forgetTrashEntry,
+  planDelete,
+  planMove,
+  planRename,
+  planRestore,
+  purgeTrashEntry,
+  type StorageItem,
+} from "@/lib/client-archive/operations";
+import { listTrashEntries } from "@/lib/client-archive/trash-repository";
+import { findLiveTransfersUsingArchive } from "@/lib/transfers/repository";
 
 function unauthorized() {
   return NextResponse.json({ ok: false, message: "Unauthorized." }, { status: 401 });
@@ -18,9 +30,19 @@ function text(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function failure(error: unknown) {
+  return NextResponse.json(
+    { ok: false, message: error instanceof Error ? error.message : "Something went wrong." },
+    { status: 400 },
+  );
+}
+
 export async function GET(request: Request) {
   if (!isBackstageRequestAuthenticated(request)) return unauthorized();
   const url = new URL(request.url);
+  if (url.searchParams.get("trash") === "1") {
+    return NextResponse.json({ ok: true, trash: await listTrashEntries() });
+  }
   const path = text(url.searchParams.get("path"));
   const cursor = text(url.searchParams.get("cursor"));
   const query = text(url.searchParams.get("q"));
@@ -53,7 +75,7 @@ export async function POST(request: Request) {
   if (action === "create-folder") {
     const path = text(body.path);
     if (!path) return NextResponse.json({ ok: false, message: "A folder name is required." }, { status: 400 });
-    await createClientArchiveFolder(path);
+    try { await createClientArchiveFolder(path); } catch (error) { return failure(error); }
     return NextResponse.json({ ok: true });
   }
 
@@ -89,11 +111,38 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, url: await createClientArchiveDownloadUrl(objectKey, name) });
   }
 
-  if (action === "delete-file") {
-    const objectKey = text(body.objectKey);
-    if (!isClientArchiveKey(objectKey)) return NextResponse.json({ ok: false, message: "Invalid archive object." }, { status: 400 });
-    await deleteClientArchiveFile(objectKey);
-    return NextResponse.json({ ok: true });
+  try {
+    if (action === "check-in-use") {
+      const items = (Array.isArray(body.items) ? body.items : []) as StorageItem[];
+      const keys = items.filter((i) => i?.kind === "file").map((i) => archiveKeyFor(String(i.path)));
+      const prefixes = items.filter((i) => i?.kind === "folder").map((i) => archiveKeyFor(String(i.path)) + "/");
+      return NextResponse.json({ ok: true, transfers: await findLiveTransfersUsingArchive(keys, prefixes) });
+    }
+    if (action === "plan-move") {
+      return NextResponse.json({ ok: true, pairs: await planMove(body.items, body.destination) });
+    }
+    if (action === "plan-rename") {
+      return NextResponse.json({ ok: true, pairs: await planRename(body.item, body.name) });
+    }
+    if (action === "plan-delete") {
+      return NextResponse.json({ ok: true, pairs: await planDelete(body.items) });
+    }
+    if (action === "plan-restore") {
+      return NextResponse.json({ ok: true, ...(await planRestore(text(body.trashId))) });
+    }
+    if (action === "apply") {
+      return NextResponse.json({ ok: true, applied: await applyPairs(body.pairs) });
+    }
+    if (action === "finish-restore") {
+      await forgetTrashEntry(text(body.trashId));
+      return NextResponse.json({ ok: true });
+    }
+    if (action === "delete-forever") {
+      await purgeTrashEntry(text(body.trashId));
+      return NextResponse.json({ ok: true });
+    }
+  } catch (error) {
+    return failure(error);
   }
 
   return NextResponse.json({ ok: false, message: "Unknown archive action." }, { status: 400 });

@@ -10,11 +10,16 @@ import {
 
 const MAX_BACKGROUNDS = 6;
 
+/** Storage files Steve has moved to Deleted Files are hidden from clients. */
+export function isDeliverable(file: TransferRecord["files"][number]) {
+  return !(file.source === "archive" && file.objectKey.split("/")[1] === ".trash");
+}
+
 async function backgroundUrls(transfer: TransferRecord) {
   const chosen = transfer.backgroundFileIds.length
     ? transfer.backgroundFileIds
         .map((id) => transfer.files.find((file) => file.id === id))
-        .filter((file): file is NonNullable<typeof file> => Boolean(file && isTransferImage(file)))
+        .filter((file): file is NonNullable<typeof file> => Boolean(file && isTransferImage(file) && isDeliverable(file)))
     : [];
 
   const urls = await Promise.all(
@@ -41,6 +46,7 @@ export async function toPublicTransfer(
   const available = transfer.status === "active";
   const locked = available && transfer.hasPassword && !options.unlocked;
   const open = available && !locked;
+  const deliverable = transfer.files.filter(isDeliverable);
 
   return {
     token: transfer.token,
@@ -48,11 +54,11 @@ export async function toPublicTransfer(
     available,
     locked,
     message: open ? transfer.message : "",
-    fileCount: available ? transfer.fileCount : 0,
-    totalSizeBytes: available ? transfer.totalSizeBytes : 0,
+    fileCount: available ? deliverable.length : 0,
+    totalSizeBytes: available ? deliverable.reduce((sum, file) => sum + file.sizeBytes, 0) : 0,
     expiresAt: transfer.expiresAt,
     files: open
-      ? transfer.files.map((file) => ({
+      ? deliverable.map((file) => ({
           id: file.id,
           name: file.relativePath || file.originalName,
           sizeBytes: file.sizeBytes,

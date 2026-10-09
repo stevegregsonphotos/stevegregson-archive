@@ -9,7 +9,6 @@ import {
   extendTransfer,
   finalizeTransfer,
   getTransferById,
-  listAbandonedTransferIds,
   listTransfers,
   refreshTransferTotals,
   removeTransferFile,
@@ -25,6 +24,7 @@ import {
   createTransferViewUrl,
 } from "@/lib/transfers/storage";
 import { sendTransferEmails } from "@/lib/transfers/email";
+import { cleanUpAbandonedTransfers } from "@/lib/transfers/cleanup";
 import { isTransferImage } from "@/lib/transfers/backgrounds";
 import {
   getClientArchiveFilesByKeys,
@@ -52,17 +52,6 @@ function validExpiry(body: Record<string, unknown>) {
   return date.toISOString();
 }
 
-/** Removes transfers whose upload never finished (closed tab, lost connection). */
-async function cleanUpAbandonedTransfers() {
-  try {
-    for (const id of await listAbandonedTransferIds(24)) {
-      await deleteTransferObjects(id);
-      await deleteUploadingTransferRecord(id);
-    }
-  } catch (error) {
-    console.error("Transfer clean-up skipped", error);
-  }
-}
 
 export async function GET(request: Request) {
   if (!isBackstageRequestAuthenticated(request)) return unauthorized();
@@ -140,7 +129,7 @@ export async function POST(request: Request) {
     if (recipientEmails.length > 50) {
       return NextResponse.json({ ok: false, message: "Send to 50 people or fewer at once." }, { status: 400 });
     }
-    await cleanUpAbandonedTransfers();
+    await cleanUpAbandonedTransfers().catch((error) => console.error("Transfer clean-up skipped", error));
     const transfer = await createTransfer({
       title, senderEmail, recipientEmails, expiresAt,
       message: text(body.message), password: text(body.password),
@@ -308,7 +297,9 @@ export async function POST(request: Request) {
   if (action === "extend") {
     const expiresAt = validExpiry(body);
     if (!expiresAt) return NextResponse.json({ ok: false, message: "Choose a future expiry date within a year." }, { status: 400 });
-    await extendTransfer(text(body.transferId), expiresAt);
+    if (!(await extendTransfer(text(body.transferId), expiresAt))) {
+      return NextResponse.json({ ok: false, message: "This transfer's files have already been cleared away, so it can't be extended." }, { status: 409 });
+    }
     return NextResponse.json({ ok: true });
   }
 

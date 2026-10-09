@@ -27,6 +27,8 @@ async function ensureSchema() {
     await sql.query("CREATE INDEX IF NOT EXISTS transfer_files_transfer_idx ON transfer_files(transfer_id, created_at)");
     await sql.query("CREATE TABLE IF NOT EXISTS transfer_download_events (id text PRIMARY KEY, transfer_id text NOT NULL REFERENCES transfer_records(id) ON DELETE CASCADE, file_id text, recipient_email text, event_type text NOT NULL, created_at timestamptz NOT NULL DEFAULT now())");
     await sql.query("CREATE INDEX IF NOT EXISTS transfer_download_events_transfer_idx ON transfer_download_events(transfer_id, created_at DESC)");
+    await sql.query("ALTER TABLE transfer_records ADD COLUMN IF NOT EXISTS files_purged_at timestamptz");
+    await sql.query("CREATE INDEX IF NOT EXISTS transfer_files_object_key_idx ON transfer_files(object_key)");
   })();
   return schemaPromise;
 }
@@ -68,6 +70,7 @@ type RecordRow = {
   recipients: unknown; status: string; created_at: string | Date;
   finalized_at: string | Date | null; expires_at: string | Date; file_count: number;
   total_size_bytes: string | number; password_hash: string | null; background_file_ids?: unknown;
+  files_purged_at?: string | Date | null;
 };
 type FileRow = {
   id: string; transfer_id: string; original_name: string; relative_path: string;
@@ -114,6 +117,7 @@ function buildRecord(row: RecordRow, files: FileRow[], events: EventRow[]): Tran
     ...(row.finalized_at ? { finalizedAt: iso(row.finalized_at) } : {}),
     expiresAt: iso(row.expires_at)!, fileCount: Number(row.file_count) || 0,
     totalSizeBytes: Number(row.total_size_bytes) || 0, hasPassword: Boolean(row.password_hash),
+    ...(row.files_purged_at ? { filesPurgedAt: iso(row.files_purged_at) } : {}),
     backgroundFileIds: Array.isArray(row.background_file_ids) ? row.background_file_ids.filter((value): value is string => typeof value === "string") : [],
     files: files.map(mapFile),
     downloads: events.map(mapEvent),
@@ -156,7 +160,7 @@ export async function createTransfer(input: {
   const cleanRecipients = [...new Set(input.recipientEmails.map((email) => email.trim().toLowerCase()).filter(Boolean))];
   const passwordHash = input.password?.trim() ? hashPassword(input.password.trim()) : null;
   const rows = await sql.query(
-    "INSERT INTO transfer_records (id, environment, token, title, message, sender_email, recipients, status, created_at, expires_at, password_hash) VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,'uploading',now(),$8,$9) RETURNING id, token, title, message, sender_email, recipients, status, created_at, finalized_at, expires_at, file_count, total_size_bytes, password_hash, background_file_ids",
+    "INSERT INTO transfer_records (id, environment, token, title, message, sender_email, recipients, status, created_at, expires_at, password_hash) VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,'uploading',now(),$8,$9) RETURNING id, token, title, message, sender_email, recipients, status, created_at, finalized_at, expires_at, file_count, total_size_bytes, password_hash, background_file_ids, files_purged_at",
     [id, environment(), token, input.title.trim(), input.message?.trim() ?? "", input.senderEmail.trim().toLowerCase(), JSON.stringify(cleanRecipients.map((email) => ({ email }))), input.expiresAt, passwordHash],
   );
   return hydrate(rows[0] as RecordRow);
@@ -253,7 +257,7 @@ export async function getTransferById(id: string) {
   await ensureSchema();
   const sql = getSql();
   const rows = await sql.query(
-    "SELECT id, token, title, message, sender_email, recipients, status, created_at, finalized_at, expires_at, file_count, total_size_bytes, password_hash, background_file_ids FROM transfer_records WHERE id=$1 AND environment=$2 LIMIT 1",
+    "SELECT id, token, title, message, sender_email, recipients, status, created_at, finalized_at, expires_at, file_count, total_size_bytes, password_hash, background_file_ids, files_purged_at FROM transfer_records WHERE id=$1 AND environment=$2 LIMIT 1",
     [id, environment()],
   );
   return rows[0] ? hydrate(rows[0] as RecordRow) : undefined;
@@ -263,7 +267,7 @@ export async function getTransferByToken(token: string) {
   await ensureSchema();
   const sql = getSql();
   const rows = await sql.query(
-    "SELECT id, token, title, message, sender_email, recipients, status, created_at, finalized_at, expires_at, file_count, total_size_bytes, password_hash, background_file_ids FROM transfer_records WHERE token=$1 AND environment=$2 LIMIT 1",
+    "SELECT id, token, title, message, sender_email, recipients, status, created_at, finalized_at, expires_at, file_count, total_size_bytes, password_hash, background_file_ids, files_purged_at FROM transfer_records WHERE token=$1 AND environment=$2 LIMIT 1",
     [token, environment()],
   );
   return rows[0] ? hydrate(rows[0] as RecordRow) : undefined;
@@ -273,7 +277,7 @@ export async function listTransfers() {
   await ensureSchema();
   const sql = getSql();
   const rows = await sql.query(
-    "SELECT id, token, title, message, sender_email, recipients, status, created_at, finalized_at, expires_at, file_count, total_size_bytes, password_hash, background_file_ids FROM transfer_records WHERE environment=$1 AND status<>'uploading' ORDER BY created_at DESC LIMIT 500",
+    "SELECT id, token, title, message, sender_email, recipients, status, created_at, finalized_at, expires_at, file_count, total_size_bytes, password_hash, background_file_ids, files_purged_at FROM transfer_records WHERE environment=$1 AND status<>'uploading' ORDER BY created_at DESC LIMIT 500",
     [environment()],
   );
   return hydrateMany(rows as RecordRow[]);
@@ -306,10 +310,12 @@ export async function disableTransfer(id: string) {
   await sql.query("UPDATE transfer_records SET status='disabled' WHERE id=$1 AND environment=$2", [id, environment()]);
 }
 
+/** Returns false if the transfer's files have already been cleared away. */
 export async function extendTransfer(id: string, expiresAt: string) {
   await ensureSchema();
   const sql = getSql();
-  await sql.query("UPDATE transfer_records SET expires_at=$1, status=CASE WHEN status='expired' THEN 'active' ELSE status END WHERE id=$2 AND environment=$3", [expiresAt, id, environment()]);
+  const rows = await sql.query("UPDATE transfer_records SET expires_at=$1, status=CASE WHEN status='expired' THEN 'active' ELSE status END WHERE id=$2 AND environment=$3 AND files_purged_at IS NULL RETURNING id", [expiresAt, id, environment()]);
+  return Boolean(rows[0]);
 }
 
 export async function deleteTransferRecord(id: string) {
@@ -327,4 +333,68 @@ export async function setTransferBackgrounds(id: string, fileIds: string[]) {
   const valid = unique.filter((fileId) => transfer.files.some((file) => file.id === fileId && isTransferImage(file))).slice(0, 12);
   await sql.query("UPDATE transfer_records SET background_file_ids=$1::jsonb WHERE id=$2 AND environment=$3", [JSON.stringify(valid), id, environment()]);
   return getTransferById(id);
+}
+
+/** Keeps transfer downloads working when Steve renames or moves a Storage item. */
+export async function updateArchiveObjectKeys(pairs: Array<{ from: string; to: string }>) {
+  if (!pairs.length) return;
+  await ensureSchema();
+  const sql = getSql();
+  await sql.query(
+    "UPDATE transfer_files SET object_key = p.to_key FROM jsonb_to_recordset($1::jsonb) AS p(from_key text, to_key text) WHERE transfer_files.object_key = p.from_key AND transfer_files.source = 'archive'",
+    [JSON.stringify(pairs.map((pair) => ({ from_key: pair.from, to_key: pair.to })))],
+  );
+}
+
+/** Live transfers that include any of these Storage files, or anything inside these folders. */
+export async function findLiveTransfersUsingArchive(keys: string[], folderPrefixes: string[]) {
+  await ensureSchema();
+  const sql = getSql();
+  const rows = await sql.query(
+    "SELECT DISTINCT r.id, r.title FROM transfer_records r JOIN transfer_files f ON f.transfer_id = r.id " +
+    "WHERE r.environment = $1 AND r.status = 'active' AND r.expires_at > now() AND f.source = 'archive' " +
+    "AND (f.object_key = ANY($2::text[]) OR EXISTS (SELECT 1 FROM unnest($3::text[]) AS p(prefix) WHERE starts_with(f.object_key, p.prefix))) " +
+    "ORDER BY r.title LIMIT 20",
+    [environment(), keys, folderPrefixes],
+  );
+  return rows as Array<{ id: string; title: string }>;
+}
+
+/** Transfers whose expiry passed long enough ago that their uploaded files can go. */
+export async function listTransfersToPurge(daysAfterExpiry = 30) {
+  await ensureSchema();
+  const sql = getSql();
+  const rows = await sql.query(
+    "SELECT id FROM transfer_records WHERE environment=$1 AND status <> 'uploading' AND files_purged_at IS NULL AND expires_at < now() - ($2 * interval '1 day') LIMIT 50",
+    [environment(), daysAfterExpiry],
+  );
+  return (rows as Array<{ id: string }>).map((row) => row.id);
+}
+
+export async function markTransferFilesPurged(id: string) {
+  await ensureSchema();
+  const sql = getSql();
+  await sql.query("UPDATE transfer_records SET files_purged_at = now(), status = CASE WHEN status = 'active' THEN 'expired' ELSE status END WHERE id=$1 AND environment=$2", [id, environment()]);
+}
+
+/** Records a download and says whether it was the first one for this transfer. */
+export async function recordTransferDownloadAndCheckFirst(input: {
+  transferId: string; fileId?: string; eventType: "file" | "all";
+}) {
+  await recordTransferDownload(input);
+  const sql = getSql();
+  const rows = await sql.query("SELECT count(*)::integer AS n FROM transfer_download_events WHERE transfer_id=$1", [input.transferId]);
+  return Number((rows[0] as { n: number }).n) === 1;
+}
+
+/** When Storage files are deleted for good, take them out of transfers too. */
+export async function removeArchiveFilesFromTransfers(keyPrefix: string) {
+  await ensureSchema();
+  const sql = getSql();
+  const rows = await sql.query(
+    "DELETE FROM transfer_files WHERE source = 'archive' AND starts_with(object_key, $1) RETURNING transfer_id",
+    [keyPrefix],
+  );
+  const affected = [...new Set((rows as Array<{ transfer_id: string }>).map((row) => row.transfer_id))];
+  for (const id of affected) await refreshTransferTotals(id);
 }
