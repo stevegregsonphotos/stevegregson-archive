@@ -209,10 +209,13 @@ export async function POST(request: Request) {
     const transfer = await finalizeTransfer(transferId);
     if (!transfer) return NextResponse.json({ ok: false, message: "Transfer not found." }, { status: 404 });
     const origin = new URL(request.url).origin;
-    const publicBase = process.env.TRANSFER_PUBLIC_BASE_URL?.trim().replace(/\/$/, "");
-    const publicUrl = publicBase
-      ? publicBase + "/" + transfer.token
-      : origin + "/transfer/" + transfer.token;
+    const configuredBase = process.env.TRANSFER_PUBLIC_BASE_URL?.trim().replace(/\/$/, "");
+    const publicBase =
+      configuredBase ||
+      (process.env.VERCEL_ENV === "production"
+        ? "https://transfers.stevegregson.com"
+        : origin + "/transfer");
+    const publicUrl = publicBase + "/" + transfer.token;
     const email = await sendTransferEmails(transfer, publicUrl);
     return NextResponse.json({ ok: true, transfer, publicUrl, email });
   }

@@ -14,16 +14,23 @@ export default async function TransferDetailPage({
   if (!transfer) notFound();
 
   const siteUrl =
-    process.env.VERCEL_ENV === "production"
-      ? "https://www.stevegregson.com"
-      : process.env.VERCEL_URL
-        ? "https://" + process.env.VERCEL_URL
-        : "";
+    process.env.VERCEL_URL
+      ? "https://" + process.env.VERCEL_URL
+      : "";
 
   return (
     <TransferDetailClient
       initialTransfer={transfer}
-      publicUrl={(process.env.TRANSFER_PUBLIC_BASE_URL?.trim().replace(/\/$/, "") || siteUrl + "/transfer") + "/" + transfer.token}
+      publicUrl={
+        (
+          process.env.TRANSFER_PUBLIC_BASE_URL?.trim().replace(/\/$/, "") ||
+          (process.env.VERCEL_ENV === "production"
+            ? "https://transfers.stevegregson.com"
+            : siteUrl + "/transfer")
+        ) +
+        "/" +
+        transfer.token
+      }
     />
   );
 }

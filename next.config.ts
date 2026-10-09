@@ -66,6 +66,10 @@ const nextConfig: NextConfig = {
         source: "/proofing/:path*",
         headers: noIndexHeaders,
       },
+      {
+        source: "/transfer/:path*",
+        headers: noIndexHeaders,
+      },
     ];
 
     if (
