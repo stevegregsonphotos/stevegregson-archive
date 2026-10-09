@@ -1,4 +1,5 @@
 import {
+  DeleteObjectCommand,
   DeleteObjectsCommand,
   GetObjectCommand,
   HeadObjectCommand,
@@ -216,6 +217,17 @@ export async function createTransferUploadUrl(
         },
       ),
   };
+}
+
+export async function deleteTransferObject(
+  objectKey: string,
+) {
+  await getClient().send(
+    new DeleteObjectCommand({
+      Bucket: getBucket(),
+      Key: objectKey,
+    }),
+  );
 }
 
 export async function transferObjectExists(
