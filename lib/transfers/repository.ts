@@ -148,6 +148,33 @@ export async function addTransferFiles(transferId: string, files: Array<{
   }
 }
 
+export async function removeTransferFile(
+  transferId: string,
+  fileId: string,
+) {
+  await ensureSchema();
+  const sql = getSql();
+  const rows = await sql.query(
+    "DELETE FROM transfer_files USING transfer_records WHERE transfer_files.id=$1 AND transfer_files.transfer_id=$2 AND transfer_records.id=transfer_files.transfer_id AND transfer_records.environment=$3 RETURNING transfer_files.object_key",
+    [fileId, transferId, environment()],
+  );
+  return rows[0]
+    ? (rows[0] as { object_key: string }).object_key
+    : undefined;
+}
+
+export async function refreshTransferTotals(
+  transferId: string,
+) {
+  await ensureSchema();
+  const sql = getSql();
+  await sql.query(
+    "UPDATE transfer_records SET file_count=(SELECT count(*)::integer FROM transfer_files WHERE transfer_id=$1), total_size_bytes=(SELECT COALESCE(sum(size_bytes),0) FROM transfer_files WHERE transfer_id=$1) WHERE id=$1 AND environment=$2",
+    [transferId, environment()],
+  );
+  return getTransferById(transferId);
+}
+
 export async function finalizeTransfer(transferId: string) {
   await ensureSchema();
   const sql = getSql();
