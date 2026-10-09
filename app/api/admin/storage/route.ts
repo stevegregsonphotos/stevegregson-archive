@@ -39,6 +39,25 @@ export async function POST(request: Request) {
   }
   const action = text(body.action);
 
+  if (action === "presign-upload-batch") {
+    const paths = Array.isArray(body.paths)
+      ? body.paths.map(text).filter(Boolean)
+      : [];
+    if (!paths.length || paths.length > 50) {
+      return NextResponse.json(
+        { ok: false, message: "Choose between 1 and 50 files." },
+        { status: 400 },
+      );
+    }
+    const jobs = await Promise.all(
+      paths.map(async (path) => ({
+        path,
+        ...(await createClientArchiveUploadUrl(path)),
+      })),
+    );
+    return NextResponse.json({ ok: true, jobs });
+  }
+
   if (action === "presign-upload") {
     const path = text(body.path);
     if (!path) return NextResponse.json({ ok: false, message: "A file path is required." }, { status: 400 });

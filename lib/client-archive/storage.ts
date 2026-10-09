@@ -1,6 +1,7 @@
 import {
   DeleteObjectCommand,
   GetObjectCommand,
+  HeadObjectCommand,
   ListObjectsV2Command,
   PutObjectCommand,
   S3Client,
@@ -42,7 +43,7 @@ function ns() {
 
 function cleanPath(value: string) {
   const parts = value.replace(/\\/g, "/").split("/").map((part) => part.trim()).filter(Boolean);
-  if (parts.some((part) => part === "." || part === "..")) throw new Error("Invalid archive path.");
+  if (parts.some((part) => part === "." || part === ".." || /[\u0000-\u001f]/.test(part))) throw new Error("Invalid archive path.");
   return parts.join("/");
 }
 
@@ -181,7 +182,7 @@ export async function getClientArchiveFilesByKeys(keys: string[]) {
   const results = [];
   for (const objectKey of unique) {
     if (!isClientArchiveKey(objectKey)) throw new Error("Invalid archive object.");
-    const head = await client().send(new (await import("@aws-sdk/client-s3")).HeadObjectCommand({
+    const head = await client().send(new HeadObjectCommand({
       Bucket: config().bucketName,
       Key: objectKey,
     }));

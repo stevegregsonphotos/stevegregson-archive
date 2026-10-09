@@ -23,7 +23,7 @@ export default async function TransferDetailPage({
   return (
     <TransferDetailClient
       initialTransfer={transfer}
-      publicUrl={siteUrl + "/transfer/" + transfer.token}
+      publicUrl={siteUrl + "/files/" + transfer.token}
     />
   );
 }

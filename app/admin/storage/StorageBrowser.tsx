@@ -51,8 +51,6 @@ export default function StorageBrowser() {
       setListing(data.listing);
       setMessage("");
       setLoaded(true);
-      setSelectedFiles([]);
-      setSelectedFolders([]);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not load storage.");
     } finally {
@@ -75,23 +73,33 @@ export default function StorageBrowser() {
     if (!files?.length) return;
     setBusy(true);
     try {
-      let done = 0;
-      for (const file of Array.from(files)) {
+      const queued = Array.from(files).map((file) => {
         const relative = folderMode
           ? ((file as File & { webkitRelativePath?: string }).webkitRelativePath || file.name)
           : file.name;
-        const path = joinPath(listing.path, relative);
-        setMessage("Uploading " + (done + 1) + " of " + files.length + " · " + file.name);
+        return { file, path: joinPath(listing.path, relative) };
+      });
+      let done = 0;
+      for (let start = 0; start < queued.length; start += 50) {
+        const batch = queued.slice(start, start + 50);
         const signResponse = await fetch("/api/admin/storage", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "presign-upload", path }),
+          body: JSON.stringify({
+            action: "presign-upload-batch",
+            paths: batch.map((item) => item.path),
+          }),
         });
         const signed = await signResponse.json();
         if (!signed.ok) throw new Error(signed.message || "Could not prepare upload.");
-        const put = await fetch(signed.uploadUrl, { method: "PUT", body: file });
-        if (!put.ok) throw new Error("Upload failed for " + file.name + " (HTTP " + put.status + ").");
-        done += 1;
+        for (let index = 0; index < batch.length; index += 1) {
+          const item = batch[index];
+          const job = signed.jobs[index];
+          setMessage("Uploading " + (done + 1) + " of " + queued.length + " · " + item.file.name);
+          const put = await fetch(job.uploadUrl, { method: "PUT", body: item.file });
+          if (!put.ok) throw new Error("Upload failed for " + item.file.name + " (HTTP " + put.status + ").");
+          done += 1;
+        }
       }
       setMessage(files.length + (files.length === 1 ? " file uploaded." : " files uploaded."));
       await load(listing.path);

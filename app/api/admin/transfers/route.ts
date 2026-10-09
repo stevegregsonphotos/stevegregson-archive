@@ -17,6 +17,7 @@ import {
   deleteTransferObject,
   deleteTransferObjects,
   getTransferStorageConfiguration,
+  isTransferObjectKey,
   transferObjectExists,
 } from "@/lib/transfers/storage";
 import { sendTransferEmails } from "@/lib/transfers/email";
@@ -140,7 +141,11 @@ export async function POST(request: Request) {
     for (const item of files) {
       const file = item as Record<string, unknown>;
       const objectKey = text(file.objectKey);
-      if (!objectKey || !(await transferObjectExists(objectKey))) {
+      if (
+        !objectKey ||
+        !isTransferObjectKey(transferId, objectKey) ||
+        !(await transferObjectExists(objectKey))
+      ) {
         return NextResponse.json({ ok: false, message: "One or more uploaded files could not be verified." }, { status: 409 });
       }
       valid.push({
@@ -204,7 +209,7 @@ export async function POST(request: Request) {
     const transfer = await finalizeTransfer(transferId);
     if (!transfer) return NextResponse.json({ ok: false, message: "Transfer not found." }, { status: 404 });
     const origin = new URL(request.url).origin;
-    const publicUrl = origin + "/transfer/" + transfer.token;
+    const publicUrl = origin + "/files/" + transfer.token;
     const email = await sendTransferEmails(transfer, publicUrl);
     return NextResponse.json({ ok: true, transfer, publicUrl, email });
   }

@@ -188,6 +188,18 @@ export function getTransferObjectKey(
   );
 }
 
+export function isTransferObjectKey(
+  transferId: string,
+  objectKey: string,
+) {
+  return objectKey.startsWith(
+    namespace() +
+      "/" +
+      safeSegment(transferId) +
+      "/",
+  );
+}
+
 export async function createTransferUploadUrl(
   transferId: string,
   fileId: string,

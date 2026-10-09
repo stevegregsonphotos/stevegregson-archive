@@ -17,7 +17,7 @@ export default function TransferDownloadClient({transfer}:{transfer:TransferReco
  }
  const unavailable=transfer.status!=="active";
  return <main className={styles.public}><section className={styles.publicCard}>
-   <p className={styles.publicEyebrow}>Steve Gregson Photography</p>
+   <p className={styles.publicEyebrow}>Steve Gregson · File transfer</p>
    <h1>{transfer.title}</h1>
    <p className={styles.publicMeta}>{transfer.fileCount} files · {bytes(transfer.totalSizeBytes)} · Available until {date(transfer.expiresAt)}</p>
    {transfer.message&&<p className={styles.publicMessage}>{transfer.message}</p>}
