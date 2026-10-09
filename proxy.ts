@@ -39,7 +39,12 @@ export function proxy(
     session
   ) {
     return NextResponse.redirect(
-      new URL("/admin", request.url),
+      new URL(
+        request.nextUrl.hostname === "transfers.stevegregson.com"
+          ? "/"
+          : "/admin",
+        request.url,
+      ),
     );
   }
 
@@ -70,8 +75,10 @@ export function proxy(
     );
 
     loginUrl.searchParams.set(
-      "returnTo",
-      pathname,
+      "next",
+      request.nextUrl.hostname === "transfers.stevegregson.com"
+        ? "/"
+        : pathname,
     );
 
     return NextResponse.redirect(

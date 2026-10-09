@@ -14,13 +14,15 @@ type LoginPageProps = {
   searchParams: Promise<{
     error?: string;
     next?: string;
+    returnTo?: string;
   }>;
 };
 
 export default async function LoginPage({
   searchParams,
 }: LoginPageProps) {
-  const { error, next } = await searchParams;
+  const { error, next, returnTo } = await searchParams;
+  const destination = next || returnTo;
 
   const errorMessage =
     error === "invalid"
@@ -62,8 +64,8 @@ export default async function LoginPage({
           method="post"
           className="backstage-login-form"
         >
-          {next?.startsWith("/") && !next.startsWith("//") ? (
-            <input type="hidden" name="next" value={next} />
+          {destination?.startsWith("/") && !destination.startsWith("//") ? (
+            <input type="hidden" name="next" value={destination} />
           ) : null}
           <div className="backstage-login-form-heading">
             <p>Authorised access</p>
