@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import type { TransferRecord } from "@/lib/transfers/types";
+import { TRANSFER_BRAND_BACKGROUNDS, isTransferImage } from "@/lib/transfers/backgrounds";
 import styles from "../transfers.module.css";
 
 type QueuedFile = { file: File; relativePath: string };
@@ -104,7 +105,7 @@ export default function TransferDetailClient({ initialTransfer, publicUrl }: {
     const result = await post({ action: "background-preview", transferId: transfer.id, fileId });
     setBackgroundUrls((current) => ({ ...current, [fileId]: result.url }));
   }
-  const imageFiles = transfer.files.filter((file) => file.contentType.startsWith("image/"));
+  const imageFiles = transfer.files.filter(isTransferImage);
   const latestDownload = transfer.downloads[0];
   return <main className={styles.detail}>
     <a className={styles.detailBack} href="/admin/transfers">← Back to Transfers</a>
@@ -145,7 +146,7 @@ export default function TransferDetailClient({ initialTransfer, publicUrl }: {
           <input ref={folderRef} className={styles.hidden} type="file" multiple {...({ webkitdirectory: "", directory: "" } as React.InputHTMLAttributes<HTMLInputElement>)} onChange={(e) => setQueue((q) => [...q, ...inputFiles(e.target.files)])}/>
           {queue.length > 0 && <button type="button" disabled={busy} onClick={addQueued}>Upload {queue.length} {queue.length === 1 ? "file" : "files"}</button>}
         </div>}
-        {editing && imageFiles.length > 0 && <div className={styles.coverEditor}><div className={styles.coverHead}><strong>Client page backgrounds</strong><span>{transfer.backgroundFileIds.length ? transfer.backgroundFileIds.length + " selected" : "Brand backgrounds by default"}</span></div><div className={styles.coverGrid}>{imageFiles.map((file) => <button type="button" className={transfer.backgroundFileIds.includes(file.id) ? styles.coverSelected : styles.coverChoice} key={file.id} onMouseEnter={() => void loadBackgroundPreview(file.id)} onFocus={() => void loadBackgroundPreview(file.id)} onClick={async () => { await loadBackgroundPreview(file.id); await toggleBackground(file.id); }}>{backgroundUrls[file.id] ? <img src={backgroundUrls[file.id]} alt="" /> : <span>Load preview</span>}<small>{file.originalName}</small></button>)}</div>{transfer.backgroundFileIds.length > 0 && <button type="button" onClick={async () => { const result = await post({action:"set-backgrounds",transferId:transfer.id,fileIds:[]}); setTransfer(result.transfer); }}>Use brand backgrounds</button>}</div>}
+        {editing && <div className={styles.coverEditor}><div className={styles.coverHead}><div><strong>Client download page</strong><p>Choose photographs from this transfer for the full-screen background, or use the Steve Gregson default collection.</p></div><span>{transfer.backgroundFileIds.length ? transfer.backgroundFileIds.length + " transfer image" + (transfer.backgroundFileIds.length === 1 ? "" : "s") + " selected" : "Default collection selected"}</span></div><h3>Default Steve Gregson backgrounds</h3><div className={styles.brandCoverGrid}>{TRANSFER_BRAND_BACKGROUNDS.map((url) => <img src={url} alt="" key={url}/>)}</div>{imageFiles.length > 0 ? <><h3>Photographs in this transfer</h3><div className={styles.coverGrid}>{imageFiles.map((file) => <button type="button" className={transfer.backgroundFileIds.includes(file.id) ? styles.coverSelected : styles.coverChoice} key={file.id} onMouseEnter={() => void loadBackgroundPreview(file.id)} onFocus={() => void loadBackgroundPreview(file.id)} onClick={async () => { await loadBackgroundPreview(file.id); await toggleBackground(file.id); }}>{backgroundUrls[file.id] ? <img src={backgroundUrls[file.id]} alt="" /> : <span>Load thumbnail</span>}<small>{file.originalName}</small></button>)}</div></> : <p className={styles.muted}>There are no photographs in this transfer to use as custom backgrounds.</p>}{transfer.backgroundFileIds.length > 0 && <button type="button" onClick={async () => { const result = await post({action:"set-backgrounds",transferId:transfer.id,fileIds:[]}); setTransfer(result.transfer); }}>Use default Steve Gregson backgrounds</button>}</div>}
         <div className={styles.fileList}>{transfer.files.map((file) => <div className={styles.fileRow} key={file.id}><span>{file.relativePath}<small>{bytes(file.sizeBytes)}</small></span>{editing && <button type="button" disabled={busy || transfer.files.length <= 1} onClick={() => removeFile(file.id)}>Remove</button>}</div>)}</div>
         {message && <p className={styles.editMessage} aria-live="polite">{message}</p>}
       </section>

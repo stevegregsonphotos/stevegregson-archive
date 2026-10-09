@@ -1,6 +1,7 @@
 import { neon } from "@neondatabase/serverless";
 import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import type { TransferDownloadEvent, TransferFile, TransferRecord, TransferRecipient } from "./types";
+import { isTransferImage } from "./backgrounds";
 
 function getSql() {
   const databaseUrl = process.env.DATABASE_URL;
@@ -270,7 +271,7 @@ export async function setTransferBackgrounds(id: string, fileIds: string[]) {
   const transfer = await getTransferById(id);
   if (!transfer) return undefined;
   const unique = Array.from(new Set(fileIds));
-  const valid = unique.filter((fileId) => transfer.files.some((file) => file.id === fileId && file.contentType.startsWith("image/"))).slice(0, 12);
+  const valid = unique.filter((fileId) => transfer.files.some((file) => file.id === fileId && isTransferImage(file))).slice(0, 12);
   await sql.query("UPDATE transfer_records SET background_file_ids=$1::jsonb WHERE id=$2 AND environment=$3", [JSON.stringify(valid), id, environment()]);
   return getTransferById(id);
 }

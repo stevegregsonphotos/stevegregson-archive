@@ -2,13 +2,14 @@
 import { useEffect, useState } from "react";
 import type { TransferRecord } from "@/lib/transfers/types";
 import styles from "../../admin/transfers/transfers.module.css";
+import { TRANSFER_BRAND_BACKGROUNDS } from "@/lib/transfers/backgrounds";
 
 function bytes(value:number){const units=["B","KB","MB","GB","TB"];let size=value,unit=0;while(size>=1024&&unit<units.length-1){size/=1024;unit+=1}return(size>=10||unit===0?size.toFixed(0):size.toFixed(1))+" "+units[unit]}
 function date(value:string){return new Intl.DateTimeFormat("en-GB",{dateStyle:"long",timeZone:"Europe/London"}).format(new Date(value))}
 
 export default function TransferDownloadClient({transfer}:{transfer:TransferRecord}) {
  const [password,setPassword]=useState(""); const [message,setMessage]=useState(""); const [backgrounds,setBackgrounds]=useState<string[]>([]); const [index,setIndex]=useState(0);
- useEffect(()=>{let cancelled=false;(async()=>{const ids=transfer.backgroundFileIds.length?transfer.backgroundFileIds:transfer.files.filter((file)=>file.contentType.startsWith("image/")).slice(0,5).map((file)=>file.id);const urls:string[]=[];for(const fileId of ids){const response=await fetch("/api/transfers/"+transfer.token+"/background?fileId="+encodeURIComponent(fileId));const data=await response.json().catch(()=>({}));if(data.ok&&data.url)urls.push(data.url)}if(!cancelled)setBackgrounds(urls)})();return()=>{cancelled=true}},[transfer]);
+ useEffect(()=>{let cancelled=false;(async()=>{const ids=transfer.backgroundFileIds;const urls:string[]=ids.length?[]:[...TRANSFER_BRAND_BACKGROUNDS];for(const fileId of ids){const response=await fetch("/api/transfers/"+transfer.token+"/background?fileId="+encodeURIComponent(fileId));const data=await response.json().catch(()=>({}));if(data.ok&&data.url)urls.push(data.url)}if(!cancelled)setBackgrounds(urls)})();return()=>{cancelled=true}},[transfer]);
  useEffect(()=>{if(backgrounds.length<2)return;const timer=window.setInterval(()=>setIndex((current)=>(current+1)%backgrounds.length),7000);return()=>window.clearInterval(timer)},[backgrounds.length]);
  async function download(fileId:string){setMessage("Preparing download…");const response=await fetch("/api/transfers/"+transfer.token+"/download",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({fileId,password})});const data=await response.json();if(!data.ok){setMessage(data.message||"Download unavailable.");return}setMessage("");window.location.assign(data.url)}
  const unavailable=transfer.status!=="active";

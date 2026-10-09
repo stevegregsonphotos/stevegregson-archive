@@ -23,6 +23,7 @@ import {
   createTransferViewUrl,
 } from "@/lib/transfers/storage";
 import { sendTransferEmails } from "@/lib/transfers/email";
+import { isTransferImage } from "@/lib/transfers/backgrounds";
 import {
   getClientArchiveFilesByKeys,
   listClientArchiveFilesRecursive,
@@ -64,7 +65,7 @@ export async function POST(request: Request) {
     const transferId = text(body.transferId);
     const fileId = text(body.fileId);
     const transfer = await getTransferById(transferId);
-    const file = transfer?.files.find((candidate) => candidate.id === fileId && candidate.contentType.startsWith("image/"));
+    const file = transfer?.files.find((candidate) => candidate.id === fileId && isTransferImage(candidate));
     if (!transfer || transfer.status !== "active" || !file) return NextResponse.json({ ok: false, message: "Image not found." }, { status: 404 });
     const url = file.source === "archive"
       ? await (await import("@/lib/client-archive/storage")).createClientArchiveViewUrl(file.objectKey)
