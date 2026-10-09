@@ -37,6 +37,7 @@ export default function StorageBrowser() {
   const [search, setSearch] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const folderRef = useRef<HTMLInputElement | null>(null);
 
   async function load(path = listing.path) {
@@ -47,6 +48,7 @@ export default function StorageBrowser() {
       if (!data.ok) throw new Error(data.message || "Could not load storage.");
       setListing(data.listing);
       setMessage("");
+      setLoaded(true);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not load storage.");
     } finally {
@@ -182,7 +184,19 @@ export default function StorageBrowser() {
         {!busy && !filtered.folders.length && !filtered.files.length && <p className={styles.empty}>This folder is empty.</p>}
       </section>
 
-      {listing.truncated && <p className={styles.notice}>This folder contains more than 200 entries. Pagination will be added before production use.</p>}
+      {listing.truncated && <button className={styles.loadMore} type="button" onClick={async () => {
+        if (!listing.nextCursor) return;
+        setBusy(true);
+        try {
+          const response = await fetch("/api/admin/storage?path=" + encodeURIComponent(listing.path) + "&cursor=" + encodeURIComponent(listing.nextCursor), { cache: "no-store" });
+          const data = await response.json();
+          if (!data.ok) throw new Error(data.message || "Could not load more files.");
+          setListing((current) => ({ ...data.listing, folders: [...current.folders, ...data.listing.folders], files: [...current.files, ...data.listing.files] }));
+        } catch (error) {
+          setMessage(error instanceof Error ? error.message : "Could not load more files.");
+        } finally { setBusy(false); }
+      }}>Load more</button>}
+      {loaded && !busy && listing.path === "" && !listing.folders.length && !listing.files.length && <p className={styles.notice}>Archive ready. Add a client folder from your Mac to begin.</p>}
     </main>
   );
 }
