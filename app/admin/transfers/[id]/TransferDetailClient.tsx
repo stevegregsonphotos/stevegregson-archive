@@ -35,6 +35,7 @@ export default function TransferDetailClient({ initialTransfer, publicUrl }: {
   const [queue, setQueue] = useState<QueuedFile[]>([]);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [backgroundUrls, setBackgroundUrls] = useState<Record<string,string>>({});
   const folderRef = useRef<HTMLInputElement | null>(null);
 
   async function post(body: Record<string, unknown>) {
@@ -93,12 +94,23 @@ export default function TransferDetailClient({ initialTransfer, publicUrl }: {
     } finally { setBusy(false); }
   }
 
+  async function toggleBackground(fileId: string) {
+    const selected = transfer.backgroundFileIds.includes(fileId) ? transfer.backgroundFileIds.filter((id) => id !== fileId) : [...transfer.backgroundFileIds, fileId];
+    const result = await post({ action: "set-backgrounds", transferId: transfer.id, fileIds: selected });
+    setTransfer(result.transfer);
+  }
+  async function loadBackgroundPreview(fileId: string) {
+    if (backgroundUrls[fileId]) return;
+    const result = await post({ action: "background-preview", transferId: transfer.id, fileId });
+    setBackgroundUrls((current) => ({ ...current, [fileId]: result.url }));
+  }
+  const imageFiles = transfer.files.filter((file) => file.contentType.startsWith("image/"));
   const latestDownload = transfer.downloads[0];
   return <main className={styles.detail}>
     <a className={styles.detailBack} href="/admin/transfers">← Back to Transfers</a>
     <header className={styles.detailHero}>
       <div>
-        <p className={styles.detailEyebrow}>Steve Gregson Delivery</p>
+        <p className={styles.detailEyebrow}>Steve Gregson · Transfer</p>
         <h1>{transfer.title}</h1>
         <p className={styles.detailMeta}>{transfer.fileCount} {transfer.fileCount === 1 ? "file" : "files"} · {bytes(transfer.totalSizeBytes)} · Sent {date(transfer.finalizedAt || transfer.createdAt)}</p>
       </div>
@@ -133,6 +145,7 @@ export default function TransferDetailClient({ initialTransfer, publicUrl }: {
           <input ref={folderRef} className={styles.hidden} type="file" multiple {...({ webkitdirectory: "", directory: "" } as React.InputHTMLAttributes<HTMLInputElement>)} onChange={(e) => setQueue((q) => [...q, ...inputFiles(e.target.files)])}/>
           {queue.length > 0 && <button type="button" disabled={busy} onClick={addQueued}>Upload {queue.length} {queue.length === 1 ? "file" : "files"}</button>}
         </div>}
+        {editing && imageFiles.length > 0 && <div className={styles.coverEditor}><div className={styles.coverHead}><strong>Client page backgrounds</strong><span>{transfer.backgroundFileIds.length ? transfer.backgroundFileIds.length + " selected" : "Brand backgrounds by default"}</span></div><div className={styles.coverGrid}>{imageFiles.map((file) => <button type="button" className={transfer.backgroundFileIds.includes(file.id) ? styles.coverSelected : styles.coverChoice} key={file.id} onMouseEnter={() => void loadBackgroundPreview(file.id)} onFocus={() => void loadBackgroundPreview(file.id)} onClick={async () => { await loadBackgroundPreview(file.id); await toggleBackground(file.id); }}>{backgroundUrls[file.id] ? <img src={backgroundUrls[file.id]} alt="" /> : <span>Load preview</span>}<small>{file.originalName}</small></button>)}</div>{transfer.backgroundFileIds.length > 0 && <button type="button" onClick={async () => { const result = await post({action:"set-backgrounds",transferId:transfer.id,fileIds:[]}); setTransfer(result.transfer); }}>Use brand backgrounds</button>}</div>}
         <div className={styles.fileList}>{transfer.files.map((file) => <div className={styles.fileRow} key={file.id}><span>{file.relativePath}<small>{bytes(file.sizeBytes)}</small></span>{editing && <button type="button" disabled={busy || transfer.files.length <= 1} onClick={() => removeFile(file.id)}>Remove</button>}</div>)}</div>
         {message && <p className={styles.editMessage} aria-live="polite">{message}</p>}
       </section>

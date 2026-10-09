@@ -18,7 +18,8 @@ async function ensureSchema() {
   if (schemaPromise) return schemaPromise;
   schemaPromise = (async () => {
     const sql = getSql();
-    await sql.query("CREATE TABLE IF NOT EXISTS transfer_records (id text PRIMARY KEY, environment text NOT NULL, token text NOT NULL, title text NOT NULL, message text NOT NULL DEFAULT '', sender_email text NOT NULL, recipients jsonb NOT NULL DEFAULT '[]'::jsonb, status text NOT NULL DEFAULT 'uploading', created_at timestamptz NOT NULL DEFAULT now(), finalized_at timestamptz, expires_at timestamptz NOT NULL, file_count integer NOT NULL DEFAULT 0, total_size_bytes bigint NOT NULL DEFAULT 0, password_hash text)");
+    await sql.query("CREATE TABLE IF NOT EXISTS transfer_records (id text PRIMARY KEY, environment text NOT NULL, token text NOT NULL, title text NOT NULL, message text NOT NULL DEFAULT '', sender_email text NOT NULL, recipients jsonb NOT NULL DEFAULT '[]'::jsonb, status text NOT NULL DEFAULT 'uploading', created_at timestamptz NOT NULL DEFAULT now(), finalized_at timestamptz, expires_at timestamptz NOT NULL, file_count integer NOT NULL DEFAULT 0, total_size_bytes bigint NOT NULL DEFAULT 0, password_hash text, background_file_ids jsonb NOT NULL DEFAULT '[]'::jsonb)");
+    await sql.query("ALTER TABLE transfer_records ADD COLUMN IF NOT EXISTS background_file_ids jsonb NOT NULL DEFAULT '[]'::jsonb");
     await sql.query("CREATE UNIQUE INDEX IF NOT EXISTS transfer_records_env_token_idx ON transfer_records(environment, token)");
     await sql.query("CREATE TABLE IF NOT EXISTS transfer_files (id text PRIMARY KEY, transfer_id text NOT NULL REFERENCES transfer_records(id) ON DELETE CASCADE, original_name text NOT NULL, relative_path text NOT NULL, object_key text NOT NULL, source text NOT NULL DEFAULT 'upload', size_bytes bigint NOT NULL, content_type text NOT NULL, created_at timestamptz NOT NULL DEFAULT now())");
     await sql.query("ALTER TABLE transfer_files ADD COLUMN IF NOT EXISTS source text NOT NULL DEFAULT 'upload'");
@@ -65,7 +66,7 @@ type RecordRow = {
   id: string; token: string; title: string; message: string; sender_email: string;
   recipients: unknown; status: string; created_at: string | Date;
   finalized_at: string | Date | null; expires_at: string | Date; file_count: number;
-  total_size_bytes: string | number; password_hash: string | null;
+  total_size_bytes: string | number; password_hash: string | null; background_file_ids?: unknown;
 };
 type FileRow = {
   id: string; transfer_id: string; original_name: string; relative_path: string;
@@ -114,6 +115,7 @@ async function hydrate(row: RecordRow): Promise<TransferRecord> {
     ...(row.finalized_at ? { finalizedAt: iso(row.finalized_at) } : {}),
     expiresAt: iso(row.expires_at)!, fileCount: Number(row.file_count) || 0,
     totalSizeBytes: Number(row.total_size_bytes) || 0, hasPassword: Boolean(row.password_hash),
+    backgroundFileIds: Array.isArray(row.background_file_ids) ? row.background_file_ids.filter((value): value is string => typeof value === "string") : [],
     files: (files as FileRow[]).map(mapFile),
     downloads: (events as EventRow[]).map(mapEvent),
   };
@@ -194,7 +196,7 @@ export async function getTransferById(id: string) {
   await ensureSchema();
   const sql = getSql();
   const rows = await sql.query(
-    "SELECT id, token, title, message, sender_email, recipients, status, created_at, finalized_at, expires_at, file_count, total_size_bytes, password_hash FROM transfer_records WHERE id=$1 AND environment=$2 LIMIT 1",
+    "SELECT id, token, title, message, sender_email, recipients, status, created_at, finalized_at, expires_at, file_count, total_size_bytes, password_hash, background_file_ids FROM transfer_records WHERE id=$1 AND environment=$2 LIMIT 1",
     [id, environment()],
   );
   return rows[0] ? hydrate(rows[0] as RecordRow) : undefined;
@@ -204,7 +206,7 @@ export async function getTransferByToken(token: string) {
   await ensureSchema();
   const sql = getSql();
   const rows = await sql.query(
-    "SELECT id, token, title, message, sender_email, recipients, status, created_at, finalized_at, expires_at, file_count, total_size_bytes, password_hash FROM transfer_records WHERE token=$1 AND environment=$2 LIMIT 1",
+    "SELECT id, token, title, message, sender_email, recipients, status, created_at, finalized_at, expires_at, file_count, total_size_bytes, password_hash, background_file_ids FROM transfer_records WHERE token=$1 AND environment=$2 LIMIT 1",
     [token, environment()],
   );
   return rows[0] ? hydrate(rows[0] as RecordRow) : undefined;
@@ -214,7 +216,7 @@ export async function listTransfers() {
   await ensureSchema();
   const sql = getSql();
   const rows = await sql.query(
-    "SELECT id, token, title, message, sender_email, recipients, status, created_at, finalized_at, expires_at, file_count, total_size_bytes, password_hash FROM transfer_records WHERE environment=$1 AND status<>'uploading' ORDER BY created_at DESC LIMIT 500",
+    "SELECT id, token, title, message, sender_email, recipients, status, created_at, finalized_at, expires_at, file_count, total_size_bytes, password_hash, background_file_ids FROM transfer_records WHERE environment=$1 AND status<>'uploading' ORDER BY created_at DESC LIMIT 500",
     [environment()],
   );
   return Promise.all((rows as RecordRow[]).map(hydrate));
@@ -257,4 +259,15 @@ export async function deleteTransferRecord(id: string) {
   await ensureSchema();
   const sql = getSql();
   await sql.query("DELETE FROM transfer_records WHERE id=$1 AND environment=$2", [id, environment()]);
+}
+
+export async function setTransferBackgrounds(id: string, fileIds: string[]) {
+  await ensureSchema();
+  const sql = getSql();
+  const transfer = await getTransferById(id);
+  if (!transfer) return undefined;
+  const unique = Array.from(new Set(fileIds));
+  const valid = unique.filter((fileId) => transfer.files.some((file) => file.id === fileId && file.contentType.startsWith("image/"))).slice(0, 12);
+  await sql.query("UPDATE transfer_records SET background_file_ids=$1::jsonb WHERE id=$2 AND environment=$3", [JSON.stringify(valid), id, environment()]);
+  return getTransferById(id);
 }

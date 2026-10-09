@@ -291,6 +291,11 @@ function safeDownloadFilename(
   );
 }
 
+export async function createTransferViewUrl(objectKey: string) {
+  const command = new GetObjectCommand({ Bucket: getBucket(), Key: objectKey, ResponseCacheControl: "private, no-store" });
+  return getSignedUrl(getClient(), command, { expiresIn: 15 * 60 });
+}
+
 export async function createTransferDownloadUrl(
   objectKey: string,
   filename: string,

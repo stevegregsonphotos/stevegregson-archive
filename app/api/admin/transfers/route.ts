@@ -11,6 +11,7 @@ import {
   listTransfers,
   refreshTransferTotals,
   removeTransferFile,
+  setTransferBackgrounds,
 } from "@/lib/transfers/repository";
 import {
   createTransferUploadUrl,
@@ -19,6 +20,7 @@ import {
   getTransferStorageConfiguration,
   isTransferObjectKey,
   transferObjectExists,
+  createTransferViewUrl,
 } from "@/lib/transfers/storage";
 import { sendTransferEmails } from "@/lib/transfers/email";
 import {
@@ -47,6 +49,26 @@ export async function POST(request: Request) {
   catch { return NextResponse.json({ ok: false, message: "Invalid request." }, { status: 400 }); }
 
   const action = text(body.action);
+
+  if (action === "set-backgrounds") {
+    const transferId = text(body.transferId);
+    const fileIds = Array.isArray(body.fileIds) ? body.fileIds.map(text).filter(Boolean) : [];
+    const transfer = await setTransferBackgrounds(transferId, fileIds);
+    if (!transfer) return NextResponse.json({ ok: false, message: "Transfer not found." }, { status: 404 });
+    return NextResponse.json({ ok: true, transfer });
+  }
+
+  if (action === "background-preview") {
+    const transferId = text(body.transferId);
+    const fileId = text(body.fileId);
+    const transfer = await getTransferById(transferId);
+    const file = transfer?.files.find((candidate) => candidate.id === fileId && candidate.contentType.startsWith("image/"));
+    if (!transfer || !file) return NextResponse.json({ ok: false, message: "Image not found." }, { status: 404 });
+    const url = file.source === "archive"
+      ? await (await import("@/lib/client-archive/storage")).createClientArchiveViewUrl(file.objectKey)
+      : await createTransferViewUrl(file.objectKey);
+    return NextResponse.json({ ok: true, url });
+  }
 
   if (action === "storage-status") {
     const storage =

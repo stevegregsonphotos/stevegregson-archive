@@ -39,6 +39,7 @@ export type TransferRecord = {
   fileCount: number;
   totalSizeBytes: number;
   hasPassword: boolean;
+  backgroundFileIds: string[];
   files: TransferFile[];
   downloads: TransferDownloadEvent[];
 };

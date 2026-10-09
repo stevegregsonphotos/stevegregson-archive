@@ -1054,22 +1054,8 @@ export default function StorageBrowser() {
             }
           >
             <div>
-              <p>
-                {searchResults
-                  ? "Search results"
-                  : "All files"}
-              </p>
-
-              <h2>
-                {searchResults
-                  ? "“" +
-                    query +
-                    "”"
-                  : crumbs.at(
-                        -1,
-                      ) ||
-                    "Storage"}
-              </h2>
+              <p>{searchResults ? "Search results" : crumbs.length ? "All files" : "Storage"}</p>
+              <h2>{searchResults ? "“" + query + "”" : crumbs.at(-1) || "All files"}</h2>
             </div>
 
             <div
