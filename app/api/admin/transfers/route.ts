@@ -108,6 +108,10 @@ export async function POST(request: Request) {
     if (!transfer || !["uploading", "active"].includes(transfer.status)) {
       return NextResponse.json({ ok: false, message: "Transfer is not available for editing." }, { status: 404 });
     }
+    const editingActiveTransfer = transfer.status === "active";
+    if (editingActiveTransfer && transfer.files.length + files.length > 5000) {
+      return NextResponse.json({ ok: false, message: "This transfer has reached its file limit." }, { status: 409 });
+    }
 
     const jobs = await Promise.all(files.map(async (item) => {
       const file = item as Record<string, unknown>;
