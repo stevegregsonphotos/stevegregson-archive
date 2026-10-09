@@ -53,6 +53,8 @@ export async function POST(request: Request) {
   if (action === "set-backgrounds") {
     const transferId = text(body.transferId);
     const fileIds = Array.isArray(body.fileIds) ? body.fileIds.map(text).filter(Boolean) : [];
+    const existing = await getTransferById(transferId);
+    if (!existing || existing.status !== "active") return NextResponse.json({ ok: false, message: "Transfer is not available for editing." }, { status: 404 });
     const transfer = await setTransferBackgrounds(transferId, fileIds);
     if (!transfer) return NextResponse.json({ ok: false, message: "Transfer not found." }, { status: 404 });
     return NextResponse.json({ ok: true, transfer });
@@ -63,7 +65,7 @@ export async function POST(request: Request) {
     const fileId = text(body.fileId);
     const transfer = await getTransferById(transferId);
     const file = transfer?.files.find((candidate) => candidate.id === fileId && candidate.contentType.startsWith("image/"));
-    if (!transfer || !file) return NextResponse.json({ ok: false, message: "Image not found." }, { status: 404 });
+    if (!transfer || transfer.status !== "active" || !file) return NextResponse.json({ ok: false, message: "Image not found." }, { status: 404 });
     const url = file.source === "archive"
       ? await (await import("@/lib/client-archive/storage")).createClientArchiveViewUrl(file.objectKey)
       : await createTransferViewUrl(file.objectKey);

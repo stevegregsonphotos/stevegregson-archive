@@ -132,7 +132,7 @@ export async function createTransfer(input: {
   const cleanRecipients = [...new Set(input.recipientEmails.map((email) => email.trim().toLowerCase()).filter(Boolean))];
   const passwordHash = input.password?.trim() ? hashPassword(input.password.trim()) : null;
   const rows = await sql.query(
-    "INSERT INTO transfer_records (id, environment, token, title, message, sender_email, recipients, status, created_at, expires_at, password_hash) VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,'uploading',now(),$8,$9) RETURNING id, token, title, message, sender_email, recipients, status, created_at, finalized_at, expires_at, file_count, total_size_bytes, password_hash",
+    "INSERT INTO transfer_records (id, environment, token, title, message, sender_email, recipients, status, created_at, expires_at, password_hash) VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,'uploading',now(),$8,$9) RETURNING id, token, title, message, sender_email, recipients, status, created_at, finalized_at, expires_at, file_count, total_size_bytes, password_hash, background_file_ids",
     [id, environment(), token, input.title.trim(), input.message?.trim() ?? "", input.senderEmail.trim().toLowerCase(), JSON.stringify(cleanRecipients.map((email) => ({ email }))), input.expiresAt, passwordHash],
   );
   return hydrate(rows[0] as RecordRow);
@@ -162,6 +162,9 @@ export async function removeTransferFile(
     "DELETE FROM transfer_files USING transfer_records WHERE transfer_files.id=$1 AND transfer_files.transfer_id=$2 AND transfer_records.id=transfer_files.transfer_id AND transfer_records.environment=$3 RETURNING transfer_files.object_key, transfer_files.source",
     [fileId, transferId, environment()],
   );
+  if (rows[0]) {
+    await sql.query("UPDATE transfer_records SET background_file_ids = background_file_ids - $1 WHERE id=$2 AND environment=$3", [fileId, transferId, environment()]);
+  }
   return rows[0]
     ? {
         objectKey: (rows[0] as { object_key: string }).object_key,
