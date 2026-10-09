@@ -223,7 +223,7 @@ export default function TransferWorkspace({ initialTransfers }: { initialTransfe
                 <div>
                   <h3>{transfer.title}</h3>
                   <p>{transfer.recipients.map((r) => r.email).join(", ")}</p>
-                  <p>Sent {date(transfer.finalizedAt || transfer.createdAt)} · {bytes(transfer.totalSizeBytes)} ({transfer.fileCount} files) · <strong>{downloaded ? "Downloaded" : transfer.status === "expired" ? "Expired" : "Not downloaded"}</strong></p>
+                  <p>Sent {date(transfer.finalizedAt || transfer.createdAt)} · {bytes(transfer.totalSizeBytes)} ({transfer.fileCount} files) · <strong>{downloaded ? "Downloaded " + date(transfer.downloads[0].createdAt) : transfer.status === "expired" ? "Expired" : "Not downloaded"}</strong></p>
                 </div>
                 <span aria-hidden="true">›</span>
               </Link>
