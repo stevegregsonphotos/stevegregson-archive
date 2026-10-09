@@ -39,6 +39,18 @@ function failure(error: unknown) {
 
 export async function GET(request: Request) {
   if (!isBackstageRequestAuthenticated(request)) return unauthorized();
+  try {
+    return await handleGet(request);
+  } catch (error) {
+    console.error("Storage request failed", error);
+    return NextResponse.json(
+      { ok: false, message: "Storage couldn't be reached: " + (error instanceof Error ? error.message : "unknown error") },
+      { status: 500 },
+    );
+  }
+}
+
+async function handleGet(request: Request) {
   const url = new URL(request.url);
   if (url.searchParams.get("trash") === "1") {
     return NextResponse.json({ ok: true, trash: await listTrashEntries() });
@@ -64,6 +76,15 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   if (!isBackstageRequestAuthenticated(request)) return unauthorized();
+  try {
+    return await handlePost(request);
+  } catch (error) {
+    console.error("Storage request failed", error);
+    return failure(error);
+  }
+}
+
+async function handlePost(request: Request) {
   let body: Record<string, unknown>;
   try {
     body = await request.json() as Record<string, unknown>;

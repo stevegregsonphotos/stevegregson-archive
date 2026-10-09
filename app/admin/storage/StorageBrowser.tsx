@@ -75,7 +75,7 @@ async function fetchListing(path: string, cursor?: string): Promise<Listing> {
     "/api/admin/storage?path=" + encodeURIComponent(path) + (cursor ? "&cursor=" + encodeURIComponent(cursor) : ""),
     { cache: "no-store" },
   );
-  const data = await response.json();
+  const data = await response.json().catch(() => ({ ok: false, message: "Storage returned an unexpected response (HTTP " + response.status + ")." }));
   if (!data.ok) throw new Error(data.message || "Could not load storage.");
   return data.listing;
 }
@@ -168,7 +168,7 @@ export default function StorageBrowser() {
     setBusy(true);
     try {
       const response = await fetch("/api/admin/storage?q=" + encodeURIComponent(value), { cache: "no-store" });
-      const data = await response.json();
+      const data = await response.json().catch(() => ({ ok: false, message: "Search failed (HTTP " + response.status + ")." }));
       if (!data.ok) throw new Error(data.message || "Search failed.");
       setMode("files");
       setSearchResults(data.search);
@@ -183,7 +183,7 @@ export default function StorageBrowser() {
     setBusy(true);
     try {
       const response = await fetch("/api/admin/storage?trash=1", { cache: "no-store" });
-      const data = await response.json();
+      const data = await response.json().catch(() => ({ ok: false, message: "Deleted Files failed to load (HTTP " + response.status + ")." }));
       if (!data.ok) throw new Error(data.message || "Could not load Deleted Files.");
       setTrash(data.trash);
       setMode("trash");
