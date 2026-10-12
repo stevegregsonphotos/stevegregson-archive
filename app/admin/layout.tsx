@@ -223,6 +223,16 @@ export default function AdminLayout({
           gap: 1.6rem;
         }
 
+        /* Centre the menu; auto margins (rather than justify-content) keep
+           the first items reachable when a narrow screen has to scroll. */
+        .backstage-app-nav-group:first-child {
+          margin-left: auto;
+        }
+
+        .backstage-app-nav-group:last-child {
+          margin-right: auto;
+        }
+
         .backstage-app-nav-group + .backstage-app-nav-group {
           margin-left: 1.6rem;
           border-left: 1px solid rgba(242, 238, 230, 0.14);
