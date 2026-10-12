@@ -389,3 +389,38 @@ export async function ensureArchiveFolderMarker(path: string) {
     ContentType: "application/x-directory",
   }));
 }
+
+/** Size and fingerprint of a stored file, or undefined if it isn't there. */
+export async function headArchiveObject(path: string) {
+  try {
+    const head = await client().send(new HeadObjectCommand({ Bucket: config().bucketName, Key: getClientArchiveKey(path) }));
+    return { sizeBytes: Number(head.ContentLength) || 0, etag: (head.ETag || "").replace(/"/g, "").toLowerCase() };
+  } catch (error) {
+    const status = (error as { $metadata?: { httpStatusCode?: number } })?.$metadata?.httpStatusCode;
+    if (status === 404) return undefined;
+    throw error;
+  }
+}
+
+/**
+ * Upload link for the Mac app. The file's MD5 fingerprint is part of the
+ * signed link, so storage rejects the upload if a single byte differs.
+ */
+export async function createVerifiedArchiveUploadUrl(path: string, md5Base64: string) {
+  if (cleanPath(path).split("/")[0] === TRASH_FOLDER) throw new Error("That name is reserved.");
+  const c = config();
+  const strict = new S3Client({
+    endpoint: c.endpoint,
+    region: env("CLIENT_ARCHIVE_STORAGE_REGION", "TRANSFER_STORAGE_REGION") || "eu-central-003",
+    forcePathStyle: env("CLIENT_ARCHIVE_STORAGE_FORCE_PATH_STYLE", "TRANSFER_STORAGE_FORCE_PATH_STYLE") === "true",
+    credentials: { accessKeyId: c.accessKeyId, secretAccessKey: c.secretAccessKey },
+    // Don't add an automatic (empty-body) checksum to the link.
+    requestChecksumCalculation: "WHEN_REQUIRED",
+    responseChecksumValidation: "WHEN_REQUIRED",
+  });
+  return getSignedUrl(
+    strict,
+    new PutObjectCommand({ Bucket: c.bucketName, Key: getClientArchiveKey(path), ContentMD5: md5Base64 }),
+    { expiresIn: 6 * 60 * 60, signableHeaders: new Set(["content-md5"]) },
+  );
+}

@@ -1,0 +1,316 @@
+.page {
+  --ink: #1e1919;
+  --muted: #736c64;
+  --line: #ebe7e2;
+  --soft: #f7f5f2;
+  --blue: #0061fe;
+  min-height: calc(100vh - 6.5rem);
+  padding: 2rem clamp(1.25rem, 5vw, 4rem) 5rem;
+  background: #fff;
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "Segoe UI", Arial, sans-serif;
+  font-size: 15px;
+}
+
+.back {
+  display: inline-block;
+  margin-bottom: 1.5rem;
+  color: var(--muted);
+  font-size: 0.88rem;
+  text-decoration: none;
+}
+
+.back:hover {
+  color: var(--ink);
+}
+
+.hero {
+  display: flex;
+  gap: 1.25rem;
+  max-width: 52rem;
+  margin-bottom: 2rem;
+}
+
+.heroIcon {
+  display: grid;
+  flex: 0 0 3.5rem;
+  height: 3.5rem;
+  place-items: center;
+  border-radius: 0.9rem;
+  background: #e5efff;
+  color: var(--blue);
+}
+
+.heroIcon svg {
+  width: 1.8rem;
+  height: 1.8rem;
+}
+
+.hero h1 {
+  margin: 0 0 0.5rem;
+  font-size: 1.9rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.hero p {
+  margin: 0;
+  color: #4d4740;
+  line-height: 1.6;
+}
+
+.how {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  max-width: 60rem;
+  margin-bottom: 2rem;
+}
+
+.how article {
+  border-radius: 0.8rem;
+  padding: 1.2rem;
+  background: var(--soft);
+}
+
+.how span {
+  display: grid;
+  width: 1.8rem;
+  height: 1.8rem;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--ink);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.how h2 {
+  margin: 0.8rem 0 0.35rem;
+  font-size: 1rem;
+}
+
+.how p {
+  margin: 0;
+  color: #4d4740;
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.how svg {
+  vertical-align: -3px;
+}
+
+.panel {
+  max-width: 60rem;
+  margin-bottom: 1.5rem;
+  border: 1px solid var(--line);
+  border-radius: 0.8rem;
+  padding: 1.4rem;
+}
+
+.panel h2 {
+  margin: 0 0 0.3rem;
+  font-size: 1.1rem;
+}
+
+.panelHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.panelHead p,
+.muted {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.primary {
+  flex: 0 0 auto;
+  height: 2.6rem;
+  border: 0;
+  border-radius: 0.5rem;
+  padding: 0 1.2rem;
+  background: var(--ink);
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+}
+
+.primary:disabled {
+  opacity: 0.5;
+}
+
+.steps {
+  display: grid;
+  gap: 1rem;
+  margin: 1.4rem 0 0;
+  padding-left: 1.3rem;
+  line-height: 1.55;
+}
+
+.steps small {
+  display: block;
+  margin-top: 0.35rem;
+  color: var(--muted);
+}
+
+.command {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.command code {
+  display: block;
+  min-width: 0;
+  flex: 1;
+  overflow-x: auto;
+  border-radius: 0.5rem;
+  padding: 0.75rem 0.9rem;
+  background: #1e1919;
+  color: #f3efe9;
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.command button {
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 0.5rem;
+  padding: 0 1rem;
+  background: var(--blue);
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+}
+
+.steps kbd {
+  border: 1px solid #d6d1ca;
+  border-radius: 0.3rem;
+  padding: 0.05rem 0.35rem;
+  background: var(--soft);
+  font-family: inherit;
+  font-size: 0.82rem;
+}
+
+.message {
+  margin: 1rem 0 0;
+  color: #c4302b;
+}
+
+.devices,
+.recent {
+  margin: 0.8rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.devices li {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  border-top: 1px solid var(--line);
+  padding: 0.8rem 0;
+}
+
+.devices li > div {
+  display: grid;
+  flex: 1;
+  gap: 0.15rem;
+}
+
+.devices small,
+.recent small {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.devices button {
+  border: 0;
+  border-radius: 0.4rem;
+  padding: 0.45rem 0.7rem;
+  background: var(--soft);
+  color: #c4302b;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.recent li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  border-top: 1px solid var(--line);
+  padding: 0.6rem 0;
+  font-size: 0.9rem;
+}
+
+.recent li span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recent li small {
+  flex: 0 0 auto;
+}
+
+.notes {
+  max-width: 60rem;
+  color: #4d4740;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.notes h2 {
+  color: var(--ink);
+  font-size: 1rem;
+}
+
+.notes code {
+  border-radius: 0.3rem;
+  padding: 0.1rem 0.3rem;
+  background: var(--soft);
+  font-size: 0.8rem;
+  word-break: break-all;
+}
+
+@media (max-width: 800px) {
+  .how {
+    grid-template-columns: 1fr;
+  }
+
+  .panelHead {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+.how h2,
+.panel h2,
+.notes h2 {
+  font-weight: 600;
+}
+
+.notes ul {
+  margin: 0;
+  padding-left: 1.2rem;
+  list-style: disc;
+}
+
+.notes li {
+  margin: 0.3rem 0;
+}
+
+.steps {
+  list-style: decimal;
+}

@@ -12,6 +12,22 @@ import {
   type QueuedFile,
 } from "@/lib/transfers/upload-client";
 import { useFileDrop } from "@/lib/transfers/use-file-drop";
+import Link from "next/link";
+import {
+  ChevronIcon,
+  FileIcon,
+  FilesIcon,
+  FolderIcon,
+  GridIcon,
+  LaptopIcon,
+  ListIcon,
+  MoreIcon,
+  SearchIcon,
+  TrashIcon,
+} from "./StorageIcons";
+
+type SortKey = "name" | "modified" | "size";
+const VIEW_KEY = "backstage-storage-view";
 
 type Folder = { name: string; path: string };
 type FileItem = {
@@ -86,7 +102,25 @@ function errorText(error: unknown, fallback: string) {
 
 export default function StorageBrowser() {
   const [listing, setListing] = useState<Listing>(EMPTY_LISTING);
-  const [view, setView] = useState<"grid" | "list">("grid");
+  const [view, setViewState] = useState<"grid" | "list">("list");
+  const [sort, setSort] = useState<{ key: SortKey; ascending: boolean }>({ key: "name", ascending: true });
+  const [menuFor, setMenuFor] = useState<string | null>(null);
+  const [newOpen, setNewOpen] = useState(false);
+
+  function setView(next: "grid" | "list") {
+    setViewState(next);
+    try { localStorage.setItem(VIEW_KEY, next); } catch { /* ignore */ }
+  }
+
+  // Remember list/grid choice between visits.
+  useEffect(() => {
+    let saved: string | null = null;
+    try { saved = localStorage.getItem(VIEW_KEY); } catch { /* ignore */ }
+    if (saved !== "grid" && saved !== "list") return;
+    const timer = window.setTimeout(() => setViewState(saved as "grid" | "list"), 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
   const [mode, setMode] = useState<"files" | "trash">("files");
   const [trash, setTrash] = useState<TrashEntry[]>([]);
   const [query, setQuery] = useState("");
@@ -101,6 +135,14 @@ export default function StorageBrowser() {
   const [mover, setMover] = useState<{ items: Item[]; path: string; folders: Folder[]; loading: boolean } | null>(null);
   const filesRef = useRef<HTMLInputElement | null>(null);
   const folderRef = useRef<HTMLInputElement | null>(null);
+
+  // Close any open menu when clicking elsewhere.
+  useEffect(() => {
+    if (!menuFor && !newOpen && !uploadOpen) return;
+    const close = () => { setMenuFor(null); setNewOpen(false); setUploadOpen(false); };
+    window.addEventListener("click", close);
+    return () => window.removeEventListener("click", close);
+  }, [menuFor, newOpen, uploadOpen]);
 
   // ---- Loading ------------------------------------------------------------
 
@@ -389,10 +431,18 @@ export default function StorageBrowser() {
     window.location.assign("/admin/transfers?archive=1");
   }
 
-  // ---- Preview (lightbox) -------------------------------------------------
+  // ---- Sorting & preview --------------------------------------------------
 
-  const shown = searchResults || { folders: listing.folders, files: listing.files };
-  const images = shown.files.filter((file) => file.isImage && file.viewUrl);
+  const raw = searchResults || { folders: listing.folders, files: listing.files };
+  const direction = sort.ascending ? 1 : -1;
+  const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name, "en-GB", { numeric: true, sensitivity: "base" });
+  const folders = [...raw.folders].sort((a, b) => (sort.key === "name" ? byName(a, b) * direction : byName(a, b)));
+  const files = [...raw.files].sort((a, b) => {
+    if (sort.key === "size") return (a.sizeBytes - b.sizeBytes) * direction || byName(a, b);
+    if (sort.key === "modified") return ((a.lastModified || "").localeCompare(b.lastModified || "")) * direction || byName(a, b);
+    return byName(a, b) * direction;
+  });
+  const images = files.filter((file) => file.isImage && file.viewUrl);
   const previewFile = preview === null ? null : images[preview];
 
   useEffect(() => {
@@ -411,268 +461,374 @@ export default function StorageBrowser() {
     if (index >= 0) setPreview(index);
   }
 
+  function sortBy(key: SortKey) {
+    setSort((current) => (current.key === key ? { key, ascending: !current.ascending } : { key, ascending: key === "name" }));
+  }
+
+  function sortMark(key: SortKey) {
+    return sort.key === key ? <span className={styles.sortMark}>{sort.ascending ? "↑" : "↓"}</span> : null;
+  }
+
   // ---- Rendering ----------------------------------------------------------
 
   function treeButton(folder: Folder, depth: number): React.ReactNode {
-    const expanded = mode === "files" && (listing.path === folder.path || listing.path.startsWith(folder.path + "/"));
+    const open = mode === "files" && (listing.path === folder.path || listing.path.startsWith(folder.path + "/"));
+    const current = mode === "files" && listing.path === folder.path;
     return (
       <div key={folder.path}>
         <button
           type="button"
-          className={expanded ? styles.treeActive : ""}
-          style={{ paddingLeft: 12 + depth * 14 }}
+          className={styles.treeItem + (current ? " " + styles.navActive : "")}
+          style={{ paddingLeft: 10 + depth * 16 }}
           onClick={() => void load(folder.path)}
+          title={folder.name}
         >
-          <span>{expanded ? "⌄" : "›"}</span>
-          <span>📁</span>
+          <ChevronIcon open={open} />
+          <FolderIcon size={20} />
           <span>{folder.name}</span>
         </button>
-        {expanded ? (treeChildren[folder.path] || []).map((child) => treeButton(child, depth + 1)) : null}
+        {open ? (treeChildren[folder.path] || []).map((child) => treeButton(child, depth + 1)) : null}
       </div>
     );
   }
 
   const crumbs = listing.path ? listing.path.split("/") : [];
+  const allSelected = files.length + folders.length > 0 && selected.length === files.length + folders.length;
 
-  function fileActions(file: FileItem) {
+  function toggleAll() {
+    setSelected(allSelected ? [] : [...folders.map(folderItem), ...files.map(fileItem)]);
+  }
+
+  function itemMenu(item: Item, file?: FileItem) {
+    const open = menuFor === item.path;
     return (
-      <>
-        <button type="button" onClick={() => void download(file)}>Download</button>
-        <button type="button" onClick={() => void rename(fileItem(file))}>Rename</button>
-        <button type="button" onClick={() => void openMover([fileItem(file)])}>Move</button>
-        <button type="button" onClick={() => void remove([fileItem(file)])}>Delete</button>
-      </>
+      <div className={styles.menuWrap} onClick={(event) => event.stopPropagation()}>
+        <button
+          type="button"
+          className={styles.iconButton}
+          aria-label={"More actions for " + item.name}
+          aria-expanded={open}
+          onClick={() => setMenuFor(open ? null : item.path)}
+        >
+          <MoreIcon />
+        </button>
+        {open ? (
+          <div className={styles.menu} role="menu">
+            {file ? <button type="button" role="menuitem" onClick={() => { setMenuFor(null); void download(file); }}>Download</button> : null}
+            {file?.isImage && file.viewUrl ? <button type="button" role="menuitem" onClick={() => { setMenuFor(null); openPreview(file); }}>Preview</button> : null}
+            <button type="button" role="menuitem" onClick={() => { setMenuFor(null); setSelected([item]); window.setTimeout(sendSelectionFor([item]), 0); }}>Send as transfer</button>
+            <hr />
+            <button type="button" role="menuitem" onClick={() => { setMenuFor(null); void rename(item); }}>Rename</button>
+            <button type="button" role="menuitem" onClick={() => { setMenuFor(null); void openMover([item]); }}>Move</button>
+            <hr />
+            <button type="button" role="menuitem" className={styles.danger} onClick={() => { setMenuFor(null); void remove([item]); }}>Delete</button>
+          </div>
+        ) : null}
+      </div>
     );
   }
 
-  function folderActions(folder: Folder) {
-    return (
-      <>
-        <button type="button" onClick={() => void rename(folderItem(folder))}>Rename</button>
-        <button type="button" onClick={() => void openMover([folderItem(folder)])}>Move</button>
-        <button type="button" onClick={() => void remove([folderItem(folder)])}>Delete</button>
-      </>
-    );
+  function sendSelectionFor(items: Item[]) {
+    return () => {
+      try {
+        sessionStorage.setItem("backstage-transfer-archive-selection", JSON.stringify({
+          objectKeys: items.filter((i) => i.kind === "file").map((i) => i.objectKey),
+          folderPaths: items.filter((i) => i.kind === "folder").map((i) => i.path),
+        }));
+        window.location.assign("/admin/transfers?archive=1");
+      } catch {
+        setMessage("Your browser blocked passing the selection to Transfers.");
+      }
+    };
   }
+
+  const title = mode === "trash" ? "Deleted files" : searchResults ? "Search results" : crumbs.at(-1) || "All files";
 
   return (
     <main className={styles.page}>
-      <header className={styles.topbar}>
-        <div>
-          <p>Steve Gregson</p>
-          <h1>Storage</h1>
-        </div>
-        <form className={styles.search} onSubmit={(event) => { event.preventDefault(); void search(); }}>
-          <span>⌕</span>
-          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search Storage" />
-          {query ? <button type="button" onClick={() => { setQuery(""); setSearchResults(null); }}>×</button> : null}
-        </form>
-        <div className={styles.topActions}>
-          <div className={styles.uploadWrap}>
-            <button type="button" className={styles.primary} disabled={busy} onClick={() => setUploadOpen((open) => !open)}>
-              ↑ Upload <span>⌄</span>
+      <div className={styles.shell}>
+        <aside className={styles.sidebar}>
+          <div className={styles.newWrap} onClick={(event) => event.stopPropagation()}>
+            <button type="button" className={styles.newButton} disabled={busy} onClick={() => setNewOpen((open) => !open)}>
+              <span aria-hidden="true">+</span> New
             </button>
-            {uploadOpen ? (
-              <div className={styles.uploadMenu}>
-                <button type="button" onClick={() => filesRef.current?.click()}>Files</button>
-                <button type="button" onClick={() => folderRef.current?.click()}>Folder</button>
+            {newOpen ? (
+              <div className={styles.menu + " " + styles.newMenu} role="menu">
+                <button type="button" role="menuitem" onClick={() => { setNewOpen(false); filesRef.current?.click(); }}>Upload files</button>
+                <button type="button" role="menuitem" onClick={() => { setNewOpen(false); folderRef.current?.click(); }}>Upload folder</button>
+                <hr />
+                <button type="button" role="menuitem" onClick={() => { setNewOpen(false); void createFolder(); }}>New folder</button>
               </div>
             ) : null}
           </div>
-          <button type="button" disabled={busy} onClick={() => void createFolder()}>▣ New folder</button>
-        </div>
-        <input
-          ref={filesRef}
-          className={styles.hidden}
-          type="file"
-          multiple
-          onChange={(event) => { void upload(filesFromInput(event.target.files)); event.target.value = ""; }}
-        />
-        <input
-          ref={folderRef}
-          className={styles.hidden}
-          type="file"
-          multiple
-          {...({ webkitdirectory: "", directory: "" } as React.InputHTMLAttributes<HTMLInputElement>)}
-          onChange={(event) => { void upload(filesFromInput(event.target.files)); event.target.value = ""; }}
-        />
-      </header>
 
-      <div className={styles.browser}>
-        <aside className={styles.sidebar}>
-          <button className={mode === "files" ? styles.allFiles : ""} type="button" onClick={() => void load("")}>
-            ▦ <span>All files</span>
-          </button>
-          <div className={styles.tree}>{rootFolders.map((folder) => treeButton(folder, 0))}</div>
-          <button className={(mode === "trash" ? styles.allFiles + " " : "") + styles.trashLink} type="button" onClick={() => void openTrash()}>
-            🗑 <span>Deleted files</span>
-          </button>
+          <nav className={styles.nav} aria-label="Storage">
+            <button type="button" className={styles.navItem + (mode === "files" && !listing.path && !searchResults ? " " + styles.navActive : "")} onClick={() => void load("")}>
+              <FilesIcon /> <span>All files</span>
+            </button>
+            <div className={styles.tree}>{rootFolders.map((folder) => treeButton(folder, 0))}</div>
+            <div className={styles.navRule} />
+            <button type="button" className={styles.navItem + (mode === "trash" ? " " + styles.navActive : "")} onClick={() => void openTrash()}>
+              <TrashIcon /> <span>Deleted files</span>
+            </button>
+            <Link className={styles.navItem} href="/admin/storage/mac">
+              <LaptopIcon /> <span>Mac app</span>
+            </Link>
+          </nav>
         </aside>
 
         <section
-          className={styles.content + " " + styles.dropZone + (dragging ? " " + styles.dropActive : "")}
+          className={styles.main + " " + styles.dropZone + (dragging ? " " + styles.dropActive : "")}
           data-drop-label={"Drop to upload to " + (crumbs.at(-1) || "All files")}
           aria-busy={busy}
           {...dropProps}
         >
+          <div className={styles.toolbar}>
+            <form className={styles.search} onSubmit={(event) => { event.preventDefault(); void search(); }}>
+              <SearchIcon />
+              <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search" aria-label="Search Storage" />
+              {query ? <button type="button" aria-label="Clear search" onClick={() => { setQuery(""); setSearchResults(null); }}>×</button> : null}
+            </form>
+          </div>
+
+          <div className={styles.titleRow}>
+            <div className={styles.titleBlock}>
+              {mode === "files" && crumbs.length > 0 && !searchResults ? (
+                <nav className={styles.breadcrumbs} aria-label="Folder path">
+                  <button type="button" onClick={() => void load("")}>All files</button>
+                  {crumbs.slice(0, -1).map((crumb, index) => {
+                    const path = crumbs.slice(0, index + 1).join("/");
+                    return (
+                      <span key={path}>
+                        <span className={styles.crumbSep}>/</span>
+                        <button type="button" onClick={() => void load(path)}>{crumb}</button>
+                      </span>
+                    );
+                  })}
+                </nav>
+              ) : null}
+              <h1>{searchResults ? "Results for “" + query + "”" : title}</h1>
+            </div>
+            {mode === "files" ? (
+              <div className={styles.titleActions}>
+                <div className={styles.menuWrap} onClick={(event) => event.stopPropagation()}>
+                  <button type="button" className={styles.softButton} disabled={busy} onClick={() => setUploadOpen((open) => !open)}>
+                    ↑ Upload <span aria-hidden="true">▾</span>
+                  </button>
+                  {uploadOpen ? (
+                    <div className={styles.menu} role="menu">
+                      <button type="button" role="menuitem" onClick={() => { setUploadOpen(false); filesRef.current?.click(); }}>Files</button>
+                      <button type="button" role="menuitem" onClick={() => { setUploadOpen(false); folderRef.current?.click(); }}>Folder</button>
+                    </div>
+                  ) : null}
+                </div>
+                <button type="button" className={styles.softButton} disabled={busy} onClick={() => void createFolder()}>＋ New folder</button>
+              </div>
+            ) : null}
+          </div>
+
+          {mode === "files" ? (
+            <div className={styles.subbar}>
+              {selected.length > 0 ? (
+                <div className={styles.selectionBar}>
+                  <strong>{selected.length} selected</strong>
+                  <button type="button" disabled={busy} onClick={sendSelection}>Send as transfer</button>
+                  <button type="button" disabled={busy} onClick={() => void openMover(selected)}>Move</button>
+                  <button type="button" disabled={busy} onClick={() => void remove(selected)}>Delete</button>
+                  <button type="button" className={styles.clearSelection} onClick={() => setSelected([])}>Clear</button>
+                </div>
+              ) : (
+                <span className={styles.countNote}>
+                  {folders.length ? folders.length + (folders.length === 1 ? " folder" : " folders") : ""}
+                  {folders.length && files.length ? " · " : ""}
+                  {files.length ? files.length + (files.length === 1 ? " file" : " files") : ""}
+                </span>
+              )}
+              <div className={styles.viewToggle} role="group" aria-label="View">
+                <button className={view === "list" ? styles.viewActive : ""} type="button" onClick={() => setView("list")} title="List" aria-label="List view"><ListIcon /></button>
+                <button className={view === "grid" ? styles.viewActive : ""} type="button" onClick={() => setView("grid")} title="Thumbnails" aria-label="Thumbnail view"><GridIcon /></button>
+              </div>
+            </div>
+          ) : null}
+
+          {message ? (
+            <div className={styles.toast} aria-live="polite">
+              <span>{message}</span>
+              <button type="button" aria-label="Dismiss" onClick={() => setMessage("")}>×</button>
+            </div>
+          ) : null}
+
           {mode === "trash" ? (
             <>
-              <div className={styles.folderHead}>
-                <div>
-                  <p>Storage</p>
-                  <h2>Deleted files</h2>
-                </div>
-              </div>
               <p className={styles.trashNote}>Deleted items are kept for 30 days, then removed for good.</p>
-              {message ? <p className={styles.message} aria-live="polite">{message}</p> : null}
-              <div className={styles.list}>
-                <div className={styles.trashHead}>
-                  <strong>Name</strong><strong>From</strong><strong>Deleted</strong><strong>Size</strong><span />
+              <div className={styles.table}>
+                <div className={styles.headRow + " " + styles.trashCols}>
+                  <span>Name</span><span>Was in</span><span>Deleted</span><span>Size</span><span />
                 </div>
                 {trash.map((entry) => (
-                  <div className={styles.trashRow} key={entry.id}>
-                    <strong>{entry.kind === "folder" ? "📁 " : ""}{entry.name}{entry.kind === "folder" ? " (" + entry.itemCount + " files)" : ""}</strong>
-                    <span>{entry.originalParent || "All files"}</span>
-                    <span>{modified(entry.deletedAt)}</span>
-                    <span>{bytes(entry.sizeBytes)}</span>
-                    <div className={styles.rowActions}>
-                      <button type="button" disabled={busy} onClick={() => void restore(entry)}>Restore</button>
-                      <button type="button" disabled={busy} onClick={() => void deleteForever(entry)}>Delete forever</button>
-                    </div>
+                  <div className={styles.row + " " + styles.trashCols} key={entry.id}>
+                    <span className={styles.nameCell}>
+                      {entry.kind === "folder" ? <FolderIcon /> : <FileIcon name={entry.name} />}
+                      <span className={styles.nameText}>
+                        <strong>{entry.name}</strong>
+                        {entry.kind === "folder" ? <small>{entry.itemCount} {entry.itemCount === 1 ? "file" : "files"}</small> : null}
+                      </span>
+                    </span>
+                    <span className={styles.muted}>{entry.originalParent || "All files"}</span>
+                    <span className={styles.muted}>{modified(entry.deletedAt)}</span>
+                    <span className={styles.muted}>{bytes(entry.sizeBytes)}</span>
+                    <span className={styles.rowButtons}>
+                      <button type="button" className={styles.textButton} disabled={busy} onClick={() => void restore(entry)}>Restore</button>
+                      <button type="button" className={styles.textButton + " " + styles.danger} disabled={busy} onClick={() => void deleteForever(entry)}>Delete forever</button>
+                    </span>
                   </div>
                 ))}
               </div>
               {!busy && !trash.length ? <p className={styles.empty}>Nothing has been deleted.</p> : null}
             </>
-          ) : (
-            <>
-              <div className={styles.breadcrumbs}>
-                <button type="button" onClick={() => void load("")}>All files</button>
-                {crumbs.map((crumb, index) => {
-                  const path = crumbs.slice(0, index + 1).join("/");
-                  return (
-                    <span key={path}>
-                      {" / "}
-                      <button type="button" onClick={() => void load(path)}>{crumb}</button>
+          ) : view === "list" ? (
+            <div className={styles.table}>
+              <div className={styles.headRow + " " + styles.listCols}>
+                <span className={styles.checkCell}>
+                  <input type="checkbox" aria-label="Select all" checked={allSelected} onChange={toggleAll} />
+                </span>
+                <button type="button" className={styles.sortButton} onClick={() => sortBy("name")}>Name {sortMark("name")}</button>
+                <button type="button" className={styles.sortButton} onClick={() => sortBy("modified")}>Last modified {sortMark("modified")}</button>
+                <button type="button" className={styles.sortButton} onClick={() => sortBy("size")}>Size {sortMark("size")}</button>
+                <span />
+              </div>
+              {folders.map((folder) => {
+                const checked = isSelected(folder.path);
+                return (
+                  <div
+                    className={styles.row + " " + styles.listCols + (checked ? " " + styles.rowSelected : "")}
+                    key={folder.path}
+                    onDoubleClick={() => void load(folder.path)}
+                  >
+                    <span className={styles.checkCell}>
+                      <input aria-label={"Select " + folder.name} type="checkbox" checked={checked} onChange={() => toggle(folderItem(folder))} />
                     </span>
-                  );
-                })}
-              </div>
-
-              <div className={styles.folderHead}>
-                <div>
-                  <p>{searchResults ? "Search results" : crumbs.length ? "All files" : "Storage"}</p>
-                  <h2>{searchResults ? "“" + query + "”" : crumbs.at(-1) || "All files"}</h2>
-                </div>
-                <div className={styles.viewToggle} aria-label="View">
-                  <button className={view === "grid" ? styles.active : ""} type="button" onClick={() => setView("grid")} title="Thumbnail view" aria-label="Thumbnail view">▦</button>
-                  <button className={view === "list" ? styles.active : ""} type="button" onClick={() => setView("list")} title="List view" aria-label="List view">☷</button>
-                </div>
-              </div>
-
-              {selected.length > 0 ? (
-                <div className={styles.selectionBar}>
-                  <strong>{selected.length} selected</strong>
-                  <button type="button" disabled={busy} onClick={sendSelection}>Send transfer</button>
-                  <button type="button" disabled={busy} onClick={() => void openMover(selected)}>Move</button>
-                  <button type="button" disabled={busy} onClick={() => void remove(selected)}>Delete</button>
-                  <button type="button" onClick={() => setSelected([])}>Clear selection</button>
-                </div>
-              ) : null}
-
-              {message ? <p className={styles.message} aria-live="polite">{message}</p> : null}
-
-              {view === "list" ? (
-                <div className={styles.list}>
-                  <div className={styles.listHead}>
-                    <span /><strong>Name</strong><strong>Last modified</strong><strong>Size</strong><span />
-                  </div>
-                  {shown.folders.map((folder) => (
-                    <div className={styles.listRow} key={folder.path}>
-                      <input aria-label={"Select " + folder.name} type="checkbox" checked={isSelected(folder.path)} onChange={() => toggle(folderItem(folder))} />
-                      <button className={styles.nameButton} type="button" onClick={() => void load(folder.path)}>
-                        📁 <strong>{folder.name}</strong>
-                        {searchResults && parentOf(folder.path) ? <small className={styles.inFolder}> in {parentOf(folder.path)}</small> : null}
-                      </button>
-                      <span>—</span>
-                      <span>—</span>
-                      <div className={styles.rowActions}>{folderActions(folder)}</div>
-                    </div>
-                  ))}
-                  {shown.files.map((file) => (
-                    <div className={styles.listRow} key={file.objectKey}>
-                      <input aria-label={"Select " + file.name} type="checkbox" checked={isSelected(file.path)} onChange={() => toggle(fileItem(file))} />
-                      <div className={styles.fileName}>
-                        {file.isImage && file.viewUrl ? (
-                          <button type="button" className={styles.thumbButton} onClick={() => openPreview(file)} aria-label={"Preview " + file.name}>
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={file.viewUrl} alt="" loading="lazy" />
-                          </button>
-                        ) : (
-                          <span className={styles.fileIcon}>FILE</span>
-                        )}
-                        <strong>{file.name}</strong>
-                        {searchResults && parentOf(file.path) ? <small className={styles.inFolder}>in {parentOf(file.path)}</small> : null}
-                      </div>
-                      <span>{modified(file.lastModified)}</span>
-                      <span>{bytes(file.sizeBytes)}</span>
-                      <div className={styles.rowActions}>{fileActions(file)}</div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className={styles.grid}>
-                  {shown.folders.map((folder) => (
-                    <article className={styles.folderCard} key={folder.path}>
-                      <label>
-                        <input type="checkbox" checked={isSelected(folder.path)} onChange={() => toggle(folderItem(folder))} /> Select
-                      </label>
-                      <button type="button" onClick={() => void load(folder.path)}>
-                        <span>📁</span>
+                    <button className={styles.nameCell} type="button" onClick={() => void load(folder.path)}>
+                      <FolderIcon />
+                      <span className={styles.nameText}>
                         <strong>{folder.name}</strong>
-                        <small>{searchResults && parentOf(folder.path) ? "in " + parentOf(folder.path) : "Folder"}</small>
-                      </button>
-                      <div className={styles.cardActions}>{folderActions(folder)}</div>
-                    </article>
-                  ))}
-                  {shown.files.map((file) => (
-                    <article className={styles.fileCard} key={file.objectKey}>
-                      <label>
-                        <input type="checkbox" checked={isSelected(file.path)} onChange={() => toggle(fileItem(file))} /> Select
-                      </label>
-                      <div className={styles.thumb}>
+                        {searchResults && parentOf(folder.path) ? <small>in {parentOf(folder.path)}</small> : null}
+                      </span>
+                    </button>
+                    <span className={styles.muted}>—</span>
+                    <span className={styles.muted}>—</span>
+                    <span className={styles.rowButtons}>{itemMenu(folderItem(folder))}</span>
+                  </div>
+                );
+              })}
+              {files.map((file) => {
+                const checked = isSelected(file.path);
+                return (
+                  <div className={styles.row + " " + styles.listCols + (checked ? " " + styles.rowSelected : "")} key={file.objectKey}>
+                    <span className={styles.checkCell}>
+                      <input aria-label={"Select " + file.name} type="checkbox" checked={checked} onChange={() => toggle(fileItem(file))} />
+                    </span>
+                    <button
+                      className={styles.nameCell}
+                      type="button"
+                      onClick={() => (file.isImage && file.viewUrl ? openPreview(file) : toggle(fileItem(file)))}
+                      title={file.name}
+                    >
+                      {file.isImage && file.viewUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img className={styles.rowThumb} src={file.viewUrl} alt="" loading="lazy" />
+                      ) : (
+                        <FileIcon name={file.name} />
+                      )}
+                      <span className={styles.nameText}>
+                        <strong>{file.name}</strong>
+                        {searchResults && parentOf(file.path) ? <small>in {parentOf(file.path)}</small> : null}
+                      </span>
+                    </button>
+                    <span className={styles.muted}>{modified(file.lastModified)}</span>
+                    <span className={styles.muted}>{bytes(file.sizeBytes)}</span>
+                    <span className={styles.rowButtons}>
+                      <button type="button" className={styles.hoverButton} onClick={() => void download(file)}>Download</button>
+                      {itemMenu(fileItem(file), file)}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className={styles.grid}>
+              {folders.map((folder) => {
+                const checked = isSelected(folder.path);
+                return (
+                  <article className={styles.tile + (checked ? " " + styles.tileSelected : "")} key={folder.path}>
+                    <input className={styles.tileCheck} type="checkbox" aria-label={"Select " + folder.name} checked={checked} onChange={() => toggle(folderItem(folder))} />
+                    <div className={styles.tileMenu}>{itemMenu(folderItem(folder))}</div>
+                    <button type="button" className={styles.tileBody} onClick={() => void load(folder.path)}>
+                      <span className={styles.tileArt}><FolderIcon size={88} /></span>
+                      <strong>{folder.name}</strong>
+                      <small>{searchResults && parentOf(folder.path) ? "in " + parentOf(folder.path) : "Folder"}</small>
+                    </button>
+                  </article>
+                );
+              })}
+              {files.map((file) => {
+                const checked = isSelected(file.path);
+                return (
+                  <article className={styles.tile + (checked ? " " + styles.tileSelected : "")} key={file.objectKey}>
+                    <input className={styles.tileCheck} type="checkbox" aria-label={"Select " + file.name} checked={checked} onChange={() => toggle(fileItem(file))} />
+                    <div className={styles.tileMenu}>{itemMenu(fileItem(file), file)}</div>
+                    <button
+                      type="button"
+                      className={styles.tileBody}
+                      onClick={() => (file.isImage && file.viewUrl ? openPreview(file) : void download(file))}
+                      title={file.name}
+                    >
+                      <span className={styles.tileArt + (file.isImage && file.viewUrl ? " " + styles.tilePhoto : "")}>
                         {file.isImage && file.viewUrl ? (
-                          <button type="button" className={styles.thumbButton} onClick={() => openPreview(file)} aria-label={"Preview " + file.name}>
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={file.viewUrl} alt="" loading="lazy" />
-                          </button>
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={file.viewUrl} alt="" loading="lazy" />
                         ) : (
-                          <span>FILE</span>
+                          <FileIcon name={file.name} size={72} />
                         )}
-                      </div>
-                      <div className={styles.cardMeta}>
-                        <strong title={file.name}>{file.name}</strong>
-                        <span>{bytes(file.sizeBytes)} · {modified(file.lastModified)}</span>
-                      </div>
-                      <div className={styles.cardActions}>{fileActions(file)}</div>
-                    </article>
-                  ))}
-                </div>
-              )}
-
-              {!searchResults && listing.nextCursor ? (
-                <div className={styles.loadMore}>
-                  <button type="button" disabled={busy} onClick={() => void loadMore()}>Load more</button>
-                </div>
-              ) : null}
-
-              {!busy && !shown.folders.length && !shown.files.length ? (
-                <p className={styles.empty}>
-                  {searchResults ? "No matching files or folders." : "This folder is empty. Drag files or folders here to upload them."}
-                </p>
-              ) : null}
-            </>
+                      </span>
+                      <strong>{file.name}</strong>
+                      <small>{bytes(file.sizeBytes)} · {modified(file.lastModified)}</small>
+                    </button>
+                  </article>
+                );
+              })}
+            </div>
           )}
+
+          {mode === "files" && !searchResults && listing.nextCursor ? (
+            <div className={styles.loadMore}>
+              <button type="button" className={styles.softButton} disabled={busy} onClick={() => void loadMore()}>Load more</button>
+            </div>
+          ) : null}
+
+          {mode === "files" && !busy && !folders.length && !files.length ? (
+            <div className={styles.emptyState}>
+              <FolderIcon size={96} />
+              <h2>{searchResults ? "No matches" : "This folder is empty"}</h2>
+              <p>{searchResults ? "Try a different word or part of the file name." : "Drag files or folders here, or use Upload."}</p>
+            </div>
+          ) : null}
+
+          <input
+            ref={filesRef}
+            className={styles.hidden}
+            type="file"
+            multiple
+            onChange={(event) => { void upload(filesFromInput(event.target.files)); event.target.value = ""; }}
+          />
+          <input
+            ref={folderRef}
+            className={styles.hidden}
+            type="file"
+            multiple
+            {...({ webkitdirectory: "", directory: "" } as React.InputHTMLAttributes<HTMLInputElement>)}
+            onChange={(event) => { void upload(filesFromInput(event.target.files)); event.target.value = ""; }}
+          />
         </section>
       </div>
 
@@ -717,14 +873,14 @@ export default function StorageBrowser() {
                 const blocked = mover.items.some((item) => item.kind === "folder" && (folder.path === item.path || folder.path.startsWith(item.path + "/")));
                 return (
                   <button type="button" key={folder.path} disabled={blocked || mover.loading} onClick={() => void browseMover(folder.path)}>
-                    📁 {folder.name}
+                    <FolderIcon size={24} /> {folder.name}
                   </button>
                 );
               })}
             </div>
             <div className={styles.modalActions}>
-              <button type="button" onClick={() => setMover(null)}>Cancel</button>
-              <button type="button" className={styles.primary} disabled={mover.loading} onClick={() => void moveHere()}>
+              <button type="button" className={styles.softButton} onClick={() => setMover(null)}>Cancel</button>
+              <button type="button" className={styles.primaryButton} disabled={mover.loading} onClick={() => void moveHere()}>
                 Move to {mover.path.split("/").at(-1) || "All files"}
               </button>
             </div>

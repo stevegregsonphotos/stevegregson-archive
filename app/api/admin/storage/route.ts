@@ -22,6 +22,7 @@ import {
 } from "@/lib/client-archive/operations";
 import { listTrashEntries } from "@/lib/client-archive/trash-repository";
 import { findLiveTransfersUsingArchive } from "@/lib/transfers/repository";
+import { createMacDevice, listMacDevices, listRecentMacUploads, revokeMacDevice } from "@/lib/mac/repository";
 
 function unauthorized() {
   return NextResponse.json({ ok: false, message: "Unauthorized." }, { status: 401 });
@@ -133,6 +134,21 @@ async function handlePost(request: Request) {
   }
 
   try {
+    if (action === "mac-overview") {
+      const [devices, recent] = await Promise.all([listMacDevices(), listRecentMacUploads()]);
+      return NextResponse.json({ ok: true, devices, recent });
+    }
+    if (action === "mac-connect") {
+      const { token } = await createMacDevice();
+      // Installs against whichever address Steve is using (the live site once it's live).
+      const origin = process.env.VERCEL_ENV === "production" ? "https://www.stevegregson.com" : new URL(request.url).origin;
+      const command = "curl -fsSL " + origin + "/mac/install.sh | bash -s -- " + token + " " + origin;
+      return NextResponse.json({ ok: true, command });
+    }
+    if (action === "mac-disconnect") {
+      await revokeMacDevice(text(body.id));
+      return NextResponse.json({ ok: true });
+    }
     if (action === "check-in-use") {
       const items = (Array.isArray(body.items) ? body.items : []) as StorageItem[];
       const keys = items.filter((i) => i?.kind === "file").map((i) => archiveKeyFor(String(i.path)));

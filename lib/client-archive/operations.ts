@@ -10,6 +10,7 @@ import {
   moveArchiveObject,
 } from "./storage";
 import { addTrashEntry, getTrashEntry, removeTrashEntry } from "./trash-repository";
+import { updateMacUploadPaths } from "@/lib/mac/repository";
 import {
   removeArchiveFilesFromTransfers,
   updateArchiveObjectKeys,
@@ -183,6 +184,8 @@ export async function applyPairs(rawPairs: unknown) {
   await Promise.all(Array.from({ length: Math.min(5, pairs.length) }, worker));
 
   await updateArchiveObjectKeys(pairs.map((pair) => ({ from: archiveKeyFor(pair.from), to: archiveKeyFor(pair.to) })));
+  // The Mac app looks files up by path before freeing space, so keep it in step.
+  await updateMacUploadPaths(pairs);
   return pairs.length;
 }
 
