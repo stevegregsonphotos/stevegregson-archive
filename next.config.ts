@@ -102,6 +102,14 @@ const nextConfig: NextConfig = {
         destination: "/transfer/:token",
         permanent: false,
       },
+      // storage.stevegregson.com: a short address for Storage in Backstage
+      // (still behind the Backstage login on www).
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "storage.stevegregson.com" }],
+        destination: "https://www.stevegregson.com/admin/storage",
+        permanent: false,
+      },
       // Early transfer links used /files/<code>; keep them working.
       {
         source: "/files/:token",
