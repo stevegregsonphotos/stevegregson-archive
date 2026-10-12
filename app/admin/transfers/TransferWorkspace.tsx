@@ -63,6 +63,8 @@ export default function TransferWorkspace({ initialTransfers }: { initialTransfe
   const [search, setSearch] = useState("");
   const [sending, setSending] = useState(false);
   const [progress, setProgress] = useState("");
+  // While sending, the gold Transfer button fills up and shows the status.
+  const [percent, setPercent] = useState<number | null>(null);
   const [resultUrl, setResultUrl] = useState("");
   // Queue positions of photos picked as client-page backgrounds (in pick order).
   const [backgroundPicks, setBackgroundPicks] = useState<number[]>([]);
@@ -151,7 +153,10 @@ export default function TransferWorkspace({ initialTransfers }: { initialTransfe
       }
 
       if (queue.length) {
-        const uploadedIds = await uploadFilesToTransfer(transferId, queue, (p) => setProgress(describeProgress(p)));
+        const uploadedIds = await uploadFilesToTransfer(transferId, queue, (p) => {
+          setPercent(p.totalBytes ? Math.floor((p.sentBytes / p.totalBytes) * 100) : 0);
+          setProgress(describeProgress(p));
+        });
         const picks = backgroundPicks.filter((index) => uploadedIds[index]);
         if (picks.length) {
           await postTransferAction({ action: "set-backgrounds", transferId, fileIds: picks.map((index) => uploadedIds[index]) });
@@ -187,6 +192,7 @@ export default function TransferWorkspace({ initialTransfers }: { initialTransfe
     } finally {
       stopWarning();
       setSending(false);
+      setPercent(null);
     }
   }
 
@@ -274,11 +280,20 @@ export default function TransferWorkspace({ initialTransfers }: { initialTransfe
           <label><span>Password</span><input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Optional" /></label>
         </div>
 
-        <button className={styles.transferButton} type="button" disabled={sending || (!queue.length && !archiveSelection.objectKeys.length && !archiveSelection.folderPaths.length) || !recipient.trim() || !title.trim()} onClick={send}>
-          {sending ? "Transferring…" : "Transfer"}
-        </button>
-        {progress && <p className={styles.progress} aria-live="polite">{progress}</p>}
-        {resultUrl && <div className={styles.result}><input readOnly value={resultUrl} /><button type="button" onClick={() => navigator.clipboard.writeText(resultUrl).catch(() => {})}>Copy link</button><a className={styles.resultOpen} href={resultUrl} target="_blank" rel="noopener">Open ↗</a></div>}
+        <div className={styles.transferDock}>
+          <button
+            className={styles.transferButton + (sending ? " " + styles.transferSending : "")}
+            type="button"
+            style={sending && percent !== null ? ({ "--fill": percent + "%" } as React.CSSProperties) : undefined}
+            disabled={sending || (!queue.length && !archiveSelection.objectKeys.length && !archiveSelection.folderPaths.length) || !recipient.trim() || !title.trim()}
+            onClick={send}
+            aria-live="polite"
+          >
+            {sending ? <span>{progress || "Transferring…"}</span> : "Transfer"}
+          </button>
+          {progress && !sending && <p className={styles.progress} aria-live="polite">{progress}</p>}
+          {resultUrl && <div className={styles.result}><input readOnly value={resultUrl} /><button type="button" onClick={() => navigator.clipboard.writeText(resultUrl).catch(() => {})}>Copy link</button><a className={styles.resultOpen} href={resultUrl} target="_blank" rel="noopener">Open ↗</a></div>}
+        </div>
       </section>
 
       <section className={styles.history}>
