@@ -50,7 +50,7 @@ case "$TOKEN" in
 esac
 
 echo
-say "Setting up $APP_NAME…"
+say "Setting up ${APP_NAME}…"
 echo
 
 mkdir -p "$SUPPORT" "$ROOT" "$HOME/Library/LaunchAgents" "$HOME/Applications" "$HOME/Library/Logs"
