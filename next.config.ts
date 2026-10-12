@@ -109,6 +109,13 @@ const nextConfig: NextConfig = {
         destination: "/transfer/:token",
         permanent: false,
       },
+      // Folders shared with clients from Storage.
+      {
+        source: "/shared/:token([A-Za-z0-9_-]{20,64})",
+        has: [{ type: "host", value: "transfers.stevegregson.com" }],
+        destination: "/transfer/shared/:token",
+        permanent: false,
+      },
       // storage.stevegregson.com: a short address for Storage in Backstage
       // (still behind the Backstage login on www).
       {

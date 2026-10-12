@@ -13,6 +13,8 @@ import {
 } from "@/lib/transfers/upload-client";
 import { useFileDrop } from "@/lib/transfers/use-file-drop";
 import Link from "next/link";
+import ShareDialog from "./ShareDialog";
+import { shareApi, type AdminShare } from "./share-api";
 import {
   ChevronIcon,
   FileIcon,
@@ -22,6 +24,7 @@ import {
   LaptopIcon,
   ListIcon,
   MoreIcon,
+  PeopleIcon,
   SearchIcon,
   TrashIcon,
 } from "./StorageIcons";
@@ -133,6 +136,8 @@ export default function StorageBrowser() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [preview, setPreview] = useState<number | null>(null);
   const [mover, setMover] = useState<{ items: Item[]; path: string; folders: Folder[]; loading: boolean } | null>(null);
+  const [shareFor, setShareFor] = useState<{ path: string; name: string } | null>(null);
+  const [sharedPaths, setSharedPaths] = useState<Set<string>>(new Set());
   const filesRef = useRef<HTMLInputElement | null>(null);
   const folderRef = useRef<HTMLInputElement | null>(null);
 
@@ -178,11 +183,20 @@ export default function StorageBrowser() {
     }
   }, [refreshTree]);
 
+  const loadShared = useCallback(async () => {
+    try {
+      const data = await shareApi<{ shares: AdminShare[] }>({ action: "share-list" });
+      setSharedPaths(new Set(data.shares.map((share) => share.path)));
+    } catch {
+      // The "Shared" labels are a nicety; Storage works without them.
+    }
+  }, []);
+
   // Load the top folder once the page is in the browser.
   useEffect(() => {
-    const timer = window.setTimeout(() => void load(""), 0);
+    const timer = window.setTimeout(() => { void load(""); void loadShared(); }, 0);
     return () => window.clearTimeout(timer);
-  }, [load]);
+  }, [load, loadShared]);
 
   async function loadMore() {
     if (!listing.nextCursor) return;
@@ -516,6 +530,7 @@ export default function StorageBrowser() {
           <div className={styles.menu} role="menu">
             {file ? <button type="button" role="menuitem" onClick={() => { setMenuFor(null); void download(file); }}>Download</button> : null}
             {file?.isImage && file.viewUrl ? <button type="button" role="menuitem" onClick={() => { setMenuFor(null); openPreview(file); }}>Preview</button> : null}
+            {item.kind === "folder" ? <button type="button" role="menuitem" onClick={() => { setMenuFor(null); setShareFor({ path: item.path, name: item.name }); }}>Share with client…</button> : null}
             <button type="button" role="menuitem" onClick={() => { setMenuFor(null); setSelected([item]); window.setTimeout(sendSelectionFor([item]), 0); }}>Send as transfer</button>
             <hr />
             <button type="button" role="menuitem" onClick={() => { setMenuFor(null); void rename(item); }}>Rename</button>
@@ -527,6 +542,8 @@ export default function StorageBrowser() {
       </div>
     );
   }
+
+  const closeShare = useCallback(() => setShareFor(null), []);
 
   function sendSelectionFor(items: Item[]) {
     return () => {
@@ -571,6 +588,9 @@ export default function StorageBrowser() {
             <button type="button" className={styles.navItem + (mode === "trash" ? " " + styles.navActive : "")} onClick={() => void openTrash()}>
               <TrashIcon /> <span>Deleted files</span>
             </button>
+            <Link className={styles.navItem} href="/admin/storage/shared">
+              <PeopleIcon /> <span>Shared with clients</span>
+            </Link>
             <Link className={styles.navItem} href="/admin/storage/mac">
               <LaptopIcon /> <span>Mac app</span>
             </Link>
@@ -711,7 +731,7 @@ export default function StorageBrowser() {
                     <button className={styles.nameCell} type="button" onClick={() => void load(folder.path)}>
                       <FolderIcon />
                       <span className={styles.nameText}>
-                        <strong>{folder.name}</strong>
+                        <strong>{folder.name}{sharedPaths.has(folder.path) ? <span className={styles.sharedTag}>Shared</span> : null}</strong>
                         {searchResults && parentOf(folder.path) ? <small>in {parentOf(folder.path)}</small> : null}
                       </span>
                     </button>
@@ -766,7 +786,7 @@ export default function StorageBrowser() {
                     <button type="button" className={styles.tileBody} onClick={() => void load(folder.path)}>
                       <span className={styles.tileArt}><FolderIcon size={88} /></span>
                       <strong>{folder.name}</strong>
-                      <small>{searchResults && parentOf(folder.path) ? "in " + parentOf(folder.path) : "Folder"}</small>
+                      <small>{sharedPaths.has(folder.path) ? "Shared folder" : searchResults && parentOf(folder.path) ? "in " + parentOf(folder.path) : "Folder"}</small>
                     </button>
                   </article>
                 );
@@ -851,6 +871,10 @@ export default function StorageBrowser() {
               onClick={(event) => { event.stopPropagation(); setPreview((i) => (i === null ? i : (i + 1) % images.length)); }}>›</button>
           ) : null}
         </div>
+      ) : null}
+
+      {shareFor ? (
+        <ShareDialog path={shareFor.path} name={shareFor.name} onClose={closeShare} onShared={() => void loadShared()} />
       ) : null}
 
       {mover ? (

@@ -27,6 +27,48 @@ fail() { printf '\n  \342\234\227 %s\n\n' "$*" >&2; exit 1; }
 
 [ "$(uname)" = "Darwin" ] || fail "This installer is for a Mac."
 
+# ---- Icons ------------------------------------------------------------------
+# Puts the Steve Gregson icon on the Dock app and the folder. Newer versions of
+# macOS take an app's icon from Assets.car (the plain script icon), so that is
+# removed first, otherwise the custom icon is ignored.
+apply_icons() {
+  ICONS="$SUPPORT/icons"
+  rm -rf "$ICONS"; mkdir -p "$ICONS"
+  if [ -d "$APP" ] && curl -fsSL --max-time 60 "$SERVER/mac/icon.png" -o "$ICONS/app.png" 2>/dev/null; then
+    SET="$ICONS/app.iconset"; mkdir -p "$SET"
+    for size in 16 32 128 256 512; do
+      sips -z $size $size "$ICONS/app.png" --out "$SET/icon_${size}x${size}.png" >/dev/null 2>&1 || true
+      sips -z $((size * 2)) $((size * 2)) "$ICONS/app.png" --out "$SET/icon_${size}x${size}@2x.png" >/dev/null 2>&1 || true
+    done
+    iconutil -c icns "$SET" -o "$APP/Contents/Resources/applet.icns" >/dev/null 2>&1 || true
+    rm -f "$APP/Contents/Resources/Assets.car"
+    plutil -remove CFBundleIconName "$APP/Contents/Info.plist" >/dev/null 2>&1 || true
+    plutil -replace CFBundleIconFile -string applet "$APP/Contents/Info.plist" >/dev/null 2>&1 || true
+    # The app must stay validly signed after its icon changes (free, local signature).
+    codesign --force --deep --sign - "$APP" >/dev/null 2>&1 || true
+    touch "$APP"
+    /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$APP" >/dev/null 2>&1 || true
+  fi
+  if curl -fsSL --max-time 60 "$SERVER/mac/folder-icon.png" -o "$ICONS/folder.png" 2>/dev/null; then
+    osascript -l JavaScript >/dev/null 2>&1 <<JXA || true
+ObjC.import('AppKit');
+var image = \$.NSImage.alloc.initWithContentsOfFile('$ICONS/folder.png');
+\$.NSWorkspace.sharedWorkspace.setIconForFileOptions(image, '$ROOT', 0);
+JXA
+  fi
+}
+
+# Adds the folder to Finder's sidebar (Favourites) once. Best effort: if this
+# version of macOS doesn't allow it, the folder can be dragged there instead.
+add_to_sidebar() {
+  [ -f "$SUPPORT/.sidebar" ] && return 0
+  if command -v sfltool >/dev/null 2>&1 \
+    && sfltool add-item com.apple.LSSharedFileList.FavoriteItems "file://$(printf '%s' "$ROOT" | sed 's/ /%20/g')/" >/dev/null 2>&1; then
+    touch "$SUPPORT/.sidebar"
+  fi
+  return 0
+}
+
 # ---- Uninstall --------------------------------------------------------------
 if [ "${1:-}" = "--uninstall" ]; then
   launchctl bootout "$DOMAIN/$LABEL" >/dev/null 2>&1 || true
@@ -37,6 +79,21 @@ if [ "${1:-}" = "--uninstall" ]; then
   done_ "$APP_NAME has been removed from this Mac."
   say "Your \"$APP_NAME\" folder and everything in it has been left where it is."
   say "If its icon is still in your Dock, drag it off the Dock to remove it."
+  echo
+  exit 0
+fi
+
+# ---- Refresh the icons only (no connection code needed) --------------------
+if [ "${1:-}" = "--icon" ]; then
+  SERVER="${2:-https://www.stevegregson.com}"; SERVER="${SERVER%/}"
+  [ -d "$APP" ] || fail "The Steve Gregson Storage app isn't installed on this Mac yet."
+  mkdir -p "$SUPPORT"
+  apply_icons
+  add_to_sidebar
+  killall Dock >/dev/null 2>&1 || true
+  killall Finder >/dev/null 2>&1 || true
+  echo
+  done_ "Updated the ${APP_NAME} icons"
   echo
   exit 0
 fi
@@ -104,28 +161,8 @@ on run
 end run
 APPLESCRIPT
 
-# Icons for the app and the folder.
-ICONS="$SUPPORT/icons"
-rm -rf "$ICONS"; mkdir -p "$ICONS"
-if curl -fsSL --max-time 60 "$SERVER/mac/icon.png" -o "$ICONS/app.png" 2>/dev/null; then
-  SET="$ICONS/app.iconset"; mkdir -p "$SET"
-  for size in 16 32 128 256 512; do
-    sips -z $size $size "$ICONS/app.png" --out "$SET/icon_${size}x${size}.png" >/dev/null 2>&1 || true
-    sips -z $((size * 2)) $((size * 2)) "$ICONS/app.png" --out "$SET/icon_${size}x${size}@2x.png" >/dev/null 2>&1 || true
-  done
-  iconutil -c icns "$SET" -o "$APP/Contents/Resources/applet.icns" >/dev/null 2>&1 || true
-fi
-# The app must stay validly signed after its icon changes (free, local signature).
-codesign --force --deep --sign - "$APP" >/dev/null 2>&1 || true
-touch "$APP"
-
-if curl -fsSL --max-time 60 "$SERVER/mac/folder-icon.png" -o "$ICONS/folder.png" 2>/dev/null; then
-  osascript -l JavaScript >/dev/null 2>&1 <<JXA || true
-ObjC.import('AppKit');
-var image = \$.NSImage.alloc.initWithContentsOfFile('$ICONS/folder.png');
-\$.NSWorkspace.sharedWorkspace.setIconForFileOptions(image, '$ROOT', 0);
-JXA
-fi
+apply_icons
+add_to_sidebar
 done_ "Created the \"$APP_NAME\" folder in your Home folder"
 
 # Add to the Dock once.
@@ -135,6 +172,7 @@ if ! defaults read com.apple.dock persistent-apps 2>/dev/null | grep -q "$APP_NA
     "<dict><key>tile-data</key><dict><key>file-data</key><dict><key>_CFURLString</key><string>$APP_URL</string><key>_CFURLStringType</key><integer>15</integer></dict></dict></dict>" \
     && killall Dock >/dev/null 2>&1 || true
 fi
+killall Dock >/dev/null 2>&1 || true
 done_ "Added the $APP_NAME icon to your Dock"
 
 # ---- Background uploader ----------------------------------------------------
@@ -166,6 +204,5 @@ echo
 say "All set. Put files in the \"$APP_NAME\" folder or drop them on the Dock icon."
 say "They upload straight away; 7 days later the Mac copy is removed once Storage"
 say "has been checked to hold an exact copy."
-say "Tip: drag the folder into Finder's sidebar to keep it handy."
 echo
 open "$ROOT" >/dev/null 2>&1 || true

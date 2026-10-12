@@ -179,7 +179,7 @@ export default function MacAppClient() {
               <strong>Paste and press Return.</strong>{" "}Your Mac may ask once to allow notifications or to add the icon to your Dock.
             </li>
             <li>
-              <strong>Done.</strong>{" "}The folder is in your Home folder (drag it into Finder&rsquo;s sidebar to keep it handy) and the icon is in your Dock.
+              <strong>Done.</strong>{" "}The folder is in your Home folder and Finder&rsquo;s sidebar, and the icon is in your Dock. (If the folder isn&rsquo;t in the sidebar, drag it into Favourites once.)
             </li>
           </ol>
         ) : null}
@@ -247,6 +247,7 @@ export default function MacAppClient() {
           <li>If you delete or move a file in Storage before the 7 days are up, the Mac keeps its copy rather than risk losing it.</li>
           <li>Single files over 5 GB aren&rsquo;t uploaded yet; you&rsquo;ll get a notification if there is one.</li>
           <li>Your Mac needs to be awake and online to upload. Anything waiting carries on next time.</li>
+          <li>Plain icon in the Dock? Paste <code>curl -fsSL https://www.stevegregson.com/mac/install.sh | bash -s -- --icon</code> into Terminal to refresh it.</li>
           <li>To remove the app, paste <code>curl -fsSL https://www.stevegregson.com/mac/install.sh | bash -s -- --uninstall</code> into Terminal. Your folder and files are left in place.</li>
         </ul>
       </section>

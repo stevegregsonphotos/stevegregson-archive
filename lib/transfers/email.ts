@@ -1,6 +1,7 @@
 import { Resend } from "resend";
 import type { TransferRecord } from "./types";
 import { transferEmail } from "./email-template";
+import { personalLink } from "@/lib/recipient-code";
 
 function config() {
   const apiKey = process.env.RESEND_API_KEY?.trim();
@@ -43,9 +44,9 @@ export async function sendTransferEmails(transfer: TransferRecord, publicUrl: st
   const resend = new Resend(apiKey);
   let sent = 0;
   const failed: string[] = [];
-  const email = transferEmail(transfer, publicUrl);
-
   for (const recipient of transfer.recipients) {
+    // Each person gets their own link, so their downloads show their address.
+    const email = transferEmail(transfer, personalLink(publicUrl, transfer.token, recipient.email));
     const result = await resend.emails.send({
       from: "Steve Gregson Photography <" + from + ">",
       to: recipient.email,
@@ -67,7 +68,7 @@ export async function sendTransferEmails(transfer: TransferRecord, publicUrl: st
 }
 
 /** Tells Steve the first time a client downloads from a transfer. Never throws. */
-export async function sendFirstDownloadNotice(transfer: TransferRecord, adminUrl: string, fileName: string) {
+export async function sendFirstDownloadNotice(transfer: TransferRecord, adminUrl: string, fileName: string, who?: string) {
   if (process.env.VERCEL_ENV !== "production") return;
   try {
     const { apiKey, from, photographerEmail } = config();
@@ -81,6 +82,7 @@ export async function sendFirstDownloadNotice(transfer: TransferRecord, adminUrl
       text: [
         "Your transfer \"" + transfer.title + "\" has been downloaded for the first time.", "",
         "First file: " + fileName,
+        "Downloaded by: " + (who || "someone using the link"),
         "Sent to: " + transfer.recipients.map((r) => r.email).join(", "),
         "When: " + when, "",
         adminUrl,

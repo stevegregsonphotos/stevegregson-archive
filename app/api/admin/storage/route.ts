@@ -24,6 +24,18 @@ import { listTrashEntries } from "@/lib/client-archive/trash-repository";
 import { findLiveTransfersUsingArchive } from "@/lib/transfers/repository";
 import { createMacDevice, listMacDevices, listRecentMacUploads, revokeMacDevice } from "@/lib/mac/repository";
 import { checkStorageCors, fixStorageCors } from "@/lib/storage-cors";
+import { createShare, deleteShare, getShareById, listShareEvents, listShares, updateShare } from "@/lib/shares/repository";
+import { sendShareEmails, shareLink } from "@/lib/shares/email";
+
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+function emailList(value: unknown) {
+  const raw = Array.isArray(value) ? value.map(String) : String(value ?? "").split(/[\s,;]+/);
+  const list = [...new Set(raw.map((item) => item.trim().toLowerCase()).filter(Boolean))];
+  const bad = list.find((item) => !EMAIL.test(item));
+  if (bad) throw new Error("“" + bad + "” doesn't look like an email address.");
+  if (list.length > 20) throw new Error("Add up to 20 email addresses.");
+  return list;
+}
 
 function unauthorized() {
   return NextResponse.json({ ok: false, message: "Unauthorized." }, { status: 401 });
@@ -155,6 +167,53 @@ async function handlePost(request: Request) {
     if (action === "mac-disconnect") {
       await revokeMacDevice(text(body.id));
       return NextResponse.json({ ok: true });
+    }
+    if (action === "share-list") {
+      const shares = await listShares();
+      return NextResponse.json({ ok: true, shares: shares.map((share) => ({ ...share, link: shareLink(share.token, request.url) })) });
+    }
+    if (action === "share-create") {
+      const path = text(body.path).replace(/^\/+|\/+$/g, "");
+      if (!path || path.split("/")[0] === ".trash") throw new Error("Choose a folder to share.");
+      const recipients = emailList(body.emails);
+      const share = await createShare({
+        path,
+        title: text(body.title) || path.split("/").pop() || path,
+        message: text(body.message),
+        recipientEmails: recipients,
+        password: text(body.password),
+      });
+      const link = shareLink(share.token, request.url);
+      const email = body.sendEmail === false || !recipients.length ? null : await sendShareEmails(share, link, recipients);
+      return NextResponse.json({ ok: true, share: { ...share, link }, email });
+    }
+    if (action === "share-update") {
+      const id = text(body.id);
+      const addEmails = body.addEmails === undefined ? [] : emailList(body.addEmails);
+      const share = await updateShare(id, {
+        title: typeof body.title === "string" ? body.title : undefined,
+        message: typeof body.message === "string" ? body.message.trim() : undefined,
+        addEmails,
+        removeEmail: typeof body.removeEmail === "string" ? body.removeEmail : undefined,
+        password: body.password === null ? null : typeof body.password === "string" && body.password.trim() ? body.password : undefined,
+      });
+      const link = shareLink(share.token, request.url);
+      const email = addEmails.length && body.sendEmail !== false ? await sendShareEmails(share, link, addEmails) : null;
+      return NextResponse.json({ ok: true, share: { ...share, link }, email });
+    }
+    if (action === "share-resend") {
+      const share = await getShareById(text(body.id));
+      if (!share) throw new Error("That share no longer exists.");
+      const to = body.email ? emailList([body.email]) : share.recipients;
+      const email = await sendShareEmails(share, shareLink(share.token, request.url), to);
+      return NextResponse.json({ ok: true, email });
+    }
+    if (action === "share-delete") {
+      await deleteShare(text(body.id));
+      return NextResponse.json({ ok: true });
+    }
+    if (action === "share-events") {
+      return NextResponse.json({ ok: true, events: await listShareEvents(text(body.id)) });
     }
     if (action === "check-in-use") {
       const items = (Array.isArray(body.items) ? body.items : []) as StorageItem[];

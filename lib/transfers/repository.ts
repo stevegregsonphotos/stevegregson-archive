@@ -382,7 +382,7 @@ export async function markTransferFilesPurged(id: string) {
 
 /** Records a download and says whether it was the first one for this transfer. */
 export async function recordTransferDownloadAndCheckFirst(input: {
-  transferId: string; fileId?: string; eventType: "file" | "all";
+  transferId: string; fileId?: string; recipientEmail?: string; eventType: "file" | "all";
 }) {
   await recordTransferDownload(input);
   const sql = getSql();

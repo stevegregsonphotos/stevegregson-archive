@@ -8,6 +8,7 @@ import {
 import { createTransferViewUrl } from "@/lib/transfers/storage";
 import { createClientArchiveViewUrl } from "@/lib/client-archive/storage";
 import { sendFirstDownloadNotice } from "@/lib/transfers/email";
+import { recipientFromCode } from "@/lib/recipient-code";
 import { isDeliverable, isTransferPasswordLocked, noteTransferPasswordResult } from "@/lib/transfers/public";
 
 // Links for every file in a transfer, used to build "Download all" as one zip
@@ -60,10 +61,11 @@ export async function POST(request: Request, context: { params: Promise<{ token:
       : await createTransferViewUrl(file.objectKey, LINK_SECONDS),
   })));
 
-  const first = await recordTransferDownloadAndCheckFirst({ transferId: transfer.id, eventType: "all" }).catch(() => false);
+  const who = recipientFromCode(transfer.token, transfer.recipients.map((r) => r.email), body.r);
+  const first = await recordTransferDownloadAndCheckFirst({ transferId: transfer.id, recipientEmail: who, eventType: "all" }).catch(() => false);
   if (first) {
     const adminUrl = (process.env.VERCEL_ENV === "production" ? "https://www.stevegregson.com" : new URL(request.url).origin) + "/admin/transfers/" + transfer.id;
-    after(() => sendFirstDownloadNotice(transfer, adminUrl, "All files (" + files.length + ")"));
+    after(() => sendFirstDownloadNotice(transfer, adminUrl, "All files (" + files.length + ")", who));
   }
 
   return NextResponse.json({ ok: true, name: transfer.title, files: entries });

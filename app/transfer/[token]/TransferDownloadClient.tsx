@@ -45,6 +45,15 @@ function startDownload(url: string) {
   window.setTimeout(() => frame.remove(), 5 * 60 * 1000);
 }
 
+/** The personal code on the end of an emailed link (?r=…), if there is one. */
+function recipientCode() {
+  try {
+    return new URLSearchParams(window.location.search).get("r") || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 const wait = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
 
 const PREPARING = "Preparing your download…";
@@ -166,14 +175,14 @@ export default function TransferDownloadClient({ initial, demo = false }: { init
     }
   }
 
-  async function requestUrl(fileId: string) {
+  async function requestUrl(fileId: string, partOfAll = false) {
     // One automatic retry covers a brief network blip.
     for (let attempt = 1; ; attempt += 1) {
       try {
         const response = await fetch("/api/transfers/" + transfer.token + "/download", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fileId, password }),
+          body: JSON.stringify({ fileId, password, r: recipientCode(), partOfAll }),
         });
         const data = await response.json().catch(() => ({}));
         if (!data.ok || !data.url) throw new Error(data.message || "Download unavailable.");
@@ -205,10 +214,10 @@ export default function TransferDownloadClient({ initial, demo = false }: { init
   }
 
   /** The old way: each file saved separately (used if the zip can't be made). */
-  async function downloadOneByOne() {
+  async function downloadOneByOne(alreadyLogged = true) {
     for (let i = 0; i < transfer.files.length; i += 1) {
       setProgress({ done: i, total: transfer.files.length, name: transfer.files[i].name });
-      startDownload(await requestUrl(transfer.files[i].id));
+      startDownload(await requestUrl(transfer.files[i].id, alreadyLogged));
       await wait(transfer.files.length > 1 ? 900 : 0);
     }
     setProgress({ done: transfer.files.length, total: transfer.files.length, name: "" });
@@ -231,13 +240,13 @@ export default function TransferDownloadClient({ initial, demo = false }: { init
         fetch("/api/transfers/" + transfer.token + "/download-all", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ password }),
+          body: JSON.stringify({ password, r: recipientCode() }),
         }).then((response) => response.json()).catch(() => ({ ok: false })),
       ]);
 
       if (!links.ok) {
         if (links.message) throw new Error(links.message);
-        await downloadOneByOne();
+        await downloadOneByOne(false);
         return;
       }
       const files = links.files as ZipFile[];

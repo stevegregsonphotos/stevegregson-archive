@@ -8,6 +8,7 @@ import {
 import { createTransferDownloadUrl } from "@/lib/transfers/storage";
 import { createClientArchiveDownloadUrl } from "@/lib/client-archive/storage";
 import { sendFirstDownloadNotice } from "@/lib/transfers/email";
+import { recipientFromCode } from "@/lib/recipient-code";
 import { isDeliverable, isTransferPasswordLocked, noteTransferPasswordResult } from "@/lib/transfers/public";
 
 export async function POST(
@@ -42,12 +43,17 @@ export async function POST(
     ? await createClientArchiveDownloadUrl(file.objectKey, file.originalName)
     : await createTransferDownloadUrl(file.objectKey, file.originalName);
 
+  // When "Download all" falls back to one file at a time, it was already
+  // logged once as a whole download, so the individual files aren't counted.
+  if (body.partOfAll === true) return NextResponse.json({ ok: true, url });
+
   // Logging is for Steve's "Downloaded" status; never fail a download over it.
-  const first = await recordTransferDownloadAndCheckFirst({ transferId: transfer.id, fileId: file.id, eventType: "file" }).catch(() => false);
+  const who = recipientFromCode(transfer.token, transfer.recipients.map((r) => r.email), body.r);
+  const first = await recordTransferDownloadAndCheckFirst({ transferId: transfer.id, fileId: file.id, recipientEmail: who, eventType: "file" }).catch(() => false);
   if (first) {
     const adminUrl = (process.env.VERCEL_ENV === "production" ? "https://www.stevegregson.com" : new URL(request.url).origin) + "/admin/transfers/" + transfer.id;
     // Sent after the client's download has started, so it never slows them down.
-    after(() => sendFirstDownloadNotice(transfer, adminUrl, file.relativePath || file.originalName));
+    after(() => sendFirstDownloadNotice(transfer, adminUrl, file.relativePath || file.originalName, who));
   }
 
   return NextResponse.json({ ok: true, url });

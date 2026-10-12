@@ -1078,3 +1078,14 @@
     max-width: calc(100vw - 2rem);
   }
 }
+
+.sharedTag {
+  margin-left: 0.5rem;
+  border-radius: 999px;
+  padding: 0.1rem 0.5rem;
+  background: var(--blue-soft);
+  color: var(--blue);
+  font-size: 0.68rem;
+  font-weight: 600;
+  vertical-align: 0.1em;
+}

@@ -11,6 +11,7 @@ import {
 } from "./storage";
 import { addTrashEntry, getTrashEntry, removeTrashEntry } from "./trash-repository";
 import { updateMacUploadPaths } from "@/lib/mac/repository";
+import { moveSharePaths } from "@/lib/shares/repository";
 import {
   removeArchiveFilesFromTransfers,
   updateArchiveObjectKeys,
@@ -94,6 +95,8 @@ export async function planMove(rawItems: unknown, rawDestination: unknown) {
     }
     pairs.push(...(await pairsFor(item, target)).pairs);
     await ensureArchiveFolderMarker(parentOf(item.path));
+    // Client shares follow the folder to its new home.
+    if (item.kind === "folder") await moveSharePaths(item.path, target);
   }
   return pairs;
 }
@@ -107,7 +110,9 @@ export async function planRename(rawItem: unknown, rawName: unknown) {
   if (target.toLowerCase() !== item.path.toLowerCase() && (await archivePathTaken(target))) {
     throw new Error("Something called \"" + name + "\" is already in this folder.");
   }
-  return (await pairsFor(item, target)).pairs;
+  const pairs = (await pairsFor(item, target)).pairs;
+  if (item.kind === "folder") await moveSharePaths(item.path, target);
+  return pairs;
 }
 
 /** Moves items into Deleted Files, one restorable entry per item. */
@@ -127,6 +132,9 @@ export async function planDelete(rawItems: unknown) {
       sizeBytes: planned.bytes,
     });
     await ensureArchiveFolderMarker(parentOf(item.path));
+    // A shared folder in Deleted Files stops being available to the client
+    // until it's restored (when its share comes back with it).
+    if (item.kind === "folder") await moveSharePaths(item.path, join(TRASH_FOLDER, id, name));
     pairs.push(...planned.pairs);
   }
   return pairs;
@@ -151,6 +159,7 @@ export async function planRestore(trashId: string) {
   const trashRoot = join(TRASH_FOLDER, entry.id, entry.name);
   const target = join(entry.originalParent, name);
   const objects = await listArchiveObjectsUnder(join(TRASH_FOLDER, entry.id));
+  if (entry.kind === "folder") await moveSharePaths(trashRoot, target);
   return {
     restoredAs: target,
     pairs: objects.map((object) => ({ from: object.path, to: target + object.path.slice(trashRoot.length) })),

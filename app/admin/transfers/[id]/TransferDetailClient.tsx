@@ -112,8 +112,28 @@ export default function TransferDetailClient({ initialTransfer, publicUrl }: {
     <div className={styles.detailGrid}>
       <section className={styles.detailPanel}>
         <div className={styles.panelHead}><h2>Transfer activity</h2></div>
-        <div className={styles.eventRow}><span>Sent to {transfer.recipients.map((r) => r.email).join(", ")}</span><span>{date(transfer.finalizedAt || transfer.createdAt)}</span></div>
-        {transfer.downloads.map((event) => <div className={styles.eventRow} key={event.id}><span>{event.eventType === "all" ? "Transfer downloaded" : "File downloaded"}{event.recipientEmail ? " · " + event.recipientEmail : ""}</span><span>{date(event.createdAt)}</span></div>)}
+        <h3 className={styles.activityHeading}>Who&rsquo;s downloaded</h3>
+        {transfer.recipients.map((recipient) => {
+          const theirs = transfer.downloads.filter((event) => event.recipientEmail === recipient.email);
+          return <div className={styles.eventRow} key={recipient.email}>
+            <span><strong>{recipient.email}</strong></span>
+            <span>{theirs.length ? "✓ Downloaded " + date(theirs[0].createdAt) : "Not yet"}</span>
+          </div>;
+        })}
+        {transfer.downloads.some((event) => !event.recipientEmail) && <div className={styles.eventRow}>
+          <span><strong>Someone using the copied link</strong></span>
+          <span>✓ Downloaded {date(transfer.downloads.find((event) => !event.recipientEmail)!.createdAt)}</span>
+        </div>}
+        <h3 className={styles.activityHeading}>Activity</h3>
+        {transfer.downloads.map((event) => {
+          const file = event.fileId ? transfer.files.find((item) => item.id === event.fileId) : undefined;
+          const what = event.eventType === "all" ? "Downloaded all files" : "Downloaded " + (file ? file.relativePath || file.originalName : "a file");
+          return <div className={styles.eventRow} key={event.id}>
+            <span>{what}<small className={styles.eventWho}>{event.recipientEmail || "Copied link"}</small></span>
+            <span>{date(event.createdAt)}</span>
+          </div>;
+        })}
+        <div className={styles.eventRow}><span>Sent to {transfer.recipients.map((r) => r.email).join(", ") || "nobody (link only)"}</span><span>{date(transfer.finalizedAt || transfer.createdAt)}</span></div>
         {!transfer.downloads.length && <p className={styles.muted}>No downloads yet.</p>}
       </section>
 
