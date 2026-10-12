@@ -88,12 +88,19 @@ const nextConfig: NextConfig = {
 
   async redirects() {
     return [
-      // transfers.stevegregson.com: the bare address opens Backstage Transfers
-      // (behind the login) and short links open the client download page.
+      // transfers.stevegregson.com: the bare address (and any Backstage page)
+      // opens Transfers on www, so Steve's normal login and uploads work;
+      // short links open the client download page.
       {
         source: "/",
         has: [{ type: "host", value: "transfers.stevegregson.com" }],
-        destination: "/admin/transfers",
+        destination: "https://www.stevegregson.com/admin/transfers",
+        permanent: false,
+      },
+      {
+        source: "/admin/:path*",
+        has: [{ type: "host", value: "transfers.stevegregson.com" }],
+        destination: "https://www.stevegregson.com/admin/:path*",
         permanent: false,
       },
       {

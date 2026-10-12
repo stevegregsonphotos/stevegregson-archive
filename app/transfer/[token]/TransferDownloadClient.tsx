@@ -33,14 +33,16 @@ function kindOf(name: string) {
 }
 
 function startDownload(url: string) {
-  // The storage link is served as an attachment, so this saves the file
-  // without leaving the page (and allows several downloads in a row).
-  const link = document.createElement("a");
-  link.href = url;
-  link.rel = "noopener";
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
+  // Each file downloads inside its own hidden frame. Opening the link on the
+  // page itself counts as leaving the page in Safari, which cancels the next
+  // download request ("Load failed") part-way through "Download all".
+  const frame = document.createElement("iframe");
+  frame.style.display = "none";
+  frame.setAttribute("aria-hidden", "true");
+  frame.src = url;
+  document.body.appendChild(frame);
+  // Leave plenty of time for the browser to hand the file to its downloads.
+  window.setTimeout(() => frame.remove(), 5 * 60 * 1000);
 }
 
 const wait = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
@@ -115,14 +117,28 @@ export default function TransferDownloadClient({ initial, demo = false }: { init
   }
 
   async function requestUrl(fileId: string) {
-    const response = await fetch("/api/transfers/" + transfer.token + "/download", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ fileId, password }),
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!data.ok || !data.url) throw new Error(data.message || "Download unavailable.");
-    return data.url as string;
+    // One automatic retry covers a brief network blip.
+    for (let attempt = 1; ; attempt += 1) {
+      try {
+        const response = await fetch("/api/transfers/" + transfer.token + "/download", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fileId, password }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!data.ok || !data.url) throw new Error(data.message || "Download unavailable.");
+        return data.url as string;
+      } catch (error) {
+        if (attempt >= 2) {
+          throw new Error(
+            error instanceof TypeError
+              ? "The connection dropped. Please press Download all again."
+              : error instanceof Error ? error.message : "Download unavailable.",
+          );
+        }
+        await wait(1200);
+      }
+    }
   }
 
   async function download(fileId: string) {
@@ -150,7 +166,7 @@ export default function TransferDownloadClient({ initial, demo = false }: { init
       for (let i = 0; i < transfer.files.length; i += 1) {
         setProgress({ done: i, total: transfer.files.length, name: transfer.files[i].name });
         startDownload(await requestUrl(transfer.files[i].id));
-        await wait(transfer.files.length > 1 ? 700 : 0);
+        await wait(transfer.files.length > 1 ? 900 : 0);
       }
       setProgress({ done: transfer.files.length, total: transfer.files.length, name: "" });
       setFinished(true);

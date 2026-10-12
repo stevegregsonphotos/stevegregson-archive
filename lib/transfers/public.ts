@@ -34,6 +34,19 @@ export async function defaultBackgroundUrls() {
   return [...TRANSFER_BRAND_BACKGROUNDS];
 }
 
+/**
+ * The single photograph shown at the top of the client email. Picked photos
+ * are only used when the transfer has no password, so a locked transfer never
+ * reveals its contents in an inbox.
+ */
+export async function coverImageUrl(transfer: TransferRecord) {
+  if (transfer.status === "active" && !transfer.hasPassword) {
+    const urls = await backgroundUrls(transfer);
+    if (urls[0]) return urls[0];
+  }
+  return (await defaultBackgroundUrls())[0];
+}
+
 async function backgroundUrls(transfer: TransferRecord) {
   const chosen = transfer.backgroundFileIds
     .map((id) => transfer.files.find((file) => file.id === id))
