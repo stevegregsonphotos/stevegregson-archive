@@ -299,6 +299,40 @@
 .footer strong { color: var(--paper); font-weight: 600; }
 .footer a { color: var(--gold); text-decoration: none; }
 
+/* ---- Photo grid ---- */
+
+.viewToggle { display: flex; overflow: hidden; border: 1px solid var(--faint); border-radius: 999px; }
+.viewToggle button { border: 0; padding: 0.55rem 0.9rem; background: none; color: var(--muted); cursor: pointer; font: inherit; font-size: 0.8rem; }
+.viewToggle button[aria-pressed="true"] { background: rgba(244, 239, 230, 0.12); color: var(--paper); }
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: 0.9rem;
+  margin-top: 1rem;
+}
+
+.tile { display: grid; gap: 0.4rem; margin: 0; }
+
+.tileImage {
+  display: grid;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0.5rem;
+  padding: 0;
+  background: rgba(244, 239, 230, 0.06);
+  cursor: zoom-in;
+  aspect-ratio: 3 / 2;
+  place-items: center;
+}
+
+.tileImage img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.4s ease; }
+.tileImage:hover img { transform: scale(1.03); }
+
+.tile figcaption { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; color: var(--muted); font-size: 0.78rem; }
+.tile figcaption span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tile figcaption .get { width: 2rem; height: 2rem; font-size: 0.85rem; }
+
 /* ---- Lightbox ---- */
 
 .lightbox {

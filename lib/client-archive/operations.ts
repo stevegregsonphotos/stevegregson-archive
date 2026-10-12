@@ -12,6 +12,13 @@ import {
 import { addTrashEntry, getTrashEntry, removeTrashEntry } from "./trash-repository";
 import { updateMacUploadPaths } from "@/lib/mac/repository";
 import { moveSharePaths } from "@/lib/shares/repository";
+import { moveFileRequestPaths } from "@/lib/requests/repository";
+
+/** Shares and file requests follow a folder when it moves. */
+async function followFolder(from: string, to: string) {
+  await moveSharePaths(from, to);
+  await moveFileRequestPaths(from, to);
+}
 import {
   removeArchiveFilesFromTransfers,
   updateArchiveObjectKeys,
@@ -96,7 +103,7 @@ export async function planMove(rawItems: unknown, rawDestination: unknown) {
     pairs.push(...(await pairsFor(item, target)).pairs);
     await ensureArchiveFolderMarker(parentOf(item.path));
     // Client shares follow the folder to its new home.
-    if (item.kind === "folder") await moveSharePaths(item.path, target);
+    if (item.kind === "folder") await followFolder(item.path, target);
   }
   return pairs;
 }
@@ -111,7 +118,7 @@ export async function planRename(rawItem: unknown, rawName: unknown) {
     throw new Error("Something called \"" + name + "\" is already in this folder.");
   }
   const pairs = (await pairsFor(item, target)).pairs;
-  if (item.kind === "folder") await moveSharePaths(item.path, target);
+  if (item.kind === "folder") await followFolder(item.path, target);
   return pairs;
 }
 
@@ -134,7 +141,7 @@ export async function planDelete(rawItems: unknown) {
     await ensureArchiveFolderMarker(parentOf(item.path));
     // A shared folder in Deleted Files stops being available to the client
     // until it's restored (when its share comes back with it).
-    if (item.kind === "folder") await moveSharePaths(item.path, join(TRASH_FOLDER, id, name));
+    if (item.kind === "folder") await followFolder(item.path, join(TRASH_FOLDER, id, name));
     pairs.push(...planned.pairs);
   }
   return pairs;
@@ -159,7 +166,7 @@ export async function planRestore(trashId: string) {
   const trashRoot = join(TRASH_FOLDER, entry.id, entry.name);
   const target = join(entry.originalParent, name);
   const objects = await listArchiveObjectsUnder(join(TRASH_FOLDER, entry.id));
-  if (entry.kind === "folder") await moveSharePaths(trashRoot, target);
+  if (entry.kind === "folder") await followFolder(trashRoot, target);
   return {
     restoredAs: target,
     pairs: objects.map((object) => ({ from: object.path, to: target + object.path.slice(trashRoot.length) })),

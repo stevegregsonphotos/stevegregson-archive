@@ -666,3 +666,32 @@
     display: none;
   }
 }
+
+/* ---- Tabs ---- */
+
+.tabs { display: flex; gap: 0.3rem; margin: 0 0 1rem; border-radius: 0.7rem; padding: 0.25rem; background: #ece8e2; width: fit-content; }
+.tabs button { border: 0; border-radius: 0.5rem; padding: 0.5rem 1rem; background: none; color: var(--muted); cursor: pointer; font-size: 0.88rem; font-weight: 600; }
+.tabs button[aria-selected="true"] { background: #fff; color: var(--ink); box-shadow: 0 1px 2px rgba(30, 25, 25, 0.12); }
+
+/* ---- Requests ---- */
+
+.requests { display: grid; gap: 1rem; }
+.requestsIntro { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; }
+.requestsIntro p { max-width: 34rem; margin: 0; color: var(--muted); line-height: 1.5; }
+.darkButton { border: 0; border-radius: 0.6rem; padding: 0.65rem 1.1rem; background: var(--ink); color: #fff; cursor: pointer; font-size: 0.88rem; font-weight: 600; }
+.darkButton:hover { background: #000; }
+.requestForm { display: grid; gap: 0.75rem; border: 1px solid var(--line); border-radius: 0.9rem; padding: 1.2rem; background: #fff; }
+.formNote { margin: 0; color: var(--muted); font-size: 0.8rem; }
+.requestStatus { margin: 0; color: var(--ink); font-size: 0.85rem; }
+.requestItem { display: grid; gap: 0.7rem; border-bottom: 1px solid var(--line); padding: 1rem 1.1rem; }
+.requestItem:last-child { border-bottom: 0; }
+.requestTop { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+.uploads { display: grid; gap: 0.35rem; margin: 0; padding: 0; list-style: none; }
+.uploads li { display: flex; align-items: center; justify-content: space-between; gap: 1rem; border-radius: 0.55rem; padding: 0.55rem 0.75rem; background: var(--canvas); font-size: 0.85rem; }
+.uploads li > span { display: grid; gap: 0.1rem; }
+.uploads small { color: var(--muted); font-size: 0.78rem; }
+.uploads a, .requestActions a { color: var(--gold); font-weight: 600; text-decoration: none; white-space: nowrap; }
+.requestActions { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; font-size: 0.82rem; }
+.requestActions button { border: 0; padding: 0; background: none; color: var(--muted); cursor: pointer; font-size: inherit; }
+.requestActions button:hover { color: var(--ink); text-decoration: underline; }
+.dangerText { color: #c4302b !important; }

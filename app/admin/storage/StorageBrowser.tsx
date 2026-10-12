@@ -99,6 +99,11 @@ async function fetchListing(path: string, cursor?: string): Promise<Listing> {
   return data.listing;
 }
 
+/** Small preview instead of the full-size photo (much faster for big folders). */
+function thumbFor(file: { objectKey: string }) {
+  return "/api/admin/storage/thumb?key=" + encodeURIComponent(file.objectKey);
+}
+
 function errorText(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
 }
@@ -194,7 +199,13 @@ export default function StorageBrowser() {
 
   // Load the top folder once the page is in the browser.
   useEffect(() => {
-    const timer = window.setTimeout(() => { void load(""); void loadShared(); }, 0);
+    const timer = window.setTimeout(() => {
+      // Links from elsewhere in Backstage can open a folder directly (?path=…).
+      let start = "";
+      try { start = new URLSearchParams(window.location.search).get("path") || ""; } catch { /* ignore */ }
+      void load(start).catch(() => load(""));
+      void loadShared();
+    }, 0);
     return () => window.clearTimeout(timer);
   }, [load, loadShared]);
 
@@ -756,7 +767,7 @@ export default function StorageBrowser() {
                     >
                       {file.isImage && file.viewUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img className={styles.rowThumb} src={file.viewUrl} alt="" loading="lazy" />
+                        <img className={styles.rowThumb} src={thumbFor(file)} alt="" loading="lazy" decoding="async" />
                       ) : (
                         <FileIcon name={file.name} />
                       )}
@@ -806,7 +817,7 @@ export default function StorageBrowser() {
                       <span className={styles.tileArt + (file.isImage && file.viewUrl ? " " + styles.tilePhoto : "")}>
                         {file.isImage && file.viewUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={file.viewUrl} alt="" loading="lazy" />
+                          <img src={thumbFor(file)} alt="" loading="lazy" decoding="async" />
                         ) : (
                           <FileIcon name={file.name} size={72} />
                         )}

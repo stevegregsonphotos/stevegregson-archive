@@ -17,6 +17,7 @@ import {
 import { useFileDrop } from "@/lib/transfers/use-file-drop";
 import { canMakeBackdrop, uploadTransferBackdrop } from "@/lib/transfers/backdrop-client";
 import { MAX_BACKGROUNDS } from "@/lib/transfers/backgrounds";
+import RequestsPanel from "./RequestsPanel";
 
 /** How many of the queued photos are offered as background choices. */
 const PICKABLE_LIMIT = 60;
@@ -65,6 +66,7 @@ export default function TransferWorkspace({ initialTransfers }: { initialTransfe
   const [expiryDays, setExpiryDays] = useState("60");
   const [password, setPassword] = useState("");
   const [search, setSearch] = useState("");
+  const [tab, setTab] = useState<"sent" | "requests">("sent");
   const [sending, setSending] = useState(false);
   const [progress, setProgress] = useState("");
   // While sending, the gold Transfer button fills up and shows the status.
@@ -325,6 +327,12 @@ export default function TransferWorkspace({ initialTransfers }: { initialTransfe
           </nav>
         </header>
 
+        <div className={styles.tabs} role="tablist">
+          <button type="button" role="tab" aria-selected={tab === "sent"} onClick={() => setTab("sent")}>Sent</button>
+          <button type="button" role="tab" aria-selected={tab === "requests"} onClick={() => setTab("requests")}>Requests</button>
+        </div>
+
+        {tab === "requests" ? <RequestsPanel /> : (<>
         <label className={styles.search}>
           <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5" /><path d="m16 16 4 4" /></svg>
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by title, file name or email" />
@@ -361,6 +369,7 @@ export default function TransferWorkspace({ initialTransfers }: { initialTransfe
           })}
           {!filtered.length && <p className={styles.empty}>{transfers.length ? "No transfers match your search." : "Nothing sent yet."}</p>}
         </div>
+        </>)}
       </section>
     </main>
   );

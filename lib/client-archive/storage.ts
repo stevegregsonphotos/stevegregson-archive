@@ -424,3 +424,52 @@ export async function createVerifiedArchiveUploadUrl(path: string, md5Base64: st
     { expiresIn: 6 * 60 * 60, signableHeaders: new Set(["content-md5"]) },
   );
 }
+
+// ---- Small preview images ---------------------------------------------------
+// Storage shows a small (640px) copy of each photo instead of the full-size
+// file. The copy is made the first time it's needed and kept next to the
+// archive, named by the photo's fingerprint so it survives moves and renames.
+
+const THUMB_SIZE = 640;
+const MAX_THUMB_SOURCE_BYTES = 120 * 1024 * 1024;
+
+function thumbKey(etag: string) {
+  return ns() + "-thumbs/" + etag.replace(/[^a-f0-9-]/gi, "").toLowerCase() + ".jpg";
+}
+
+async function signedThumb(key: string) {
+  return getSignedUrl(client(), new GetObjectCommand({
+    Bucket: config().bucketName,
+    Key: key,
+    ResponseCacheControl: "private, max-age=86400",
+  }), { expiresIn: 24 * 60 * 60 });
+}
+
+/** A link to a small preview of an archive photo, making the preview if needed. */
+export async function archiveThumbnailUrl(objectKey: string) {
+  if (!isClientArchiveKey(objectKey)) throw new Error("Invalid archive object.");
+  const c = client();
+  const bucket = config().bucketName;
+  const head = await c.send(new HeadObjectCommand({ Bucket: bucket, Key: objectKey }));
+  const etag = (head.ETag || "").replace(/"/g, "");
+  if (!etag) throw new Error("No fingerprint.");
+  const key = thumbKey(etag);
+  try {
+    await c.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
+    return signedThumb(key);
+  } catch (error) {
+    const status = (error as { $metadata?: { httpStatusCode?: number } })?.$metadata?.httpStatusCode;
+    if (status !== 404) throw error;
+  }
+  if ((Number(head.ContentLength) || 0) > MAX_THUMB_SOURCE_BYTES) throw new Error("Too large to preview.");
+  const original = await c.send(new GetObjectCommand({ Bucket: bucket, Key: objectKey }));
+  const bytes = Buffer.from(await original.Body!.transformToByteArray());
+  const sharp = (await import("sharp")).default;
+  const small = await sharp(bytes, { failOn: "none" })
+    .rotate()
+    .resize(THUMB_SIZE, THUMB_SIZE, { fit: "inside", withoutEnlargement: true })
+    .jpeg({ quality: 74, mozjpeg: true })
+    .toBuffer();
+  await c.send(new PutObjectCommand({ Bucket: bucket, Key: key, Body: small, ContentType: "image/jpeg", CacheControl: "private, max-age=31536000" }));
+  return signedThumb(key);
+}

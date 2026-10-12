@@ -12,7 +12,7 @@ import {
 } from "@/lib/transfers/zip-client";
 
 type Folder = { name: string; path: string };
-type FileItem = { name: string; path: string; sizeBytes: number; lastModified?: string; isImage: boolean };
+type FileItem = { name: string; path: string; sizeBytes: number; lastModified?: string; isImage: boolean; thumb?: string };
 
 function bytes(value: number) {
   const units = ["B", "KB", "MB", "GB", "TB"];
@@ -64,6 +64,7 @@ export default function SharedFolderClient({ token, available, title, message: i
   const [preview, setPreview] = useState<{ index: number; url: string } | null>(null);
   const [zip, setZip] = useState<{ label: string; done: number; total: number; finished: boolean; zipping: boolean } | null>(null);
   const [slide, setSlide] = useState(0);
+  const [view, setView] = useState<"grid" | "list">("grid");
   const opened = useRef(false);
   const passwordRef = useRef("");
 
@@ -259,6 +260,12 @@ export default function SharedFolderClient({ token, available, title, message: i
                 {folders.length + files.length > 8 ? (
                   <input className={styles.filter} value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Find in this folder" aria-label="Find in this folder" />
                 ) : null}
+                {files.some((file) => file.thumb) ? (
+                  <div className={styles.viewToggle} role="group" aria-label="View">
+                    <button type="button" aria-pressed={view === "grid"} onClick={() => setView("grid")}>Photos</button>
+                    <button type="button" aria-pressed={view === "list"} onClick={() => setView("list")}>List</button>
+                  </div>
+                ) : null}
                 <button type="button" className={styles.button} disabled={loading || Boolean(zip && !zip.finished) || !(folders.length + files.length)} onClick={() => void downloadFolder()}>
                   ↓ Download {path ? "“" + here + "”" : "everything"}
                 </button>
@@ -295,6 +302,27 @@ export default function SharedFolderClient({ token, available, title, message: i
                   <span className={styles.chev} aria-hidden="true">›</span>
                 </button>
               ))}
+              {view === "grid" && shownFiles.some((file) => file.thumb) ? (
+                <div className={styles.grid}>
+                  {shownFiles.map((file) => {
+                    const imageIndex = images.indexOf(file);
+                    return (
+                      <figure className={styles.tile} key={file.path}>
+                        <button type="button" className={styles.tileImage} onClick={() => (imageIndex >= 0 ? void showPreview(imageIndex) : void downloadFile(file))} title={file.name}>
+                          {file.thumb ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={file.thumb} alt="" loading="lazy" decoding="async" onError={(event) => { event.currentTarget.style.visibility = "hidden"; }} />
+                          ) : <span className={styles.kind}>{kindOf(file.name)}</span>}
+                        </button>
+                        <figcaption>
+                          <span title={file.name}>{file.name}</span>
+                          <button type="button" className={styles.get} onClick={() => void downloadFile(file)} aria-label={"Download " + file.name} title="Download">↓</button>
+                        </figcaption>
+                      </figure>
+                    );
+                  })}
+                </div>
+              ) : (<>
               {shownFiles.map((file) => {
                 const imageIndex = images.indexOf(file);
                 return (
@@ -311,6 +339,7 @@ export default function SharedFolderClient({ token, available, title, message: i
                   </div>
                 );
               })}
+              </>)}
               {!loading && !shownFolders.length && !shownFiles.length ? (
                 <p className={styles.empty}>{filter ? "Nothing here matches “" + filter + "”." : "This folder is empty for now. Anything Steve adds will appear here."}</p>
               ) : null}

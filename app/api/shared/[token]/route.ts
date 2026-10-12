@@ -9,6 +9,7 @@ import {
   listClientArchiveFilesRecursive,
 } from "@/lib/client-archive/storage";
 import { recipientFromCode } from "@/lib/recipient-code";
+import { signSharePath } from "@/lib/shares/thumb-sign";
 import { isTransferPasswordLocked, noteTransferPasswordResult } from "@/lib/transfers/public";
 
 // Everything a client can do with a shared folder. Every request is checked
@@ -78,9 +79,13 @@ export async function POST(request: Request, context: { params: Promise<{ token:
         message: share.message,
         path: relative,
         folders: listing.folders.map((folder) => ({ name: folder.name, path: strip(folder.path) })),
-        files: listing.files.map((file) => ({
-          name: file.name, path: strip(file.path), sizeBytes: file.sizeBytes, lastModified: file.lastModified, isImage: file.isImage,
-        })),
+        files: listing.files.map((file) => {
+          const path = strip(file.path);
+          return {
+            name: file.name, path, sizeBytes: file.sizeBytes, lastModified: file.lastModified, isImage: file.isImage,
+            ...(file.isImage ? { thumb: "/api/shared/" + share.token + "/thumb?path=" + encodeURIComponent(path) + "&s=" + signSharePath(share.token, path) } : {}),
+          };
+        }),
         nextCursor: listing.nextCursor,
       });
     }

@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import PasskeyLoginButton from "../../../components/admin/PasskeyLoginButton";
+import { passwordSignInAllowed } from "../../../lib/passkeys";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title:
@@ -23,12 +27,16 @@ export default async function LoginPage({
 }: LoginPageProps) {
   const { error, next, returnTo } = await searchParams;
   const destination = next || returnTo;
+  const safeNext = destination?.startsWith("/") && !destination.startsWith("//") ? destination : undefined;
+  const passwordAllowed = await passwordSignInAllowed();
 
   const errorMessage =
     error === "invalid"
       ? "The username or password was not recognised."
       : error === "rate_limited"
         ? "Too many unsuccessful sign-in attempts. Please wait 15 minutes before trying again."
+        : error === "passkey_only"
+          ? "Password sign-in is switched off. Please use Touch ID / Face ID."
         : error === "configuration"
           ? "Backstage login is not configured correctly. Check the development terminal."
           : null;
@@ -81,6 +89,9 @@ export default async function LoginPage({
             </p>
           ) : null}
 
+          <PasskeyLoginButton next={safeNext} only={!passwordAllowed} />
+
+          {passwordAllowed ? (<>
           <label>
             <span>Username</span>
 
@@ -110,10 +121,23 @@ export default async function LoginPage({
             <span>Enter Backstage</span>
             <span aria-hidden="true">→</span>
           </button>
+          </>) : null}
         </form>
       </section>
 
       <style>{`
+        .backstage-passkey { display: grid; gap: 0.9rem; }
+        .backstage-login-form .backstage-passkey-button {
+          justify-content: center; gap: 0.6rem; margin-top: 0; min-height: 3.2rem;
+          border: 1px solid rgba(242, 238, 230, 0.28); padding: 0.9rem 1.2rem;
+          background: #f2eee6; color: #11100f;
+          font-size: 0.82rem; font-weight: 600; letter-spacing: 0.01em; text-transform: none;
+        }
+        .backstage-login-form .backstage-passkey-button:disabled { opacity: 0.6; cursor: progress; }
+        .backstage-passkey-or { position: relative; margin: 0.2rem 0; text-align: center; color: rgba(242, 238, 230, 0.45); font-size: 0.72rem; }
+        .backstage-passkey-or::before { content: ""; position: absolute; top: 50%; right: 0; left: 0; border-top: 1px solid rgba(242, 238, 230, 0.14); }
+        .backstage-passkey-or span { position: relative; padding: 0 0.8rem; background: #0b0a09; }
+        .backstage-passkey { margin-bottom: 1.6rem; }
         .backstage-login {
           min-height: 100svh;
           background: #11100f;

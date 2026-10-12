@@ -9,6 +9,7 @@ import {
 const LOGIN_PAGE = "/admin/login";
 const LOGIN_API = "/api/admin/login";
 const LOGOUT_API = "/api/admin/logout";
+const PASSKEY_LOGIN_API = "/api/admin/passkey/login";
 
 export function proxy(
   request: NextRequest,
@@ -29,7 +30,8 @@ export function proxy(
 
   const isPublicAdminApi =
     pathname === LOGIN_API ||
-    pathname === LOGOUT_API;
+    pathname === LOGOUT_API ||
+    pathname === PASSKEY_LOGIN_API;
 
   const isAdminApi =
     pathname.startsWith("/api/admin");

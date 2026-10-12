@@ -1,0 +1,111 @@
+/* A client sending files to Steve: one photograph, one clear card. */
+
+.page {
+  --gold: #c7a369;
+  --paper: #f4efe6;
+  --muted: rgba(244, 239, 230, 0.66);
+  --faint: rgba(244, 239, 230, 0.14);
+  position: relative;
+  display: grid;
+  min-height: 100vh;
+  min-height: 100dvh;
+  place-items: center;
+  overflow: hidden;
+  padding: 7rem 1rem 3rem;
+  background: #0b0a0a;
+  color: var(--paper);
+  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.photo { position: fixed; inset: 0; background-position: center; background-size: cover; }
+.scrim { position: fixed; inset: 0; background: linear-gradient(180deg, rgba(8, 7, 7, 0.6), rgba(8, 7, 7, 0.45) 40%, rgba(8, 7, 7, 0.8)); }
+
+.header {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 2;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: clamp(1.25rem, 3vw, 2.2rem) clamp(1.25rem, 4vw, 3.5rem);
+}
+
+.header img { width: clamp(7rem, 10vw, 9rem); height: auto; }
+.header a { margin-top: 0.4rem; color: var(--paper); font-size: 0.66rem; font-weight: 600; letter-spacing: 0.16em; text-decoration: none; text-transform: uppercase; opacity: 0.8; }
+
+.card {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 30rem);
+  border: 1px solid rgba(244, 239, 230, 0.12);
+  border-radius: 1rem;
+  padding: clamp(1.4rem, 4vw, 2.2rem);
+  background: rgba(18, 16, 15, 0.86);
+  box-shadow: 0 1.5rem 4rem rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(14px);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.dragging { border-color: var(--gold); box-shadow: 0 0 0 4px rgba(199, 163, 105, 0.25), 0 1.5rem 4rem rgba(0, 0, 0, 0.45); }
+
+.eyebrow { margin: 0 0 0.6rem; color: var(--gold); font-size: 0.68rem; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; }
+.card h1 { margin: 0 0 1rem; font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif; font-size: clamp(2rem, 6vw, 2.8rem); font-weight: 400; line-height: 1.05; }
+.text { color: var(--muted); line-height: 1.6; }
+.text a { color: var(--gold); }
+
+.form { display: grid; gap: 0.9rem; }
+.message { margin: 0; border-left: 2px solid var(--gold); padding-left: 0.9rem; color: rgba(244, 239, 230, 0.86); font-family: "Iowan Old Style", Georgia, serif; font-size: 1rem; line-height: 1.55; white-space: pre-line; }
+
+.drop {
+  display: grid;
+  justify-items: center;
+  gap: 0.35rem;
+  border: 1.5px dashed rgba(244, 239, 230, 0.25);
+  border-radius: 0.75rem;
+  padding: 1.6rem 1rem;
+  text-align: center;
+}
+
+.dragging .drop { border-color: var(--gold); background: rgba(199, 163, 105, 0.08); }
+.drop > span { color: var(--muted); font-size: 0.85rem; }
+.drop label, .drop button { position: relative; border: 0; padding: 0; background: none; color: var(--gold); cursor: pointer; font: inherit; font-weight: 600; }
+.drop label input, .hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; opacity: 0; }
+
+.chip { display: flex; align-items: center; justify-content: space-between; gap: 1rem; border-radius: 0.6rem; padding: 0.6rem 0.8rem; background: rgba(244, 239, 230, 0.07); color: var(--muted); font-size: 0.85rem; }
+.chip strong { margin-right: 0.35rem; color: var(--paper); }
+.chip button { border: 0; background: none; color: var(--muted); cursor: pointer; font: inherit; font-size: 0.8rem; }
+
+.field { display: grid; gap: 0.3rem; }
+.field > span { font-size: 0.8rem; font-weight: 600; }
+.field em { color: var(--muted); font-style: normal; font-weight: 400; }
+.field input { border: 1px solid var(--faint); border-radius: 0.55rem; padding: 0.65rem 0.75rem; background: rgba(244, 239, 230, 0.05); color: var(--paper); font: inherit; outline: none; }
+.field input:focus { border-color: var(--gold); }
+
+.send {
+  min-height: 3.1rem;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0.6rem;
+  background: var(--gold);
+  color: #16120c;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.send:disabled { cursor: not-allowed; opacity: 0.45; }
+.send.sending:disabled { background: linear-gradient(90deg, var(--gold) var(--fill, 0%), #5c4f3a var(--fill, 0%)); cursor: progress; opacity: 1; }
+.sending span { display: block; overflow: hidden; padding: 0 1rem; font-size: 0.8rem; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+
+.error { margin: 0; color: #f0a58f; font-size: 0.85rem; line-height: 1.5; }
+.small { margin: 0; color: var(--muted); font-size: 0.78rem; text-align: center; }
+
+.done { display: grid; justify-items: center; gap: 0.6rem; padding: 1rem 0; text-align: center; }
+.done > span { display: grid; width: 3rem; height: 3rem; place-items: center; border-radius: 50%; background: var(--gold); color: #16120c; font-size: 1.4rem; }
+.done p { margin: 0; color: var(--muted); line-height: 1.6; }
+.done strong { color: var(--paper); }
+.link { border: 0; background: none; color: var(--gold); cursor: pointer; font: inherit; font-weight: 600; }

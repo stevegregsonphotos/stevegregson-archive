@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import PublishingSettingsForm from "../../../components/admin/PublishingSettingsForm";
 import TestOpenAIConnection from "../../../components/admin/TestOpenAIConnection";
+import PasskeySettings from "../../../components/admin/PasskeySettings";
 import ProofingIntroTemplatesManager from "../../../components/admin/ProofingIntroTemplatesManager";
 import { getProofingIntroTemplates } from "../../../lib/proofing/intro-templates";
 
@@ -129,6 +130,10 @@ export default async function SettingsPage() {
             Secret values are never shown in the browser.
           </p>
         </header>
+
+        <section className="backstage-section">
+          <PasskeySettings />
+        </section>
 
         <section className="backstage-section">
           <div className="backstage-section-heading">

@@ -11,6 +11,7 @@ import {
   isBackstageLoginRateLimited,
   recordBackstageLoginFailure,
 } from "../../../../lib/backstage-login-rate-limit";
+import { passwordSignInAllowed } from "../../../../lib/passkeys";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -50,6 +51,14 @@ export async function POST(
 
     const formData =
       await request.formData();
+
+    // Steve can switch password sign-in off once Touch ID / Face ID is set up.
+    if (!(await passwordSignInAllowed())) {
+      const requestUrl = new URL(request.url);
+      const loginUrl = new URL("/admin/login", requestUrl.origin);
+      loginUrl.searchParams.set("error", "passkey_only");
+      return NextResponse.redirect(loginUrl, { status: 303 });
+    }
 
     const usernameValue =
       formData.get("username");

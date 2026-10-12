@@ -109,6 +109,13 @@ const nextConfig: NextConfig = {
         destination: "/transfer/:token",
         permanent: false,
       },
+      // Upload links Steve sends clients ("Request files").
+      {
+        source: "/request/:token([A-Za-z0-9_-]{20,64})",
+        has: [{ type: "host", value: "transfers.stevegregson.com" }],
+        destination: "/transfer/request/:token",
+        permanent: false,
+      },
       // Folders shared with clients from Storage.
       {
         source: "/shared/:token([A-Za-z0-9_-]{20,64})",
