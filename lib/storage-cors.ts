@@ -109,7 +109,7 @@ export async function fixStorageCors() {
     accountId: auth.accountId,
     bucketId: bucket.bucketId,
     corsRules: [...kept, ours],
-    ifRevisionMatches: bucket.revision,
+    ifRevisionIs: bucket.revision,
   });
   return checkStorageCors();
 }
