@@ -137,7 +137,7 @@ export async function createClientArchiveUploadUrl(path: string) {
   };
 }
 
-export async function createClientArchiveViewUrl(objectKey: string) {
+export async function createClientArchiveViewUrl(objectKey: string, expiresIn = 900) {
   if (!isClientArchiveKey(objectKey)) throw new Error("Invalid archive object.");
   return getSignedUrl(
     client(),
@@ -146,7 +146,7 @@ export async function createClientArchiveViewUrl(objectKey: string) {
       Key: objectKey,
       ResponseCacheControl: "private, no-store",
     }),
-    { expiresIn: 900 },
+    { expiresIn },
   );
 }
 

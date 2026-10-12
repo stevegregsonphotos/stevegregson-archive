@@ -46,6 +46,55 @@ function startDownload(url: string) {
 }
 
 const wait = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
+
+const PREPARING = "Preparing your download…";
+
+type ZipFile = { name: string; size: number; url: string; lastModified?: string };
+
+/** Starts the helper that streams every file into one .zip download. */
+async function zipHelper() {
+  if (!("serviceWorker" in navigator) || !window.isSecureContext) return undefined;
+  try {
+    const registration = await navigator.serviceWorker.register("/transfer-zip-sw.js", { scope: "/transfer/" });
+    if (registration.active) return registration.active;
+    const worker = registration.installing || registration.waiting;
+    if (!worker) return undefined;
+    await new Promise<void>((resolve, reject) => {
+      const timer = window.setTimeout(() => reject(new Error("timeout")), 10000);
+      worker.addEventListener("statechange", () => {
+        if (worker.state === "activated") { window.clearTimeout(timer); resolve(); }
+        if (worker.state === "redundant") { window.clearTimeout(timer); reject(new Error("redundant")); }
+      });
+    });
+    return registration.active ?? worker;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Can this browser read files straight from storage? (Needed to build the zip.) */
+async function storageReadable(url: string) {
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), 15000);
+  try {
+    const response = await fetch(url, { mode: "cors", credentials: "omit", signal: controller.signal });
+    controller.abort(); // only the headers were needed
+    return response.ok;
+  } catch (error) {
+    return error instanceof DOMException && error.name === "AbortError";
+  } finally {
+    window.clearTimeout(timer);
+  }
+}
+
+function postToWorker(worker: ServiceWorker, message: unknown) {
+  return new Promise<void>((resolve, reject) => {
+    const channel = new MessageChannel();
+    const timer = window.setTimeout(() => reject(new Error("timeout")), 5000);
+    channel.port1.onmessage = () => { window.clearTimeout(timer); resolve(); };
+    worker.postMessage(message, [channel.port2]);
+  });
+}
 const SLIDE_MS = 7000;
 
 /** Crossfading full-screen photography; only shows images once they've loaded. */
@@ -87,6 +136,7 @@ export default function TransferDownloadClient({ initial, demo = false }: { init
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number; name: string } | null>(null);
   const [finished, setFinished] = useState(false);
+  const [zipMode, setZipMode] = useState(false);
   const [showFiles, setShowFiles] = useState(initial.files.length <= 6);
 
   const backgrounds = useMemo(() => transfer.backgroundUrls, [transfer.backgroundUrls]);
@@ -154,6 +204,18 @@ export default function TransferDownloadClient({ initial, demo = false }: { init
     }
   }
 
+  /** The old way: each file saved separately (used if the zip can't be made). */
+  async function downloadOneByOne() {
+    for (let i = 0; i < transfer.files.length; i += 1) {
+      setProgress({ done: i, total: transfer.files.length, name: transfer.files[i].name });
+      startDownload(await requestUrl(transfer.files[i].id));
+      await wait(transfer.files.length > 1 ? 900 : 0);
+    }
+    setProgress({ done: transfer.files.length, total: transfer.files.length, name: "" });
+    setZipMode(false);
+    setFinished(true);
+  }
+
   async function downloadAll() {
     if (demo) {
       setMessage("This is a preview — downloads are switched off.");
@@ -162,16 +224,62 @@ export default function TransferDownloadClient({ initial, demo = false }: { init
     setBusy(true);
     setFinished(false);
     setMessage("");
+    setProgress({ done: 0, total: transfer.files.length, name: PREPARING });
     try {
-      for (let i = 0; i < transfer.files.length; i += 1) {
-        setProgress({ done: i, total: transfer.files.length, name: transfer.files[i].name });
-        startDownload(await requestUrl(transfer.files[i].id));
-        await wait(transfer.files.length > 1 ? 900 : 0);
+      const [worker, links] = await Promise.all([
+        zipHelper(),
+        fetch("/api/transfers/" + transfer.token + "/download-all", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ password }),
+        }).then((response) => response.json()).catch(() => ({ ok: false })),
+      ]);
+
+      if (!links.ok) {
+        if (links.message) throw new Error(links.message);
+        await downloadOneByOne();
+        return;
       }
-      setProgress({ done: transfer.files.length, total: transfer.files.length, name: "" });
-      setFinished(true);
+      const files = links.files as ZipFile[];
+      if (!worker || !files.length || !(await storageReadable(files[0].url))) {
+        await downloadOneByOne();
+        return;
+      }
+
+      const id = Math.random().toString(36).slice(2) + Date.now().toString(36);
+      await postToWorker(worker, { type: "zip-job", id, name: links.name || transfer.title, files });
+
+      // Hear progress from the helper, and keep it awake during long downloads.
+      const onMessage = (event: MessageEvent) => {
+        const data = event.data || {};
+        if (data.id !== id) return;
+        if (data.type === "zip-progress") setProgress({ done: data.done, total: data.total, name: "" });
+        if (data.type === "zip-done") { setProgress({ done: data.total, total: data.total, name: "" }); setFinished(true); stop(); }
+        if (data.type === "zip-error") { setMessage("The download stopped part-way (" + data.message + "). Please press Download all again."); stop(); }
+      };
+      const keepAlive = window.setInterval(() => worker.postMessage({ type: "keep-alive" }), 10000);
+      const stop = () => {
+        window.clearInterval(keepAlive);
+        navigator.serviceWorker.removeEventListener("message", onMessage);
+      };
+      navigator.serviceWorker.addEventListener("message", onMessage);
+
+      // If this browser can't build the zip after all, the server answers the
+      // request instead and the page falls back to one-by-one downloads.
+      const onFallback = (event: MessageEvent) => {
+        if (event.origin !== window.location.origin || event.data?.type !== "zip-unsupported" || event.data.id !== id) return;
+        window.removeEventListener("message", onFallback);
+        stop();
+        setZipMode(false);
+        void downloadOneByOne().catch((error) => setMessage(error instanceof Error ? error.message : "Download unavailable."));
+      };
+      window.addEventListener("message", onFallback);
+
+      setZipMode(true);
+      startDownload("/transfer/zip-download/" + id);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Download unavailable.");
+      setProgress(null);
     } finally {
       setBusy(false);
     }
@@ -260,15 +368,24 @@ export default function TransferDownloadClient({ initial, demo = false }: { init
                   {progress && !finished ? (
                     <div className={styles.progress} aria-live="polite">
                       <div className={styles.progressBar}><span style={{ width: percent + "%" }} /></div>
-                      <p>Starting {progress.done + 1} of {progress.total}{progress.name ? " · " + progress.name : ""}</p>
+                      <p>
+                        {zipMode
+                          ? "Downloading as one zip · " + progress.done + " of " + progress.total + " files"
+                          : progress.name === PREPARING
+                            ? PREPARING
+                            : "Starting " + Math.min(progress.done + 1, progress.total) + " of " + progress.total + (progress.name ? " · " + progress.name : "")}
+                      </p>
+                      {zipMode ? <p>Please keep this page open until it finishes.</p> : null}
                     </div>
                   ) : null}
                   {finished ? (
                     <p className={styles.success} aria-live="polite">
-                      ✓ All {transfer.files.length} downloads started. If your browser asks, allow it to download multiple files.
+                      {zipMode
+                        ? "✓ Done — all " + transfer.files.length + " files are in one zip in your Downloads."
+                        : "✓ All " + transfer.files.length + " downloads started. If your browser asks, allow it to download multiple files."}
                     </p>
                   ) : !single && !progress ? (
-                    <p className={styles.hint}>Files download one after another. Your browser may ask you to allow multiple downloads.</p>
+                    <p className={styles.hint}>Downloads as a single zip file, with folders kept.</p>
                   ) : null}
 
                   {!single ? (

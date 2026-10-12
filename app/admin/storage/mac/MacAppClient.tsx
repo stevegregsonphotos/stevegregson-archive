@@ -7,6 +7,7 @@ import { LaptopIcon } from "../StorageIcons";
 
 type Device = { id: string; name: string; createdAt: string; lastSeenAt?: string; connected: boolean; uploads: number };
 type Recent = { path: string; sizeBytes: number; uploadedAt: string; device: string };
+type Cors = { ok: boolean; canEdit: boolean; origins: Array<{ origin: string; upload: boolean; download: boolean }> };
 
 function bytes(value: number) {
   const units = ["B", "KB", "MB", "GB", "TB"];
@@ -42,6 +43,8 @@ export default function MacAppClient() {
   const [copied, setCopied] = useState(false);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [cors, setCors] = useState<Cors | null>(null);
+  const [corsMessage, setCorsMessage] = useState("Checking…");
 
   const load = useCallback(async () => {
     try {
@@ -54,9 +57,28 @@ export default function MacAppClient() {
   }, []);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => void load(), 0);
+    const timer = window.setTimeout(() => {
+      void load();
+      api<{ cors: Cors }>({ action: "cors-check" })
+        .then((data) => { setCors(data.cors); setCorsMessage(""); })
+        .catch((error) => setCorsMessage(error instanceof Error ? error.message : "Couldn't check."));
+    }, 0);
     return () => window.clearTimeout(timer);
   }, [load]);
+
+  async function fixCors() {
+    setBusy(true);
+    setCorsMessage("Updating…");
+    try {
+      const data = await api<{ cors: Cors }>({ action: "cors-fix" });
+      setCors(data.cors);
+      setCorsMessage(data.cors.ok ? "Done — browsers can now upload and download directly." : "Updated, but something still isn't right.");
+    } catch (error) {
+      setCorsMessage(error instanceof Error ? error.message : "Couldn't update.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function connect() {
     setBusy(true);
@@ -192,6 +214,29 @@ export default function MacAppClient() {
             </li>
           ))}
         </ul>
+      </section>
+
+      <section className={styles.panel}>
+        <div className={styles.panelHead}>
+          <div>
+            <h2>Storage connection</h2>
+            <p>Lets browsers upload to Storage, and lets clients download a whole transfer as one zip.</p>
+          </div>
+          {cors && !cors.ok ? (
+            <button type="button" className={styles.primary} disabled={busy || !cors.canEdit} onClick={() => void fixCors()}>Fix this</button>
+          ) : null}
+        </div>
+        {cors ? (
+          <ul className={styles.recent}>
+            {cors.origins.map((item) => (
+              <li key={item.origin}>
+                <span>{item.origin.replace("https://", "")}</span>
+                <small>{item.upload ? "✓ uploads" : "✗ uploads"} · {item.download ? "✓ downloads" : "✗ downloads"}</small>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        {corsMessage ? <p className={styles.muted}>{corsMessage}</p> : null}
       </section>
 
       <section className={styles.notes}>

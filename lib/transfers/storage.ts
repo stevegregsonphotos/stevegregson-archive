@@ -265,9 +265,9 @@ export async function getTransferObjectSize(
   }
 }
 
-export async function createTransferViewUrl(objectKey: string) {
+export async function createTransferViewUrl(objectKey: string, expiresIn = 15 * 60) {
   const command = new GetObjectCommand({ Bucket: getBucket(), Key: objectKey, ResponseCacheControl: "private, no-store" });
-  return getSignedUrl(getClient(), command, { expiresIn: 15 * 60 });
+  return getSignedUrl(getClient(), command, { expiresIn });
 }
 
 export async function createTransferDownloadUrl(

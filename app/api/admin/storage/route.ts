@@ -23,6 +23,7 @@ import {
 import { listTrashEntries } from "@/lib/client-archive/trash-repository";
 import { findLiveTransfersUsingArchive } from "@/lib/transfers/repository";
 import { createMacDevice, listMacDevices, listRecentMacUploads, revokeMacDevice } from "@/lib/mac/repository";
+import { checkStorageCors, fixStorageCors } from "@/lib/storage-cors";
 
 function unauthorized() {
   return NextResponse.json({ ok: false, message: "Unauthorized." }, { status: 401 });
@@ -134,6 +135,12 @@ async function handlePost(request: Request) {
   }
 
   try {
+    if (action === "cors-check") {
+      return NextResponse.json({ ok: true, cors: await checkStorageCors() });
+    }
+    if (action === "cors-fix") {
+      return NextResponse.json({ ok: true, cors: await fixStorageCors() });
+    }
     if (action === "mac-overview") {
       const [devices, recent] = await Promise.all([listMacDevices(), listRecentMacUploads()]);
       return NextResponse.json({ ok: true, devices, recent });
