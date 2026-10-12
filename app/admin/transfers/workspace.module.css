@@ -1,0 +1,668 @@
+/* Transfers in Backstage — a clean, modern look that matches Storage:
+   soft grey canvas, white rounded cards, one black action, gold accents. */
+
+.page {
+  --ink: #1e1919;
+  --muted: #736c64;
+  --faint: #a29a91;
+  --line: #e8e4de;
+  --canvas: #f7f5f2;
+  --soft: #f1eee9;
+  --gold: #b08a4f;
+  --gold-soft: #f6efe3;
+  --good: #1f7a4d;
+  --good-soft: #e5f4ec;
+  display: grid;
+  grid-template-columns: minmax(22rem, 27rem) minmax(0, 1fr);
+  gap: clamp(1.5rem, 3vw, 3rem);
+  align-items: start;
+  min-height: calc(100vh - 6.5rem);
+  padding: clamp(1.25rem, 2.5vw, 2rem) clamp(1rem, 3vw, 3rem) 3rem;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "Segoe UI", Arial, sans-serif;
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+
+.page button,
+.page input,
+.page select,
+.page textarea {
+  font-family: inherit;
+}
+
+.hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+}
+
+/* ---- Send card ---- */
+
+.sendColumn {
+  position: sticky;
+  top: calc(6.5rem + clamp(1.25rem, 2.5vw, 2rem));
+}
+
+.card {
+  display: flex;
+  max-height: calc(100vh - 6.5rem - 2 * clamp(1.25rem, 2.5vw, 2rem));
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(30, 25, 25, 0.04), 0 12px 32px -12px rgba(30, 25, 25, 0.14);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.cardDragging {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 4px var(--gold-soft), 0 12px 32px -12px rgba(30, 25, 25, 0.14);
+}
+
+.cardBody {
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+  padding: 1.4rem 1.4rem 0.6rem;
+}
+
+.cardTitle {
+  margin: 0 0 1rem;
+  font-size: 1.35rem;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+}
+
+.dropArea {
+  display: grid;
+  justify-items: center;
+  gap: 0.35rem;
+  border: 1.5px dashed #d9d3ca;
+  border-radius: 0.75rem;
+  padding: 1.3rem 1rem 1.15rem;
+  background: var(--canvas);
+  text-align: center;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.cardDragging .dropArea {
+  border-color: var(--gold);
+  background: var(--gold-soft);
+}
+
+.dropIcon {
+  display: grid;
+  width: 2.5rem;
+  height: 2.5rem;
+  place-items: center;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(30, 25, 25, 0.1);
+}
+
+.dropIcon svg {
+  width: 1.2rem;
+  height: 1.2rem;
+  fill: none;
+  stroke: var(--ink);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.dropArea strong {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.dropLinks {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--faint);
+  font-size: 0.85rem;
+}
+
+.dropLinks label,
+.dropLinks button {
+  position: relative;
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--gold);
+  cursor: pointer;
+  font-size: inherit;
+  font-weight: 600;
+}
+
+.dropLinks label:hover,
+.dropLinks button:hover {
+  text-decoration: underline;
+}
+
+.dropLinks input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+}
+
+.chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 0.6rem;
+  border-radius: 0.6rem;
+  padding: 0.6rem 0.8rem;
+  background: var(--soft);
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.chip strong {
+  margin-right: 0.35rem;
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.chip button,
+.linkButton {
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.chip button:hover,
+.linkButton:hover {
+  color: var(--ink);
+  text-decoration: underline;
+}
+
+/* Background picks (collapsible) */
+
+.backgrounds {
+  margin-top: 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 0.6rem;
+  padding: 0.6rem 0.8rem;
+}
+
+.backgrounds summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  list-style: none;
+}
+
+.backgrounds summary::-webkit-details-marker {
+  display: none;
+}
+
+.backgrounds summary small {
+  color: var(--gold);
+  font-weight: 500;
+}
+
+.backgrounds p {
+  margin: 0.5rem 0 0.6rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.backgrounds p a {
+  color: var(--gold);
+}
+
+.pickGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(3.6rem, 1fr));
+  gap: 0.35rem;
+  margin-bottom: 0.5rem;
+}
+
+.pickGrid button {
+  position: relative;
+  overflow: hidden;
+  border: 2px solid transparent;
+  border-radius: 0.4rem;
+  padding: 0;
+  background: var(--soft);
+  cursor: pointer;
+  aspect-ratio: 1;
+}
+
+.pickGrid button[aria-pressed="true"] {
+  border-color: var(--gold);
+}
+
+.pickGrid img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.pickGrid em {
+  position: absolute;
+  top: 0.2rem;
+  right: 0.2rem;
+  display: grid;
+  width: 1.15rem;
+  height: 1.15rem;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--gold);
+  color: #fff;
+  font-size: 0.65rem;
+  font-style: normal;
+  font-weight: 700;
+}
+
+/* Fields */
+
+.fields {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1.1rem;
+}
+
+.row2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.field > span {
+  color: var(--ink);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.field em {
+  color: var(--faint);
+  font-style: normal;
+  font-weight: 400;
+}
+
+.field input,
+.field select,
+.field textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 0.55rem;
+  padding: 0.6rem 0.7rem;
+  background: #fff;
+  color: var(--ink);
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.field textarea {
+  min-height: 3.6rem;
+  resize: vertical;
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px var(--gold-soft);
+}
+
+.field input::placeholder,
+.field textarea::placeholder {
+  color: var(--faint);
+}
+
+/* Bottom of the card: always visible */
+
+.dock {
+  border-top: 1px solid var(--line);
+  padding: 0.9rem 1.4rem 1.1rem;
+  background: #fff;
+}
+
+.sendButton {
+  position: relative;
+  width: 100%;
+  min-height: 3rem;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0.6rem;
+  background: var(--ink);
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 600;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.sendButton:hover:not(:disabled) {
+  background: #000;
+}
+
+.sendButton:active:not(:disabled) {
+  transform: scale(0.99);
+}
+
+.sendButton:disabled {
+  background: #e7e3dd;
+  color: var(--faint);
+  cursor: not-allowed;
+}
+
+.sendButton.sending:disabled {
+  background: linear-gradient(90deg, var(--ink) var(--fill, 0%), #4a4542 var(--fill, 0%));
+  color: #fff;
+  cursor: progress;
+}
+
+.sending span {
+  display: block;
+  overflow: hidden;
+  padding: 0 1rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hint,
+.status {
+  margin: 0.55rem 0 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.status {
+  color: var(--ink);
+}
+
+.result {
+  display: flex;
+  gap: 0.35rem;
+  margin-top: 0.6rem;
+}
+
+.result input {
+  min-width: 0;
+  flex: 1;
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.6rem;
+  background: var(--canvas);
+  color: var(--ink);
+  font-size: 0.8rem;
+}
+
+.result button,
+.result a {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  padding: 0 0.75rem;
+  background: #fff;
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.result button:hover,
+.result a:hover {
+  background: var(--soft);
+}
+
+/* ---- Sent list ---- */
+
+.history {
+  min-width: 0;
+}
+
+.historyHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.75rem 2rem;
+  margin: 0.2rem 0 1rem;
+}
+
+.historyHead h2 {
+  margin: 0;
+  font-size: 1.6rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.historyHead p {
+  margin: 0.15rem 0 0;
+  color: var(--muted);
+}
+
+.historyLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.historyLinks a {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.45rem 0.85rem;
+  background: #fff;
+  color: var(--ink);
+  font-size: 0.82rem;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.historyLinks a:hover {
+  border-color: #d6d0c7;
+  background: var(--soft);
+}
+
+.search {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 0.6rem;
+  padding: 0 0.85rem;
+  background: #fff;
+}
+
+.search:focus-within {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px var(--gold-soft);
+}
+
+.search svg {
+  width: 1.1rem;
+  height: 1.1rem;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: var(--faint);
+  stroke-linecap: round;
+  stroke-width: 1.8;
+}
+
+.search input {
+  width: 100%;
+  border: 0;
+  padding: 0.75rem 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 0.9rem;
+  outline: none;
+}
+
+.list {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 0.9rem;
+  background: #fff;
+}
+
+.item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 1rem;
+  border-bottom: 1px solid var(--line);
+  padding: 0.9rem 1.1rem;
+  color: var(--ink);
+  text-decoration: none;
+  transition: background 0.12s ease;
+}
+
+.item:last-child {
+  border-bottom: 0;
+}
+
+.item:hover {
+  background: #fbfaf8;
+}
+
+.itemIcon {
+  display: grid;
+  width: 2.4rem;
+  height: 2.4rem;
+  place-items: center;
+  border-radius: 0.6rem;
+  background: var(--gold-soft);
+}
+
+.itemIcon svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  fill: none;
+  stroke: var(--gold);
+  stroke-linejoin: round;
+  stroke-width: 1.6;
+}
+
+.itemMain {
+  display: grid;
+  min-width: 0;
+  gap: 0.15rem;
+}
+
+.itemMain strong {
+  overflow: hidden;
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.itemMain small,
+.itemMeta small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.8rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.itemMeta {
+  display: grid;
+  justify-items: end;
+  gap: 0.3rem;
+}
+
+.pill {
+  border-radius: 999px;
+  padding: 0.18rem 0.6rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.pillGood {
+  background: var(--good-soft);
+  color: var(--good);
+}
+
+.pillWait {
+  background: var(--gold-soft);
+  color: #8a6631;
+}
+
+.pillMuted {
+  background: var(--soft);
+  color: var(--muted);
+}
+
+.chevron {
+  color: var(--faint);
+  font-size: 1.3rem;
+}
+
+.empty {
+  margin: 0;
+  padding: 2.5rem 1rem;
+  color: var(--muted);
+  text-align: center;
+}
+
+@media (max-width: 1000px) {
+  .page {
+    grid-template-columns: 1fr;
+  }
+
+  .sendColumn {
+    position: static;
+  }
+
+  .card {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .dock {
+    position: sticky;
+    bottom: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .item {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .itemIcon,
+  .chevron {
+    display: none;
+  }
+
+  .itemMeta small {
+    display: none;
+  }
+}

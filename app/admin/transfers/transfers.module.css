@@ -3,3 +3,29 @@
 .sendBackgrounds{margin:.6rem 0 .4rem;border-top:1px solid rgba(242,238,230,.16);padding-top:1rem}.sendBackgrounds>p{margin:0 0 .25rem;color:rgba(242,238,230,.5);font-size:.65rem}.sendBackgrounds>small{display:block;margin-bottom:.6rem;color:rgba(242,238,230,.42);font-size:.6rem;line-height:1.45}.sendBackgrounds a{color:#c7a369}.sendPickGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.3rem;max-height:13rem;overflow:auto}.sendPickGrid button{position:relative;aspect-ratio:1;border:2px solid transparent;padding:0;background:#222;cursor:pointer;overflow:hidden}.sendPickGrid button img{width:100%;height:100%;object-fit:cover;opacity:.75}.sendPickGrid button[aria-pressed=true]{border-color:#c7a369}.sendPickGrid button[aria-pressed=true] img{opacity:1}.sendPickGrid em{position:absolute;top:.2rem;left:.2rem;display:grid;width:1.1rem;height:1.1rem;place-items:center;border-radius:50%;background:#c7a369;color:#11100f;font-size:.55rem;font-style:normal;font-weight:700}.sendDefault{display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-top:.5rem;color:rgba(242,238,230,.55);font-size:.62rem}.sendDefault button{border:0;padding:0;background:none;color:#c7a369;cursor:pointer;font:inherit}.historyLinks{display:flex;align-items:center;gap:1.2rem}.historyLinks a{color:#80602e;font-size:.75rem;font-weight:600}
 .resultOpen{display:flex;align-items:center;padding:0 .8rem;background:#c7a369;color:#11100f;font-size:.7rem;font-weight:700;text-decoration:none}
 .activityHeading{margin:1.4rem 0 .2rem;color:#80602e;font-size:.6rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase}.eventRow>span:first-child{display:grid;gap:.15rem;min-width:0}.eventWho{color:#80602e;font-size:.65rem}.eventRow>span:last-child{flex:0 0 auto;color:#6f6b65}.transferDock{position:sticky;bottom:0;z-index:5;margin:0 -2rem;padding:.8rem 2rem 1.2rem;background:#11100f;box-shadow:0 -1rem 1.5rem -1rem rgba(0,0,0,.6)}.transferDock .progress{margin:.6rem 0 0}.transferSending:disabled{cursor:progress;opacity:1;background:linear-gradient(90deg,#c7a369 var(--fill,0%),#5c4f3a var(--fill,0%));transition:background .3s ease}.transferSending span{display:block;overflow:hidden;padding:0 1rem;font-size:.64rem;letter-spacing:.06em;text-overflow:ellipsis;text-transform:none;white-space:nowrap}
+/* ---- Modern refresh of the transfer detail page (matches Transfers and Storage) ---- */
+.detail{max-width:78rem;margin:0 auto;padding:2rem clamp(1rem,3vw,3rem) 4rem;background:#f7f5f2;font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue","Segoe UI",Arial,sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}
+.detail h1{font-family:inherit;font-size:clamp(1.8rem,3vw,2.4rem);font-weight:650;letter-spacing:-.02em}
+.detailBack{margin-bottom:1.2rem;color:#736c64;font-size:.85rem;font-weight:500;letter-spacing:0;text-transform:none;text-decoration:none}
+.detailBack:hover{color:#1e1919}
+.detailEyebrow{color:#b08a4f;font-size:.75rem;letter-spacing:.04em;text-transform:none}
+.detailMeta{margin:.4rem 0 0;color:#736c64}
+.detailHero{margin-bottom:1.2rem}
+.detailActions button,.detailActions a,.detailLink button,.editFiles button,.editFiles label{border:1px solid #e8e4de;border-radius:.55rem;padding:.55rem .9rem;background:#fff;color:#1e1919;font-size:.82rem;font-weight:600}
+.detailActions button:hover,.detailActions a:hover,.detailLink button:hover{background:#f1eee9}
+.detailActions button:disabled{opacity:.45;cursor:not-allowed}
+.detailLink{margin:0 0 1.2rem;gap:.4rem}
+.detailLink input{border:1px solid #e8e4de;border-radius:.55rem;padding:.6rem .75rem;font-size:.85rem}
+.detailCards{gap:.8rem;margin-bottom:1.6rem}
+.detailCards article{min-height:0;border:1px solid #e8e4de;border-radius:.9rem;padding:1rem 1.1rem;box-shadow:0 1px 2px rgba(30,25,25,.04)}
+.detailCards span{color:#736c64;font-size:.78rem}
+.detailCards strong{font-family:inherit;font-size:1.15rem;font-weight:600}
+.detailCards small{color:#b08a4f;font-size:.75rem}
+.detailGrid{gap:1.2rem}
+.detailPanel{border:1px solid #e8e4de;border-radius:.9rem;padding:1.1rem 1.2rem;background:#fff}
+.detailPanel h2{margin:0;font-size:1rem;font-weight:650;letter-spacing:0;text-transform:none}
+.fileRow,.eventRow{border-bottom:1px solid #efebe6;padding:.65rem 0;font-size:.85rem}
+.activityHeading{color:#b08a4f;font-size:.72rem;letter-spacing:.04em;text-transform:none}
+.eventWho{color:#b08a4f;font-size:.75rem}
+.fileRow button{color:#b08a4f}
+.purgedNote{border-radius:.6rem}
