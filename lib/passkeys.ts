@@ -88,6 +88,15 @@ async function rows() {
   return (await getSql().query("SELECT id, credential_id, public_key, counter, transports, name, created_at, last_used_at FROM backstage_passkeys WHERE environment=$1 ORDER BY created_at", [environment()])) as Row[];
 }
 
+/** Whether any Touch ID / Face ID has been set up (decides if the login page offers it). */
+export async function hasPasskeys() {
+  try {
+    return (await rows()).length > 0;
+  } catch {
+    return false;
+  }
+}
+
 export async function listPasskeys(): Promise<Passkey[]> {
   return (await rows()).map((row) => ({ id: row.id, name: row.name, createdAt: iso(row.created_at), ...(row.last_used_at ? { lastUsedAt: iso(row.last_used_at) } : {}) }));
 }

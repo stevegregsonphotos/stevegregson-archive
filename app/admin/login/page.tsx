@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import PasskeyLoginButton from "../../../components/admin/PasskeyLoginButton";
-import { passwordSignInAllowed } from "../../../lib/passkeys";
+import { hasPasskeys, passwordSignInAllowed } from "../../../lib/passkeys";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +28,7 @@ export default async function LoginPage({
   const { error, next, returnTo } = await searchParams;
   const destination = next || returnTo;
   const safeNext = destination?.startsWith("/") && !destination.startsWith("//") ? destination : undefined;
-  const passwordAllowed = await passwordSignInAllowed();
+  const [passwordAllowed, passkeysReady] = await Promise.all([passwordSignInAllowed(), hasPasskeys()]);
 
   const errorMessage =
     error === "invalid"
@@ -89,7 +89,7 @@ export default async function LoginPage({
             </p>
           ) : null}
 
-          <PasskeyLoginButton next={safeNext} only={!passwordAllowed} />
+          {passkeysReady || !passwordAllowed ? <PasskeyLoginButton next={safeNext} only={!passwordAllowed} /> : null}
 
           {passwordAllowed ? (<>
           <label>
