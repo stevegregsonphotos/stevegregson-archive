@@ -118,6 +118,34 @@ if [[ "$(jget "$reply" ok)" != "true" ]]; then
   exit 0
 fi
 
+# ---- Keep up to date (once a day; the new version runs next time) -------
+self_update() {
+  local marker="$SUPPORT/.checked-for-update" name tmp
+  [[ -f "$marker" && -z $(find "$marker" -mmin +1440 2>/dev/null) ]] && return
+  touch "$marker"
+  for name in agent.zsh add.zsh; do
+    tmp="$SUPPORT/$name.download"
+    if curl -fsSL --max-time 60 "$SERVER/mac/$name" -o "$tmp" 2>/dev/null \
+        && [[ "$(head -1 "$tmp")" == "#!/bin/zsh" ]] && zsh -n "$tmp" 2>/dev/null; then
+      if ! cmp -s "$tmp" "$SUPPORT/$name"; then
+        chmod 755 "$tmp" && mv -f "$tmp" "$SUPPORT/$name" && log "Updated $name."
+      fi
+    fi
+    rm -f "$tmp"
+  done
+}
+[[ -z "$SGS_NO_UPDATE" ]] && self_update
+
+# ---- Show every top-level Storage folder on the Mac ---------------------
+# (empty until something is put in them; nothing is downloaded)
+reply=$(api '{"action":"folders"}')
+if [[ "$(jget "$reply" ok)" == "true" ]]; then
+  while IFS= read -r name; do
+    [[ -z "$name" || "$name" == .* || "$name" == */* ]] && continue
+    [[ -e "$ROOT/$name" ]] || { mkdir -p -- "$ROOT/$name" && log "Added folder $name (from Storage)."; }
+  done <<< "$(jget "$reply" list)"
+fi
+
 uploaded=0
 uploaded_bytes=0
 freed=0
@@ -242,10 +270,11 @@ for rel in ${(k)S_SIZE}; do
 done
 save_state
 
-# Tidy folders that this run emptied (never the Storage folder itself, and
-# never folders that were already empty).
+# Tidy folders that this run emptied (never the Storage folder itself, never
+# the top-level client folders like MOUNTVIEW, and never folders that were
+# already empty).
 for dir in ${(Ou)emptied}; do
-  while [[ "$dir" == "$ROOT"/* && -d "$dir" ]]; do
+  while [[ "$dir" == "$ROOT"/*/* && -d "$dir" ]]; do
     rm -f -- "$dir/.DS_Store" 2>/dev/null
     rmdir -- "$dir" 2>/dev/null || break
     dir="${dir:h}"

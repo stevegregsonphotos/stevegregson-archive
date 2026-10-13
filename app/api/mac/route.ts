@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import {
   createVerifiedArchiveUploadUrl,
   headArchiveObject,
+  listClientArchive,
 } from "@/lib/client-archive/storage";
 import {
   authenticateMac,
@@ -11,7 +12,8 @@ import {
 } from "@/lib/mac/repository";
 
 // Used only by Steve's Mac uploader. Every request carries that Mac's secret
-// connection code; nothing here can list, download or delete files.
+// connection code; nothing here can download or delete files, and the only
+// thing it can list is the names of the top-level folders.
 
 const MAX_SINGLE_UPLOAD = 5 * 1024 ** 3;
 
@@ -65,6 +67,20 @@ export async function POST(request: Request) {
 
     if (action === "hello") {
       return json({ ok: true, device: device.name });
+    }
+
+    if (action === "folders") {
+      // The top-level client folders (names only), so the Mac can always
+      // show them and Steve can drop new work straight into the right one.
+      const names: string[] = [];
+      let cursor: string | undefined;
+      do {
+        const page = await listClientArchive("", cursor);
+        names.push(...page.folders.map((folder) => folder.name));
+        cursor = page.nextCursor;
+      } while (cursor && names.length < 2000);
+      const safe = names.filter((name) => name && !name.startsWith(".") && !/[\u0000-\u001f/]/.test(name));
+      return json({ ok: true, list: safe.join("\n") });
     }
 
     if (action === "presign") {

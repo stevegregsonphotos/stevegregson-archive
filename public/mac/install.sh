@@ -83,6 +83,23 @@ if [ "${1:-}" = "--uninstall" ]; then
   exit 0
 fi
 
+# ---- Update the uploader only (keeps the connection and settings) ----------
+if [ "${1:-}" = "--update" ]; then
+  SERVER="${2:-https://www.stevegregson.com}"; SERVER="${SERVER%/}"
+  [ -f "$SUPPORT/agent.zsh" ] || fail "The Steve Gregson Storage app isn't installed on this Mac yet."
+  for name in agent.zsh add.zsh; do
+    curl -fsSL --max-time 60 "$SERVER/mac/$name" -o "$SUPPORT/$name.new" || fail "Couldn't download $name. Check you're online and try again."
+    head -1 "$SUPPORT/$name.new" | grep -q '^#!/bin/zsh' || fail "The download didn't look right. Please try again."
+    chmod 755 "$SUPPORT/$name.new"
+    mv -f "$SUPPORT/$name.new" "$SUPPORT/$name"
+  done
+  launchctl kickstart "$DOMAIN/$LABEL" >/dev/null 2>&1 || true
+  echo
+  done_ "Updated ${APP_NAME}. From now on it keeps itself up to date."
+  echo
+  exit 0
+fi
+
 # ---- Refresh the icons only (no connection code needed) --------------------
 if [ "${1:-}" = "--icon" ]; then
   SERVER="${2:-https://www.stevegregson.com}"; SERVER="${SERVER%/}"
