@@ -204,9 +204,42 @@ function isGenericFolderName(name) {
   );
 }
 
+// Session folders inside a show ("Dress Rehearsal", "Press Night", "Day 2")
+// don't name the show either.
+const SESSION_FOLDER = /^(dress|tech|technical|press|preview|previews|photocall|performance|show|matinee|evening|night|rehearsal|rehearsals|run|day|cast|in|and|the|\d{1,2}(st|nd|rd|th)?|\s)+$/i;
+
+/**
+ * Steve's Dropbox/Drive is laid out Client-or-venue / Show / (any sub-folders).
+ * Returns the folders from the cloud root down, or null for other places.
+ */
+function cloudSegments(sourceFolder) {
+  const parts = path.resolve(sourceFolder).split(path.sep);
+  const at = parts.indexOf("CloudStorage");
+  if (at < 0 || at + 1 >= parts.length) return null;
+  let start = at + 2; // skip "Dropbox" / "GoogleDrive-…"
+  if (/^(My Drive|Shared drives)$/i.test(parts[start] || "")) start += 1;
+  return { root: parts.slice(0, start).join(path.sep) || path.sep, segments: parts.slice(start) };
+}
+
 function showFolder(sourceFolder) {
+  const cloud = cloudSegments(sourceFolder);
+  if (cloud && cloud.segments.length) {
+    const seg = cloud.segments;
+    // Client / Show / … — but "Chickenshed / 2021 / Grimm Tales" has a year folder,
+    // and "Hope Theatre 2023 / Full Resolution" is a show on its own.
+    let index = 1;
+    if (seg.length > 2 && /^(19|20)\d{2}$/.test(seg[1].trim())) index = 2;
+    if (index >= seg.length || isGenericFolderName(seg[index]) || SESSION_FOLDER.test(cleanDisplayName(seg[index]))) {
+      index = 0;
+    }
+    return path.join(cloud.root, ...seg.slice(0, index + 1));
+  }
   let folder = path.resolve(sourceFolder);
-  for (let i = 0; i < 3 && isGenericFolderName(path.basename(folder)); i += 1) {
+  for (
+    let i = 0;
+    i < 4 && (isGenericFolderName(path.basename(folder)) || SESSION_FOLDER.test(cleanDisplayName(path.basename(folder))));
+    i += 1
+  ) {
     const parent = path.dirname(folder);
     if (parent === folder) break;
     folder = parent;
@@ -214,14 +247,28 @@ function showFolder(sourceFolder) {
   return folder;
 }
 
-/** "Jermyn Street Theatre / David Copperfield - November 2025 / Web" — gives the researcher the client/venue too. */
+/** "Jermyn Street Theatre / Little Brother - April 2025 / Dress Rehearsal / Web New" — gives the researcher the client/venue too. */
 function sourceFolderLabel(sourceFolder) {
+  const cloud = cloudSegments(sourceFolder);
+  if (cloud) return cloud.segments.join(" / ");
   const show = showFolder(sourceFolder);
   const parts = [path.basename(path.dirname(show)), path.basename(show)];
   if (show !== path.resolve(sourceFolder)) parts.push(path.relative(show, sourceFolder));
-  return parts
-    .filter((part) => part && !/^(Dropbox|CloudStorage|Library|Users|My Drive)$/i.test(part) && !part.startsWith("GoogleDrive-"))
-    .join(" / ");
+  return parts.filter(Boolean).join(" / ");
+}
+
+/** The shoot date from the folder names: the deepest folder that names one wins. */
+function dateFromFolders(sourceFolder) {
+  const stop = path.dirname(showFolder(sourceFolder));
+  let folder = path.resolve(sourceFolder);
+  let fallback = { year: null, month: null };
+  while (folder && folder !== stop && folder !== path.dirname(folder)) {
+    const found = dateFromFolderName(path.basename(folder));
+    if (found.year) return found;
+    if (found.month && !fallback.month) fallback = found;
+    folder = path.dirname(folder);
+  }
+  return fallback;
 }
 
 /** "David Copperfield - November 2025" → "David Copperfield" (the date is asked for separately). */
@@ -230,7 +277,11 @@ function showNameFromFolder(sourceFolder) {
   const name = path.basename(showFolder(sourceFolder))
     .replace(new RegExp(`[\\s,.-]*\\b(${months})\\b\\.?\\s*((19|20)?\\d{2})?\\s*$`, "i"), "")
     .replace(/[\s,.-]*\b(19|20)\d{2}\s*$/, "");
-  return cleanDisplayName(name) || cleanDisplayName(path.basename(sourceFolder));
+  const base = cleanDisplayName(name) || cleanDisplayName(path.basename(sourceFolder));
+  const below = path.relative(showFolder(sourceFolder), sourceFolder);
+  return /\bin[ -]?rehearsals?\b|\brehearsal room\b/i.test(below) && !/rehearsal/i.test(base)
+    ? `${base} - In Rehearsal`
+    : base;
 }
 
 function readEnvValue(text, key) {
@@ -2254,7 +2305,7 @@ async function detectShootDate(
   }
 
   const fromFolder =
-    dateFromFolderName(path.basename(showFolder(sourceFolder)));
+    dateFromFolders(sourceFolder);
 
   if (counts.size) {
     const [key, count] = [...counts.entries()].sort(
