@@ -1520,10 +1520,22 @@ export default function CuratedArchiveImportClient({
                 file.type ||
                 "application/octet-stream";
 
+              // Read the file into memory first: Safari sometimes fails
+              // ("Load failed") when it streams a file straight from a
+              // chosen folder, and a read error here names the real problem.
+              let data: ArrayBuffer;
+              try {
+                data = await file.arrayBuffer();
+              } catch {
+                throw new Error(
+                  `Couldn't read "${relativePath}" from your Mac. If the curator is still working on this production, wait for it to finish, then choose the folder again.`,
+                );
+              }
+
               await uploadDirectToR2(
                 relativePath,
                 contentType,
-                file,
+                data,
               );
             },
           ),
