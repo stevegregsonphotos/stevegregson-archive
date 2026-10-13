@@ -2,7 +2,9 @@
 # Used by the Dock icon: puts dropped files and folders into the
 # Steve Gregson Storage folder and starts uploading straight away.
 # Items on this Mac's own disk are moved (like dragging into Dropbox);
-# items on a card or external drive are copied, so the original stays put.
+# items on a card or external drive, or inside Dropbox / Google Drive /
+# iCloud, are copied, so the original stays put (moving them out of a
+# cloud folder would delete them from that service).
 
 emulate -L zsh
 APP_NAME="Steve Gregson Storage"
@@ -26,7 +28,7 @@ for item in "$@"; do
   # Already inside the Storage folder: nothing to do.
   [[ "$item" == "$ROOT" || "$item" == "$ROOT"/* ]] && continue
   target=$(free_name "$ROOT/${item:t}")
-  if [[ "$item" == /Volumes/* ]]; then
+  if [[ "$item" == /Volumes/* || "$item" == "$HOME/Library/CloudStorage/"* || "$item" == "$HOME/Library/Mobile Documents/"* || "$item" == "$HOME/Dropbox"* ]]; then
     cp -R -p -- "$item" "$target" && (( copied++ ))
   else
     mv -- "$item" "$target" && (( moved++ ))
