@@ -3549,15 +3549,14 @@ async function main() {
         "approved-paid-run",
       )
     ) {
-      const approval =
-        await rl.question(
-          `Type APPROVE PAID RUN to authorise this one curation up to \$${budgetUsd.toFixed(2)}: `,
+      const approved =
+        await yesNo(
+          rl,
+          `Approve this paid curation, spending up to \$${budgetUsd.toFixed(2)}?`,
+          false,
         );
 
-      if (
-        approval.trim() !==
-        "APPROVE PAID RUN"
-      ) {
+      if (!approved) {
         console.log();
         console.log(
           "Paid run not approved. Preparation remains cached and can be resumed later.",
