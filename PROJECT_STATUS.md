@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 13 October 2026, 19:40 (London)
+Last updated: 13 October 2026, 20:45 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -26,6 +26,11 @@ cost an extra Vercel build.
   paste keys in chat. No paid services/accounts (no Apple Developer).
 - Never spend on the OpenAI API without Steve's approval for that run.
 - Stage files explicitly; never reset/clean/stash Steve's working tree.
+- Big file copies on his Mac: give Steve a Terminal command to run himself
+  rather than looping copy steps from Claude (saves usage; Claude's
+  background processes on the Mac stop when each command ends).
+- Copying from Dropbox into Storage needs free space for BOTH copies until
+  the Mac app uploads and offloads — check free space first.
 
 ## Repo, branches, checks
 
@@ -79,7 +84,24 @@ cost an extra Vercel build.
 
 ## Waiting / in progress
 
-- Nothing waiting on the test branch (live at `1bdb24c`, 13 Oct 19:40).
+- Nothing waiting on the test branch except this handover file (code same
+  as live).
+- **Moving MOUNTVIEW 2025–26 batch to Storage — IN PROGRESS (13 Oct):**
+  ~260 GB, 33 folders that were downloaded in Dropbox (Charlie and the
+  Chocolate Factory … Twelfth Night, Community Days, plus small Eddie
+  Marsan / Sally Ann / Sennheiser Rack), 43,700 JPEGs, none over 5 GB.
+  Steve is running this in Terminal (copies only downloaded folders):
+  `cd ~/Library/CloudStorage/Dropbox/MOUNTVIEW && for d in */; do [ $(du -sk "$d" | cut -f1) -gt 50 ] && echo "Copying $d" && rsync -rt --exclude .DS_Store "$d" ~/"Steve Gregson Storage"/MOUNTVIEW/"${d%/}"/; done; echo ALL DONE`
+  Next: once it says ALL DONE and the Mac app has finished uploading
+  (likely overnight, ~100 Mb upload), Claude checks every show is in
+  Storage, THEN Steve sets those Mountview folders to online-only in
+  Dropbox. Older Mountview shows (2023–24) are already online-only.
+- **Dropbox disk check (13 Oct):** Dropbox was using ~312 GB on the Mac.
+  Besides Mountview, Guildford School of Acting (The Rink, Young
+  Frankenstein, ~27 GB) and Jermyn Street Theatre (Jules & Jim, Owners,
+  The Oyster Problem, Yours Unfaithfully, ~21 GB) were downloaded by
+  mistake — Steve to set them online-only. Check: `du -sk` per Dropbox
+  folder shows real on-disk size (online-only folders show ~0).
 - Steve to check Stage Door Jonny (Jez Butterworth) in Productions: the
   import showed "Load failed" but the production exists.
 - **Adding missing productions to the archive:** Steve has
@@ -89,10 +111,9 @@ cost an extra Vercel build.
   Dropbox folder available offline → curate → import → tick off → set
   back to online-only. Curated so far: David Copperfield (free route),
   Little Brother (paid route, first test). Stage Door Jonny imported.
-- **Moving MOUNTVIEW from Dropbox to Storage:** checklist artifact
-  https://claude.ai/artifact/3KaMy6VmDJAe6GRjDx6Rmh — 4 year-batches
-  (each ≤ ~170 GB), set each batch online-only in Dropbox as soon as it's
-  copied. Steve keeps Dropbox for other clients.
+- Mountview move checklist artifact:
+  https://claude.ai/artifact/3KaMy6VmDJAe6GRjDx6Rmh. Steve keeps Dropbox
+  for other clients.
 - **Backblaze Computer Backup** (RAW drives, ~20 TB uploading, 1-year
   version history): still to exclude the `Steve Gregson Storage` folder.
 - Scheduled tasks: yearly Backblaze drive check (1 Oct); put the Mac app
