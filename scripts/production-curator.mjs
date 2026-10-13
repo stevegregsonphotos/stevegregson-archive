@@ -190,12 +190,18 @@ function cleanDisplayName(value) {
 // Export folders like "Web", "Full Res" or "JPEG" don't name the show, so
 // use the folder above instead: Jermyn Street Theatre / David Copperfield -
 // November 2025 / Web  →  "David Copperfield - November 2025".
-const GENERIC_FOLDER =
-  /^(web|full|hi|high|low|print|press)?\s*(res(olution)?|size|quality|jpe?gs?|exports?|edits?|edited|finals?|selects?|selection|images|photos|renamed|\d{3,5}\s*px)?(\s*(res(olution)?|renamed|\d{3,5}\s*px|jpe?gs?))*$/i;
+const GENERIC_FOLDER_WORDS = new Set(
+  ("web full hi high low print press res resolution size sized quality jpeg jpegs jpg jpgs " +
+    "export exports exported edit edits edited final finals select selects selected selection " +
+    "images photos pics renamed new old copy small medium large social insta instagram email " +
+    "version for and with credit credits watermark watermarked unwatermarked").split(" "),
+);
 
 function isGenericFolderName(name) {
-  const cleaned = cleanDisplayName(name).trim();
-  return !cleaned || GENERIC_FOLDER.test(cleaned);
+  const words = cleanDisplayName(name).toLowerCase().split(/[\s.,()]+/).filter(Boolean);
+  return words.every(
+    (word) => GENERIC_FOLDER_WORDS.has(word) || /^(v?\d{1,5}(px)?|\d{1,5}x\d{1,5})$/.test(word),
+  );
 }
 
 function showFolder(sourceFolder) {
