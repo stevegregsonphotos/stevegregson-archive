@@ -99,6 +99,26 @@ function sourceLooksCloudBacked(value) {
   );
 }
 
+// A single show straight from Dropbox / Google Drive is fine (Steve makes it
+// available offline first). Only stop when the folder is so big it is
+// probably a whole client folder rather than one production. Sizes come
+// from the file listing, so checking doesn't download anything.
+const MAX_CLOUD_SOURCE_BYTES = 40 * 1024 * 1024 * 1024;
+
+async function assertCloudSourceOk(sourceFolder) {
+  if (!sourceLooksCloudBacked(sourceFolder) || hasFlag("allow-cloud-source")) {
+    return;
+  }
+  const images = await listImages(sourceFolder);
+  const totalBytes = images.reduce((sum, image) => sum + Number(image.size || 0), 0);
+  if (totalBytes > MAX_CLOUD_SOURCE_BYTES) {
+    throw new Error(
+      `CLOUD SOURCE SAFETY STOP: this Dropbox/Drive folder holds ${(totalBytes / 1024 ** 3).toFixed(0)} GB of photos, which looks like a whole client folder rather than one production. Choose a single show's folder instead (or rerun with --allow-cloud-source if you really mean it).`,
+    );
+  }
+  console.log(`Reading from cloud folder (${(totalBytes / 1024 ** 3).toFixed(1)} GB). Tip: make it available offline first so it's quicker.`);
+}
+
 function pathIsInside(parent, child) {
   const relative = path.relative(path.resolve(parent), path.resolve(child));
   return (
@@ -2856,14 +2876,7 @@ async function finishClaudeCuration(
     );
   }
 
-  if (
-    sourceLooksCloudBacked(sourceFolder) &&
-    !hasFlag("allow-cloud-source")
-  ) {
-    throw new Error(
-      "CLOUD SOURCE SAFETY STOP: the original photo folder is inside a cloud-provider mount.",
-    );
-  }
+  await assertCloudSourceOk(sourceFolder);
 
   const candidates =
     await listImages(
@@ -3194,14 +3207,7 @@ async function main() {
       );
     }
 
-    if (
-      sourceLooksCloudBacked(sourceFolder) &&
-      !hasFlag("allow-cloud-source")
-    ) {
-      throw new Error(
-        "CLOUD SOURCE SAFETY STOP: this folder is inside a cloud-provider mount. Reading every source image could hydrate large amounts of data onto this Mac. Copy the single production locally first, or rerun with --allow-cloud-source only if you intentionally accept that behaviour.",
-      );
-    }
+    await assertCloudSourceOk(sourceFolder);
 
     const defaultProduction =
       cleanDisplayName(
