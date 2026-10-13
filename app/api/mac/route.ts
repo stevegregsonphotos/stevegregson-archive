@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import {
+  createClientArchiveFolder,
   createVerifiedArchiveUploadUrl,
   headArchiveObject,
   listClientArchive,
@@ -13,7 +14,8 @@ import {
 
 // Used only by Steve's Mac uploader. Every request carries that Mac's secret
 // connection code; nothing here can download or delete files, and the only
-// thing it can list is the names of the top-level folders.
+// thing it can list is the names of the top-level folders. It can add files
+// and empty folders.
 
 const MAX_SINGLE_UPLOAD = 5 * 1024 ** 3;
 
@@ -81,6 +83,14 @@ export async function POST(request: Request) {
       } while (cursor && names.length < 2000);
       const safe = names.filter((name) => name && !name.startsWith(".") && !/[\u0000-\u001f/]/.test(name));
       return json({ ok: true, list: safe.join("\n") });
+    }
+
+    if (action === "folder") {
+      // An empty folder made on the Mac: create it in Storage too.
+      const path = storagePath(body.path);
+      if (!path || path.split("/")[0] === ".trash") return json({ ok: false, message: "Invalid folder." }, 400);
+      await createClientArchiveFolder(path);
+      return json({ ok: true });
     }
 
     if (action === "presign") {

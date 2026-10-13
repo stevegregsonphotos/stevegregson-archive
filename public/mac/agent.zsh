@@ -138,13 +138,34 @@ self_update() {
 
 # ---- Show every top-level Storage folder on the Mac ---------------------
 # (empty until something is put in them; nothing is downloaded)
+# Folders already known to Storage (one per line), so each is only sent once
+# and a folder deleted on the website isn't put back from here.
+FOLDERS="$SUPPORT/folders.txt"
+touch "$FOLDERS"
+typeset -A KNOWN
+while IFS= read -r line; do [[ -n "$line" ]] && KNOWN[$line]=1; done < "$FOLDERS"
+remember_folder() { KNOWN[$1]=1; print -r -- "$1" >> "$FOLDERS"; }
+
 reply=$(api '{"action":"folders"}')
 if [[ "$(jget "$reply" ok)" == "true" ]]; then
   while IFS= read -r name; do
     [[ -z "$name" || "$name" == .* || "$name" == */* ]] && continue
+    [[ -z "${KNOWN[$name]}" ]] && remember_folder "$name"
     [[ -e "$ROOT/$name" ]] || { mkdir -p -- "$ROOT/$name" && log "Added folder $name (from Storage)."; }
   done <<< "$(jget "$reply" list)"
 fi
+
+# ---- Folders made on the Mac appear in Storage straight away -----------
+# (including empty ones, ready for photos)
+while IFS= read -r -d '' dir; do
+  rel="${dir#$ROOT/}"
+  [[ "$rel" == *$'\t'* || "$rel" == *$'\n'* || -n "${KNOWN[$rel]}" ]] && continue
+  reply=$(api "{\"action\":\"folder\",\"path\":\"$(json_escape "$rel")\"}")
+  if [[ "$(jget "$reply" ok)" == "true" ]]; then
+    remember_folder "$rel"
+    log "Created folder $rel in Storage."
+  fi
+done < <(find "$ROOT" -mindepth 1 -type d ! -name '.*' ! -path '*/.*' -print0 2>/dev/null)
 
 uploaded=0
 uploaded_bytes=0
