@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 13 October 2026, 20:45 (London)
+Last updated: 13 October 2026, 22:25 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -86,22 +86,24 @@ cost an extra Vercel build.
 
 - Nothing waiting on the test branch except this handover file (code same
   as live).
-- **Moving MOUNTVIEW 2025–26 batch to Storage — IN PROGRESS (13 Oct):**
-  ~260 GB, 33 folders that were downloaded in Dropbox (Charlie and the
-  Chocolate Factory … Twelfth Night, Community Days, plus small Eddie
-  Marsan / Sally Ann / Sennheiser Rack), 43,700 JPEGs, none over 5 GB.
-  Steve is running this in Terminal (copies only downloaded folders):
-  `cd ~/Library/CloudStorage/Dropbox/MOUNTVIEW && for d in */; do [ $(du -sk "$d" | cut -f1) -gt 50 ] && echo "Copying $d" && rsync -rt --exclude .DS_Store "$d" ~/"Steve Gregson Storage"/MOUNTVIEW/"${d%/}"/; done; echo ALL DONE`
-  Next: once it says ALL DONE and the Mac app has finished uploading
-  (likely overnight, ~100 Mb upload), Claude checks every show is in
-  Storage, THEN Steve sets those Mountview folders to online-only in
-  Dropbox. Older Mountview shows (2023–24) are already online-only.
-- **Dropbox disk check (13 Oct):** Dropbox was using ~312 GB on the Mac.
-  Besides Mountview, Guildford School of Acting (The Rink, Young
-  Frankenstein, ~27 GB) and Jermyn Street Theatre (Jules & Jim, Owners,
-  The Oyster Problem, Yours Unfaithfully, ~21 GB) were downloaded by
-  mistake — Steve to set them online-only. Check: `du -sk` per Dropbox
-  folder shows real on-disk size (online-only folders show ~0).
+- **MOUNTVIEW → Storage (13 Oct):** Terminal copy finished — 33 folders
+  (all 2025–26 shows + Mrs Beeton, Addams Family, Little Mermaid 2023),
+  286 GB, verified file-for-file identical to Dropbox. Mac app uploading
+  overnight. NEXT: check every file is in Storage online (B2), then the
+  Dropbox copies can go.
+- **Dropbox won't offload anything:** every "Make online-only" (MOUNTVIEW,
+  Jermyn Street, even Twelfth Night alone) gives "Unable to Remove
+  Download", even after restarting Dropbox. Files ARE online (checked).
+  Suspect Dropbox account being full. Not urgent: macOS counts them as
+  purgeable (Finder shows ~263 GB available vs ~48 GB truly free).
+- **The Rink – May 2026 (GSA): ~890 photos exist ONLY on the Mac** —
+  `Full New`, `Web New`, `Full Replacement`, `Web Replacement` never
+  uploaded (Dropbox full). Not yet copied to Storage. Copy command:
+  `mkdir -p ~/"Steve Gregson Storage"/"Guildford School of Acting" && cd ~/Library/CloudStorage/Dropbox/"Guildford School of Acting" && rsync -rt --exclude .DS_Store "The Rink - May 2026" ~/"Steve Gregson Storage"/"Guildford School of Acting"/`
+  Young Frankenstein – June 2026 is also Mac-only in Dropbox but is safe
+  in Google Drive ("Young Frankenstein - June 2026 copy").
+- TODO: scan Dropbox for other files on the Mac that never uploaded
+  (anything since ~May 2026 may be affected).
 - Steve to check Stage Door Jonny (Jez Butterworth) in Productions: the
   import showed "Load failed" but the production exists.
 - **Adding missing productions to the archive:** Steve has
