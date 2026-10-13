@@ -74,12 +74,12 @@ cost an extra Vercel build.
   - Takes venue + show + date from `Client / Show - Month Year / … / Web`
     however deep; "In Rehearsal" folders get that suffix.
 - **Curated archive import** (Backstage › Curated import): uploads the
-  curator output and publishes productions.
+  curator output and publishes productions (reads each file before upload
+  to avoid Safari "Load failed").
 
 ## Waiting / in progress
 
-- **On test branch, waiting for "go live":** `3d93009` curated import reads
-  each file before upload (stops Safari's misleading "Load failed").
+- Nothing waiting on the test branch (live at `1bdb24c`, 13 Oct 19:40).
 - Steve to check Stage Door Jonny (Jez Butterworth) in Productions: the
   import showed "Load failed" but the production exists.
 - **Adding missing productions to the archive:** Steve has
