@@ -187,6 +187,46 @@ function cleanDisplayName(value) {
     .trim();
 }
 
+// Export folders like "Web", "Full Res" or "JPEG" don't name the show, so
+// use the folder above instead: Jermyn Street Theatre / David Copperfield -
+// November 2025 / Web  →  "David Copperfield - November 2025".
+const GENERIC_FOLDER =
+  /^(web|full|hi|high|low|print|press)?\s*(res(olution)?|size|quality|jpe?gs?|exports?|edits?|edited|finals?|selects?|selection|images|photos|renamed|\d{3,5}\s*px)?(\s*(res(olution)?|renamed|\d{3,5}\s*px|jpe?gs?))*$/i;
+
+function isGenericFolderName(name) {
+  const cleaned = cleanDisplayName(name).trim();
+  return !cleaned || GENERIC_FOLDER.test(cleaned);
+}
+
+function showFolder(sourceFolder) {
+  let folder = path.resolve(sourceFolder);
+  for (let i = 0; i < 3 && isGenericFolderName(path.basename(folder)); i += 1) {
+    const parent = path.dirname(folder);
+    if (parent === folder) break;
+    folder = parent;
+  }
+  return folder;
+}
+
+/** "Jermyn Street Theatre / David Copperfield - November 2025 / Web" — gives the researcher the client/venue too. */
+function sourceFolderLabel(sourceFolder) {
+  const show = showFolder(sourceFolder);
+  const parts = [path.basename(path.dirname(show)), path.basename(show)];
+  if (show !== path.resolve(sourceFolder)) parts.push(path.relative(show, sourceFolder));
+  return parts
+    .filter((part) => part && !/^(Dropbox|CloudStorage|Library|Users|My Drive)$/i.test(part) && !part.startsWith("GoogleDrive-"))
+    .join(" / ");
+}
+
+/** "David Copperfield - November 2025" → "David Copperfield" (the date is asked for separately). */
+function showNameFromFolder(sourceFolder) {
+  const months = "january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sept?|oct|nov|dec";
+  const name = path.basename(showFolder(sourceFolder))
+    .replace(new RegExp(`[\\s,.-]*\\b(${months})\\b\\.?\\s*((19|20)?\\d{2})?\\s*$`, "i"), "")
+    .replace(/[\s,.-]*\b(19|20)\d{2}\s*$/, "");
+  return cleanDisplayName(name) || cleanDisplayName(path.basename(sourceFolder));
+}
+
 function readEnvValue(text, key) {
   for (const rawLine of text.split(/\r?\n/)) {
     const line = rawLine.trim();
@@ -1884,7 +1924,7 @@ async function stageFinalSelection(
       sourcePath:
         "/" + candidate.relativePath.replace(/^\/+/, ""),
       sourceFolder:
-        cleanDisplayName(path.basename(sourceFolder)),
+        cleanDisplayName(path.basename(showFolder(sourceFolder))),
       modified:
         candidate.modified,
       stagedFile:
@@ -2177,8 +2217,12 @@ function dateFromFolderName(name) {
       month = i + 1;
     }
   }
+  // "The Tempest Nov 21" → 2021
+  const shortYear = !year && month
+    ? /(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{2})(?!\d)/.exec(text)
+    : null;
   return {
-    year: year ? Number(year[1]) : null,
+    year: year ? Number(year[1]) : shortYear ? 2000 + Number(shortYear[1]) : null,
     month,
   };
 }
@@ -2204,7 +2248,7 @@ async function detectShootDate(
   }
 
   const fromFolder =
-    dateFromFolderName(path.basename(sourceFolder));
+    dateFromFolderName(path.basename(showFolder(sourceFolder)));
 
   if (counts.size) {
     const [key, count] = [...counts.entries()].sort(
@@ -2490,7 +2534,7 @@ async function runMetadataResearch(
   const prompt =
     metadataResearchPrompt(
       production,
-      path.basename(sourceFolder),
+      sourceFolderLabel(sourceFolder),
       sourceTxt.text,
       shootDate,
     );
@@ -2787,7 +2831,7 @@ Write the result to \`pass-2.json\` in this folder, in exactly this shape (numbe
 
 ### Step 2: research the credits
 
-${metadataResearchPrompt(production, path.basename(sourceFolder), sourceTxt.text, shootDate)}
+${metadataResearchPrompt(production, sourceFolderLabel(sourceFolder), sourceTxt.text, shootDate)}
 
 Write the result to \`metadata-research.json\` in this folder, in this shape (the \`researched\` object uses the fields listed above; leave anything unverified as "" or null, never guess):
 
@@ -3210,11 +3254,7 @@ async function main() {
     await assertCloudSourceOk(sourceFolder);
 
     const defaultProduction =
-      cleanDisplayName(
-        path.basename(
-          sourceFolder,
-        ),
-      );
+      showNameFromFolder(sourceFolder);
 
     const production =
       argValue(
