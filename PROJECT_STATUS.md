@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 14 October 2026, 11:00 (London)
+Last updated: 14 October 2026, 18:30 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -90,9 +90,11 @@ cost an extra Vercel build.
   `install.sh --update` stops the old run first. Steve's Mac updated 10:18.
   Measured: ~10 MB/s (~80 Mbit/s, near his line) vs ~1.6 MB/s before.
 - **MOUNTVIEW → Storage (2024–26 shows only, by design):** 33 of the 58
-  Dropbox MOUNTVIEW folders (29,900 files, 307 GB). At 10:55 on 14 Oct:
-  6,640 done, 236 GB left, ~9.5 MB/s (line-limited, Backblaze stopped),
-  no failures; expected to finish ~6pm. Claude check scheduled 18:25.
+  Dropbox MOUNTVIEW folders (29,900 files, 307 GB). **UPLOAD COMPLETE
+  14 Oct 17:42** — check at 18:25: all 29,900 files on the Mac have an
+  "Uploaded" line (each confirmed by size + MD5 in Storage), 0 left, 0
+  "(Mac)" duplicates; 20 temporary failures around 13:00 all retried OK.
+  NEXT: step 2 below (Steve to OK clearing the Mac copies).
   PLAN (Steve's order): 1) verify every file is in Storage (compare
   `~/Steve Gregson Storage/MOUNTVIEW` with "Uploaded" lines in
   `~/Library/Logs/Steve Gregson Storage.log`; grant those two folders —
