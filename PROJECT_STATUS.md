@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 14 October 2026, 22:10 (London)
+Last updated: 14 October 2026, 22:25 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -29,8 +29,14 @@ cost an extra Vercel build.
 - Big file copies on his Mac: give Steve a Terminal command to run himself
   rather than looping copy steps from Claude (saves usage; Claude's
   background processes on the Mac stop when each command ends).
-- Copying from Dropbox into Storage needs free space for BOTH copies until
-  the Mac app uploads and offloads — check free space first.
+- **DISK SPACE RULE:** before giving Steve ANY copy command, check free
+  space (`df -h ~`) and the size of what's being copied; it must fit with
+  a 50 GB margin, or copy in smaller batches. Copying from Dropbox into
+  Storage needs space for BOTH copies until uploaded and cleared. On 14 Oct
+  a copy took the Mac down to 15 GB free — must not happen again.
+- Checking the Mac from a chat: connect `~/Steve Gregson Storage` and
+  `~/Library/Logs` (uploader log: `Steve Gregson Storage.log`).
+  `~/Library/Application Support` can't be connected.
 
 ## Repo, branches, checks
 
@@ -89,33 +95,30 @@ cost an extra Vercel build.
   identical-but-unconfirmed file instead of making a "(Mac)" duplicate;
   `install.sh --update` stops the old run first. Steve's Mac updated 10:18.
   Measured: ~10 MB/s (~80 Mbit/s, near his line) vs ~1.6 MB/s before.
-- **MOUNTVIEW → Storage (2024–26 shows only, by design):** 33 of the 58
-  Dropbox MOUNTVIEW folders (29,900 files, 307 GB). **UPLOAD COMPLETE
-  14 Oct 17:42** — check at 18:25: all 29,900 files on the Mac have an
-  "Uploaded" line (each confirmed by size + MD5 in Storage), 0 left, 0
-  "(Mac)" duplicates; 20 temporary failures around 13:00 all retried OK.
-  19:00: Steve set OFFLOAD_DAYS=0 — Mac clears each uploaded file after
-  re-verifying (one at a time, ~1/s). By 22:05: 9,131 cleared, ~20k to go.
-  PUT IT BACK (e.g. 7) once the MOUNTVIEW moves are done.
-  19:30–22:08: rsync copied 9 to 5, Site Specific + most 2024 folders into
-  `~/Steve Gregson Storage/MOUNTVIEW` — NOT YET UPLOADED (0 uploads since
-  19:00) because the agent's clearing loop blocks new uploads until a run
-  finishes. Free space fell to 62 GB (Dropbox keeps its downloads +
-  the Storage copy). 22:08: Steve stopping all Terminals (copy +
-  caffeinate); background uploader left running (only frees space).
-  NEXT CHAT: check free space (`df -h ~`), log progress; uploads of the
-  2023/24 folders start when the clearing run ends. Rerun the 2024 copy
-  (rsync resumes) only when space allows; the ten 2021–22 folders need
-  Dropbox Selective Sync first.
-  **FIX NEEDED (agent.zsh):** offload loop must not block uploads (run an
-  upload pass between offload chunks, or cap offload per run), and do
-  offload verifies in parallel like uploads. Also: never give Steve a big
-  copy command without checking it can't fill the disk.
+- **MOUNTVIEW → Storage:** first batch (33 folders, 29,900 files) uploaded
+  and confirmed 14 Oct. 19:30–22:08 rsync copied more folders (9 to 5,
+  Site Specific, most 2024 folders, Alice by Heart, Six Characters,
+  Building Hires) into `~/Steve Gregson Storage/MOUNTVIEW`, taking free
+  space down to 15 GB (the uploader's clearing pass blocked uploads).
+  **22:20 fix:** Claude removed the Mac copies of 21,295 files (202 GB)
+  that the log showed uploaded+confirmed and unchanged since → 324 GB free.
+  Uploader now sending the remaining ~11,400 files (~147 GB, ~3 hours;
+  Mac must stay awake). OFFLOAD_DAYS=0 still set, so each is cleared after
+  re-verifying once its run's upload pass ends.
+  NEXT CHAT: check `df -h ~` and the log; when all uploaded and cleared,
+  rerun the 2024 copy (rsync resumes) only after the disk-space rule; the
+  ten 2021–22 folders need Dropbox Selective Sync first. PUT OFFLOAD_DAYS
+  BACK (e.g. 7) once the MOUNTVIEW moves are done.
+  **FIX NEEDED (agent.zsh):** (1) clearing must not block uploads — clear
+  first / between upload chunks, or cap it per run; (2) do clearing
+  verifies in parallel like uploads; (3) clearing loop never touches the
+  lock, so a clearing run over 4 h can be taken over — touch it; (4) warn
+  Steve if free space drops below ~30 GB.
 - **Dropbox won't offload anything:** every "Make online-only" (MOUNTVIEW,
   Jermyn Street, even Twelfth Night alone) gives "Unable to Remove
   Download", even after restarting Dropbox. Files ARE online (checked).
-  Suspect Dropbox account being full. Not urgent: macOS counts them as
-  purgeable (Finder shows ~263 GB available vs ~48 GB truly free).
+  Suspect Dropbox account being full. macOS counts them as "purgeable",
+  but don't rely on that freeing space.
 - **The Rink – May 2026 (GSA): ~890 photos exist ONLY on the Mac** —
   `Full New`, `Web New`, `Full Replacement`, `Web Replacement` never
   uploaded (Dropbox full). Not yet copied to Storage. Copy command:
