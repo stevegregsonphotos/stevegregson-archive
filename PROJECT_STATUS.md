@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 14 October 2026, 10:25 (London)
+Last updated: 14 October 2026, 11:00 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -89,15 +89,23 @@ cost an extra Vercel build.
   identical-but-unconfirmed file instead of making a "(Mac)" duplicate;
   `install.sh --update` stops the old run first. Steve's Mac updated 10:18.
   Measured: ~10 MB/s (~80 Mbit/s, near his line) vs ~1.6 MB/s before.
-- **MOUNTVIEW → Storage:** copy on Mac done (29,900 files, 307 GB). At
-  10:22 on 14 Oct, ~4,700 files uploaded, ~255 GB left (~7 h at the new
-  speed), no failures. Backblaze
-  Computer Backup was also uploading — Steve asked to set its Schedule to
-  "Only When I Click Backup Now" until MOUNTVIEW is done (then back to
-  Continuously). NEXT: when finished, check every file is in Storage
-  online (B2), then the Dropbox copies can go. Checking from Claude: grant
-  `~/Steve Gregson Storage` + `~/Library/Logs` (App Support is blocked),
-  compare files on Mac with "Uploaded" lines in the log.
+- **MOUNTVIEW → Storage (2024–26 shows only, by design):** 33 of the 58
+  Dropbox MOUNTVIEW folders (29,900 files, 307 GB). At 10:55 on 14 Oct:
+  6,640 done, 236 GB left, ~9.5 MB/s (line-limited, Backblaze stopped),
+  no failures; expected to finish ~6pm. Claude check scheduled 18:25.
+  PLAN (Steve's order): 1) verify every file is in Storage (compare
+  `~/Steve Gregson Storage/MOUNTVIEW` with "Uploaded" lines in
+  `~/Library/Logs/Steve Gregson Storage.log`; grant those two folders —
+  App Support is blocked); 2) free the Mac copies now rather than waiting
+  for OFFLOAD_DAYS (agent still verifies each file before deleting);
+  3) delete the Dropbox copies; 4) only then consider the 25 older
+  MOUNTVIEW folders (2021–early 2024 + courses/events: Romeo & Juliet,
+  Nell Gwynn, Little Women x3, Les Mis, 9 to 5, She Loves Me, Six
+  Characters, Sunday in the Park, Image of an Unknown Young Woman, Merry
+  Wives, Junkyard, Alice by Heart, Let The Right One In, The Watsons,
+  Foundation Course, Acting Course, MA TCE, Summer Intensives, Site
+  Specific, Design Showcase, SAPM, Shoreditch Town Hall, BUILDING HIRES) —
+  size them first. Backblaze schedule: back to Continuously after.
 - **Dropbox won't offload anything:** every "Make online-only" (MOUNTVIEW,
   Jermyn Street, even Twelfth Night alone) gives "Unable to Remove
   Download", even after restarting Dropbox. Files ARE online (checked).
