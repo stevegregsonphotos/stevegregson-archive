@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 14 October 2026, 19:35 (London)
+Last updated: 14 October 2026, 22:10 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -94,29 +94,23 @@ cost an extra Vercel build.
   14 Oct 17:42** — check at 18:25: all 29,900 files on the Mac have an
   "Uploaded" line (each confirmed by size + MD5 in Storage), 0 left, 0
   "(Mac)" duplicates; 20 temporary failures around 13:00 all retried OK.
-  19:00: Steve set OFFLOAD_DAYS=0 (Mac clears each file right after
-  upload + re-verify; ~1–2 s per file). PUT IT BACK (e.g. 7) once the
-  MOUNTVIEW moves are done. 19:30: copying the older folders too — 2023
-  (9 to 5, Site Specific) + all 13 2024 folders via rsync into
-  `~/Steve Gregson Storage/MOUNTVIEW`. The ten 2021–22 folders (SAPM,
-  Shoreditch, Les Mis, Foundation Course, Nell Gwynn, Little Women x3,
-  Design Showcase, Romeo & Juliet) are NOT on the Mac (Dropbox Selective
-  Sync off) — Steve to tick them, then rerun the copy. Real free space
-  check: `df -h ~` (Finder's figure includes purgeable Dropbox files).
-  Still to do after: verify uploads, delete Dropbox copies.
-  PLAN (Steve's order): 1) verify every file is in Storage (compare
-  `~/Steve Gregson Storage/MOUNTVIEW` with "Uploaded" lines in
-  `~/Library/Logs/Steve Gregson Storage.log`; grant those two folders —
-  App Support is blocked); 2) free the Mac copies now rather than waiting
-  for OFFLOAD_DAYS (agent still verifies each file before deleting);
-  3) delete the Dropbox copies; 4) only then consider the 25 older
-  MOUNTVIEW folders (2021–early 2024 + courses/events: Romeo & Juliet,
-  Nell Gwynn, Little Women x3, Les Mis, 9 to 5, She Loves Me, Six
-  Characters, Sunday in the Park, Image of an Unknown Young Woman, Merry
-  Wives, Junkyard, Alice by Heart, Let The Right One In, The Watsons,
-  Foundation Course, Acting Course, MA TCE, Summer Intensives, Site
-  Specific, Design Showcase, SAPM, Shoreditch Town Hall, BUILDING HIRES) —
-  size them first. Backblaze schedule: back to Continuously after.
+  19:00: Steve set OFFLOAD_DAYS=0 — Mac clears each uploaded file after
+  re-verifying (one at a time, ~1/s). By 22:05: 9,131 cleared, ~20k to go.
+  PUT IT BACK (e.g. 7) once the MOUNTVIEW moves are done.
+  19:30–22:08: rsync copied 9 to 5, Site Specific + most 2024 folders into
+  `~/Steve Gregson Storage/MOUNTVIEW` — NOT YET UPLOADED (0 uploads since
+  19:00) because the agent's clearing loop blocks new uploads until a run
+  finishes. Free space fell to 62 GB (Dropbox keeps its downloads +
+  the Storage copy). 22:08: Steve stopping all Terminals (copy +
+  caffeinate); background uploader left running (only frees space).
+  NEXT CHAT: check free space (`df -h ~`), log progress; uploads of the
+  2023/24 folders start when the clearing run ends. Rerun the 2024 copy
+  (rsync resumes) only when space allows; the ten 2021–22 folders need
+  Dropbox Selective Sync first.
+  **FIX NEEDED (agent.zsh):** offload loop must not block uploads (run an
+  upload pass between offload chunks, or cap offload per run), and do
+  offload verifies in parallel like uploads. Also: never give Steve a big
+  copy command without checking it can't fill the disk.
 - **Dropbox won't offload anything:** every "Make online-only" (MOUNTVIEW,
   Jermyn Street, even Twelfth Night alone) gives "Unable to Remove
   Download", even after restarting Dropbox. Files ARE online (checked).
