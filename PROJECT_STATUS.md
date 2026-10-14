@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 14 October 2026, 18:30 (London)
+Last updated: 14 October 2026, 19:35 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -94,7 +94,16 @@ cost an extra Vercel build.
   14 Oct 17:42** — check at 18:25: all 29,900 files on the Mac have an
   "Uploaded" line (each confirmed by size + MD5 in Storage), 0 left, 0
   "(Mac)" duplicates; 20 temporary failures around 13:00 all retried OK.
-  NEXT: step 2 below (Steve to OK clearing the Mac copies).
+  19:00: Steve set OFFLOAD_DAYS=0 (Mac clears each file right after
+  upload + re-verify; ~1–2 s per file). PUT IT BACK (e.g. 7) once the
+  MOUNTVIEW moves are done. 19:30: copying the older folders too — 2023
+  (9 to 5, Site Specific) + all 13 2024 folders via rsync into
+  `~/Steve Gregson Storage/MOUNTVIEW`. The ten 2021–22 folders (SAPM,
+  Shoreditch, Les Mis, Foundation Course, Nell Gwynn, Little Women x3,
+  Design Showcase, Romeo & Juliet) are NOT on the Mac (Dropbox Selective
+  Sync off) — Steve to tick them, then rerun the copy. Real free space
+  check: `df -h ~` (Finder's figure includes purgeable Dropbox files).
+  Still to do after: verify uploads, delete Dropbox copies.
   PLAN (Steve's order): 1) verify every file is in Storage (compare
   `~/Steve Gregson Storage/MOUNTVIEW` with "Uploaded" lines in
   `~/Library/Logs/Steve Gregson Storage.log`; grant those two folders —
