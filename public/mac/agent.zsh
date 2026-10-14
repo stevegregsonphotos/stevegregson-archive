@@ -3,7 +3,8 @@
 #
 # Runs in the background (launchd) every few minutes and whenever the
 # Storage folder changes:
-#   1. uploads new or changed files from ~/Steve Gregson Storage
+#   1. uploads new or changed files from ~/Steve Gregson Storage, several at
+#      once (UPLOAD_JOBS, default 8) so big batches use the full connection
 #   2. after OFFLOAD_DAYS, asks Storage to confirm it holds an exact copy
 #      (same size and MD5 fingerprint) and only then removes the Mac copy.
 # Nothing in Storage is ever deleted from here.
@@ -24,7 +25,10 @@ NOW=${SGS_NOW:-$(date +%s)}
 
 SERVER=""
 OFFLOAD_DAYS=7
+UPLOAD_JOBS=8          # files uploaded at the same time
 [[ -f "$CONFIG" ]] && source "$CONFIG"
+[[ -n "$SGS_UPLOAD_JOBS" ]] && UPLOAD_JOBS=$SGS_UPLOAD_JOBS
+[[ "$UPLOAD_JOBS" == <-> ]] && (( UPLOAD_JOBS >= 1 && UPLOAD_JOBS <= 32 )) || UPLOAD_JOBS=8
 
 mkdir -p "$SUPPORT" "${LOG:h}"
 touch "$STATE"
@@ -51,6 +55,8 @@ if ! mkdir "$LOCK" 2>/dev/null; then
   fi
 fi
 trap 'rmdir "$LOCK" 2>/dev/null' EXIT
+# A long upload run touches the lock as it goes, so it is never mistaken for
+# a stuck run (stuck = untouched for 4 hours).
 
 TOKEN=$(token)
 if [[ -z "$SERVER" || -z "$TOKEN" ]]; then
@@ -96,10 +102,11 @@ done < "$STATE"
 
 save_state() {
   local tmp="$STATE.tmp" rel
-  : > "$tmp"
-  for rel in ${(k)S_SIZE}; do
-    print -r -- "$rel"$'\t'"${S_SIZE[$rel]}"$'\t'"${S_MTIME[$rel]}"$'\t'"${S_MD5[$rel]}"$'\t'"${S_AT[$rel]}"$'\t'"${S_REMOTE[$rel]}" >> "$tmp"
-  done
+  {
+    for rel in ${(k)S_SIZE}; do
+      print -r -- "$rel"$'\t'"${S_SIZE[$rel]}"$'\t'"${S_MTIME[$rel]}"$'\t'"${S_MD5[$rel]}"$'\t'"${S_AT[$rel]}"$'\t'"${S_REMOTE[$rel]}"
+    done
+  } > "$tmp"
   mv -f "$tmp" "$STATE"
 }
 
@@ -175,6 +182,95 @@ failed=0
 typeset -a too_big emptied
 
 # ---- 1. Upload new or changed files ------------------------------------
+# Each file is uploaded by its own background job (UPLOAD_JOBS at a time).
+# A job writes its outcome to a small file; this run reads it back and
+# records the upload, so the record of what's uploaded is kept in one place.
+RESULTS="$SUPPORT/uploading"
+rm -rf "$RESULTS"; mkdir -p "$RESULTS"
+typeset -A RUNNING      # process id -> job number
+typeset -A JOB_REL      # job number -> relative path
+job_no=0
+unsaved=0
+
+# Uploads one file and writes "ok/big/fail/skip …" to $3. Runs in the background.
+upload_one() {
+  local file="$1" rel="$2" out="$3" size="$4" mtime="$5"
+  local md5 reply remote url content_md5
+  local -a after
+  finish() { print -r -- "$1" > "$out.tmp" && mv -f "$out.tmp" "$out"; }
+
+  md5=$(md5_of "$file")
+  [[ ${#md5} -eq 32 ]] || { finish skip; return; }
+
+  reply=$(api "{\"action\":\"presign\",\"path\":\"$(json_escape "$rel")\",\"size\":$size,\"md5Hex\":\"$md5\"}")
+  if [[ "$(jget "$reply" ok)" != "true" ]]; then
+    if [[ "$(jget "$reply" code)" == "too_big" ]]; then finish big; return; fi
+    log "Couldn't start upload of $rel: $(jget "$reply" message)"
+    finish fail; return
+  fi
+  remote=$(jget "$reply" remotePath)
+
+  if [[ "$(jget "$reply" status)" == "upload" ]]; then
+    url=$(jget "$reply" uploadUrl)
+    content_md5=$(jget "$reply" contentMd5)
+    if ! curl -sS --fail --max-time 21600 --retry 3 --retry-delay 5 \
+        -X PUT -H "Content-MD5: $content_md5" --upload-file "$file" "$url" -o /dev/null; then
+      log "Upload failed for $rel (will retry next time)."
+      finish fail; return
+    fi
+    reply=$(api "{\"action\":\"commit\",\"remotePath\":\"$(json_escape "$remote")\",\"size\":$size,\"md5Hex\":\"$md5\"}")
+    if [[ "$(jget "$reply" ok)" != "true" ]]; then
+      log "Storage couldn't confirm $rel: $(jget "$reply" message)"
+      finish fail; return
+    fi
+  fi
+
+  # If the file changed while uploading, leave it for the next run.
+  after=($(file_info "$file"))
+  if [[ "${after[1]}" != "$size" || "${after[2]}" != "$mtime" ]]; then
+    finish skip; return
+  fi
+
+  if [[ "$remote" == "$rel" ]]; then log "Uploaded $rel"; else log "Uploaded $rel as $remote (a different file already had that name)"; fi
+  finish "ok"$'\t'"$size"$'\t'"$mtime"$'\t'"$md5"$'\t'"$remote"
+}
+
+# Records the outcome of one finished job.
+collect() {
+  local n=$1 rel=${JOB_REL[$1]} line=""
+  local -a f
+  [[ -f "$RESULTS/$n" ]] && line=$(<"$RESULTS/$n")
+  rm -f "$RESULTS/$n" "$RESULTS/$n.tmp"
+  unset "JOB_REL[$n]"
+  f=("${(@ps:\t:)line}")
+  case "${f[1]}" in
+    ok)
+      S_SIZE[$rel]=${f[2]}; S_MTIME[$rel]=${f[3]}; S_MD5[$rel]=${f[4]}; S_AT[$rel]=$NOW; S_REMOTE[$rel]=${f[5]}
+      (( uploaded++ ))
+      (( uploaded_bytes += f[2] ))
+      (( unsaved++ ))
+      ;;
+    big)  too_big+=("$rel") ;;
+    skip) ;;
+    *)    (( failed++ )) ;;
+  esac
+}
+
+# Collects every job that has finished; saves the record every 50 uploads.
+reap() {
+  local pid n
+  for pid in ${(k)RUNNING}; do
+    n=${RUNNING[$pid]}
+    if [[ -f "$RESULTS/$n" ]] || ! kill -0 "$pid" 2>/dev/null; then
+      wait "$pid" 2>/dev/null
+      unset "RUNNING[$pid]"
+      collect "$n"
+    fi
+  done
+  if (( unsaved >= 50 )); then save_state; unsaved=0; fi
+  touch "$LOCK" 2>/dev/null
+}
+
 upload_pass() {
   pending=0
   while IFS= read -r -d '' file; do
@@ -198,47 +294,23 @@ upload_pass() {
       continue
     fi
 
-    md5=$(md5_of "$file") || continue
-    [[ ${#md5} -eq 32 ]] || continue
-
-    reply=$(api "{\"action\":\"presign\",\"path\":\"$(json_escape "$rel")\",\"size\":$size,\"md5Hex\":\"$md5\"}")
-    if [[ "$(jget "$reply" ok)" != "true" ]]; then
-      [[ "$(jget "$reply" code)" == "too_big" ]] && too_big+=("$rel")
-      log "Couldn't start upload of $rel: $(jget "$reply" message)"
-      (( failed++ ))
-      continue
-    fi
-    remote=$(jget "$reply" remotePath)
-
-    if [[ "$(jget "$reply" status)" == "upload" ]]; then
-      url=$(jget "$reply" uploadUrl)
-      content_md5=$(jget "$reply" contentMd5)
-      if ! curl -sS --fail --max-time 21600 --retry 3 --retry-delay 5 \
-          -X PUT -H "Content-MD5: $content_md5" --upload-file "$file" "$url" -o /dev/null; then
-        log "Upload failed for $rel (will retry next time)."
-        (( failed++ ))
-        continue
-      fi
-      reply=$(api "{\"action\":\"commit\",\"remotePath\":\"$(json_escape "$remote")\",\"size\":$size,\"md5Hex\":\"$md5\"}")
-      if [[ "$(jget "$reply" ok)" != "true" ]]; then
-        log "Storage couldn't confirm $rel: $(jget "$reply" message)"
-        (( failed++ ))
-        continue
-      fi
-    fi
-
-    # If the file changed while uploading, leave it for the next run.
-    after=($(file_info "$file"))
-    if [[ "${after[1]}" != "$size" || "${after[2]}" != "$mtime" ]]; then
-      continue
-    fi
-
-    S_SIZE[$rel]=$size; S_MTIME[$rel]=$mtime; S_MD5[$rel]=$md5; S_AT[$rel]=$NOW; S_REMOTE[$rel]=$remote
-    save_state
-    (( uploaded++ ))
-    (( uploaded_bytes += size ))
-    if [[ "$remote" == "$rel" ]]; then log "Uploaded $rel"; else log "Uploaded $rel as $remote (a different file already had that name)"; fi
+    # Wait for a free slot, then start this file's upload.
+    while (( ${#RUNNING} >= UPLOAD_JOBS )); do
+      sleep 0.2
+      reap
+    done
+    (( job_no++ ))
+    JOB_REL[$job_no]=$rel
+    upload_one "$file" "$rel" "$RESULTS/$job_no" "$size" "$mtime" &
+    RUNNING[$!]=$job_no
   done < <(find "$ROOT" -type f ! -name '.*' ! -path '*/.*' ! -name 'Icon?' -print0 2>/dev/null)
+
+  # Let the last uploads finish.
+  while (( ${#RUNNING} > 0 )); do
+    sleep 0.2
+    reap
+  done
+  save_state; unsaved=0
 }
 
 # Files that have only just arrived are given a few seconds to finish copying,

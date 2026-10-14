@@ -109,6 +109,12 @@ export async function POST(request: Request) {
           return json({ ok: true, status: "done", remotePath: target });
         }
         if (ours) break; // The same file was changed on the Mac: replace it.
+        // An earlier upload of this exact file arrived but was never confirmed
+        // (e.g. the Mac slept mid-way): record it rather than saving a duplicate.
+        if (!record && existing.sizeBytes === size && existing.etag === md5) {
+          await recordMacUpload({ remotePath: target, deviceId: device.id, sizeBytes: size, md5Hex: md5 });
+          return json({ ok: true, status: "done", remotePath: target });
+        }
         if (attempt > 50) return json({ ok: false, message: "Couldn't find a free name for this file." }, 409);
         target = alternativeName(path, attempt);
       }

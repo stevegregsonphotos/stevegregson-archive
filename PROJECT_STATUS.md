@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 13 October 2026, 22:25 (London)
+Last updated: 14 October 2026, 10:10 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -84,13 +84,23 @@ cost an extra Vercel build.
 
 ## Waiting / in progress
 
-- Nothing waiting on the test branch except this handover file (code same
-  as live).
-- **MOUNTVIEW → Storage (13 Oct):** Terminal copy finished — 33 folders
-  (all 2025–26 shows + Mrs Beeton, Addams Family, Little Mermaid 2023),
-  286 GB, verified file-for-file identical to Dropbox. Mac app uploading
-  overnight. NEXT: check every file is in Storage online (B2), then the
-  Dropbox copies can go.
+- **WAITING FOR "GO LIVE" — faster Mac uploads (14 Oct):** the uploader sent
+  one file at a time with ~4 s of website round-trips each (~1.6 MB/s;
+  MOUNTVIEW would take ~4 days). `agent.zsh` now uploads 8 files at once
+  (`UPLOAD_JOBS` in the Mac config, 1–32); tested with a mock server:
+  6–7× faster, same checks, offload still verified. `api/mac` presign now
+  records an identical-but-unconfirmed file instead of making a "(Mac)"
+  duplicate. `install.sh --update` now stops the running old version first.
+  After go live, Steve runs:
+  `curl -fsSL https://www.stevegregson.com/mac/install.sh | bash -s -- --update`
+- **MOUNTVIEW → Storage:** copy on Mac done (29,900 files, 307 GB). At
+  09:35 on 14 Oct, 3,970 files / 42 GB uploaded, no failures. Backblaze
+  Computer Backup was also uploading — Steve asked to set its Schedule to
+  "Only When I Click Backup Now" until MOUNTVIEW is done (then back to
+  Continuously). NEXT: when finished, check every file is in Storage
+  online (B2), then the Dropbox copies can go. Checking from Claude: grant
+  `~/Steve Gregson Storage` + `~/Library/Logs` (App Support is blocked),
+  compare files on Mac with "Uploaded" lines in the log.
 - **Dropbox won't offload anything:** every "Make online-only" (MOUNTVIEW,
   Jermyn Street, even Twelfth Night alone) gives "Unable to Remove
   Download", even after restarting Dropbox. Files ARE online (checked).

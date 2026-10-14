@@ -93,6 +93,11 @@ if [ "${1:-}" = "--update" ]; then
     chmod 755 "$SUPPORT/$name.new"
     mv -f "$SUPPORT/$name.new" "$SUPPORT/$name"
   done
+  # Stop a run that's still using the old version (anything half-sent is
+  # simply sent again), then start the new one straight away.
+  launchctl kill TERM "$DOMAIN/$LABEL" >/dev/null 2>&1 || true
+  sleep 3
+  rmdir "$SUPPORT/lock" >/dev/null 2>&1 || true
   launchctl kickstart "$DOMAIN/$LABEL" >/dev/null 2>&1 || true
   echo
   done_ "Updated ${APP_NAME}. From now on it keeps itself up to date."
