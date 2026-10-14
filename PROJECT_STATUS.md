@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 14 October 2026, 10:10 (London)
+Last updated: 14 October 2026, 10:25 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -84,17 +84,14 @@ cost an extra Vercel build.
 
 ## Waiting / in progress
 
-- **WAITING FOR "GO LIVE" — faster Mac uploads (14 Oct):** the uploader sent
-  one file at a time with ~4 s of website round-trips each (~1.6 MB/s;
-  MOUNTVIEW would take ~4 days). `agent.zsh` now uploads 8 files at once
-  (`UPLOAD_JOBS` in the Mac config, 1–32); tested with a mock server:
-  6–7× faster, same checks, offload still verified. `api/mac` presign now
-  records an identical-but-unconfirmed file instead of making a "(Mac)"
-  duplicate. `install.sh --update` now stops the running old version first.
-  After go live, Steve runs:
-  `curl -fsSL https://www.stevegregson.com/mac/install.sh | bash -s -- --update`
+- **Faster Mac uploads — LIVE 14 Oct:** `agent.zsh` uploads 8 files at once
+  (`UPLOAD_JOBS` in the Mac config, 1–32); `api/mac` presign records an
+  identical-but-unconfirmed file instead of making a "(Mac)" duplicate;
+  `install.sh --update` stops the old run first. Steve's Mac updated 10:18.
+  Measured: ~10 MB/s (~80 Mbit/s, near his line) vs ~1.6 MB/s before.
 - **MOUNTVIEW → Storage:** copy on Mac done (29,900 files, 307 GB). At
-  09:35 on 14 Oct, 3,970 files / 42 GB uploaded, no failures. Backblaze
+  10:22 on 14 Oct, ~4,700 files uploaded, ~255 GB left (~7 h at the new
+  speed), no failures. Backblaze
   Computer Backup was also uploading — Steve asked to set its Schedule to
   "Only When I Click Backup Now" until MOUNTVIEW is done (then back to
   Continuously). NEXT: when finished, check every file is in Storage
