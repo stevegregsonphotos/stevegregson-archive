@@ -115,10 +115,15 @@ cost an extra Vercel build.
     (Streetcar › LEIGH CAST › Full) is a half-finished rsync copy from
     13 Oct. The real photo uploaded 13 Oct 20:40, so nothing is missing;
     the leftover can be deleted (probably the "1 file will be retried").
-  - **Free space puzzle:** clearing ~147 GB didn't raise free space (still
-    324 GB, expected ~470 GB). Likely Time Machine local snapshots still
-    holding the deleted files. Asked Steve for `df -h ~` and
-    `tmutil listlocalsnapshots /`. Not yet resolved.
+  - **Free space puzzle — SOLVED 15 Oct:** no Time Machine snapshots
+    (327 GB free per `df`). The ~142 GB went into Dropbox: rsync reading
+    online-only Dropbox files makes Dropbox download them, and they stay.
+    The folders copied on 14 Oct (2024 shows, 9 to 5, Site Specific, Alice,
+    Six Characters, Building Hires) are now fully downloaded in Dropbox.
+    Fix: Make online-only on those folders (failed before — "Unable to
+    Remove Download"). Every future Dropbox → Storage copy costs space
+    TWICE (Dropbox download + Storage copy) until both are cleared — count
+    that in the disk-space rule.
   - Then the rest of 2021–23; the ten 2021–22 folders need Dropbox
     Selective Sync first. PUT OFFLOAD_DAYS BACK (e.g. 7) once the MOUNTVIEW
     moves are done. Checklist artifact ticks not updated.
