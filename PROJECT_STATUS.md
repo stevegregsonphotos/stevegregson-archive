@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 15 October 2026, 09:20 (London)
+Last updated: 15 October 2026, 14:30 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -101,16 +101,21 @@ cost an extra Vercel build.
   identical-but-unconfirmed file instead of making a "(Mac)" duplicate;
   `install.sh --update` stops the old run first. Steve's Mac updated 10:18.
   Measured: ~10 MB/s (~80 Mbit/s, near his line) vs ~1.6 MB/s before.
-- **MOUNTVIEW → Storage (15 Oct, 9am):** overnight upload finished — all
-  uploaded by 02:41, 11,395 Mac copies cleared by 05:54. Mac MOUNTVIEW
-  folder now 12 MB; Steve reports 324 GB free.
-  - Checked local Dropbox against the log: **all 2025 and 2026 folders, and
-    11 of 14 2024 folders, are fully in Storage** (plus 9 to 5, Site
-    Specific, Mrs Beeton, Little Mermaid, Addams Family). Still to copy:
-    Acting Course – Nov 2024 (339 files), Mountview MA TCE – Dec 2024 (463),
-    Summer Intenvives 2024 (1,031) = 1,833 files, 19.5 GB. List saved in
-    `~/Library/Logs/mountview-missing.txt`. Command given to Steve:
-    `cd ~/Library/CloudStorage/Dropbox/MOUNTVIEW && rsync -t --files-from="$HOME/Library/Logs/mountview-missing.txt" . ~/"Steve Gregson Storage"/MOUNTVIEW/`
+- **MOUNTVIEW → Storage — check 15 Oct 14:30: essentially DONE.**
+  - The 3 remaining 2024 shows (1,833 files in
+    `~/Library/Logs/mountview-missing.txt`): all uploaded 09:20–~11:00.
+  - The ten 2021–22 folders (zips from dropbox.com): all ten uploaded —
+    Nell Gwynn 649, Little Women Thu 435 / Wed 458 / BTS 108, Foundation
+    700, Les Mis CM 572, Shoreditch TH 458, Design Showcase 328, Romeo &
+    Juliet 660, SAPM 236. Last upload 14:24.
+  - **10 files still to go** (connection dropped, "broken pipe"; files are
+    fine, auto-retry next run): Little Women Thursday Full 48, 63, 64, 70,
+    88, 174; Nell Gwynn Full 048, 060, 205, 289. Next chat: confirm these
+    show as `Uploaded` in the log.
+  - 14:30: Mac clearing under way (4,272 files / 42 GB still on the Mac).
+  - Not checkable: whether the dropbox.com zips held every file (2021–22
+    folders aren't synced locally to compare).
+  - Earlier: overnight 14–15 Oct upload of everything else finished.
   - Hidden leftover `.FullRes-StreetcarNamedDesire-LEIGH-CreditSteveGregson-027.jpg.NmJUDT`
     (Streetcar › LEIGH CAST › Full) is a half-finished rsync copy from
     13 Oct. The real photo uploaded 13 Oct 20:40, so nothing is missing;
@@ -124,13 +129,8 @@ cost an extra Vercel build.
     Remove Download"). Every future Dropbox → Storage copy costs space
     TWICE (Dropbox download + Storage copy) until both are cleared — count
     that in the disk-space rule.
-  - Then the ten 2021–22 folders (Nell Gwynn, 3× Little Women, Foundation
-    Course, Les Mis CM, Shoreditch Town Hall, Design Showcase, Romeo &
-    Juliet, SAPM). 15 Oct: Selective Sync ticked but folders didn't appear
-    on the Mac, so Steve is downloading them as zips from dropbox.com and
-    Option-dragging them into Storage › MOUNTVIEW. Steve has
-    `Mountview-copy-instructions.txt` with all remaining steps. PUT OFFLOAD_DAYS BACK (e.g. 7) once the MOUNTVIEW
-    moves are done. Checklist artifact ticks not updated.
+  - Still to do: PUT OFFLOAD_DAYS BACK (e.g. 7) once the last 10 files are
+    up; tick the checklist artifact.
   **FIX NEEDED (agent.zsh):** (1) clearing must not block uploads — clear
   first / between upload chunks, or cap it per run; (2) do clearing
   verifies in parallel like uploads; (3) clearing loop never touches the
