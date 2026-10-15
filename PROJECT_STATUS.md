@@ -124,8 +124,12 @@ cost an extra Vercel build.
     Remove Download"). Every future Dropbox → Storage copy costs space
     TWICE (Dropbox download + Storage copy) until both are cleared — count
     that in the disk-space rule.
-  - Then the rest of 2021–23; the ten 2021–22 folders need Dropbox
-    Selective Sync first. PUT OFFLOAD_DAYS BACK (e.g. 7) once the MOUNTVIEW
+  - Then the ten 2021–22 folders (Nell Gwynn, 3× Little Women, Foundation
+    Course, Les Mis CM, Shoreditch Town Hall, Design Showcase, Romeo &
+    Juliet, SAPM). 15 Oct: Selective Sync ticked but folders didn't appear
+    on the Mac, so Steve is downloading them as zips from dropbox.com and
+    Option-dragging them into Storage › MOUNTVIEW. Steve has
+    `Mountview-copy-instructions.txt` with all remaining steps. PUT OFFLOAD_DAYS BACK (e.g. 7) once the MOUNTVIEW
     moves are done. Checklist artifact ticks not updated.
   **FIX NEEDED (agent.zsh):** (1) clearing must not block uploads — clear
   first / between upload chunks, or cap it per run; (2) do clearing
