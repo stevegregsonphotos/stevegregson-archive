@@ -50,12 +50,9 @@ cost an extra Vercel build.
   `website-redesign` (Vercel production). Test branch
   `feature/backstage-transfers`. Live is fast-forwarded from the test work:
   `git push origin HEAD:website-redesign` once Steve says go live.
-- **GitHub's default branch is still `main` (old, unused)**, so new chats
-  open there and can't see this file. 22 Oct: added a signpost
-  PROJECT_STATUS.md + CLAUDE.md on `main` pointing here. Proper fix (Steve,
-  2 min, Claude can't change repo settings): GitHub › repo › Settings ›
-  General › Default branch → `feature/backstage-transfers`. Safe: the live
-  site follows Vercel's own setting, and the daily health check exists here.
+- GitHub's default branch is now `feature/backstage-transfers` (Steve
+  changed it 22 Oct), so new chats open here. `main` is old and unused; it
+  only holds a signpost pointing here.
 - Next.js 16 App Router (`proxy.ts`, see AGENTS.md), Vercel Hobby, Neon
   Postgres, Cloudflare R2 (site images), Backblaze B2 (Storage/Transfers,
   bucket `stevegregson-client-archive`), Resend email, Cloudflare DNS.
