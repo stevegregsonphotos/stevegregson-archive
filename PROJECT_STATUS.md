@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 15 October 2026, 14:30 (London)
+Last updated: 22 October 2026, 19:45 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -50,6 +50,12 @@ cost an extra Vercel build.
   `website-redesign` (Vercel production). Test branch
   `feature/backstage-transfers`. Live is fast-forwarded from the test work:
   `git push origin HEAD:website-redesign` once Steve says go live.
+- **GitHub's default branch is still `main` (old, unused)**, so new chats
+  open there and can't see this file. 22 Oct: added a signpost
+  PROJECT_STATUS.md + CLAUDE.md on `main` pointing here. Proper fix (Steve,
+  2 min, Claude can't change repo settings): GitHub › repo › Settings ›
+  General › Default branch → `feature/backstage-transfers`. Safe: the live
+  site follows Vercel's own setting, and the daily health check exists here.
 - Next.js 16 App Router (`proxy.ts`, see AGENTS.md), Vercel Hobby, Neon
   Postgres, Cloudflare R2 (site images), Backblaze B2 (Storage/Transfers,
   bucket `stevegregson-client-archive`), Resend email, Cloudflare DNS.
