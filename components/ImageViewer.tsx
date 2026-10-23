@@ -277,6 +277,14 @@ export default function ImageViewer({
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
+      <p
+        className="image-viewer-announcement"
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        Image {currentIndex + 1} of {images.length}: {currentImage.alt}
+      </p>
+
       <div
         className={`image-viewer-interface ${
           controlsVisible
