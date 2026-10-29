@@ -143,6 +143,28 @@ self_update() {
 }
 [[ -z "$SGS_NO_UPDATE" ]] && self_update
 
+# ---- One-off: bring back folders that older versions removed ----------
+# Earlier versions deleted a show's folders once its files were cleared.
+# Recreate them (empty) from the log's "Freed space" lines. Runs once.
+RESTORED="$SUPPORT/folders-restored"
+if [[ ! -f "$RESTORED" && -f "$LOG" ]]; then
+  typeset -A RDIRS
+  while IFS= read -r line; do
+    [[ "$line" == *"  Freed space: "*" is now only in Storage ("* ]] || continue
+    rel="${line#*  Freed space: }"
+    rel="${rel%" is now only in Storage ("*}"
+    dir="${rel:h}"
+    [[ -n "$dir" && "$dir" != "." && "$dir" != /* && "$dir" != *..* ]] && RDIRS[$dir]=1
+  done < "$LOG"
+  rcount=0
+  for dir in ${(k)RDIRS}; do
+    [[ -d "$ROOT/$dir" ]] && continue
+    mkdir -p -- "$ROOT/$dir" && (( rcount++ ))
+  done
+  touch "$RESTORED"
+  (( rcount > 0 )) && log "Brought back $rcount folders that were removed when their files were cleared."
+fi
+
 # ---- Show every top-level Storage folder on the Mac ---------------------
 # (empty until something is put in them; nothing is downloaded)
 # Folders already known to Storage (one per line), so each is only sent once
@@ -179,7 +201,7 @@ uploaded_bytes=0
 freed=0
 freed_bytes=0
 failed=0
-typeset -a too_big emptied
+typeset -a too_big
 
 # ---- 1. Upload new or changed files ------------------------------------
 # Each file is uploaded by its own background job (UPLOAD_JOBS at a time).
@@ -354,7 +376,6 @@ for rel in ${(k)S_SIZE}; do
 
   size=${S_SIZE[$rel]}
   if rm -f -- "$file"; then
-    emptied+=("${file:h}")
     forget "$rel"
     (( freed++ ))
     (( freed_bytes += size ))
@@ -363,16 +384,9 @@ for rel in ${(k)S_SIZE}; do
 done
 save_state
 
-# Tidy folders that this run emptied (never the Storage folder itself, never
-# the top-level client folders like MOUNTVIEW, and never folders that were
-# already empty).
-for dir in ${(Ou)emptied}; do
-  while [[ "$dir" == "$ROOT"/*/* && -d "$dir" ]]; do
-    rm -f -- "$dir/.DS_Store" 2>/dev/null
-    rmdir -- "$dir" 2>/dev/null || break
-    dir="${dir:h}"
-  done
-done
+# Folders are never removed from the Mac when their files are cleared: the
+# whole folder layout stays, like Dropbox, so edited files can be dropped
+# straight back into the right place.
 
 # ---- Notifications ------------------------------------------------------
 human() {

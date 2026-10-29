@@ -7,6 +7,7 @@ import {
   createClientArchiveViewUrl,
   isClientArchiveKey,
   listClientArchive,
+  listClientArchiveFilesRecursive,
   searchClientArchive,
   archiveKeyFor,
 } from "@/lib/client-archive/storage";
@@ -137,6 +138,26 @@ async function handlePost(request: Request) {
     const path = text(body.path);
     if (!path) return NextResponse.json({ ok: false, message: "A file path is required." }, { status: 400 });
     return NextResponse.json({ ok: true, ...(await createClientArchiveUploadUrl(path)) });
+  }
+
+  if (action === "download-folder") {
+    // Links for every file in a folder (and its sub-folders), so the browser
+    // can save the whole folder as one zip with its layout kept.
+    const path = text(body.path).replace(/^\/+|\/+$/g, "");
+    if (!path || path.split("/")[0] === ".trash") return NextResponse.json({ ok: false, message: "Invalid folder." }, { status: 400 });
+    try {
+      const files = (await listClientArchiveFilesRecursive(path, 5000)).filter((file) => file.name !== ".folder");
+      const base = path + "/";
+      const entries = await Promise.all(files.map(async (file) => ({
+        name: file.path.startsWith(base) ? file.path.slice(base.length) : file.name,
+        size: file.sizeBytes,
+        url: await createClientArchiveViewUrl(file.objectKey, 12 * 60 * 60),
+      })));
+      return NextResponse.json({ ok: true, name: path.split("/").pop() || "Download", files: entries });
+    } catch (error) {
+      const message = error instanceof Error && /more than/.test(error.message) ? error.message : "Couldn't prepare that folder.";
+      return NextResponse.json({ ok: false, message }, { status: 400 });
+    }
   }
 
   if (action === "download") {

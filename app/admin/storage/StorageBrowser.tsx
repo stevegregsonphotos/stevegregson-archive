@@ -12,6 +12,7 @@ import {
   type QueuedFile,
 } from "@/lib/transfers/upload-client";
 import { useFileDrop } from "@/lib/transfers/use-file-drop";
+import { downloadAsZip, prepareZip, type ZipFile } from "@/lib/transfers/zip-client";
 import Link from "next/link";
 import ShareDialog from "./ShareDialog";
 import { shareApi, type AdminShare } from "./share-api";
@@ -431,6 +432,26 @@ export default function StorageBrowser() {
     }
   }
 
+  async function downloadFolder(folder: { path: string; name: string }) {
+    setMessage("Preparing “" + folder.name + "” to download…");
+    try {
+      const [worker, data] = await Promise.all([
+        prepareZip(),
+        api<{ name: string; files: ZipFile[] }>({ action: "download-folder", path: folder.path }),
+      ]);
+      if (!data.files.length) { setMessage("“" + folder.name + "” is empty."); return; }
+      const started = await downloadAsZip(worker, data.name || folder.name, data.files, {
+        progress: (done, total) => setMessage("Downloading “" + folder.name + "”: " + done + " of " + total + " files…"),
+        done: (total) => setMessage("Downloaded “" + folder.name + "” (" + total + " files) as a zip."),
+        error: (text) => setMessage("The download stopped part-way (" + text + "). Please try again."),
+        unsupported: () => setMessage("This browser can't save a whole folder. Please try Chrome or Safari on your Mac."),
+      });
+      if (!started) setMessage("This browser can't save a whole folder. Please try Chrome or Safari on your Mac.");
+    } catch (error) {
+      setMessage(errorText(error, "Download unavailable."));
+    }
+  }
+
   // ---- Selection ----------------------------------------------------------
 
   const isSelected = (path: string) => selected.some((item) => item.path === path);
@@ -541,6 +562,7 @@ export default function StorageBrowser() {
           <div className={styles.menu} role="menu">
             {file ? <button type="button" role="menuitem" onClick={() => { setMenuFor(null); void download(file); }}>Download</button> : null}
             {file?.isImage && file.viewUrl ? <button type="button" role="menuitem" onClick={() => { setMenuFor(null); openPreview(file); }}>Preview</button> : null}
+            {item.kind === "folder" ? <button type="button" role="menuitem" onClick={() => { setMenuFor(null); void downloadFolder(item); }}>Download</button> : null}
             {item.kind === "folder" ? <button type="button" role="menuitem" onClick={() => { setMenuFor(null); setShareFor({ path: item.path, name: item.name }); }}>Share with client…</button> : null}
             <button type="button" role="menuitem" onClick={() => { setMenuFor(null); setSelected([item]); window.setTimeout(sendSelectionFor([item]), 0); }}>Send as transfer</button>
             <hr />

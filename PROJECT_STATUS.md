@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 22 October 2026, 19:45 (London)
+Last updated: 29 October 2026, 09:10 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -79,7 +79,9 @@ cost an extra Vercel build.
 - **Mac app "Steve Gregson Storage"**: `~/Steve Gregson Storage` uploads
   automatically; copies (not moves) from Dropbox/Drive/iCloud; clears Mac
   copies after OFFLOAD_DAYS (config in `~/Library/Application Support/
-  Steve Gregson Storage/config`); keeps top-level client folders; mirrors
+  Steve Gregson Storage/config`; Steve set it to 5 on 29 Oct); keeps ALL
+  folders on the Mac when files are cleared (Steve's rule: production
+  folder names must stay); mirrors
   folders both ways; updates itself daily from the live site
   (`public/mac/agent.zsh`, `install.sh --update`).
 - **Backstage sign-in**: Touch ID / Face ID passkeys, password sign-in
@@ -98,6 +100,18 @@ cost an extra Vercel build.
   to avoid Safari "Load failed").
 
 ## Waiting / in progress
+
+- **WAITING FOR "GO LIVE" (29 Oct):** Mac app no longer removes a show's
+  folder after clearing its files (Babies at Mountview vanished from the
+  Mac this way), and a one-off step recreates any folders it removed,
+  from the log's "Freed space" lines (marker file `folders-restored` in
+  the app's support folder). Reaches the Mac only after go live (daily
+  self-update, or `install.sh --update`). Also: Backstage › Storage
+  folders now have **Download** in their ⋯ menu (whole folder as one zip,
+  sub-folders kept, built in the browser via `/transfer-zip-sw.js`; new
+  `download-folder` action in `api/admin/storage`). Old token emails: GitHub token
+  "Steve Gregson Archive" (GITHUB_BACKSTAGE_TOKEN) is unused; let it
+  expire. 13 Nov "back to 7 days" reminder deleted (Steve chose 5).
 
 - **Faster Mac uploads — LIVE 14 Oct:** `agent.zsh` uploads 8 files at once
   (`UPLOAD_JOBS` in the Mac config, 1–32); `api/mac` presign records an
@@ -167,8 +181,7 @@ cost an extra Vercel build.
   for other clients.
 - **Backblaze Computer Backup** (RAW drives, ~20 TB uploading, 1-year
   version history): still to exclude the `Steve Gregson Storage` folder.
-- Scheduled tasks: yearly Backblaze drive check (1 Oct); put the Mac app
-  back to 7-day offload on 13 Nov 2026.
+- Scheduled tasks: yearly Backblaze drive check (1 Oct).
 
 ## Ideas not started
 
