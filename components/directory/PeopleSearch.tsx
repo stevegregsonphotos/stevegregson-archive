@@ -14,11 +14,20 @@ type SearchPerson = {
   c: number;
 };
 
+/**
+ * Makes searching forgiving: ignores capitals and accents, treats curly and
+ * straight apostrophes the same, and treats hyphens, dots and spaces alike,
+ * so "o'gorman", "spencer jones" and "Ozbek" all find the right person.
+ */
 function fold(value: string) {
   return value
     .normalize("NFKD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase();
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[\u2018\u2019\u02bc`´]/g, "'")
+    .replace(/[-\u2010-\u2015.,_/]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 export default function PeopleSearch({
@@ -29,10 +38,16 @@ export default function PeopleSearch({
   const [query, setQuery] = useState("");
 
   const results = useMemo(() => {
-    const q = fold(query.trim());
+    const q = fold(query);
     if (q.length < 2) return [];
+    // Every word typed must appear in the name, in any order
+    // ("jones alexandra" finds Alexandra Spencer-Jones).
+    const words = q.split(" ");
     return people
-      .filter((person) => fold(person.n).includes(q))
+      .filter((person) => {
+        const name = fold(person.n);
+        return words.every((word) => name.includes(word));
+      })
       .slice(0, 12);
   }, [people, query]);
 

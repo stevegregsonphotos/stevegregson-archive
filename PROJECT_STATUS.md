@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 29 October 2026, 09:10 (London)
+Last updated: 29 October 2026, 10:20 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -100,6 +100,12 @@ cost an extra Vercel build.
   to avoid Safari "Load failed").
 
 ## Waiting / in progress
+
+- **WAITING FOR "GO LIVE" (29 Oct): People search more forgiving**
+  (`components/directory/PeopleSearch.tsx`). It was already case-insensitive;
+  now curly/straight apostrophes match, hyphens = spaces, and words can be
+  typed in any order. Archive search (`app/archive/ArchiveExplorer.tsx`)
+  already ignored case; not changed.
 
 - **WAITING FOR "GO LIVE" (29 Oct):** Mac app no longer removes a show's
   folder after clearing its files (Babies at Mountview vanished from the
