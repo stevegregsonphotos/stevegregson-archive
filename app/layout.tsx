@@ -57,7 +57,6 @@ const SAME_AS = [
   "https://www.instagram.com/stevegregsonphotos/",
   "https://www.linkedin.com/in/stevegregsonphotos/",
   "https://www.facebook.com/stevegregsonphotos/",
-  "https://x.com/stevegregson_",
   "https://www.thealpd.org.uk/photographer/steve-gregson",
   "https://www.europeanphotographers.eu/members/stevegregson/",
 ];
