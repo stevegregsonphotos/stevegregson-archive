@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 29 October 2026, 10:20 (London)
+Last updated: 1 November 2026, 22:40 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -98,6 +98,7 @@ cost an extra Vercel build.
 - **Curated archive import** (Backstage › Curated import): uploads the
   curator output and publishes productions (reads each file before upload
   to avoid Safari "Load failed").
+- **X (Twitter) removed — LIVE 1 Nov:** taken out of the site's hidden profile lists (`SAME_AS` in `app/layout.tsx` and `/llms.txt`), and from the Google Business Profile social links (Google review pending). Steve doesn't use X and can't log in; don't add it back. Went live together with the three 29 Oct items below (People search, Mac folder fix, Storage folder Download), so those are LIVE too.
 
 ## Waiting / in progress
 
