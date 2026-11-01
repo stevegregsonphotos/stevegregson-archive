@@ -51,7 +51,6 @@ export async function GET() {
 - [Instagram](https://www.instagram.com/stevegregsonphotos/)
 - [LinkedIn](https://www.linkedin.com/in/stevegregsonphotos/)
 - [Facebook](https://www.facebook.com/stevegregsonphotos/)
-- [X](https://x.com/stevegregson_)
 - [ALPD photographer listing](https://www.thealpd.org.uk/photographer/steve-gregson)
 - [Federation of European Photographers](https://www.europeanphotographers.eu/members/stevegregson/)
 `;
