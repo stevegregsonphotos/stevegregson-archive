@@ -57,7 +57,7 @@ cost an extra Vercel build.
   Postgres, Cloudflare R2 (site images), Backblaze B2 (Storage/Transfers,
   bucket `stevegregson-client-archive`), Resend email, Cloudflare DNS.
 - Before pushing: `npx tsc --noEmit`, eslint on changed files, and for
-  bigger changes `OPENAI_API_KEY=x npx next build` ("DATABASE_URL not
+  bigger changes `OPENAI_API_KEY=x npm run build` (runs the architecture check too) ("DATABASE_URL not
   configured" at prerender is expected in the sandbox).
   Pre-existing lint errors: `CuratedArchiveImportClient.tsx` (setState in
   effect, lines ~703/791) — not ours.
@@ -126,7 +126,15 @@ cost an extra Vercel build.
 - **LIVE 4 Nov: Productions page flash fixed** (its `<style>` was at the END
   of `ProductionManager.tsx`, after 525 rows; moved to the start of `<main>`).
 
-- **WAITING FOR "GO LIVE" (4 Nov): proofing ready for big audiences** (Mountview
+- **Deployments, 4 Nov:** Steve asked to cut Vercel deployments (Hobby
+  Deployment Storage 10.07/10 GB; ISR Writes 189K/200K; Active CPU 2h22/4h —
+  ISR writes to investigate BEFORE more traffic). Pushes 4c43491/77287b9
+  failed in 7 s: `scripts/check-vercel-architecture.mjs` (runs in
+  `npm run build`) required the old marker in the proofing image route —
+  ALWAYS test with `npm run build`, not `npx next build`. Fixed; pushed
+  STRAIGHT to live only (test branch is behind live — fast-forward it with
+  the next job's push).
+- **LIVE 4 Nov ~22:50 (if the build succeeded): proofing ready for big audiences** (Mountview
   graduation gallery, 300+ students + families, going out 5–6 Nov).
   (1) `updateProofingGallery` now saves only if nobody saved since it read
   (compare `data->>'updatedAt'`, re-read + retry ×12 with jitter). Before:
@@ -136,7 +144,7 @@ cost an extra Vercel build.
   instead of reading the whole gallery JSON per thumbnail; redirect gets
   `Cache-Control: private, max-age=600` (presigned link lasts 15 min).
   Rehearsed against local Postgres with a neon shim (/tmp test, not in repo).
-- **WAITING FOR "GO LIVE" (4 Nov 22:45): uploader scan fix.** The two-phase
+- **LIVE 4 Nov ~22:50: uploader scan fix.** The two-phase
   `upload_pass` (live 22:23) stat'ed every file with an external `stat`
   before uploading anything — minutes on Steve's Mac at low priority, so
   nothing uploaded/reported 22:30→. Now uses builtin `zstat` (zsh/stat,

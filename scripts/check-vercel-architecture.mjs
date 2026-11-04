@@ -198,14 +198,16 @@ const checks = [
     ["getProofingGalleryBySlug("],
   ),
 
-  // Public proofing image delivery must query only the requested image.
+  // Public proofing image delivery must query only the requested image,
+  // and only a few gallery fields (never the whole visitor list), since it
+  // runs once for every photo every visitor sees.
   () => assertContains(
     "app/api/proofing/image/route.ts",
-    ["getProofingGalleryImageBySlug"],
+    ["getProofingImageAccess"],
   ),
   () => assertNotContains(
     "app/api/proofing/image/route.ts",
-    ["getProofingGalleryBySlug("],
+    ["getProofingGalleryBySlug(", "getProofingGalleryImageBySlug("],
   ),
 
   // Single proofing downloads must query only the requested image.
