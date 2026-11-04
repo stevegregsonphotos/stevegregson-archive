@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 4 November 2026, 21:10 (London)
+Last updated: 4 November 2026, 21:40 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -97,15 +97,19 @@ cost an extra Vercel build.
     `CLAUDE-CURATION-BRIEF.md` → "Finish a Claude curation".
   - Paid route (OpenAI): approve with **y**.
   - Reads straight from Dropbox/Drive (stops only if a folder is >40 GB).
-  - 4 Nov (test branch, Mac-only change, reaches Steve's Mac with `git pull`):
+  - LIVE 4 Nov (Mac-only; Steve's Mac repo `~/Documents/stevegregson-archive`
+    is on `website-redesign`, so curator changes only reach it after go live):
     opening window now reads Prepare (free) › Finish › Full automatic
     (paid) with clearer step-by-step wording; after Prepare it copies the
     message for Claude to the clipboard and shows a "what to do now" box
     (no longer opens Finder, which led Steve to try uploading the folder:
     the chat refuses ~300 files). Claude reads ~/Pictures/Curated via the
     linked Mac (request folder access, stage contact sheets to view).
-  - MUSEUM (Mountview, Nov 2026) curated 4 Nov: 36 photos, hero #0210;
-    credits from mountview.org.uk show page. Steve to run Finish + import.
+  - 4 Nov curated: MUSEUM (Mountview, Nov 2026, 36, hero #0210); Babies
+    double cast as "Babies - Backpacks Company" (36, hero #0130) and
+    "Babies - Blazers Company" (37, hero #0113). DOUBLE CASTS: put the cast
+    in the title, or Curated import merges them (it groups by title+venue+
+    month+year). Steve deleting the merged "Babies" and re-importing.
   - Takes venue + show + date from `Client / Show - Month Year / … / Web`
     however deep; "In Rehearsal" folders get that suffix.
 - **Curated archive import** (Backstage › Curated import): uploads the
@@ -115,7 +119,14 @@ cost an extra Vercel build.
 
 ## Waiting / in progress
 
-- **WAITING FOR "GO LIVE" (4 Nov): Transfers "Email to" suggests past
+- **WAITING FOR "GO LIVE" (4 Nov):** (1) Curated import opens on a new
+  **To import** view (Ready + Attention only); published ones are under
+  "Already published" or "Show everything" (`statusFilter` "todo" in
+  `CuratedArchiveImportClient.tsx`). Staged uploads are NOT deleted.
+  (2) Backstage › Productions thumbnails fade in on load instead of
+  popping (`ProductionManager.tsx`, `data-loaded` on the img).
+
+- **LIVE (4 Nov): Transfers "Email to" suggests past
   recipients** (`app/admin/transfers/RecipientInput.tsx`): as Steve types
   (or on focus, "Recently sent to"), up to 6 addresses from past
   transfers, Storage shares and file requests; works with comma lists;
@@ -145,13 +156,13 @@ cost an extra Vercel build.
   from Storage, then edit metadata in Bridge (edited files replace the
   Storage copies, no duplicates).
 
-- **WAITING FOR "GO LIVE" (29 Oct): People search more forgiving**
+- **LIVE (1 Nov): People search more forgiving**
   (`components/directory/PeopleSearch.tsx`). It was already case-insensitive;
   now curly/straight apostrophes match, hyphens = spaces, and words can be
   typed in any order. Archive search (`app/archive/ArchiveExplorer.tsx`)
   already ignored case; not changed.
 
-- **WAITING FOR "GO LIVE" (29 Oct):** Mac app no longer removes a show's
+- **LIVE (1 Nov):** Mac app no longer removes a show's
   folder after clearing its files (Babies at Mountview vanished from the
   Mac this way), and a one-off step recreates any folders it removed,
   from the log's "Freed space" lines (marker file `folders-restored` in

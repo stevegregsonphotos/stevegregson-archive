@@ -663,6 +663,9 @@ export default function ProductionManager({
                       alt=""
                       fill
                       sizes="(max-width: 640px) 100vw, (max-width: 1000px) 13rem, 16rem"
+                      onLoad={(event) => {
+                        event.currentTarget.dataset.loaded = "true";
+                      }}
                     />
                   </Link>
 
@@ -1140,9 +1143,22 @@ export default function ProductionManager({
 
         .production-manager-image img {
           object-fit: cover;
+          opacity: 0;
           transition:
+            opacity 350ms ease,
             transform 600ms ease,
             filter 300ms ease;
+        }
+
+        /* Fade each photo in once it has loaded, instead of popping in. */
+        .production-manager-image img[data-loaded="true"] {
+          opacity: 1;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .production-manager-image img {
+            transition: none;
+          }
         }
 
         .production-manager-row:hover

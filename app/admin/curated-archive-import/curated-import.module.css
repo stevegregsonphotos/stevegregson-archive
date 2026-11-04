@@ -970,3 +970,27 @@
     font-size: 10px;
   }
 }
+
+.showAll {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.showAll:hover {
+  color: var(--text, #fff);
+}
+
+.allDone {
+  margin: 24px 0 0;
+  padding: 28px 24px;
+  border: 1px solid var(--line);
+  color: inherit;
+  opacity: 0.8;
+  text-align: center;
+}

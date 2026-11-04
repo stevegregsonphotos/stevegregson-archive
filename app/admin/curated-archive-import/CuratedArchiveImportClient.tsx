@@ -71,6 +71,7 @@ type PreflightResponse = {
 
 type StatusFilter =
   | "all"
+  | "todo"
   | "locked"
   | PreflightProduction["status"];
 
@@ -628,7 +629,7 @@ export default function CuratedArchiveImportClient({
   ] = useState("");
 
   const [statusFilter, setStatusFilter] =
-    useState<StatusFilter>("all");
+    useState<StatusFilter>("todo");
 
   const [
     changingAccess,
@@ -2790,6 +2791,16 @@ export default function CuratedArchiveImportClient({
         return productions;
       }
 
+      // Default view: only what still needs doing. Productions already
+      // on the website (and ones Steve excluded) stay out of the way.
+      if (statusFilter === "todo") {
+        return productions.filter(
+          (production) =>
+            production.status === "ready" ||
+            production.status === "attention",
+        );
+      }
+
       if (statusFilter === "locked") {
         return productions.filter(
           (production) =>
@@ -2881,6 +2892,7 @@ export default function CuratedArchiveImportClient({
 
   const filterDotClass: Record<StatusFilter, string> = {
     all: "",
+    todo: "",
     ready: styles.dotOk,
     existing: styles.dotGold,
     excluded: styles.dotOff,
@@ -3085,9 +3097,10 @@ export default function CuratedArchiveImportClient({
             {(
               [
                 [
-                  "Final selections",
-                  data.summary.total,
-                  "all",
+                  "To import",
+                  data.summary.ready +
+                    data.summary.attention,
+                  "todo",
                 ],
                 [
                   "Ready",
@@ -3095,7 +3108,7 @@ export default function CuratedArchiveImportClient({
                   "ready",
                 ],
                 [
-                  "Existing",
+                  "Already published",
                   data.summary.existing,
                   "existing",
                 ],
@@ -3152,8 +3165,22 @@ export default function CuratedArchiveImportClient({
           <div className={styles.metaLine}>
             <span>
               Showing {rows.length} of{" "}
-              {data.summary.total} final selection
+              {data.summary.total} uploaded production
               {data.summary.total === 1 ? "" : "s"}
+              {statusFilter !== "all" ? (
+                <>
+                  {" · "}
+                  <button
+                    type="button"
+                    className={styles.showAll}
+                    onClick={() =>
+                      setStatusFilter("all")
+                    }
+                  >
+                    Show everything
+                  </button>
+                </>
+              ) : null}
             </span>
 
             <span>
@@ -3229,7 +3256,12 @@ export default function CuratedArchiveImportClient({
                             />
                             Select
                           </label>
-                        ) : null}
+                        ) : statusFilter === "todo" ? (
+            <p className={styles.allDone}>
+              Nothing left to import. Everything you have uploaded is
+              already on the website.
+            </p>
+          ) : null}
                       </div>
 
                       <div className={styles.cellProduction}>
