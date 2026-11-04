@@ -16,6 +16,7 @@ type Status = {
   failed: number;
   waiting: number;
   tooBig: number;
+  checked?: number;
   current: string[];
   recent: Array<{ at: number; path: string }>;
   onMac: Pair;
@@ -73,6 +74,9 @@ function describe(mac: Mac, now: number) {
     tone = "warn";
   } else if (uploading) {
     headline = "Uploading " + plural(left.files, "file") + " · " + bytes(left.bytes) + " left";
+    tone = "busy";
+  } else if (s.state === "checking") {
+    headline = "Checking for new files" + (s.checked ? " (" + s.checked.toLocaleString("en-GB") + " so far)" : "") + "…";
     tone = "busy";
   } else if (s.state === "waiting" || s.waiting > 0) {
     headline = "Waiting for files to finish copying in";

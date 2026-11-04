@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 4 November 2026, 22:50 (London)
+Last updated: 4 November 2026, 22:45 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -136,6 +136,16 @@ cost an extra Vercel build.
   instead of reading the whole gallery JSON per thumbnail; redirect gets
   `Cache-Control: private, max-age=600` (presigned link lasts 15 min).
   Rehearsed against local Postgres with a neon shim (/tmp test, not in repo).
+- **WAITING FOR "GO LIVE" (4 Nov 22:45): uploader scan fix.** The two-phase
+  `upload_pass` (live 22:23) stat'ed every file with an external `stat`
+  before uploading anything — minutes on Steve's Mac at low priority, so
+  nothing uploaded/reported 22:30→. Now uses builtin `zstat` (zsh/stat,
+  only `b:zstat` loaded so /usr/bin/stat is untouched): 20k files 1m41s →
+  2.5s; reports state "checking" (+ `checked` count) while scanning. Menu bar
+  + Backstage show "Checking for new files…". MB_VERSION=3.
+- Steve renamed "… copy" folders IN FINDER, so they re-uploaded under new
+  names: Storage has both. Delete the "… copy" folders in Backstage once the
+  renamed ones are up (Mockingbird 1, 80TH PARTY, others).
 - **Menu bar icon v2 LIVE 4 Nov 22:31** (v1 failed to
   build: `@MainActor` class created from top-level code). v2 (`@main` +
   `-parse-as-library`, test-compiled OK on Steve's Mac,

@@ -154,6 +154,7 @@ export type MacStatus = {
   failed: number;
   waiting: number;
   tooBig: number;
+  checked: number;
   current: string[];
   recent: Array<{ at: number; path: string }>;
   onMac: { files: number; bytes: number };
@@ -182,6 +183,7 @@ export function cleanMacStatus(input: unknown): MacStatus | undefined {
     failed: num(v.failed),
     waiting: num(v.waiting),
     tooBig: num(v.tooBig),
+    checked: num(v.checked),
     current: (Array.isArray(v.current) ? v.current : []).slice(0, 32).map((path) => shortText(path)).filter(Boolean),
     recent: (Array.isArray(v.recent) ? v.recent : []).slice(-10).map((item) => {
       const entry = (item && typeof item === "object" ? item : {}) as Record<string, unknown>;

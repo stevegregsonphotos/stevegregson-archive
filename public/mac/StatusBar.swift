@@ -28,6 +28,7 @@ struct Report {
     var failed = 0
     var waiting = 0
     var tooBig = 0
+    var checked = 0
     var current: [String] = []
     var recent: [(at: TimeInterval, path: String)] = []
     var onMac = Count()
@@ -57,6 +58,7 @@ func readReport() -> Report? {
     r.failed = Int(number(json["failed"]))
     r.waiting = Int(number(json["waiting"]))
     r.tooBig = Int(number(json["tooBig"]))
+    r.checked = Int(number(json["checked"]))
     r.current = json["current"] as? [String] ?? []
     for item in json["recent"] as? [[String: Any]] ?? [] {
         if let path = item["path"] as? String {
@@ -140,7 +142,7 @@ final class StatusController: NSObject, NSMenuDelegate {
             } else if r.state == "uploading" && remaining.files > 0 {
                 symbol = "icloud.and.arrow.up"
                 title = " \(remaining.files)"
-            } else if r.state == "waiting" || r.waiting > 0 {
+            } else if r.state == "waiting" || r.waiting > 0 || r.state == "checking" {
                 symbol = "icloud.and.arrow.up"
                 title = " …"
             } else if r.failed > 0 {
@@ -166,6 +168,7 @@ final class StatusController: NSObject, NSMenuDelegate {
         if r.state == "uploading" && remaining.files > 0 {
             return "Uploading \(plural(remaining.files, "file")) · \(size(remaining.bytes)) left"
         }
+        if r.state == "checking" { return "Checking for new files… (\(r.checked) so far)" }
         if r.state == "waiting" || r.waiting > 0 { return "Waiting for files to finish copying in" }
         if r.state == "tidying" { return "Checking files to clear from this Mac" }
         return "Everything is uploaded"

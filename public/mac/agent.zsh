@@ -140,10 +140,11 @@ md5_of() { md5 -q "$1" 2>/dev/null; }
 # status.json is read by the menu bar icon every couple of seconds; the same
 # report goes to Backstage › Storage › Mac app (at most every 15 seconds).
 zmodload zsh/datetime
+zmodload -F zsh/stat b:zstat     # fast file sizes/dates (no extra process per file)
 STATUS_FILE="$SUPPORT/status.json"
 RUN_STARTED=$EPOCHSECONDS
 STATUS_STATE="checking"
-plan_files=0; plan_bytes=0
+plan_files=0; plan_bytes=0; checked=0
 uploaded=0; uploaded_bytes=0; freed=0; freed_bytes=0; failed=0; pending=0
 onmac_files=0; onmac_bytes=0; next_clear=0
 last_status_write=0; last_status_send=0
@@ -175,7 +176,7 @@ write_status() {
   done
   body="{\"v\":1,\"state\":\"$STATUS_STATE\",\"updated\":$now,\"runStarted\":$RUN_STARTED"
   body+=",\"total\":{\"files\":$plan_files,\"bytes\":$plan_bytes},\"done\":{\"files\":$uploaded,\"bytes\":$uploaded_bytes}"
-  body+=",\"failed\":$failed,\"waiting\":${pending:-0},\"tooBig\":${#too_big},\"current\":[$cur],\"recent\":[$rec]"
+  body+=",\"checked\":$checked,\"failed\":$failed,\"waiting\":${pending:-0},\"tooBig\":${#too_big},\"current\":[$cur],\"recent\":[$rec]"
   body+=",\"onMac\":{\"files\":$onmac_files,\"bytes\":$onmac_bytes},\"nextClear\":$next_clear,\"offloadDays\":$OFFLOAD_DAYS"
   body+=",\"freed\":{\"files\":$freed,\"bytes\":$freed_bytes},\"server\":\"$(json_escape "$SERVER")\"}"
   print -r -- "$body" > "$STATUS_FILE.tmp" && mv -f "$STATUS_FILE.tmp" "$STATUS_FILE"
@@ -378,7 +379,7 @@ install_quick_actions() {
 # Built here from StatusBar.swift with Apple's free developer tools (the
 # same ones git uses), so there's nothing to buy or sign. It just reads
 # status.json. Bump MB_VERSION to rebuild it after StatusBar.swift changes.
-MB_VERSION=2
+MB_VERSION=3
 MB_LABEL="com.stevegregson.storage.menubar"
 MB_APP="$HOME/Applications/Steve Gregson Storage Progress.app"
 install_menubar() {
@@ -612,15 +613,18 @@ reap() {
 
 upload_pass() {
   local i
-  local -a c_file c_rel c_size c_mtime
-  pending=0
+  local -a c_file c_rel c_size c_mtime st
+  pending=0; checked=0
+  STATUS_STATE="checking"
+  write_status now
   # First find everything to upload, so progress can show how much is left.
   while IFS= read -r -d '' file; do
     rel="${file#$ROOT/}"
     [[ "$rel" == *$'\t'* || "$rel" == *$'\n'* ]] && { log "Skipped (tab or line break in name): $rel"; continue; }
 
-    info=($(file_info "$file")) || continue
-    size=${info[1]}; mtime=${info[2]}; ctime=${info[3]}
+    zstat -A st -- "$file" 2>/dev/null || continue
+    size=${st[8]}; mtime=${st[10]}; ctime=${st[11]}
+    (( ++checked % 500 == 0 )) && { touch "$LOCK" 2>/dev/null; write_status; }
 
     # Already uploaded and unchanged?
     if [[ -n "${S_SIZE[$rel]}" && "${S_SIZE[$rel]}" == "$size" && "${S_MTIME[$rel]}" == "$mtime" ]]; then
@@ -643,6 +647,7 @@ upload_pass() {
   for size in $c_size; do (( plan_bytes += size )); done
   if (( ${#c_rel} > 0 )); then STATUS_STATE="uploading"
   elif (( pending > 0 )); then STATUS_STATE="waiting"
+  else STATUS_STATE="idle"
   fi
   write_status now
 
