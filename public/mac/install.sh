@@ -72,8 +72,9 @@ add_to_sidebar() {
 # ---- Uninstall --------------------------------------------------------------
 if [ "${1:-}" = "--uninstall" ]; then
   launchctl bootout "$DOMAIN/$LABEL" >/dev/null 2>&1 || true
-  rm -f "$PLIST"
-  rm -rf "$APP" "$SUPPORT"
+  launchctl bootout "$DOMAIN/$LABEL.menubar" >/dev/null 2>&1 || true
+  rm -f "$PLIST" "$HOME/Library/LaunchAgents/$LABEL.menubar.plist"
+  rm -rf "$APP" "$SUPPORT" "$HOME/Applications/$APP_NAME Progress.app"
   security delete-generic-password -a "$USER" -s "$APP_NAME" >/dev/null 2>&1 || true
   echo
   done_ "$APP_NAME has been removed from this Mac."

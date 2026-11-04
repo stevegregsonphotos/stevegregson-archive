@@ -22,6 +22,9 @@ function ensureSchema() {
     await sql.query("CREATE TABLE IF NOT EXISTS mac_devices (id text PRIMARY KEY, environment text NOT NULL, name text NOT NULL DEFAULT 'Mac', token_hash text NOT NULL UNIQUE, created_at timestamptz NOT NULL DEFAULT now(), last_seen_at timestamptz, revoked_at timestamptz)");
     await sql.query("CREATE TABLE IF NOT EXISTS mac_uploads (environment text NOT NULL, remote_path text NOT NULL, device_id text NOT NULL, size_bytes bigint NOT NULL, md5_hex text NOT NULL, uploaded_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY (environment, remote_path))");
     await sql.query("CREATE INDEX IF NOT EXISTS mac_uploads_recent_idx ON mac_uploads(environment, uploaded_at DESC)");
+    // The Mac's latest progress report (what's uploading, what's left).
+    await sql.query("ALTER TABLE mac_devices ADD COLUMN IF NOT EXISTS status jsonb");
+    await sql.query("ALTER TABLE mac_devices ADD COLUMN IF NOT EXISTS status_at timestamptz");
   })();
   return schemaPromise;
 }
@@ -140,4 +143,74 @@ export async function findMacUploadByOriginal(deviceId: string, md5Hex: string, 
     [environment(), deviceId, md5Hex, sizeBytes],
   );
   return rows[0] ? (rows[0] as { remote_path: string }).remote_path : undefined;
+}
+
+/** Progress report a Mac sends while it uploads (see public/mac/agent.zsh). */
+export type MacStatus = {
+  state: string;
+  updated: number;
+  total: { files: number; bytes: number };
+  done: { files: number; bytes: number };
+  failed: number;
+  waiting: number;
+  tooBig: number;
+  current: string[];
+  recent: Array<{ at: number; path: string }>;
+  onMac: { files: number; bytes: number };
+  nextClear: number;
+  offloadDays: number;
+};
+
+const num = (value: unknown) => (typeof value === "number" && Number.isFinite(value) ? Math.max(0, Math.round(value)) : 0);
+const pair = (value: unknown) => {
+  const v = (value && typeof value === "object" ? value : {}) as Record<string, unknown>;
+  return { files: num(v.files), bytes: num(v.bytes) };
+};
+const shortText = (value: unknown, max = 500) => (typeof value === "string" ? value.slice(0, max) : "");
+
+/** Keeps only the fields Backstage shows, with sensible limits. */
+export function cleanMacStatus(input: unknown): MacStatus | undefined {
+  if (!input || typeof input !== "object") return undefined;
+  const v = input as Record<string, unknown>;
+  const states = ["checking", "uploading", "waiting", "tidying", "idle", "offline", "disconnected"];
+  const state = shortText(v.state, 20);
+  return {
+    state: states.includes(state) ? state : "idle",
+    updated: num(v.updated),
+    total: pair(v.total),
+    done: pair(v.done),
+    failed: num(v.failed),
+    waiting: num(v.waiting),
+    tooBig: num(v.tooBig),
+    current: (Array.isArray(v.current) ? v.current : []).slice(0, 32).map((path) => shortText(path)).filter(Boolean),
+    recent: (Array.isArray(v.recent) ? v.recent : []).slice(-10).map((item) => {
+      const entry = (item && typeof item === "object" ? item : {}) as Record<string, unknown>;
+      return { at: num(entry.at), path: shortText(entry.path) };
+    }).filter((item) => item.path),
+    onMac: pair(v.onMac),
+    nextClear: num(v.nextClear),
+    offloadDays: num(v.offloadDays),
+  };
+}
+
+export async function saveMacStatus(deviceId: string, status: MacStatus) {
+  await ensureSchema();
+  await getSql().query(
+    "UPDATE mac_devices SET status=$1::jsonb, status_at=now() WHERE id=$2 AND environment=$3",
+    [JSON.stringify(status), deviceId, environment()],
+  );
+}
+
+export async function listMacStatuses() {
+  await ensureSchema();
+  const rows = await getSql().query(
+    "SELECT id, name, status, status_at FROM mac_devices WHERE environment=$1 AND revoked_at IS NULL AND status IS NOT NULL ORDER BY status_at DESC",
+    [environment()],
+  );
+  return (rows as Array<{ id: string; name: string; status: MacStatus; status_at: string | Date }>).map((row) => ({
+    id: row.id,
+    name: row.name,
+    receivedAt: new Date(row.status_at).toISOString(),
+    status: row.status,
+  }));
 }

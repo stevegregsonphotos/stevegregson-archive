@@ -12,6 +12,8 @@
 #      and "Clear from Mac now" (clears straight away, after the same check).
 #      Those call `agent.zsh --request <bring-back|clear-now> <paths…>`,
 #      which queues the request and starts a run.
+#   4. Progress: writes status.json in the support folder (read by the
+#      menu bar icon) and sends the same report to Backstage › Storage.
 # Nothing in Storage is ever deleted from here.
 
 emulate -L zsh
@@ -134,6 +136,67 @@ jget() {
 file_info() { stat -f '%z %m %c' "$1" 2>/dev/null; }   # size, modified, changed
 md5_of() { md5 -q "$1" 2>/dev/null; }
 
+# ---- Progress report ------------------------------------------------------
+# status.json is read by the menu bar icon every couple of seconds; the same
+# report goes to Backstage › Storage › Mac app (at most every 15 seconds).
+zmodload zsh/datetime
+STATUS_FILE="$SUPPORT/status.json"
+RUN_STARTED=$EPOCHSECONDS
+STATUS_STATE="checking"
+plan_files=0; plan_bytes=0
+uploaded=0; uploaded_bytes=0; freed=0; freed_bytes=0; failed=0; pending=0
+onmac_files=0; onmac_bytes=0; next_clear=0
+last_status_write=0; last_status_send=0
+typeset -a too_big RECENT        # RECENT: "epoch<TAB>path", newest last
+typeset -A JOB_REL
+
+# Files uploaded but still on this Mac, and when the next one is due to clear.
+onmac_stats() {
+  local rel due
+  onmac_files=0; onmac_bytes=0; next_clear=0
+  for rel in ${(k)S_SIZE}; do
+    [[ -f "$ROOT/$rel" ]] || continue
+    (( onmac_files++ ))
+    (( onmac_bytes += ${S_SIZE[$rel]:-0} ))
+    due=$(( ${S_AT[$rel]:-0} + OFFLOAD_DAYS * 86400 ))
+    (( next_clear == 0 || due < next_clear )) && next_clear=$due
+  done
+}
+
+# Writes the report; "now" also sends it to the website straight away.
+write_status() {
+  local now=$EPOCHSECONDS cur="" rec="" sep="" n entry body
+  [[ "$1" != now ]] && (( now - last_status_write < 1 )) && return
+  last_status_write=$now
+  for n in ${(k)JOB_REL}; do cur+="$sep\"$(json_escape "${JOB_REL[$n]}")\""; sep=","; done
+  sep=""
+  for entry in $RECENT; do
+    rec+="$sep{\"at\":${entry%%$'\t'*},\"path\":\"$(json_escape "${entry#*$'\t'}")\"}"; sep=","
+  done
+  body="{\"v\":1,\"state\":\"$STATUS_STATE\",\"updated\":$now,\"runStarted\":$RUN_STARTED"
+  body+=",\"total\":{\"files\":$plan_files,\"bytes\":$plan_bytes},\"done\":{\"files\":$uploaded,\"bytes\":$uploaded_bytes}"
+  body+=",\"failed\":$failed,\"waiting\":${pending:-0},\"tooBig\":${#too_big},\"current\":[$cur],\"recent\":[$rec]"
+  body+=",\"onMac\":{\"files\":$onmac_files,\"bytes\":$onmac_bytes},\"nextClear\":$next_clear,\"offloadDays\":$OFFLOAD_DAYS"
+  body+=",\"freed\":{\"files\":$freed,\"bytes\":$freed_bytes},\"server\":\"$(json_escape "$SERVER")\"}"
+  print -r -- "$body" > "$STATUS_FILE.tmp" && mv -f "$STATUS_FILE.tmp" "$STATUS_FILE"
+  if [[ "$1" == now ]] || (( now - last_status_send >= 15 )); then
+    last_status_send=$now
+    [[ -z "$SGS_NO_STATUS_SEND" ]] && { api "{\"action\":\"status\",\"status\":$body}" >/dev/null 2>&1 &! }
+  fi
+}
+
+# Updates just the state of the last report (e.g. offline), keeping the rest.
+mark_status() {
+  setopt local_options extended_glob
+  [[ -f "$STATUS_FILE" ]] || return
+  local s
+  s=$(<"$STATUS_FILE")
+  s=${s/\"state\":\"[a-z]##\"/"\"state\":\"$1\""}
+  s=${s/\"updated\":[0-9]##/"\"updated\":$EPOCHSECONDS"}
+  s=${s/\"current\":\[[^\]]#\]/"\"current\":[]"}
+  print -r -- "$s" > "$STATUS_FILE.tmp" && mv -f "$STATUS_FILE.tmp" "$STATUS_FILE"
+}
+
 # ---- State: one line per uploaded file --------------------------------
 # relative path <TAB> size <TAB> modified <TAB> md5 <TAB> uploaded (epoch) <TAB> storage path
 typeset -A S_SIZE S_MTIME S_MD5 S_AT S_REMOTE
@@ -161,8 +224,10 @@ reply=$(api "{\"action\":\"hello\",\"deviceName\":\"$(json_escape "$DEVICE_NAME"
 if [[ "$(jget "$reply" ok)" != "true" ]]; then
   if [[ "$(jget "$reply" code)" == "not_connected" ]]; then
     log "This Mac has been disconnected in Backstage; nothing uploaded."
+    mark_status disconnected
   else
     log "Couldn't reach $SERVER (offline?). Will try again later."
+    mark_status offline
   fi
   exit 0
 fi
@@ -309,6 +374,85 @@ install_quick_actions() {
 }
 [[ -z "$SGS_NO_QUICK_ACTIONS" ]] && install_quick_actions
 
+# ---- Menu bar progress icon ----------------------------------------------
+# Built here from StatusBar.swift with Apple's free developer tools (the
+# same ones git uses), so there's nothing to buy or sign. It just reads
+# status.json. Bump MB_VERSION to rebuild it after StatusBar.swift changes.
+MB_VERSION=1
+MB_LABEL="com.stevegregson.storage.menubar"
+MB_APP="$HOME/Applications/Steve Gregson Storage Progress.app"
+install_menubar() {
+  local marker="$SUPPORT/menubar-version" failed="$SUPPORT/menubar-failed"
+  local build="$SUPPORT/menubar-build" plist="$HOME/Library/LaunchAgents/$MB_LABEL.plist"
+  local dev app out
+  [[ -f "$marker" && "$(<"$marker")" == "$MB_VERSION" && -x "$MB_APP/Contents/MacOS/StorageProgress" ]] && return
+  # After a failed attempt, try again once a day rather than every run.
+  [[ -f "$failed" && -z $(find "$failed" -mmin +1440 2>/dev/null) ]] && return
+  touch "$failed"
+  dev=$(xcode-select -p 2>/dev/null)
+  if [[ -z "$dev" || ! -d "$dev" ]]; then
+    log "Menu bar icon not added: Apple's free developer tools aren't installed (Terminal: xcode-select --install)."
+    return
+  fi
+  rm -rf "$build"; mkdir -p "$build" || return
+  if ! curl -fsSL --max-time 60 "$SERVER/mac/StatusBar.swift" -o "$build/main.swift" 2>/dev/null \
+     || [[ "$(head -1 "$build/main.swift")" != "// Steve Gregson Storage"* ]]; then
+    log "Menu bar icon not added: couldn't download it (will try again tomorrow)."
+    return
+  fi
+  app="$build/Steve Gregson Storage Progress.app"
+  mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
+  if ! out=$(cd "$build" && xcrun --sdk macosx swiftc -O -swift-version 5 -o "$app/Contents/MacOS/StorageProgress" main.swift 2>&1); then
+    log "Menu bar icon not added: it didn't build (will try again tomorrow). ${out[1,600]}"
+    return
+  fi
+  cat > "$app/Contents/Info.plist" <<MBINFO
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleIdentifier</key><string>$MB_LABEL</string>
+  <key>CFBundleName</key><string>Steve Gregson Storage Progress</string>
+  <key>CFBundleExecutable</key><string>StorageProgress</string>
+  <key>CFBundlePackageType</key><string>APPL</string>
+  <key>CFBundleShortVersionString</key><string>$MB_VERSION</string>
+  <key>LSMinimumSystemVersion</key><string>11.0</string>
+  <key>LSUIElement</key><true/>
+</dict>
+</plist>
+MBINFO
+  codesign --force --sign - "$app" >/dev/null 2>&1
+
+  # Swap in the new version and keep it running (and starting at login).
+  launchctl bootout "gui/$(id -u)/$MB_LABEL" >/dev/null 2>&1
+  rm -rf "$MB_APP"; mkdir -p "${MB_APP:h}"
+  mv -f "$app" "$MB_APP" || return
+  rm -rf "$build"
+  cat > "$plist" <<MBPLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>$MB_LABEL</string>
+  <key>ProgramArguments</key>
+  <array><string>$MB_APP/Contents/MacOS/StorageProgress</string></array>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><dict><key>SuccessfulExit</key><false/></dict>
+  <key>ProcessType</key><string>Interactive</string>
+</dict>
+</plist>
+MBPLIST
+  if launchctl bootstrap "gui/$(id -u)" "$plist" >/dev/null 2>&1; then
+    print -r -- "$MB_VERSION" > "$marker"
+    rm -f "$failed"
+    log "Added the upload progress icon to the menu bar."
+    notify "Upload progress now shows in the menu bar (the cloud icon at the top of the screen)."
+  else
+    log "Menu bar icon built but couldn't be started (will try again tomorrow)."
+  fi
+}
+[[ -z "$SGS_NO_MENUBAR" ]] && install_menubar
+
 # ---- One-off: bring back folders that older versions removed ----------
 # Earlier versions deleted a show's folders once its files were cleared.
 # Recreate them (empty) from the log's "Freed space" lines. Runs once.
@@ -362,14 +506,9 @@ while IFS= read -r -d '' dir; do
   fi
 done < <(find "$ROOT" -mindepth 1 -type d ! -name '.*' ! -path '*/.*' -print0 2>/dev/null)
 
-uploaded=0
-uploaded_bytes=0
-freed=0
-freed_bytes=0
 fetched=0
 fetched_bytes=0
-failed=0
-typeset -a too_big
+onmac_stats
 
 # ---- 1. Upload new or changed files ------------------------------------
 # Each file is uploaded by its own background job (UPLOAD_JOBS at a time).
@@ -377,8 +516,7 @@ typeset -a too_big
 # records the upload, so the record of what's uploaded is kept in one place.
 RESULTS="$SUPPORT/uploading"
 rm -rf "$RESULTS"; mkdir -p "$RESULTS"
-typeset -A RUNNING      # process id -> job number
-typeset -A JOB_REL      # job number -> relative path
+typeset -A RUNNING      # process id -> job number (JOB_REL: job number -> relative path)
 job_no=0
 unsaved=0
 
@@ -439,6 +577,8 @@ collect() {
       (( uploaded++ ))
       (( uploaded_bytes += f[2] ))
       (( unsaved++ ))
+      RECENT+=("$EPOCHSECONDS"$'\t'"$rel")
+      (( ${#RECENT} > 6 )) && RECENT=("${(@)RECENT[-6,-1]}")
       ;;
     got)
       # Brought back from Storage: it's already there, so no upload needed,
@@ -467,10 +607,14 @@ reap() {
   done
   if (( unsaved >= 50 )); then save_state; unsaved=0; fi
   touch "$LOCK" 2>/dev/null
+  write_status
 }
 
 upload_pass() {
+  local i
+  local -a c_file c_rel c_size c_mtime
   pending=0
+  # First find everything to upload, so progress can show how much is left.
   while IFS= read -r -d '' file; do
     rel="${file#$ROOT/}"
     [[ "$rel" == *$'\t'* || "$rel" == *$'\n'* ]] && { log "Skipped (tab or line break in name): $rel"; continue; }
@@ -488,20 +632,32 @@ upload_pass() {
     (( NOW - newest < SETTLE_SECONDS )) && { (( pending++ )); continue; }
 
     if (( size > MAX_BYTES )); then
-      too_big+=("$rel")
+      [[ ${too_big[(Ie)$rel]} -eq 0 ]] && too_big+=("$rel")
       continue
     fi
 
+    c_file+=("$file"); c_rel+=("$rel"); c_size+=("$size"); c_mtime+=("$mtime")
+  done < <(find "$ROOT" -type f ! -name '.*' ! -path '*/.*' ! -name 'Icon?' -print0 2>/dev/null)
+
+  plan_files=$(( uploaded + ${#c_rel} )); plan_bytes=$uploaded_bytes
+  for size in $c_size; do (( plan_bytes += size )); done
+  if (( ${#c_rel} > 0 )); then STATUS_STATE="uploading"
+  elif (( pending > 0 )); then STATUS_STATE="waiting"
+  fi
+  write_status now
+
+  for (( i = 1; i <= ${#c_rel}; i++ )); do
     # Wait for a free slot, then start this file's upload.
     while (( ${#RUNNING} >= UPLOAD_JOBS )); do
       sleep 0.2
       reap
     done
     (( job_no++ ))
-    JOB_REL[$job_no]=$rel
-    upload_one "$file" "$rel" "$RESULTS/$job_no" "$size" "$mtime" &
+    JOB_REL[$job_no]=${c_rel[$i]}
+    upload_one "${c_file[$i]}" "${c_rel[$i]}" "$RESULTS/$job_no" "${c_size[$i]}" "${c_mtime[$i]}" &
     RUNNING[$!]=$job_no
-  done < <(find "$ROOT" -type f ! -name '.*' ! -path '*/.*' ! -name 'Icon?' -print0 2>/dev/null)
+    write_status
+  done
 
   # Let the last uploads finish.
   while (( ${#RUNNING} > 0 )); do
@@ -509,6 +665,8 @@ upload_pass() {
     reap
   done
   save_state; unsaved=0
+  # Anything that failed is retried next time; count only what's done.
+  plan_files=$uploaded; plan_bytes=$uploaded_bytes
 }
 
 # Files that have only just arrived are given a few seconds to finish copying,
@@ -520,6 +678,9 @@ for round in 1 2 3 4 5 6 7 8; do
   sleep 15
   NOW=$(date +%s)
 done
+onmac_stats
+STATUS_STATE="tidying"
+write_status
 
 # Clears one uploaded file from the Mac, but only once the Mac copy is
 # unchanged AND Storage confirms it holds an exact copy. 0 = cleared.
@@ -707,6 +868,7 @@ for rel in ${(k)S_SIZE}; do
   (( ${S_AT[$rel]} > cutoff )) && continue
   clear_one "$rel"
   touch "$LOCK" 2>/dev/null
+  write_status
 done
 save_state
 
@@ -735,4 +897,8 @@ fi
 if (( failed > 0 )); then
   log "$failed file(s) will be retried next time."
 fi
+
+onmac_stats
+STATUS_STATE="idle"
+write_status now
 exit 0

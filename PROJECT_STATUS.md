@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 4 November 2026, 21:55 (London)
+Last updated: 4 November 2026, 22:25 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -123,10 +123,29 @@ cost an extra Vercel build.
   Attention only); published ones under "Already published" / "Show
   everything" (`statusFilter` "todo"). Staged uploads NOT deleted.
   Productions thumbnails fade in on load (`data-loaded`).
-- **WAITING FOR "GO LIVE" (4 Nov): Productions page flash fixed.** Real
-  cause: its `<style>` block sat at the END of `ProductionManager.tsx`,
-  after 525 rows, so on reload photos drew unstyled (full-size at the top)
-  before the CSS arrived. Moved the `<style>` to the start of `<main>`.
+- **LIVE 4 Nov: Productions page flash fixed** (its `<style>` was at the END
+  of `ProductionManager.tsx`, after 525 rows; moved to the start of `<main>`).
+
+- **WAITING FOR "GO LIVE" (4 Nov): Mac upload progress.** Steve couldn't see
+  what was uploading.
+  - `agent.zsh` now finds everything to upload first (two-phase
+    `upload_pass`), writes `status.json` in the support folder (≤1/s) and
+    sends it to `api/mac` action `status` (≤ every 15 s, and at the end of
+    every run). States: uploading / waiting / tidying / idle / offline /
+    disconnected. Rehearsed on Linux with a fake server + shims (40 files,
+    offline, idle) — OK.
+  - **Menu bar icon**: `public/mac/StatusBar.swift`, built ON the Mac by
+    `install_menubar` in agent.zsh (`xcrun swiftc`, free CLT; MB_VERSION=1),
+    installed as `~/Applications/Steve Gregson Storage Progress.app` +
+    LaunchAgent `com.stevegregson.storage.menubar`. NOT compiled/seen yet
+    (no Swift here): after go live check `~/Library/Logs/Steve Gregson
+    Storage.log` for "Menu bar icon …" lines (build errors are logged).
+    Retries once a day if it fails (`menubar-failed` marker).
+  - Backstage: `mac_devices.status/status_at` columns, admin action
+    `mac-progress`, `app/admin/storage/MacProgress.tsx` (line under "Mac app"
+    in the Storage sidebar + full panel on Storage › Mac app, polls 5 s).
+  - Mac picks it up via its daily self-update after go live (or
+    `install.sh --update`).
 
 - **LIVE (4 Nov): Transfers "Email to" suggests past
   recipients** (`app/admin/transfers/RecipientInput.tsx`): as Steve types
@@ -151,6 +170,10 @@ cost an extra Vercel build.
   on a real Mac yet — first thing to check after go live. If they don't
   appear: Finder right-click › Quick Actions › Customise, or System
   Settings › Keyboard › Keyboard Shortcuts › Services.
+
+- 4 Nov 22:20: Steve copied Mountview shows from Google Drive into Storage;
+  uploading ("Mockingbird 1 - October 2026 copy" needs renaming IN BACKSTAGE
+  once uploaded, not on the Mac, or it re-uploads).
 
 - **4 Nov: MOUNTVIEW/MUSEUM - October 2026** (562 photos) cleared from the
   Mac early (see OFFLOAD_DAYS above). All safe in Storage. Once the

@@ -23,7 +23,7 @@ import {
 } from "@/lib/client-archive/operations";
 import { listTrashEntries } from "@/lib/client-archive/trash-repository";
 import { findLiveTransfersUsingArchive } from "@/lib/transfers/repository";
-import { createMacDevice, listMacDevices, listRecentMacUploads, revokeMacDevice } from "@/lib/mac/repository";
+import { createMacDevice, listMacDevices, listMacStatuses, listRecentMacUploads, revokeMacDevice } from "@/lib/mac/repository";
 import { checkStorageCors, fixStorageCors } from "@/lib/storage-cors";
 import { createShare, deleteShare, getShareById, listShareEvents, listShares, updateShare } from "@/lib/shares/repository";
 import { sendShareEmails, shareLink } from "@/lib/shares/email";
@@ -177,6 +177,9 @@ async function handlePost(request: Request) {
     if (action === "mac-overview") {
       const [devices, recent] = await Promise.all([listMacDevices(), listRecentMacUploads()]);
       return NextResponse.json({ ok: true, devices, recent });
+    }
+    if (action === "mac-progress") {
+      return NextResponse.json({ ok: true, macs: await listMacStatuses() });
     }
     if (action === "mac-connect") {
       const { token } = await createMacDevice();

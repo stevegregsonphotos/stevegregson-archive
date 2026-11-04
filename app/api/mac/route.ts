@@ -10,9 +10,11 @@ import {
 } from "@/lib/client-archive/storage";
 import {
   authenticateMac,
+  cleanMacStatus,
   findMacUploadByOriginal,
   getMacUpload,
   recordMacUpload,
+  saveMacStatus,
 } from "@/lib/mac/repository";
 
 // Used only by Steve's Mac app. Every request carries that Mac's secret
@@ -72,6 +74,14 @@ export async function POST(request: Request) {
 
     if (action === "hello") {
       return json({ ok: true, device: device.name });
+    }
+
+    if (action === "status") {
+      // Upload progress, shown in Backstage › Storage › Mac app.
+      const status = cleanMacStatus(body.status);
+      if (!status) return json({ ok: false, message: "Invalid status." }, 400);
+      await saveMacStatus(device.id, status);
+      return json({ ok: true });
     }
 
     if (action === "folders") {

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import styles from "./mac.module.css";
 import { LaptopIcon } from "../StorageIcons";
+import { MacProgressPanel } from "../MacProgress";
 
 type Device = { id: string; name: string; createdAt: string; lastSeenAt?: string; connected: boolean; uploads: number };
 type Recent = { path: string; sizeBytes: number; uploadedAt: string; device: string };
@@ -127,11 +128,16 @@ export default function MacAppClient() {
           <h1>Storage on your Mac</h1>
           <p>
             A <strong>Steve Gregson Storage</strong>{" "}folder on your Mac, plus an icon in your Dock. Anything you put in
-            the folder, or drop on the Dock icon, uploads to Storage by itself. Seven days later, once it&rsquo;s been
-            checked as an exact match in Storage, the copy on your Mac is removed to free up space.
+            the folder, or drop on the Dock icon, uploads to Storage by itself. A couple of days later, once it&rsquo;s been
+            checked as an exact match in Storage, the copy on your Mac is removed to free up space. Progress shows here and in your Mac&rsquo;s menu bar.
           </p>
         </div>
       </header>
+
+      <section className={styles.panel}>
+        <h2>Upload progress</h2>
+        <MacProgressPanel />
+      </section>
 
       <section className={styles.how}>
         <article>

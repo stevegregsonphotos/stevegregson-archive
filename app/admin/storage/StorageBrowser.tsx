@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import styles from "./storage.module.css";
+import { MacProgressLine } from "./MacProgress";
 import {
   describeProgress,
   filesFromInput,
@@ -627,6 +628,7 @@ export default function StorageBrowser() {
             <Link className={styles.navItem} href="/admin/storage/mac">
               <LaptopIcon /> <span>Mac app</span>
             </Link>
+            <MacProgressLine />
           </nav>
         </aside>
 
