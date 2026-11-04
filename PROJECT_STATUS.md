@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 4 November 2026, 21:40 (London)
+Last updated: 4 November 2026, 21:55 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -119,12 +119,14 @@ cost an extra Vercel build.
 
 ## Waiting / in progress
 
-- **WAITING FOR "GO LIVE" (4 Nov):** (1) Curated import opens on a new
-  **To import** view (Ready + Attention only); published ones are under
-  "Already published" or "Show everything" (`statusFilter` "todo" in
-  `CuratedArchiveImportClient.tsx`). Staged uploads are NOT deleted.
-  (2) Backstage › Productions thumbnails fade in on load instead of
-  popping (`ProductionManager.tsx`, `data-loaded` on the img).
+- **LIVE 4 Nov:** Curated import opens on a **To import** view (Ready +
+  Attention only); published ones under "Already published" / "Show
+  everything" (`statusFilter` "todo"). Staged uploads NOT deleted.
+  Productions thumbnails fade in on load (`data-loaded`).
+- **WAITING FOR "GO LIVE" (4 Nov): Productions page flash fixed.** Real
+  cause: its `<style>` block sat at the END of `ProductionManager.tsx`,
+  after 525 rows, so on reload photos drew unstyled (full-size at the top)
+  before the CSS arrived. Moved the `<style>` to the start of `<main>`.
 
 - **LIVE (4 Nov): Transfers "Email to" suggests past
   recipients** (`app/admin/transfers/RecipientInput.tsx`): as Steve types

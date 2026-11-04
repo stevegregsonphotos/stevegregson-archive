@@ -409,387 +409,8 @@ export default function ProductionManager({
 
   return (
     <main className="production-manager">
-      <div className="production-manager-shell">
-        <header className="production-manager-header">
-          <div className="production-manager-heading">
-            <p className="production-manager-eyebrow">
-              Archive management
-            </p>
-
-            <h1>Productions</h1>
-
-            <p className="production-manager-lead">
-              Review, filter, edit and open every
-              production in the archive.
-            </p>
-          </div>
-
-          <Link
-            href="/admin/new-production"
-            className="production-manager-new"
-          >
-            <span
-              className="production-manager-new-symbol"
-              aria-hidden="true"
-            >
-              +
-            </span>
-
-            <span className="production-manager-new-label">
-              New production
-            </span>
-          </Link>
-        </header>
-
-        <UpcomingSection
-          drafts={upcoming}
-          loadError={upcomingError}
-        />
-
-        <section
-          className="production-manager-metrics"
-          aria-label="Private archive statistics"
-        >
-          <article>
-            <strong>
-              {metrics.productionCount}
-            </strong>
-            <span>Productions</span>
-          </article>
-
-          <article>
-            <strong>
-              {metrics.photographCount}
-            </strong>
-            <span>Photographs</span>
-          </article>
-
-          <article>
-            <strong>
-              {metrics.earliestYear ?? "—"}
-            </strong>
-            <span>First production</span>
-          </article>
-
-          <article>
-            <strong>
-              {metrics.latestYear ?? "—"}
-            </strong>
-            <span>Latest production</span>
-          </article>
-
-          <article>
-            <strong>
-              {metrics.venueCount}
-            </strong>
-            <span>Venues</span>
-          </article>
-        </section>
-
-        <section
-          className="production-manager-toolbar"
-          aria-label="Production filters"
-        >
-          <label className="production-manager-search">
-            <span>Search</span>
-
-            <input
-              type="search"
-              value={query}
-              onChange={(event) =>
-                setQuery(event.target.value)
-              }
-              placeholder="Search archive..."
-            />
-          </label>
-
-          <div className="production-manager-selects">
-            <label className="production-manager-filter">
-              <span>Sort</span>
-
-              <select
-                value={sortBy}
-                onChange={(event) =>
-                  setSortBy(
-                    event.target
-                      .value as SortOption,
-                  )
-                }
-              >
-                <option value="newest">
-                  Newest
-                </option>
-
-                <option value="oldest">
-                  Oldest
-                </option>
-
-                <option value="title-ascending">
-                  A–Z
-                </option>
-
-                <option value="title-descending">
-                  Z–A
-                </option>
-              </select>
-            </label>
-
-            <label className="production-manager-filter">
-              <span>Year</span>
-
-              <select
-                value={yearFilter}
-                onChange={(event) =>
-                  setYearFilter(
-                    event.target.value,
-                  )
-                }
-              >
-                <option value="all">
-                  All years
-                </option>
-
-                {years.map((year) => (
-                  <option
-                    key={year}
-                    value={year}
-                  >
-                    {year}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="production-manager-filter production-manager-venue-filter">
-              <span>Venue</span>
-
-              <select
-                value={venueFilter}
-                onChange={(event) =>
-                  setVenueFilter(
-                    event.target.value,
-                  )
-                }
-              >
-                <option value="all">
-                  All venues
-                </option>
-
-                {venues.map((venue) => (
-                  <option
-                    key={venue}
-                    value={venue}
-                  >
-                    {venue}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-
-          <div className="production-manager-results">
-            <p className="production-manager-count">
-              Showing{" "}
-              <strong>
-                {filteredProductions.length}
-              </strong>{" "}
-              of{" "}
-              <strong>
-                {productionList.length}
-              </strong>{" "}
-              {productionList.length === 1
-                ? "production"
-                : "productions"}
-            </p>
-
-            {filtersActive ? (
-              <button
-                type="button"
-                onClick={clearFilters}
-              >
-                Clear filters
-              </button>
-            ) : null}
-          </div>
-        </section>
-
-        {orderError ? (
-          <p
-            style={{
-              margin: "0 0 1.5rem",
-              color: "#e6a89c",
-            }}
-          >
-            {orderError}
-          </p>
-        ) : null}
-
-        <section
-          className="production-manager-list"
-          aria-label="Productions"
-        >
-          {filteredProductions.length ===
-          0 ? (
-            <div className="production-manager-empty">
-              <p>
-                No productions match the selected
-                filters.
-              </p>
-
-              <button
-                type="button"
-                onClick={clearFilters}
-              >
-                Clear filters
-              </button>
-            </div>
-          ) : (
-            filteredProductions.map(
-              (production) => (
-                <article
-                  className="production-manager-row"
-                  key={production.slug}
-                >
-                  <Link
-                    href={`/admin/edit-production/${production.slug}`}
-                    className="production-manager-image"
-                    aria-label={`Edit ${production.title}`}
-                  >
-                    <Image
-                      src={getProductionImageUrl(
-                        production.slug,
-                        production.hero,
-                      )}
-                      alt=""
-                      fill
-                      sizes="(max-width: 640px) 100vw, (max-width: 1000px) 13rem, 16rem"
-                      onLoad={(event) => {
-                        event.currentTarget.dataset.loaded = "true";
-                      }}
-                    />
-                  </Link>
-
-                  <div className="production-manager-copy">
-                    <h2>
-                      <Link
-                        href={`/admin/edit-production/${production.slug}`}
-                      >
-                        {production.title}
-                      </Link>
-                    </h2>
-
-                    <p>
-                      {production.venue}
-
-                      <span aria-hidden="true">
-                        {" "}
-                        ·{" "}
-                      </span>
-
-                      {productionDate(
-                        production.month,
-                        production.year,
-                      )}
-                    </p>
-                  </div>
-
-                  <div className="production-manager-information">
-                    <p>
-                      <span>Gallery</span>
-                      <strong>
-                        {production.imageCount}{" "}
-                        {production.imageCount === 1
-                          ? "image"
-                          : "images"}
-                      </strong>
-                    </p>
-
-                    <p>
-                      <span>Archive reference</span>
-                      <strong>
-                        {production.slug}
-                      </strong>
-                    </p>
-                  </div>
-
-                  <div className="production-manager-actions">
-                    {sortBy === "newest" ? (
-                      <div
-                        style={{
-                          display: "flex",
-                          gap: ".4rem",
-                          alignItems: "center",
-                        }}
-                        aria-label="Archive order within month"
-                      >
-                        <button
-                          type="button"
-                          disabled={
-                            movingSlug !== null
-                          }
-                          onClick={() =>
-                            void moveProduction(
-                              production,
-                              "up",
-                            )
-                          }
-                          title="Move earlier within this month"
-                          aria-label={`Move ${production.title} earlier within ${productionDate(
-                            production.month,
-                            production.year,
-                          )}`}
-                        >
-                          ↑
-                        </button>
-
-                        <button
-                          type="button"
-                          disabled={
-                            movingSlug !== null
-                          }
-                          onClick={() =>
-                            void moveProduction(
-                              production,
-                              "down",
-                            )
-                          }
-                          title="Move later within this month"
-                          aria-label={`Move ${production.title} later within ${productionDate(
-                            production.month,
-                            production.year,
-                          )}`}
-                        >
-                          ↓
-                        </button>
-                      </div>
-                    ) : null}
-
-                    <Link
-                      href={`/productions/${production.slug}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="production-manager-view"
-                    >
-                      View
-                    </Link>
-
-                    <Link
-                      href={`/admin/edit-production/${production.slug}`}
-                      className="production-manager-edit"
-                    >
-                      <span>Edit</span>
-                      <span aria-hidden="true">
-                        →
-                      </span>
-                    </Link>
-                  </div>
-                </article>
-              ),
-            )
-          )}
-        </section>
-      </div>
-
+      {/* Styles come first so the browser has them before it draws the
+          (long) list of photos; at the end, photos flashed full-size on reload. */}
       <style>{`
         .production-manager {
           min-height: 100vh;
@@ -1472,6 +1093,387 @@ export default function ProductionManager({
           }
         }
       `}</style>
+      <div className="production-manager-shell">
+        <header className="production-manager-header">
+          <div className="production-manager-heading">
+            <p className="production-manager-eyebrow">
+              Archive management
+            </p>
+
+            <h1>Productions</h1>
+
+            <p className="production-manager-lead">
+              Review, filter, edit and open every
+              production in the archive.
+            </p>
+          </div>
+
+          <Link
+            href="/admin/new-production"
+            className="production-manager-new"
+          >
+            <span
+              className="production-manager-new-symbol"
+              aria-hidden="true"
+            >
+              +
+            </span>
+
+            <span className="production-manager-new-label">
+              New production
+            </span>
+          </Link>
+        </header>
+
+        <UpcomingSection
+          drafts={upcoming}
+          loadError={upcomingError}
+        />
+
+        <section
+          className="production-manager-metrics"
+          aria-label="Private archive statistics"
+        >
+          <article>
+            <strong>
+              {metrics.productionCount}
+            </strong>
+            <span>Productions</span>
+          </article>
+
+          <article>
+            <strong>
+              {metrics.photographCount}
+            </strong>
+            <span>Photographs</span>
+          </article>
+
+          <article>
+            <strong>
+              {metrics.earliestYear ?? "—"}
+            </strong>
+            <span>First production</span>
+          </article>
+
+          <article>
+            <strong>
+              {metrics.latestYear ?? "—"}
+            </strong>
+            <span>Latest production</span>
+          </article>
+
+          <article>
+            <strong>
+              {metrics.venueCount}
+            </strong>
+            <span>Venues</span>
+          </article>
+        </section>
+
+        <section
+          className="production-manager-toolbar"
+          aria-label="Production filters"
+        >
+          <label className="production-manager-search">
+            <span>Search</span>
+
+            <input
+              type="search"
+              value={query}
+              onChange={(event) =>
+                setQuery(event.target.value)
+              }
+              placeholder="Search archive..."
+            />
+          </label>
+
+          <div className="production-manager-selects">
+            <label className="production-manager-filter">
+              <span>Sort</span>
+
+              <select
+                value={sortBy}
+                onChange={(event) =>
+                  setSortBy(
+                    event.target
+                      .value as SortOption,
+                  )
+                }
+              >
+                <option value="newest">
+                  Newest
+                </option>
+
+                <option value="oldest">
+                  Oldest
+                </option>
+
+                <option value="title-ascending">
+                  A–Z
+                </option>
+
+                <option value="title-descending">
+                  Z–A
+                </option>
+              </select>
+            </label>
+
+            <label className="production-manager-filter">
+              <span>Year</span>
+
+              <select
+                value={yearFilter}
+                onChange={(event) =>
+                  setYearFilter(
+                    event.target.value,
+                  )
+                }
+              >
+                <option value="all">
+                  All years
+                </option>
+
+                {years.map((year) => (
+                  <option
+                    key={year}
+                    value={year}
+                  >
+                    {year}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="production-manager-filter production-manager-venue-filter">
+              <span>Venue</span>
+
+              <select
+                value={venueFilter}
+                onChange={(event) =>
+                  setVenueFilter(
+                    event.target.value,
+                  )
+                }
+              >
+                <option value="all">
+                  All venues
+                </option>
+
+                {venues.map((venue) => (
+                  <option
+                    key={venue}
+                    value={venue}
+                  >
+                    {venue}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <div className="production-manager-results">
+            <p className="production-manager-count">
+              Showing{" "}
+              <strong>
+                {filteredProductions.length}
+              </strong>{" "}
+              of{" "}
+              <strong>
+                {productionList.length}
+              </strong>{" "}
+              {productionList.length === 1
+                ? "production"
+                : "productions"}
+            </p>
+
+            {filtersActive ? (
+              <button
+                type="button"
+                onClick={clearFilters}
+              >
+                Clear filters
+              </button>
+            ) : null}
+          </div>
+        </section>
+
+        {orderError ? (
+          <p
+            style={{
+              margin: "0 0 1.5rem",
+              color: "#e6a89c",
+            }}
+          >
+            {orderError}
+          </p>
+        ) : null}
+
+        <section
+          className="production-manager-list"
+          aria-label="Productions"
+        >
+          {filteredProductions.length ===
+          0 ? (
+            <div className="production-manager-empty">
+              <p>
+                No productions match the selected
+                filters.
+              </p>
+
+              <button
+                type="button"
+                onClick={clearFilters}
+              >
+                Clear filters
+              </button>
+            </div>
+          ) : (
+            filteredProductions.map(
+              (production) => (
+                <article
+                  className="production-manager-row"
+                  key={production.slug}
+                >
+                  <Link
+                    href={`/admin/edit-production/${production.slug}`}
+                    className="production-manager-image"
+                    aria-label={`Edit ${production.title}`}
+                  >
+                    <Image
+                      src={getProductionImageUrl(
+                        production.slug,
+                        production.hero,
+                      )}
+                      alt=""
+                      fill
+                      sizes="(max-width: 640px) 100vw, (max-width: 1000px) 13rem, 16rem"
+                      onLoad={(event) => {
+                        event.currentTarget.dataset.loaded = "true";
+                      }}
+                    />
+                  </Link>
+
+                  <div className="production-manager-copy">
+                    <h2>
+                      <Link
+                        href={`/admin/edit-production/${production.slug}`}
+                      >
+                        {production.title}
+                      </Link>
+                    </h2>
+
+                    <p>
+                      {production.venue}
+
+                      <span aria-hidden="true">
+                        {" "}
+                        ·{" "}
+                      </span>
+
+                      {productionDate(
+                        production.month,
+                        production.year,
+                      )}
+                    </p>
+                  </div>
+
+                  <div className="production-manager-information">
+                    <p>
+                      <span>Gallery</span>
+                      <strong>
+                        {production.imageCount}{" "}
+                        {production.imageCount === 1
+                          ? "image"
+                          : "images"}
+                      </strong>
+                    </p>
+
+                    <p>
+                      <span>Archive reference</span>
+                      <strong>
+                        {production.slug}
+                      </strong>
+                    </p>
+                  </div>
+
+                  <div className="production-manager-actions">
+                    {sortBy === "newest" ? (
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: ".4rem",
+                          alignItems: "center",
+                        }}
+                        aria-label="Archive order within month"
+                      >
+                        <button
+                          type="button"
+                          disabled={
+                            movingSlug !== null
+                          }
+                          onClick={() =>
+                            void moveProduction(
+                              production,
+                              "up",
+                            )
+                          }
+                          title="Move earlier within this month"
+                          aria-label={`Move ${production.title} earlier within ${productionDate(
+                            production.month,
+                            production.year,
+                          )}`}
+                        >
+                          ↑
+                        </button>
+
+                        <button
+                          type="button"
+                          disabled={
+                            movingSlug !== null
+                          }
+                          onClick={() =>
+                            void moveProduction(
+                              production,
+                              "down",
+                            )
+                          }
+                          title="Move later within this month"
+                          aria-label={`Move ${production.title} later within ${productionDate(
+                            production.month,
+                            production.year,
+                          )}`}
+                        >
+                          ↓
+                        </button>
+                      </div>
+                    ) : null}
+
+                    <Link
+                      href={`/productions/${production.slug}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="production-manager-view"
+                    >
+                      View
+                    </Link>
+
+                    <Link
+                      href={`/admin/edit-production/${production.slug}`}
+                      className="production-manager-edit"
+                    >
+                      <span>Edit</span>
+                      <span aria-hidden="true">
+                        →
+                      </span>
+                    </Link>
+                  </div>
+                </article>
+              ),
+            )
+          )}
+        </section>
+      </div>
+
     </main>
   );
 }
