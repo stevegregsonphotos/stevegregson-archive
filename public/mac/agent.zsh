@@ -29,6 +29,10 @@ UPLOAD_JOBS=8          # files uploaded at the same time
 [[ -f "$CONFIG" ]] && source "$CONFIG"
 [[ -n "$SGS_UPLOAD_JOBS" ]] && UPLOAD_JOBS=$SGS_UPLOAD_JOBS
 [[ "$UPLOAD_JOBS" == <-> ]] && (( UPLOAD_JOBS >= 1 && UPLOAD_JOBS <= 32 )) || UPLOAD_JOBS=8
+# Never clear files from the Mac sooner than 1 day after upload (a 0 here
+# once cleared Steve's exports within minutes, before he could edit them).
+OFFLOAD_SET="$OFFLOAD_DAYS"
+[[ "$OFFLOAD_DAYS" == <-> ]] && (( OFFLOAD_DAYS >= 1 )) || OFFLOAD_DAYS=2
 
 mkdir -p "$SUPPORT" "${LOG:h}"
 touch "$STATE"
@@ -346,6 +350,7 @@ for round in 1 2 3 4 5 6 7 8; do
 done
 
 # ---- 2. Free up space for files uploaded over OFFLOAD_DAYS ago ---------
+[[ "$OFFLOAD_SET" != "$OFFLOAD_DAYS" ]] && log "Days-to-keep setting was '$OFFLOAD_SET'; using $OFFLOAD_DAYS days instead (minimum is 1)."
 cutoff=$(( NOW - OFFLOAD_DAYS * 86400 ))
 for rel in ${(k)S_SIZE}; do
   file="$ROOT/$rel"

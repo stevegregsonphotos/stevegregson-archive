@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 1 November 2026, 22:40 (London)
+Last updated: 4 November 2026, 14:00 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -79,7 +79,13 @@ cost an extra Vercel build.
 - **Mac app "Steve Gregson Storage"**: `~/Steve Gregson Storage` uploads
   automatically; copies (not moves) from Dropbox/Drive/iCloud; clears Mac
   copies after OFFLOAD_DAYS (config in `~/Library/Application Support/
-  Steve Gregson Storage/config`; Steve set it to 5 on 29 Oct); keeps ALL
+  Steve Gregson Storage/config`). **4 Nov: it was actually 0** (left from
+  the Mountview move; the 29 Oct change to 5 never took), so files were
+  cleared ~30 min after upload (Babies 28–29 Oct, MUSEUM 4 Nov). Steve
+  set it to **2** (he wants 24–48 h). **WAITING FOR "GO LIVE" (4 Nov):**
+  `agent.zsh` now ignores any setting below 1 day (uses 2) and logs it.
+  Idea: a way for the Mac app to bring files back from Storage (Steve
+  shouldn't have to download zips after a mistake like this); keeps ALL
   folders on the Mac when files are cleared (Steve's rule: production
   folder names must stay); mirrors
   folders both ways; updates itself daily from the live site
@@ -101,6 +107,12 @@ cost an extra Vercel build.
 - **X (Twitter) removed — LIVE 1 Nov:** taken out of the site's hidden profile lists (`SAME_AS` in `app/layout.tsx` and `/llms.txt`), and from the Google Business Profile social links (Google review pending). Steve doesn't use X and can't log in; don't add it back. Went live together with the three 29 Oct items below (People search, Mac folder fix, Storage folder Download), so those are LIVE too.
 
 ## Waiting / in progress
+
+- **4 Nov: MOUNTVIEW/MUSEUM - October 2026** (562 photos) cleared from the
+  Mac early (see OFFLOAD_DAYS above). All safe in Storage. Steve to
+  download the folder from Backstage › Storage (⋯ › Download), put it back
+  in the Mac folder and edit metadata in Bridge; edited files replace the
+  Storage copies (no duplicates).
 
 - **WAITING FOR "GO LIVE" (29 Oct): People search more forgiving**
   (`components/directory/PeopleSearch.tsx`). It was already case-insensitive;
