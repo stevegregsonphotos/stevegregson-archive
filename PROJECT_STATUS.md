@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 4 November 2026, 22:45 (London)
+Last updated: 4 November 2026, 23:10 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -126,6 +126,16 @@ cost an extra Vercel build.
 - **LIVE 4 Nov: Productions page flash fixed** (its `<style>` was at the END
   of `ProductionManager.tsx`, after 525 rows; moved to the start of `<main>`).
 
+- **WAITING FOR "GO LIVE" (4 Nov night): People pages refresh only when
+  affected.** `revalidateProductionContent` (now async — every caller
+  awaits it) no longer revalidates `/people/[slug]` wholesale: it revalidates
+  `/people/<slug>` (+ altSlugs) for people credited on the changed
+  productions before (cached archive, still old) and after (fresh DB) the
+  change; falls back to all on bulk/unknown changes, errors, or >400 people.
+  Archive-order changes no longer touch People pages. Why: Vercel ISR writes
+  189K/200K (rolling 30 days; mostly 13–17 Oct import, drops off ~12–17 Nov);
+  every Backstage change rebuilt 1,000+ People pages as crawlers revisited.
+  Steve: avoid big imports on 5 Nov.
 - **Deployments, 4 Nov:** Steve asked to cut Vercel deployments (Hobby
   Deployment Storage 10.07/10 GB; ISR Writes 189K/200K; Active CPU 2h22/4h —
   ISR writes to investigate BEFORE more traffic). Pushes 4c43491/77287b9

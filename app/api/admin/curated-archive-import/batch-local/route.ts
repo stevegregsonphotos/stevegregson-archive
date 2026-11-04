@@ -355,7 +355,7 @@ export async function POST(request: Request) {
   const failed = results.length - published;
 
   if (published > 0) {
-    revalidateProductionContent();
+    await revalidateProductionContent();
   }
 
   return Response.json(

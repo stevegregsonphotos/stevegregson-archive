@@ -798,7 +798,7 @@ export async function POST(request: Request) {
     }
 
     // Old and new address, in case the production was renamed.
-    revalidateProductionContent([slug, saved.slug]);
+    await revalidateProductionContent([slug, saved.slug]);
 
     return Response.json({
       ok: true,

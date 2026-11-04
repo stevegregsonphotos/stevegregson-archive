@@ -492,7 +492,7 @@ export async function POST(
           galleryAssets,
         );
 
-      revalidateProductionContent(
+      await revalidateProductionContent(
         payload.slug,
       );
 

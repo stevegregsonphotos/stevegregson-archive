@@ -91,7 +91,7 @@ export async function POST(
     // The archive page lists productions in this order.
     if (result.moved) {
       // Order only changes the archive lists, not any production's own page data.
-      revalidateProductionContent([]);
+      await revalidateProductionContent([]);
     }
 
     return NextResponse.json({
