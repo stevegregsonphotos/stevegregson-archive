@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 4 November 2026, 22:25 (London)
+Last updated: 4 November 2026, 22:35 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -126,7 +126,13 @@ cost an extra Vercel build.
 - **LIVE 4 Nov: Productions page flash fixed** (its `<style>` was at the END
   of `ProductionManager.tsx`, after 525 rows; moved to the start of `<main>`).
 
-- **WAITING FOR "GO LIVE" (4 Nov): Mac upload progress.** Steve couldn't see
+- **Mac upload progress — LIVE 4 Nov 22:23, but menu bar icon v1 FAILED to
+  build** on Steve's Mac (swiftc: `@MainActor` class created from top-level
+  code is an error). WAITING FOR "GO LIVE": v2 (`@main` + `-parse-as-library`,
+  MB_VERSION=2, build moved to the END of the run so it never delays
+  uploads; failed marker holds the version so a new version retries at once).
+  Steve asked to test-compile `~/Pictures/Curated/StatusBar.swift` first.
+  Steve couldn't see
   what was uploading.
   - `agent.zsh` now finds everything to upload first (two-phase
     `upload_pass`), writes `status.json` in the support folder (≤1/s) and

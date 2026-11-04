@@ -268,8 +268,16 @@ final class StatusController: NSObject, NSMenuDelegate {
     }
 }
 
-let app = NSApplication.shared
-app.setActivationPolicy(.accessory)
-let controller = StatusController()
-controller.start()
-app.run()
+@main
+struct StorageProgressApp {
+    @MainActor static var controller: StatusController?
+
+    @MainActor static func main() {
+        let app = NSApplication.shared
+        app.setActivationPolicy(.accessory)
+        let status = StatusController()
+        controller = status  // kept for the life of the app
+        status.start()
+        app.run()
+    }
+}

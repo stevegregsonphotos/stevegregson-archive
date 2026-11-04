@@ -378,7 +378,7 @@ install_quick_actions() {
 # Built here from StatusBar.swift with Apple's free developer tools (the
 # same ones git uses), so there's nothing to buy or sign. It just reads
 # status.json. Bump MB_VERSION to rebuild it after StatusBar.swift changes.
-MB_VERSION=1
+MB_VERSION=2
 MB_LABEL="com.stevegregson.storage.menubar"
 MB_APP="$HOME/Applications/Steve Gregson Storage Progress.app"
 install_menubar() {
@@ -386,24 +386,25 @@ install_menubar() {
   local build="$SUPPORT/menubar-build" plist="$HOME/Library/LaunchAgents/$MB_LABEL.plist"
   local dev app out
   [[ -f "$marker" && "$(<"$marker")" == "$MB_VERSION" && -x "$MB_APP/Contents/MacOS/StorageProgress" ]] && return
-  # After a failed attempt, try again once a day rather than every run.
-  [[ -f "$failed" && -z $(find "$failed" -mmin +1440 2>/dev/null) ]] && return
-  touch "$failed"
+  # After a failed attempt, try again once a day rather than every run
+  # (straight away when there's a new version to try).
+  [[ -f "$failed" && "$(<"$failed")" == "$MB_VERSION" && -z $(find "$failed" -mmin +1440 2>/dev/null) ]] && return
+  print -r -- "$MB_VERSION" > "$failed"
   dev=$(xcode-select -p 2>/dev/null)
   if [[ -z "$dev" || ! -d "$dev" ]]; then
     log "Menu bar icon not added: Apple's free developer tools aren't installed (Terminal: xcode-select --install)."
     return
   fi
   rm -rf "$build"; mkdir -p "$build" || return
-  if ! curl -fsSL --max-time 60 "$SERVER/mac/StatusBar.swift" -o "$build/main.swift" 2>/dev/null \
-     || [[ "$(head -1 "$build/main.swift")" != "// Steve Gregson Storage"* ]]; then
+  if ! curl -fsSL --max-time 60 "$SERVER/mac/StatusBar.swift" -o "$build/StatusBar.swift" 2>/dev/null \
+     || [[ "$(head -1 "$build/StatusBar.swift")" != "// Steve Gregson Storage"* ]]; then
     log "Menu bar icon not added: couldn't download it (will try again tomorrow)."
     return
   fi
   app="$build/Steve Gregson Storage Progress.app"
   mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
-  if ! out=$(cd "$build" && xcrun --sdk macosx swiftc -O -swift-version 5 -o "$app/Contents/MacOS/StorageProgress" main.swift 2>&1); then
-    log "Menu bar icon not added: it didn't build (will try again tomorrow). ${out[1,600]}"
+  if ! out=$(cd "$build" && xcrun --sdk macosx swiftc -O -swift-version 5 -parse-as-library -o "$app/Contents/MacOS/StorageProgress" StatusBar.swift 2>&1); then
+    log "Menu bar icon not added: it didn't build (will try again tomorrow). ${out[1,3000]}"
     return
   fi
   cat > "$app/Contents/Info.plist" <<MBINFO
@@ -451,7 +452,6 @@ MBPLIST
     log "Menu bar icon built but couldn't be started (will try again tomorrow)."
   fi
 }
-[[ -z "$SGS_NO_MENUBAR" ]] && install_menubar
 
 # ---- One-off: bring back folders that older versions removed ----------
 # Earlier versions deleted a show's folders once its files were cleared.
@@ -901,4 +901,7 @@ fi
 onmac_stats
 STATUS_STATE="idle"
 write_status now
+
+# Built last, so a first (slow, low-priority) build never holds up uploads.
+[[ -z "$SGS_NO_MENUBAR" ]] && install_menubar
 exit 0
