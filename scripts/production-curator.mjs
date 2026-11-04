@@ -360,13 +360,17 @@ async function chooseMode(rl) {
     const result = await runAppleScript(
       `button returned of (display dialog ${appleScriptString(
         "How would you like to curate this production?\n\n" +
-          "• Prepare for Claude (free): makes contact sheets, then you ask Claude in a chat to choose the photographs.\n\n" +
-          "• Finish a Claude curation: once Claude has made its choices, this copies your chosen originals ready for Backstage.\n\n" +
-          "• Full automatic (paid): uses the OpenAI API and asks you to approve a spending limit first.",
+          "The free route takes two steps:\n\n" +
+          "1. Prepare for Claude (free)\n" +
+          "Choose the show's photo folder. The app makes contact sheets and copies a short message for you to paste into a Claude chat (with your Mac linked). Don't upload any files. Claude reads them straight from your Mac.\n\n" +
+          "2. Finish a Claude curation\n" +
+          "When Claude says it has finished, open this app again, choose this button and pick the show's folder in Pictures › Curated. It copies the chosen photos, ready for Backstage › Curated import.\n\n" +
+          "Full automatic (paid)\n" +
+          "Does everything in one go using OpenAI. This costs money, so it asks you to approve a spending limit first.",
       )} with title "Production Curator" buttons {${appleScriptString(
-        MODES.paid,
-      )}, ${appleScriptString(MODES.finish)}, ${appleScriptString(
         MODES.claude,
+      )}, ${appleScriptString(MODES.finish)}, ${appleScriptString(
+        MODES.paid,
       )}} default button ${appleScriptString(MODES.claude)})`,
     );
     if (result.cancelled) {
@@ -2779,6 +2783,18 @@ async function validatePackage(
   };
 }
 
+async function copyToClipboard(text) {
+  if (process.platform !== "darwin") {
+    return false;
+  }
+  return await new Promise((resolve) => {
+    const child = spawn("pbcopy", [], { stdio: ["pipe", "ignore", "ignore"] });
+    child.on("error", () => resolve(false));
+    child.on("close", (code) => resolve(code === 0));
+    child.stdin.end(text);
+  });
+}
+
 async function openInFinder(
   folder,
 ) {
@@ -2842,6 +2858,8 @@ Prepared ${new Date().toISOString().slice(0, 10)} by the Production Curator (fre
 Start a chat with Claude (with your Mac linked) and say:
 
 > Please curate the production in "${outputDir}". Read ${CLAUDE_BRIEF_NAME} there first.
+
+Don't upload the folder or any photos. Claude reads them straight from your Mac.
 
 When Claude says it has finished, open **Curate Production** again and choose **Finish a Claude curation**, then pick this folder.
 
@@ -3478,20 +3496,29 @@ async function main() {
       console.log(
         "==============================================",
       );
+      const claudeMessage = `Please curate the production in "${outputDir}". Read ${CLAUDE_BRIEF_NAME} there first.`;
+      const copied = await copyToClipboard(claudeMessage);
       console.log(
-        "Next: in a Claude chat (with your Mac linked), say:",
+        "Next: in a Claude chat (with your Mac linked), paste this message. Don't upload any files:",
       );
       console.log();
-      console.log(
-        `  Please curate the production in "${outputDir}". Read ${CLAUDE_BRIEF_NAME} there first.`,
-      );
+      console.log(`  ${claudeMessage}`);
       console.log();
       console.log(
         "When Claude has finished, open Curate Production again and choose 'Finish a Claude curation'.",
       );
-      await openInFinder(
-        outputDir,
-      );
+      await runAppleScript(
+        `display dialog ${appleScriptString(
+          "Ready for Claude. No charges were made.\n\n" +
+            "What to do now:\n\n" +
+            "1. Open a Claude chat (with your Mac linked).\n" +
+            (copied
+              ? "2. Paste (⌘V) the message that has been copied for you, and send it.\n"
+              : `2. Send this message:\n${claudeMessage}\n`) +
+            "   Don't upload the folder or any photos. Claude reads them from your Mac.\n" +
+            "3. When Claude says it has finished, open Curate Production again and choose 'Finish a Claude curation', then pick this show's folder in Pictures › Curated.",
+        )} with title "Production Curator" buttons {"OK"} default button "OK"`,
+      ).catch(() => {});
       return;
     }
 

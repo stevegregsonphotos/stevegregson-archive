@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 4 November 2026, 14:00 (London)
+Last updated: 4 November 2026, 21:10 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -97,6 +97,15 @@ cost an extra Vercel build.
     `CLAUDE-CURATION-BRIEF.md` → "Finish a Claude curation".
   - Paid route (OpenAI): approve with **y**.
   - Reads straight from Dropbox/Drive (stops only if a folder is >40 GB).
+  - 4 Nov (test branch, Mac-only change, reaches Steve's Mac with `git pull`):
+    opening window now reads Prepare (free) › Finish › Full automatic
+    (paid) with clearer step-by-step wording; after Prepare it copies the
+    message for Claude to the clipboard and shows a "what to do now" box
+    (no longer opens Finder, which led Steve to try uploading the folder:
+    the chat refuses ~300 files). Claude reads ~/Pictures/Curated via the
+    linked Mac (request folder access, stage contact sheets to view).
+  - MUSEUM (Mountview, Nov 2026) curated 4 Nov: 36 photos, hero #0210;
+    credits from mountview.org.uk show page. Steve to run Finish + import.
   - Takes venue + show + date from `Client / Show - Month Year / … / Web`
     however deep; "In Rehearsal" folders get that suffix.
 - **Curated archive import** (Backstage › Curated import): uploads the
