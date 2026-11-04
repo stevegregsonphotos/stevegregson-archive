@@ -30,6 +30,9 @@ async function ensureSchema() {
     await sql.query("ALTER TABLE transfer_records ADD COLUMN IF NOT EXISTS files_purged_at timestamptz");
     await sql.query("ALTER TABLE transfer_records ADD COLUMN IF NOT EXISTS backdrop_file_ids jsonb NOT NULL DEFAULT '[]'::jsonb");
     await sql.query("CREATE INDEX IF NOT EXISTS transfer_files_object_key_idx ON transfer_files(object_key)");
+    // Everyone Steve has sent a transfer to, kept even if the transfer is
+    // later deleted, so "Email to" can suggest them.
+    await sql.query("CREATE TABLE IF NOT EXISTS transfer_contacts (environment text NOT NULL, email text NOT NULL, last_used_at timestamptz NOT NULL DEFAULT now(), use_count integer NOT NULL DEFAULT 1, PRIMARY KEY (environment, email))");
   })();
   return schemaPromise;
 }
@@ -166,7 +169,56 @@ export async function createTransfer(input: {
     "INSERT INTO transfer_records (id, environment, token, title, message, sender_email, recipients, status, created_at, expires_at, password_hash) VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,'uploading',now(),$8,$9) RETURNING id, token, title, message, sender_email, recipients, status, created_at, finalized_at, expires_at, file_count, total_size_bytes, password_hash, background_file_ids, files_purged_at, backdrop_file_ids",
     [id, environment(), token, input.title.trim(), input.message?.trim() ?? "", input.senderEmail.trim().toLowerCase(), JSON.stringify(cleanRecipients.map((email) => ({ email }))), input.expiresAt, passwordHash],
   );
+  await rememberContacts(cleanRecipients);
   return hydrate(rows[0] as RecordRow);
+}
+
+/** Adds addresses to the "Email to" suggestions (best effort). */
+async function rememberContacts(emails: string[]) {
+  if (!emails.length) return;
+  try {
+    await getSql().query(
+      "INSERT INTO transfer_contacts (environment, email) SELECT $1, unnest($2::text[]) " +
+      "ON CONFLICT (environment, email) DO UPDATE SET last_used_at = now(), use_count = transfer_contacts.use_count + 1",
+      [environment(), emails],
+    );
+  } catch (error) {
+    console.error("Couldn't remember transfer contacts", error);
+  }
+}
+
+/**
+ * Every email address Steve has sent to — transfers (including deleted ones
+ * since 4 Nov 2026), Storage folder shares and file requests — most recently
+ * used first, for the "Email to" suggestions.
+ */
+export async function listKnownRecipientEmails(limit = 2000): Promise<string[]> {
+  await ensureSchema();
+  const sql = getSql();
+  const env = environment();
+  const latest = new Map<string, number>();
+  const add = (email: unknown, when: unknown) => {
+    if (typeof email !== "string") return;
+    const clean = email.trim().toLowerCase();
+    if (!/^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/.test(clean)) return;
+    const time = new Date(when as string).getTime() || 0;
+    if ((latest.get(clean) ?? -1) < time) latest.set(clean, time);
+  };
+  const sources: Array<[string, (row: Record<string, unknown>) => void]> = [
+    ["SELECT email, last_used_at AS at FROM transfer_contacts WHERE environment=$1", (r) => add(r.email, r.at)],
+    ["SELECT r->>'email' AS email, t.created_at AS at FROM transfer_records t, jsonb_array_elements(t.recipients) r WHERE t.environment=$1", (r) => add(r.email, r.at)],
+    ["SELECT r->>'email' AS email, s.created_at AS at FROM storage_shares s, jsonb_array_elements(s.recipients) r WHERE s.environment=$1", (r) => add(r.email, r.at)],
+    ["SELECT recipient_email AS email, created_at AS at FROM file_requests WHERE environment=$1 AND recipient_email IS NOT NULL", (r) => add(r.email, r.at)],
+  ];
+  for (const [query, collect] of sources) {
+    try {
+      const rows = (await sql.query(query, [env])) as Record<string, unknown>[];
+      rows.forEach(collect);
+    } catch {
+      // That kind of record may not exist yet (e.g. no file requests made).
+    }
+  }
+  return [...latest.entries()].sort((a, b) => b[1] - a[1]).slice(0, limit).map(([email]) => email);
 }
 
 export async function addTransferFiles(transferId: string, files: Array<{

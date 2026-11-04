@@ -18,6 +18,7 @@ import { useFileDrop } from "@/lib/transfers/use-file-drop";
 import { canMakeBackdrop, uploadTransferBackdrop } from "@/lib/transfers/backdrop-client";
 import { MAX_BACKGROUNDS } from "@/lib/transfers/backgrounds";
 import RequestsPanel from "./RequestsPanel";
+import RecipientInput from "./RecipientInput";
 
 /** How many of the queued photos are offered as background choices. */
 const PICKABLE_LIMIT = 60;
@@ -55,8 +56,10 @@ function daysUntil(value: string) {
   return Math.ceil((new Date(value).getTime() - Date.now()) / 86_400_000);
 }
 
-export default function TransferWorkspace({ initialTransfers }: { initialTransfers: TransferRecord[] }) {
+export default function TransferWorkspace({ initialTransfers, knownEmails: initialKnownEmails = [] }: { initialTransfers: TransferRecord[]; knownEmails?: string[] }) {
   const [transfers, setTransfers] = useState(initialTransfers);
+  // Addresses sent to before, most recent first (suggested in "Email to").
+  const [knownEmails, setKnownEmails] = useState(initialKnownEmails);
   const [queue, setQueue] = useState<QueuedFile[]>([]);
   const [archiveSelection, setArchiveSelection] = useState<{ objectKeys: string[]; folderPaths: string[] }>(EMPTY_SELECTION);
   const [recipient, setRecipient] = useState("");
@@ -136,6 +139,12 @@ export default function TransferWorkspace({ initialTransfers }: { initialTransfe
       setProgress("These files are over 5 GB and can't be sent in one piece yet: " + tooBig.slice(0, 3).join(", ") + (tooBig.length > 3 ? " and " + (tooBig.length - 3) + " more" : "") + ".");
       return;
     }
+    const sentTo = recipient.split(/[,\n;]/).map((v) => v.trim()).filter(Boolean);
+    // Suggest these next time too (the server keeps them as well).
+    setKnownEmails((known) => {
+      const fresh = sentTo.map((email) => email.toLowerCase());
+      return [...fresh, ...known.filter((email) => !fresh.includes(email))];
+    });
     setSending(true);
     setResultUrl("");
     const stopWarning = warnBeforeLeaving();
@@ -144,7 +153,7 @@ export default function TransferWorkspace({ initialTransfers }: { initialTransfe
       setProgress("Creating transfer…");
       const created = await postTransferAction<{ transfer: TransferRecord }>({
         action: "create", title, message, senderEmail,
-        recipientEmails: recipient.split(/[,\n;]/).map((v) => v.trim()).filter(Boolean),
+        recipientEmails: sentTo,
         expiryDays: Number(expiryDays), password,
       });
       transferId = created.transfer.id;
@@ -280,7 +289,7 @@ export default function TransferWorkspace({ initialTransfers }: { initialTransfe
             )}
 
             <div className={styles.fields}>
-              <label className={styles.field}><span>Email to</span><input inputMode="email" autoComplete="off" value={recipient} onChange={(e) => setRecipient(e.target.value)} placeholder="client@example.com" /></label>
+              <label className={styles.field}><span>Email to</span><RecipientInput value={recipient} onChange={setRecipient} knownEmails={knownEmails} /></label>
               <label className={styles.field}><span>Title</span><input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Steel Pier — press photos" /></label>
               <label className={styles.field}><span>Message <em>optional</em></span><textarea rows={2} value={message} onChange={(e) => setMessage(e.target.value)} /></label>
               <div className={styles.row2}>

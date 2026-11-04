@@ -106,7 +106,16 @@ cost an extra Vercel build.
 
 ## Waiting / in progress
 
-- **WAITING FOR "GO LIVE" (4 Nov): Finder right-click options** in
+- **WAITING FOR "GO LIVE" (4 Nov): Transfers "Email to" suggests past
+  recipients** (`app/admin/transfers/RecipientInput.tsx`): as Steve types
+  (or on focus, "Recently sent to"), up to 6 addresses from past
+  transfers, Storage shares and file requests; works with comma lists;
+  Tab/Enter picks. New `transfer_contacts` table keeps addresses even if a
+  transfer is deleted (`listKnownRecipientEmails` in
+  `lib/transfers/repository.ts`). tsc + eslint clean; full `next build`
+  not run (Steve stopped it — sandbox needed an extra build package).
+
+- **LIVE 4 Nov: Finder right-click options** in
   `~/Steve Gregson Storage` (Quick Actions the Mac app writes into
   `~/Library/Services` itself; `QA_VERSION` in `agent.zsh`):
   **Bring back from Storage** (downloads a folder's/file's cleared files

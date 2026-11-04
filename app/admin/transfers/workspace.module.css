@@ -695,3 +695,50 @@
 .requestActions button { border: 0; padding: 0; background: none; color: var(--muted); cursor: pointer; font-size: inherit; }
 .requestActions button:hover { color: var(--ink); text-decoration: underline; }
 .dangerText { color: #c4302b !important; }
+
+/* ---- "Email to" suggestions ---- */
+.suggestWrap {
+  position: relative;
+}
+
+.suggestList {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 0.25rem);
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 0.3rem;
+  list-style: none;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 0.55rem;
+  box-shadow: 0 12px 32px -12px rgba(30, 25, 25, 0.22);
+  max-height: 16rem;
+  overflow-y: auto;
+}
+
+.suggestList li {
+  padding: 0.5rem 0.6rem;
+  border-radius: 0.4rem;
+  color: var(--ink);
+  font-size: 0.9rem;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.suggestList li.suggestActive {
+  background: var(--gold-soft);
+}
+
+.suggestList li.suggestHeading {
+  padding: 0.3rem 0.6rem 0.2rem;
+  color: var(--faint);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: default;
+}

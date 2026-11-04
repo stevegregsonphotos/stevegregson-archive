@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import TransferWorkspace from "./TransferWorkspace";
-import { listTransfers } from "@/lib/transfers/repository";
+import { listKnownRecipientEmails, listTransfers } from "@/lib/transfers/repository";
 import { requireBackstagePage } from "@/lib/backstage-page-auth";
 
 export const dynamic = "force-dynamic";
@@ -12,6 +12,6 @@ export const metadata: Metadata = {
 
 export default async function TransfersPage() {
   await requireBackstagePage("/admin/transfers");
-  const transfers = await listTransfers();
-  return <TransferWorkspace initialTransfers={transfers} />;
+  const [transfers, knownEmails] = await Promise.all([listTransfers(), listKnownRecipientEmails()]);
+  return <TransferWorkspace initialTransfers={transfers} knownEmails={knownEmails} />;
 }
