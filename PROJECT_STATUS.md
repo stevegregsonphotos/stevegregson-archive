@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 4 November 2026, 22:35 (London)
+Last updated: 4 November 2026, 22:50 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -126,13 +126,22 @@ cost an extra Vercel build.
 - **LIVE 4 Nov: Productions page flash fixed** (its `<style>` was at the END
   of `ProductionManager.tsx`, after 525 rows; moved to the start of `<main>`).
 
-- **Mac upload progress — LIVE 4 Nov 22:23, but menu bar icon v1 FAILED to
-  build** on Steve's Mac (swiftc: `@MainActor` class created from top-level
-  code is an error). WAITING FOR "GO LIVE": v2 (`@main` + `-parse-as-library`,
+- **WAITING FOR "GO LIVE" (4 Nov): proofing ready for big audiences** (Mountview
+  graduation gallery, 300+ students + families, going out 5–6 Nov).
+  (1) `updateProofingGallery` now saves only if nobody saved since it read
+  (compare `data->>'updatedAt'`, re-read + retry ×12 with jitter). Before:
+  rehearsal of 50 simultaneous sign-ins kept 1 of 50; after: 50 of 50.
+  Updaters must stay re-runnable (they are). (2) `/api/proofing/image` uses
+  new `getProofingImageAccess` (few fields + EXISTS over visitors in SQL)
+  instead of reading the whole gallery JSON per thumbnail; redirect gets
+  `Cache-Control: private, max-age=600` (presigned link lasts 15 min).
+  Rehearsed against local Postgres with a neon shim (/tmp test, not in repo).
+- **Menu bar icon v2 LIVE 4 Nov 22:31** (v1 failed to
+  build: `@MainActor` class created from top-level code). v2 (`@main` +
+  `-parse-as-library`, test-compiled OK on Steve's Mac,
   MB_VERSION=2, build moved to the END of the run so it never delays
   uploads; failed marker holds the version so a new version retries at once).
-  Steve asked to test-compile `~/Pictures/Curated/StatusBar.swift` first.
-  Steve couldn't see
+  Not yet seen appearing — check the log for "menu bar". Steve couldn't see
   what was uploading.
   - `agent.zsh` now finds everything to upload first (two-phase
     `upload_pass`), writes `status.json` in the support folder (≤1/s) and

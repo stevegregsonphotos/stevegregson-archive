@@ -5,7 +5,7 @@ import {
 } from "next/server";
 
 import {
-  getProofingGalleryImageBySlug,
+  getProofingImageAccess,
 } from "../../../../lib/proofing/repository";
 import {
   createProofingImageDownloadUrl,
@@ -50,13 +50,26 @@ export async function GET(
     );
   }
 
-  const resolved =
-    await getProofingGalleryImageBySlug(
+  /*
+   * Light check: only the few fields needed, never the gallery's whole
+   * visitor list (which grows with every visitor and is read for every
+   * thumbnail). The browser's proofing_* cookies hold visitor codes; a
+   * code only counts if it belongs to this gallery.
+   */
+  const cookieStore = await cookies();
+  const visitorIds = cookieStore
+    .getAll()
+    .filter((cookie) => cookie.name.startsWith("proofing_"))
+    .map((cookie) => cookie.value);
+
+  const access =
+    await getProofingImageAccess(
       gallerySlug,
       imageId,
+      visitorIds,
     );
 
-  if (!resolved) {
+  if (!access) {
     return NextResponse.json(
       {
         ok: false,
@@ -67,19 +80,14 @@ export async function GET(
     );
   }
 
-  const {
-    gallery,
-    image,
-  } = resolved;
-
   const hasExpiredByDate =
-    Boolean(gallery.expiresAt) &&
+    Boolean(access.expiresAt) &&
     new Date(
-      gallery.expiresAt as string,
+      access.expiresAt as string,
     ).getTime() < Date.now();
 
   if (
-    gallery.status !== "live" ||
+    access.status !== "live" ||
     hasExpiredByDate
   ) {
     return NextResponse.json(
@@ -92,23 +100,10 @@ export async function GET(
     );
   }
 
-  const cookieStore = await cookies();
-  const visitorId =
-    cookieStore.get(
-      `proofing_${gallery.id}`,
-    )?.value;
-
-  const visitor = visitorId
-    ? gallery.visitors?.find(
-        (candidate) =>
-          candidate.id === visitorId,
-      )
-    : undefined;
-
   const isPublicCover =
-    gallery.coverImageId === imageId;
+    access.coverImageId === imageId;
 
-  if (!visitor && !isPublicCover) {
+  if (!access.isVisitor && !isPublicCover) {
     return NextResponse.json(
       {
         ok: false,
@@ -119,16 +114,8 @@ export async function GET(
     );
   }
 
-  if (!isSafeSegment(image.webFilename)) {
-    return NextResponse.json(
-      {
-        ok: false,
-        message:
-          "Invalid image filename.",
-      },
-      { status: 400 },
-    );
-  }
+  const gallery = { id: access.galleryId };
+  const image = { webFilename: access.webFilename };
 
   try {
     /*
@@ -138,13 +125,20 @@ export async function GET(
      * the proofing UI, so image delivery never invokes
      * Sharp or proxies image bodies through Vercel.
      */
-    return NextResponse.redirect(
+    const response = NextResponse.redirect(
       await createProofingImageDownloadUrl(
         gallery.id,
         image.webFilename,
       ),
       302,
     );
+    // The link is valid for 15 minutes; let this visitor's browser reuse it
+    // for 10, so scrolling back through the gallery doesn't ask again.
+    response.headers.set(
+      "Cache-Control",
+      "private, max-age=600",
+    );
+    return response;
   } catch (error) {
     console.error(
       "Proofing image delivery failed:",

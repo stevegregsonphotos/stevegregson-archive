@@ -568,19 +568,161 @@ export async function updateProofingGallery(
     gallery: ProofingGallery,
   ) => ProofingGallery,
 ): Promise<ProofingGallery | undefined> {
-  const gallery =
-    await getProofingGalleryBase(id);
+  /*
+   * Visitors, favourites and settings all live in one record per gallery.
+   * When lots of people sign in at once (e.g. a graduation gallery emailed
+   * to hundreds of students), two saves could overlap and one would wipe
+   * out the other. So each save only goes through if nobody else has saved
+   * since we read the gallery; otherwise we read it again and re-apply the
+   * change. `updater` must therefore be safe to run more than once.
+   */
+  const sql = getSql();
 
-  if (!gallery) {
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    const gallery =
+      await getProofingGalleryBase(id);
+
+    if (!gallery) {
+      return undefined;
+    }
+
+    const previousUpdatedAt =
+      gallery.updatedAt ?? null;
+
+    const updatedGallery = updater(gallery);
+
+    let nextUpdatedAt = new Date();
+    if (
+      previousUpdatedAt &&
+      nextUpdatedAt.getTime() <=
+        new Date(previousUpdatedAt).getTime()
+    ) {
+      nextUpdatedAt = new Date(
+        new Date(previousUpdatedAt).getTime() + 1,
+      );
+    }
+    updatedGallery.updatedAt =
+      nextUpdatedAt.toISOString();
+
+    const storedGallery =
+      galleryForStorage(updatedGallery);
+
+    const rows = await sql`
+      UPDATE proofing_galleries
+      SET
+        slug = ${updatedGallery.slug},
+        title = ${updatedGallery.title},
+        updated_at = ${updatedGallery.updatedAt},
+        data = ${JSON.stringify(storedGallery)}::jsonb
+      WHERE id = ${id}
+        AND (data->>'updatedAt') IS NOT DISTINCT FROM ${previousUpdatedAt}
+      RETURNING id
+    `;
+
+    if (rows[0]) {
+      return updatedGallery;
+    }
+
+    // Someone else saved first: wait a moment (randomly, so the retries
+    // don't collide again) and try again with the latest version.
+    await new Promise((resolve) =>
+      setTimeout(
+        resolve,
+        20 + Math.random() * 60 * (attempt + 1),
+      ),
+    );
+  }
+
+  throw new Error(
+    "This gallery is very busy right now. Please try again in a moment.",
+  );
+}
+
+/*
+ * The light check behind every photograph shown in a proofing gallery.
+ * It returns only what's needed (not the gallery's whole visitor list),
+ * so thousands of thumbnails don't each download that list from the
+ * database. `visitorIds` are the visitor codes from the browser's cookies.
+ */
+export async function getProofingImageAccess(
+  slug: string,
+  imageId: string,
+  visitorIds: string[],
+): Promise<
+  | {
+      galleryId: string;
+      status: string;
+      expiresAt?: string;
+      coverImageId?: string;
+      webFilename: string;
+      isVisitor: boolean;
+    }
+  | undefined
+> {
+  const normalisedSlug =
+    decodeURIComponent(slug)
+      .trim()
+      .toLowerCase();
+  const cleanImageId = imageId.trim();
+
+  if (!normalisedSlug || !cleanImageId) {
     return undefined;
   }
 
-  const updatedGallery = updater(gallery);
+  const ids = visitorIds
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .slice(0, 50);
 
-  updatedGallery.updatedAt =
-    new Date().toISOString();
+  const sql = getSql();
 
-  await saveProofingGallery(updatedGallery);
+  const rows = await sql`
+    SELECT
+      pg.id::text AS gallery_id,
+      pg.data->>'status' AS status,
+      pg.data->>'expiresAt' AS expires_at,
+      pg.data->>'coverImageId' AS cover_image_id,
+      pi.web_filename,
+      EXISTS (
+        SELECT 1
+        FROM jsonb_array_elements(
+          CASE
+            WHEN jsonb_typeof(pg.data->'visitors') = 'array'
+              THEN pg.data->'visitors'
+            ELSE '[]'::jsonb
+          END
+        ) AS v
+        WHERE v->>'id' = ANY(${ids}::text[])
+      ) AS is_visitor
+    FROM proofing_galleries pg
+    JOIN proofing_images pi
+      ON pi.gallery_id = pg.id::text
+    WHERE LOWER(pg.slug) = ${normalisedSlug}
+      AND pi.id = ${cleanImageId}
+    LIMIT 1
+  `;
 
-  return updatedGallery;
+  const row = rows[0] as
+    | {
+        gallery_id: string;
+        status: string | null;
+        expires_at: string | null;
+        cover_image_id: string | null;
+        web_filename: string;
+        is_visitor: boolean;
+      }
+    | undefined;
+
+  if (!row) {
+    return undefined;
+  }
+
+  return {
+    galleryId: row.gallery_id,
+    status: row.status ?? "",
+    ...(row.expires_at ? { expiresAt: row.expires_at } : {}),
+    ...(row.cover_image_id ? { coverImageId: row.cover_image_id } : {}),
+    webFilename: row.web_filename,
+    isVisitor: Boolean(row.is_visitor),
+  };
 }
