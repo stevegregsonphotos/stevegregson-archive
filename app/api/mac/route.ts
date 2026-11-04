@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
 import {
   createClientArchiveFolder,
+  createClientArchiveViewUrl,
   createVerifiedArchiveUploadUrl,
+  getClientArchiveKey,
   headArchiveObject,
   listClientArchive,
+  listClientArchiveFilesRecursive,
 } from "@/lib/client-archive/storage";
 import {
   authenticateMac,
@@ -12,10 +15,10 @@ import {
   recordMacUpload,
 } from "@/lib/mac/repository";
 
-// Used only by Steve's Mac uploader. Every request carries that Mac's secret
-// connection code; nothing here can download or delete files, and the only
-// thing it can list is the names of the top-level folders. It can add files
-// and empty folders.
+// Used only by Steve's Mac app. Every request carries that Mac's secret
+// connection code. It can add files and empty folders, list the files in a
+// folder and download them (for "Bring back from Storage"). Nothing here can
+// delete, move or rename anything in Storage.
 
 const MAX_SINGLE_UPLOAD = 5 * 1024 ** 3;
 
@@ -141,6 +144,34 @@ export async function POST(request: Request) {
       }
       await recordMacUpload({ remotePath, deviceId: device.id, sizeBytes: size, md5Hex: md5 });
       return json({ ok: true, verified: true });
+    }
+
+    if (action === "list") {
+      // "Bring back from Storage": every file in a folder (or the one file),
+      // as "path<TAB>size" lines. Deleted files and hidden markers are left out.
+      const path = storagePath(body.path);
+      if (!path || path.split("/")[0] === ".trash") return json({ ok: false, message: "Invalid folder." }, 400);
+      const single = await headArchiveObject(path);
+      const files = single
+        ? [{ path, sizeBytes: single.sizeBytes }]
+        : await listClientArchiveFilesRecursive(path, 20000);
+      const lines = files
+        .filter((file) => !file.path.split("/").some((part) => part.startsWith(".")) && !/[\u0000-\u001f]/.test(file.path))
+        .map((file) => file.path + "\t" + file.sizeBytes);
+      return json({ ok: true, count: lines.length, list: lines.join("\n") });
+    }
+
+    if (action === "download") {
+      // A short-lived link to fetch one file back onto the Mac.
+      const path = storagePath(body.path);
+      if (!path || path.split("/")[0] === ".trash") return json({ ok: false, message: "Invalid file." }, 400);
+      const stored = await headArchiveObject(path);
+      if (!stored) return json({ ok: false, code: "missing", message: "That file isn't in Storage." }, 404);
+      return json({
+        ok: true,
+        size: stored.sizeBytes,
+        url: await createClientArchiveViewUrl(getClientArchiveKey(path), 3600),
+      });
     }
 
     if (action === "verify") {

@@ -80,12 +80,10 @@ cost an extra Vercel build.
   automatically; copies (not moves) from Dropbox/Drive/iCloud; clears Mac
   copies after OFFLOAD_DAYS (config in `~/Library/Application Support/
   Steve Gregson Storage/config`). **4 Nov: it was actually 0** (left from
-  the Mountview move; the 29 Oct change to 5 never took), so files were
-  cleared ~30 min after upload (Babies 28–29 Oct, MUSEUM 4 Nov). Steve
-  set it to **2** (he wants 24–48 h). **WAITING FOR "GO LIVE" (4 Nov):**
-  `agent.zsh` now ignores any setting below 1 day (uses 2) and logs it.
-  Idea: a way for the Mac app to bring files back from Storage (Steve
-  shouldn't have to download zips after a mistake like this); keeps ALL
+  the Mountview move), so files were cleared ~30 min after upload (Babies
+  28–29 Oct, MUSEUM 4 Nov). Steve set it to **2** (he wants 24–48 h).
+  LIVE 4 Nov: any setting below 1 day is ignored (uses 2) and logged;
+  keeps ALL
   folders on the Mac when files are cleared (Steve's rule: production
   folder names must stay); mirrors
   folders both ways; updates itself daily from the live site
@@ -108,11 +106,26 @@ cost an extra Vercel build.
 
 ## Waiting / in progress
 
+- **WAITING FOR "GO LIVE" (4 Nov): Finder right-click options** in
+  `~/Steve Gregson Storage` (Quick Actions the Mac app writes into
+  `~/Library/Services` itself; `QA_VERSION` in `agent.zsh`):
+  **Bring back from Storage** (downloads a folder's/file's cleared files
+  back into place, 8 at a time, keeps 30 GB free, records them so they
+  never re-upload as duplicates, then they stay OFFLOAD_DAYS) and
+  **Clear from Mac now** (same Storage check as automatic clearing).
+  Both run `agent.zsh --request <kind> <paths>` → queue file `requests` in
+  the support folder → kickstarts a run. New `api/mac` actions `list` and
+  `download` (read-only). Rehearsed end-to-end against a fake Storage
+  (all 21 checks passed); the Quick Actions themselves haven't been seen
+  on a real Mac yet — first thing to check after go live. If they don't
+  appear: Finder right-click › Quick Actions › Customise, or System
+  Settings › Keyboard › Keyboard Shortcuts › Services.
+
 - **4 Nov: MOUNTVIEW/MUSEUM - October 2026** (562 photos) cleared from the
-  Mac early (see OFFLOAD_DAYS above). All safe in Storage. Steve to
-  download the folder from Backstage › Storage (⋯ › Download), put it back
-  in the Mac folder and edit metadata in Bridge; edited files replace the
-  Storage copies (no duplicates).
+  Mac early (see OFFLOAD_DAYS above). All safe in Storage. Once the
+  right-click options are live: right-click the show folder › Bring back
+  from Storage, then edit metadata in Bridge (edited files replace the
+  Storage copies, no duplicates).
 
 - **WAITING FOR "GO LIVE" (29 Oct): People search more forgiving**
   (`components/directory/PeopleSearch.tsx`). It was already case-insensitive;
