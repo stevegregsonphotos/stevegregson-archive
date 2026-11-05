@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 5 November 2026, 18:55 (London)
+Last updated: 5 November 2026, 20:40 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -126,7 +126,12 @@ cost an extra Vercel build.
 - **LIVE 4 Nov: Productions page flash fixed** (its `<style>` was at the END
   of `ProductionManager.tsx`, after 525 rows; moved to the start of `<main>`).
 
-- **WAITING FOR "GO LIVE" (5 Nov 18:50): client shared-folder page fix.** A
+- **WAITING FOR "GO LIVE" (5 Nov 20:40): smaller About photo.** Steve: "absolutely
+  huge". `app/about/page.tsx`: hero columns `minmax(0,1fr) minmax(260px,28vw)`;
+  `.portrait` is a 4:5 box, `width: min(100%, 26rem, calc(62vh*0.8))`,
+  right-aligned (phones: up to 22rem, left). Backstage preview frame 4:5 too.
+  Checked with next dev at 1440 and 390.
+- **LIVE 5 Nov 19:30 (promoted after Vercel queue stuck): client shared-folder page fix.** A
   client couldn't download single photos: in Photos view long filenames
   widened each tile over the next (grid items had min-content width), hiding
   the ↓ button. `app/transfer/shared/[token]/shared.module.css`: tile

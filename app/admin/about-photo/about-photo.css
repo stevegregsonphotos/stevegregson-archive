@@ -1,6 +1,6 @@
 .about-photo-editor {
   display: grid;
-  grid-template-columns: minmax(0, 26rem) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 20rem) minmax(0, 1fr);
   gap: 2.5rem;
   align-items: start;
 }
@@ -8,7 +8,7 @@
 /* Same shape and look as the photo on the About page (desktop). */
 .about-photo-frame {
   position: relative;
-  aspect-ratio: 0.93;
+  aspect-ratio: 4 / 5;
   overflow: hidden;
   background: #1b1a19;
 }

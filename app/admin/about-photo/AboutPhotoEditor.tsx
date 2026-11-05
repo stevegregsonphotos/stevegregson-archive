@@ -106,7 +106,7 @@ export default function AboutPhotoEditor({ initial }: { initial: Portrait | null
           <img src={shown} alt="The photo currently on the About page" />
         </div>
         <p className="about-photo-note">
-          How it sits on the About page (black and white, like the page). On phones the frame is a little shorter.
+          How it sits on the About page: a 4:5 frame, in black and white like the page. For the best fit, crop to 4:5 in the editor.
         </p>
       </div>
 

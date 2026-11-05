@@ -179,7 +179,7 @@ export default async function AboutPage() {
 
         .hero {
           display: grid;
-          grid-template-columns: minmax(0, 1fr) minmax(360px, 42vw);
+          grid-template-columns: minmax(0, 1fr) minmax(260px, 28vw);
           gap: clamp(3rem, 7vw, 8rem);
           min-height: 0;
           padding: 7.5rem 6vw 3.5rem;
@@ -225,10 +225,13 @@ export default async function AboutPage() {
           line-height: 1.6;
         }
 
+        /* A modest 4:5 headshot (edit or replace it in Backstage › Settings ›
+           About page photo); never taller than most of the screen. */
         .portrait {
           position: relative;
-          width: 100%;
-          height: min(72vh, 760px);
+          justify-self: end;
+          width: min(100%, 26rem, calc(62vh * 0.8));
+          aspect-ratio: 4 / 5;
           overflow: hidden;
           background: #1b1a19;
         }
@@ -364,7 +367,8 @@ export default async function AboutPage() {
           }
 
           .portrait {
-            height: 65vh;
+            justify-self: start;
+            width: min(100%, 22rem);
           }
 
           .biography {
