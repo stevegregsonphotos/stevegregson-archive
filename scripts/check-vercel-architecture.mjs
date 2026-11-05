@@ -198,6 +198,16 @@ const checks = [
     ["getProofingGalleryBySlug("],
   ),
 
+  // Busy public proofing actions save only the visitor's own record
+  // (proofing_visitors), never the whole gallery: with thousands of
+  // visitors that would be slow and use up the database's data allowance.
+  () => assertContains("app/api/proofing/enter/route.ts", ["signInProofingVisitor"]),
+  () => assertContains("app/api/proofing/favourite/route.ts", ["updateProofingVisitor"]),
+  () => assertContains("app/api/proofing/submit/route.ts", ["updateProofingVisitor"]),
+  () => assertNotContains("app/api/proofing/enter/route.ts", ["updateProofingGallery("]),
+  () => assertNotContains("app/api/proofing/favourite/route.ts", ["updateProofingGallery("]),
+  () => assertNotContains("app/api/proofing/submit/route.ts", ["updateProofingGallery("]),
+
   // Public proofing image delivery must query only the requested image,
   // and only a few gallery fields (never the whole visitor list), since it
   // runs once for every photo every visitor sees.

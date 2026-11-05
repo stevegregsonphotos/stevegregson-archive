@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 5 November 2026, 09:30 (London)
+Last updated: 5 November 2026, 10:45 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -126,14 +126,31 @@ cost an extra Vercel build.
 - **LIVE 4 Nov: Productions page flash fixed** (its `<style>` was at the END
   of `ProductionManager.tsx`, after 525 rows; moved to the start of `<main>`).
 
-- **WAITING FOR "GO LIVE" (5 Nov): coloured menu bar icon.** Cloud in the
+- **WAITING FOR "GO LIVE" (5 Nov): proofing visitors in their own table**
+  (Mountview graduation gallery: 300+ students + families). New table
+  `proofing_visitors` (gallery_id, id, email, data jsonb, version) created
+  on first use; existing visitors moved out of `proofing_galleries.data`
+  automatically (`moveVisitorsOutOfGalleries`, idempotent; leftovers still
+  counted everywhere). Public loaders attach ONLY the cookie's visitor
+  (`withCurrentVisitor`, reads `cookies()` from next/headers); admin loaders
+  attach everyone. Enter → `signInProofingVisitor` (merges duplicate
+  emails), favourite/submit → `updateProofingVisitor` (row version CAS).
+  `updateProofingGallery` (Backstage only) gives updaters all visitors and
+  saves just the changed ones (`saveChangedVisitors`); gallery JSON stores
+  `visitors: []`. Image access checks the table (+ JSON leftovers).
+  Architecture check now forbids `updateProofingGallery(` in enter/
+  favourite/submit. Rehearsed on local Postgres: 300 simultaneous sign-ins,
+  900 simultaneous favourites, 30 rapid clicks by one visitor, old-gallery
+  move + duplicate merge, Backstage edit, delete — all pass; gallery record
+  263 bytes with 301 visitors. Ko-fi "buy me a coffee" button: Steve to send
+  his Ko-fi link; add to galleries in the same go-live.
+- **LIVE 5 Nov 09:40: coloured menu bar icon.** Cloud in the
   menu bar's own colour with a coloured symbol inside (`cloudIcon` in
   StatusBar.swift): green tick = all uploaded, blue ↑ uploading, blue ↓
   bringing back, orange ! = stale/failed, slash = offline. agent.zsh now
   reports "Bring back" as state `downloading` + `down` {files, bytes,
   doneFiles, doneBytes}; Backstage panel shows it too. MB_VERSION=4.
-  Preview: `~/Pictures/Curated/IconPreview.swift` renders icon-preview.png
-  on Steve's Mac (check before go live).
+  Steve saw it working 09:50 ("WE DID GOOD").
 - **LIVE 5 Nov 09:10: People pages refresh only when
   affected.** `revalidateProductionContent` (now async — every caller
   awaits it) no longer revalidates `/people/[slug]` wholesale: it revalidates

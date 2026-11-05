@@ -3,6 +3,7 @@ import { neon } from "@neondatabase/serverless";
 import type {
   ProofingGallery,
   ProofingImage,
+  ProofingVisitor,
 } from "./types";
 
 function getSql() {
@@ -70,6 +71,9 @@ function galleryForStorage(
   return {
     ...gallery,
     images: [],
+    // Visitors live in their own table (proofing_visitors), so a busy
+    // gallery's record stays small however many people visit it.
+    visitors: [],
   };
 }
 
@@ -88,6 +92,333 @@ function attachImages(
             second.sortOrder,
         ),
   };
+}
+
+
+/* ---------------------------------------------------------------------
+ * Visitors
+ *
+ * Each person who signs in to a gallery (and their favourites) is one row
+ * in proofing_visitors, instead of all of them living inside the gallery's
+ * own record. Signing in or favouriting then reads and saves just that one
+ * small row, so a graduation gallery shared with thousands of people stays
+ * quick and doesn't use up the free database's data allowance.
+ *
+ * Public pages only ever load the signed-in visitor (from their cookie);
+ * Backstage loads everyone. Older galleries' visitors are moved across
+ * automatically, and any not yet moved are still counted.
+ * ------------------------------------------------------------------- */
+
+type VisitorRow = {
+  gallery_id: string;
+  id: string;
+  data: ProofingVisitor;
+  version: number;
+};
+
+let visitorStorePromise: Promise<void> | null = null;
+
+function ensureVisitorStore() {
+  visitorStorePromise ??= (async () => {
+    const sql = getSql();
+    await sql.query(
+      "CREATE TABLE IF NOT EXISTS proofing_visitors (gallery_id text NOT NULL, id text NOT NULL, email text NOT NULL, data jsonb NOT NULL, version integer NOT NULL DEFAULT 0, updated_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY (gallery_id, id))",
+    );
+    await sql.query(
+      "CREATE INDEX IF NOT EXISTS proofing_visitors_email_idx ON proofing_visitors (gallery_id, email)",
+    );
+    await moveVisitorsOutOfGalleries();
+  })().catch((error) => {
+    visitorStorePromise = null; // try again next time
+    throw error;
+  });
+  return visitorStorePromise;
+}
+
+const VISITORS_IN_JSON = `CASE WHEN jsonb_typeof(g.data->'visitors') = 'array' THEN g.data->'visitors' ELSE '[]'::jsonb END`;
+
+/**
+ * Copies visitors still stored inside gallery records into the visitors
+ * table, then removes from each record only the ones now safely copied.
+ * Safe to run any number of times. `galleryId` limits it to one gallery.
+ */
+async function moveVisitorsOutOfGalleries(galleryId?: string) {
+  const sql = getSql();
+  const where = galleryId ? "AND g.id::text = $1" : "";
+  const params = galleryId ? [galleryId] : [];
+  await sql.query(
+    `INSERT INTO proofing_visitors (gallery_id, id, email, data)
+     SELECT g.id::text, v->>'id', lower(coalesce(v->>'email', '')), v
+     FROM proofing_galleries g, jsonb_array_elements(${VISITORS_IN_JSON}) AS v
+     WHERE coalesce(v->>'id', '') <> '' ${where}
+     ON CONFLICT (gallery_id, id) DO NOTHING`,
+    params,
+  );
+  await sql.query(
+    `UPDATE proofing_galleries g
+     SET data = jsonb_set(g.data, '{visitors}', coalesce((
+       SELECT jsonb_agg(v)
+       FROM jsonb_array_elements(${VISITORS_IN_JSON}) AS v
+       WHERE NOT EXISTS (
+         SELECT 1 FROM proofing_visitors pv
+         WHERE pv.gallery_id = g.id::text AND pv.id = v->>'id'
+       )
+     ), '[]'::jsonb))
+     WHERE jsonb_typeof(g.data->'visitors') = 'array'
+       AND jsonb_array_length(g.data->'visitors') > 0 ${where}`,
+    params,
+  );
+}
+
+/** Visitors not yet moved out of the gallery record (normally none). */
+function leftoverVisitors(gallery: ProofingGallery, known: Set<string>) {
+  return (Array.isArray(gallery.visitors) ? gallery.visitors : []).filter(
+    (visitor) => visitor && !known.has(visitor.id),
+  );
+}
+
+function sortVisitors(visitors: ProofingVisitor[]) {
+  return visitors.sort((a, b) =>
+    String(a.createdAt ?? "").localeCompare(String(b.createdAt ?? "")),
+  );
+}
+
+/** Every visitor of one gallery (Backstage). */
+export async function listProofingVisitors(
+  galleryId: string,
+): Promise<ProofingVisitor[]> {
+  await ensureVisitorStore();
+  const rows = await getSql().query(
+    "SELECT data FROM proofing_visitors WHERE gallery_id = $1",
+    [galleryId],
+  );
+  return (rows as Array<{ data: ProofingVisitor }>).map((row) => row.data);
+}
+
+async function withAllVisitors(
+  gallery: ProofingGallery,
+): Promise<ProofingGallery> {
+  const visitors = await listProofingVisitors(gallery.id);
+  const known = new Set(visitors.map((visitor) => visitor.id));
+  return {
+    ...gallery,
+    visitors: sortVisitors([...visitors, ...leftoverVisitors(gallery, known)]),
+  };
+}
+
+/** One visitor of one gallery, or undefined. */
+export async function getProofingVisitor(
+  galleryId: string,
+  visitorId: string,
+): Promise<ProofingVisitor | undefined> {
+  if (!visitorId) return undefined;
+  await ensureVisitorStore();
+  const rows = await getSql().query(
+    "SELECT data FROM proofing_visitors WHERE gallery_id = $1 AND id = $2",
+    [galleryId, visitorId],
+  );
+  return (rows[0] as { data: ProofingVisitor } | undefined)?.data;
+}
+
+/** The visitor signed in to this gallery in the current request (cookie). */
+async function currentVisitorId(galleryId: string) {
+  try {
+    const { cookies } = await import("next/headers");
+    return (await cookies()).get(`proofing_${galleryId}`)?.value;
+  } catch {
+    return undefined; // not inside a request (e.g. a build)
+  }
+}
+
+/**
+ * For public pages: the gallery with only the signed-in visitor attached
+ * (or none), so pages never load everyone else's details.
+ */
+async function withCurrentVisitor(
+  gallery: ProofingGallery,
+): Promise<ProofingGallery> {
+  const visitorId = await currentVisitorId(gallery.id);
+  const leftovers = Array.isArray(gallery.visitors) ? gallery.visitors : [];
+  let visitor = visitorId
+    ? await getProofingVisitor(gallery.id, visitorId)
+    : undefined;
+  if (!visitor && visitorId) {
+    visitor = leftovers.find((candidate) => candidate?.id === visitorId);
+  }
+  return { ...gallery, visitors: visitor ? [visitor] : [] };
+}
+
+/**
+ * Changes one visitor safely: only saves if nobody else changed that
+ * visitor since it was read (e.g. two quick favourite clicks), otherwise
+ * re-reads and tries again. `updater` may run more than once.
+ */
+export async function updateProofingVisitor(
+  galleryId: string,
+  visitorId: string,
+  updater: (visitor: ProofingVisitor) => ProofingVisitor,
+): Promise<ProofingVisitor | undefined> {
+  await ensureVisitorStore();
+  const sql = getSql();
+
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    let rows = (await sql.query(
+      "SELECT gallery_id, id, data, version FROM proofing_visitors WHERE gallery_id = $1 AND id = $2",
+      [galleryId, visitorId],
+    )) as VisitorRow[];
+
+    if (!rows[0] && attempt === 0) {
+      // Perhaps an older visitor not yet moved out of the gallery record.
+      await moveVisitorsOutOfGalleries(galleryId);
+      rows = (await sql.query(
+        "SELECT gallery_id, id, data, version FROM proofing_visitors WHERE gallery_id = $1 AND id = $2",
+        [galleryId, visitorId],
+      )) as VisitorRow[];
+    }
+
+    const row = rows[0];
+    if (!row) return undefined;
+
+    const updated = updater(row.data);
+    const saved = await sql.query(
+      "UPDATE proofing_visitors SET data = $1::jsonb, email = $2, version = version + 1, updated_at = now() WHERE gallery_id = $3 AND id = $4 AND version = $5 RETURNING id",
+      [JSON.stringify(updated), String(updated.email ?? "").toLowerCase(), galleryId, visitorId, row.version],
+    );
+    if (saved[0]) return updated;
+
+    await new Promise((resolve) =>
+      setTimeout(resolve, 10 + Math.random() * 30 * (attempt + 1)),
+    );
+  }
+
+  throw new Error("Your selection couldn't be saved just now. Please try again.");
+}
+
+/**
+ * Signs someone in to a gallery by email: returns their visitor code,
+ * creating a visitor the first time. If the same email somehow has more
+ * than one visitor (older galleries), they are merged into one.
+ */
+export async function signInProofingVisitor(
+  galleryId: string,
+  email: string,
+): Promise<string> {
+  await ensureVisitorStore();
+  const sql = getSql();
+  const normalisedEmail = email.trim().toLowerCase();
+
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    const rows = (await sql.query(
+      "SELECT gallery_id, id, data, version FROM proofing_visitors WHERE gallery_id = $1 AND email = $2 ORDER BY data->>'createdAt', id",
+      [galleryId, normalisedEmail],
+    )) as VisitorRow[];
+
+    const now = new Date().toISOString();
+
+    if (rows.length === 0) {
+      const id = crypto.randomUUID();
+      const visitor: ProofingVisitor = {
+        id,
+        email: normalisedEmail,
+        createdAt: now,
+        lastSeenAt: now,
+        selection: { status: "not-started", favourites: [] },
+      };
+      // Only if nobody with this email appeared meanwhile.
+      const inserted = await sql.query(
+        `INSERT INTO proofing_visitors (gallery_id, id, email, data)
+         SELECT $1, $2, $3, $4::jsonb
+         WHERE NOT EXISTS (SELECT 1 FROM proofing_visitors WHERE gallery_id = $1 AND email = $3)
+         RETURNING id`,
+        [galleryId, id, normalisedEmail, JSON.stringify(visitor)],
+      );
+      if (inserted[0]) return id;
+      continue; // someone else just signed in with this email: use theirs
+    }
+
+    const keep = rows[0];
+
+    if (rows.length === 1) {
+      await sql.query(
+        "UPDATE proofing_visitors SET data = jsonb_set(data, '{lastSeenAt}', to_jsonb($1::text)), updated_at = now() WHERE gallery_id = $2 AND id = $3",
+        [now, galleryId, keep.id],
+      );
+      return keep.id;
+    }
+
+    // Merge duplicates (same rules as before): all favourites, the latest
+    // submission, and "in progress" if any of them was.
+    const visitors = rows.map((row) => row.data);
+    const favouriteByImageId = new Map(
+      visitors.flatMap((visitor) =>
+        (visitor.selection?.favourites ?? []).map((favourite) => [favourite.imageId, favourite] as const),
+      ),
+    );
+    const latestSubmitted = visitors
+      .filter((visitor) => Boolean(visitor.selection?.submittedAt))
+      .sort((a, b) => new Date(b.selection.submittedAt as string).getTime() - new Date(a.selection.submittedAt as string).getTime())[0];
+    const favourites = [...favouriteByImageId.values()];
+    const status = visitors.some((visitor) => visitor.selection?.status === "in-progress")
+      ? "in-progress"
+      : latestSubmitted
+        ? "submitted"
+        : favourites.length > 0
+          ? "in-progress"
+          : "not-started";
+    const merged: ProofingVisitor = {
+      ...keep.data,
+      email: normalisedEmail,
+      lastSeenAt: now,
+      selection: {
+        ...keep.data.selection,
+        favourites,
+        status,
+        submittedFavourites: latestSubmitted?.selection.submittedFavourites ?? keep.data.selection?.submittedFavourites,
+        submittedAt: latestSubmitted?.selection.submittedAt ?? keep.data.selection?.submittedAt,
+      },
+    };
+    const saved = await sql.query(
+      "UPDATE proofing_visitors SET data = $1::jsonb, version = version + 1, updated_at = now() WHERE gallery_id = $2 AND id = $3 AND version = $4 RETURNING id",
+      [JSON.stringify(merged), galleryId, keep.id, keep.version],
+    );
+    if (!saved[0]) continue;
+    await sql.query(
+      "DELETE FROM proofing_visitors WHERE gallery_id = $1 AND id = ANY($2::text[])",
+      [galleryId, rows.slice(1).map((row) => row.id)],
+    );
+    return keep.id;
+  }
+
+  throw new Error("Gallery access could not be created. Please try again.");
+}
+
+/** Saves Backstage's changes to visitors (only the ones that changed). */
+async function saveChangedVisitors(
+  galleryId: string,
+  before: ProofingVisitor[],
+  after: ProofingVisitor[],
+) {
+  const sql = getSql();
+  const beforeById = new Map(before.map((visitor) => [visitor.id, JSON.stringify(visitor)]));
+  const afterIds = new Set(after.map((visitor) => visitor.id));
+
+  for (const visitor of after) {
+    const json = JSON.stringify(visitor);
+    if (beforeById.get(visitor.id) === json) continue;
+    await sql.query(
+      `INSERT INTO proofing_visitors (gallery_id, id, email, data) VALUES ($1, $2, $3, $4::jsonb)
+       ON CONFLICT (gallery_id, id) DO UPDATE SET data = EXCLUDED.data, email = EXCLUDED.email, version = proofing_visitors.version + 1, updated_at = now()`,
+      [galleryId, visitor.id, String(visitor.email ?? "").toLowerCase(), json],
+    );
+  }
+
+  const removed = before.map((visitor) => visitor.id).filter((id) => !afterIds.has(id));
+  if (removed.length > 0) {
+    await sql.query(
+      "DELETE FROM proofing_visitors WHERE gallery_id = $1 AND id = ANY($2::text[])",
+      [galleryId, removed],
+    );
+  }
 }
 
 export async function getProofingGalleries():
@@ -134,12 +465,28 @@ export async function getProofingGalleries():
     );
   }
 
+  await ensureVisitorStore();
+  const visitorRows = (await sql.query(
+    "SELECT gallery_id, data FROM proofing_visitors",
+  )) as Array<{ gallery_id: string; data: ProofingVisitor }>;
+  const visitorsByGallery = new Map<string, ProofingVisitor[]>();
+  for (const row of visitorRows) {
+    const list = visitorsByGallery.get(row.gallery_id) ?? [];
+    list.push(row.data);
+    visitorsByGallery.set(row.gallery_id, list);
+  }
+
   return galleryRows.map((row) => {
     const gallery =
       mapGallery(row as GalleryRow);
+    const visitors = visitorsByGallery.get(String(gallery.id)) ?? [];
+    const known = new Set(visitors.map((visitor) => visitor.id));
 
     return attachImages(
-      gallery,
+      {
+        ...gallery,
+        visitors: sortVisitors([...visitors, ...leftoverVisitors(gallery, known)]),
+      },
       imagesByGallery.get(
         gallery.id,
       ) ?? [],
@@ -174,12 +521,12 @@ export async function getProofingGalleryBaseBySlug(
     return undefined;
   }
 
-  return {
+  return withCurrentVisitor({
     ...mapGallery(
       row as GalleryRow,
     ),
     images: [],
-  };
+  });
 }
 
 export async function getProofingGalleryImageBySlug(
@@ -237,12 +584,12 @@ export async function getProofingGalleryImageBySlug(
   }
 
   return {
-    gallery: {
+    gallery: await withCurrentVisitor({
       ...mapGallery(
         row as GalleryRow,
       ),
       images: [],
-    },
+    }),
     image:
       mapProofingImage(
         row as unknown as ProofingImageRow,
@@ -286,8 +633,10 @@ export async function getProofingGallery(
   }
 
   return attachImages(
-    mapGallery(
-      galleryRows[0] as GalleryRow,
+    await withAllVisitors(
+      mapGallery(
+        galleryRows[0] as GalleryRow,
+      ),
     ),
     imageRows as ProofingImageRow[],
   );
@@ -338,8 +687,10 @@ export async function getProofingGalleryBySlug(
   }
 
   return attachImages(
-    mapGallery(
-      galleryRows[0] as GalleryRow,
+    await withCurrentVisitor(
+      mapGallery(
+        galleryRows[0] as GalleryRow,
+      ),
     ),
     imageRows as ProofingImageRow[],
   );
@@ -526,6 +877,7 @@ export async function deleteProofingImageRecord(
 export async function deleteProofingGallery(
   galleryId: string,
 ) {
+  await ensureVisitorStore();
   const sql = getSql();
 
   const results =
@@ -535,13 +887,17 @@ export async function deleteProofingGallery(
         WHERE gallery_id = ${galleryId}
       `,
       sql`
+        DELETE FROM proofing_visitors
+        WHERE gallery_id = ${galleryId}
+      `,
+      sql`
         DELETE FROM proofing_galleries
         WHERE id = ${galleryId}
         RETURNING id
       `,
     ]);
 
-  return results[1].length === 1;
+  return results[2].length === 1;
 }
 
 export async function reorderProofingImages(
@@ -577,14 +933,20 @@ export async function updateProofingGallery(
    * change. `updater` must therefore be safe to run more than once.
    */
   const sql = getSql();
+  await ensureVisitorStore();
 
   for (let attempt = 0; attempt < 12; attempt += 1) {
-    const gallery =
+    const base =
       await getProofingGalleryBase(id);
 
-    if (!gallery) {
+    if (!base) {
       return undefined;
     }
+
+    // Backstage changes may touch visitors (e.g. removing a deleted
+    // photograph from everyone's favourites), so give the updater everyone.
+    const visitorsInTable = await listProofingVisitors(id);
+    const gallery = await withAllVisitors(base);
 
     const previousUpdatedAt =
       gallery.updatedAt ?? null;
@@ -620,6 +982,11 @@ export async function updateProofingGallery(
     `;
 
     if (rows[0]) {
+      await saveChangedVisitors(
+        id,
+        visitorsInTable,
+        Array.isArray(updatedGallery.visitors) ? updatedGallery.visitors : [],
+      );
       return updatedGallery;
     }
 
@@ -674,6 +1041,7 @@ export async function getProofingImageAccess(
     .filter(Boolean)
     .slice(0, 50);
 
+  await ensureVisitorStore();
   const sql = getSql();
 
   const rows = await sql`
@@ -683,16 +1051,24 @@ export async function getProofingImageAccess(
       pg.data->>'expiresAt' AS expires_at,
       pg.data->>'coverImageId' AS cover_image_id,
       pi.web_filename,
-      EXISTS (
-        SELECT 1
-        FROM jsonb_array_elements(
-          CASE
-            WHEN jsonb_typeof(pg.data->'visitors') = 'array'
-              THEN pg.data->'visitors'
-            ELSE '[]'::jsonb
-          END
-        ) AS v
-        WHERE v->>'id' = ANY(${ids}::text[])
+      (
+        EXISTS (
+          SELECT 1
+          FROM proofing_visitors pv
+          WHERE pv.gallery_id = pg.id::text
+            AND pv.id = ANY(${ids}::text[])
+        )
+        OR EXISTS (
+          SELECT 1
+          FROM jsonb_array_elements(
+            CASE
+              WHEN jsonb_typeof(pg.data->'visitors') = 'array'
+                THEN pg.data->'visitors'
+              ELSE '[]'::jsonb
+            END
+          ) AS v
+          WHERE v->>'id' = ANY(${ids}::text[])
+        )
       ) AS is_visitor
     FROM proofing_galleries pg
     JOIN proofing_images pi

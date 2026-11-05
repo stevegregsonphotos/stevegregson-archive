@@ -5,7 +5,7 @@ import {
 
 import {
   getProofingGalleryImageBySlug,
-  updateProofingGallery,
+  updateProofingVisitor,
 } from "../../../../lib/proofing/repository";
 
 export const runtime = "nodejs";
@@ -142,91 +142,67 @@ export async function POST(
     );
   }
 
-  const alreadyFavourite =
-    visitor.selection.favourites.some(
-      (favourite) =>
-        favourite.imageId === imageId,
-    );
-
   const now =
     new Date().toISOString();
 
-  const updatedGallery =
-    await updateProofingGallery(
-      gallery.id,
-      (currentGallery) => ({
-        ...currentGallery,
-
-        visitors:
-          currentGallery.visitors.map(
-            (currentVisitor) => {
-              if (
-                currentVisitor.id !== visitorId
-              ) {
-                return currentVisitor;
-              }
-
-              const favourites =
-                alreadyFavourite
-                  ? currentVisitor.selection.favourites.filter(
-                      (favourite) =>
-                        favourite.imageId !==
-                        imageId,
-                    )
-                  : [
-                      ...currentVisitor.selection
-                        .favourites,
-                      {
-                        imageId,
-                        createdAt: now,
-                      },
-                    ];
-
-              return {
-                ...currentVisitor,
-
-                lastSeenAt: now,
-
-                selection: {
-                  /*
-                   * Preserve the previous submitted
-                   * snapshot and submittedAt.
-                   *
-                   * Only the working favourites and
-                   * current status change here.
-                   */
-                  ...currentVisitor.selection,
-
-                  favourites,
-
-                  status:
-                    favourites.length > 0
-                      ? "in-progress"
-                      : "not-started",
-                },
-              };
-            },
-          ),
-      }),
-    );
-
-  if (!updatedGallery) {
-    return NextResponse.json(
-      {
-        ok: false,
-        message:
-          "Gallery could not be updated.",
-      },
-      {
-        status: 500,
-      },
-    );
-  }
+  /*
+   * Only this visitor's own record is read and saved. Whether it's already
+   * a favourite is decided from the latest saved copy, so two quick clicks
+   * can't get out of step.
+   */
+  let alreadyFavourite = false;
 
   const updatedVisitor =
-    updatedGallery.visitors.find(
-      (candidate) =>
-        candidate.id === visitorId,
+    await updateProofingVisitor(
+      gallery.id,
+      visitorId,
+      (currentVisitor) => {
+        alreadyFavourite =
+          currentVisitor.selection.favourites.some(
+            (favourite) =>
+              favourite.imageId === imageId,
+          );
+
+        const favourites =
+          alreadyFavourite
+            ? currentVisitor.selection.favourites.filter(
+                (favourite) =>
+                  favourite.imageId !==
+                  imageId,
+              )
+            : [
+                ...currentVisitor.selection
+                  .favourites,
+                {
+                  imageId,
+                  createdAt: now,
+                },
+              ];
+
+        return {
+          ...currentVisitor,
+
+          lastSeenAt: now,
+
+          selection: {
+            /*
+             * Preserve the previous submitted
+             * snapshot and submittedAt.
+             *
+             * Only the working favourites and
+             * current status change here.
+             */
+            ...currentVisitor.selection,
+
+            favourites,
+
+            status:
+              favourites.length > 0
+                ? "in-progress"
+                : "not-started",
+          },
+        };
+      },
     );
 
   if (!updatedVisitor) {

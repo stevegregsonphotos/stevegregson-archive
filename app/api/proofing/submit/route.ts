@@ -5,7 +5,7 @@ import {
 
 import {
   getProofingGalleryBySlug,
-  updateProofingGallery,
+  updateProofingVisitor,
 } from "../../../../lib/proofing/repository";
 
 import {
@@ -180,50 +180,35 @@ export async function POST(
    * whether the selection itself succeeds.
    */
 
-  const updatedGallery =
-    await updateProofingGallery(
+  const updatedVisitor =
+    await updateProofingVisitor(
       gallery.id,
-      (currentGallery) => ({
-        ...currentGallery,
-
-        visitors:
-          currentGallery.visitors.map(
-            (currentVisitor) =>
-              currentVisitor.id === visitorId
-                ? {
-                    ...currentVisitor,
-
-                    lastSeenAt: now,
-
-                    selection: {
-  ...currentVisitor.selection,
-
-  status: "submitted",
-
-  /*
-   * Freeze a snapshot of exactly what the
-   * client submitted at this moment.
-   *
-   * Their working favourites may subsequently
-   * change without altering this confirmed
-   * selection.
-   */
-  submittedFavourites:
-    currentVisitor.selection.favourites.map(
-      (favourite) => ({
-        ...favourite,
-      }),
-    ),
-
-  submittedAt: now,
-},
-                  }
-                : currentVisitor,
-          ),
+      visitorId,
+      (currentVisitor) => ({
+        ...currentVisitor,
+        lastSeenAt: now,
+        selection: {
+          ...currentVisitor.selection,
+          status: "submitted",
+          /*
+           * Freeze a snapshot of exactly what the
+           * client submitted at this moment.
+           *
+           * Their working favourites may subsequently
+           * change without altering this confirmed
+           * selection.
+           */
+          submittedFavourites:
+            currentVisitor.selection.favourites.map(
+              (favourite) => ({
+                ...favourite,
+              }),
+            ),
+          submittedAt: now,
+        },
       }),
     );
-
-  if (!updatedGallery) {
+  if (!updatedVisitor) {
     return NextResponse.json(
       {
         ok: false,
