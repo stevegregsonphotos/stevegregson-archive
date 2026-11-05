@@ -155,6 +155,7 @@ export type MacStatus = {
   waiting: number;
   tooBig: number;
   checked: number;
+  down: { files: number; bytes: number; doneFiles: number; doneBytes: number };
   current: string[];
   recent: Array<{ at: number; path: string }>;
   onMac: { files: number; bytes: number };
@@ -173,7 +174,7 @@ const shortText = (value: unknown, max = 500) => (typeof value === "string" ? va
 export function cleanMacStatus(input: unknown): MacStatus | undefined {
   if (!input || typeof input !== "object") return undefined;
   const v = input as Record<string, unknown>;
-  const states = ["checking", "uploading", "waiting", "tidying", "idle", "offline", "disconnected"];
+  const states = ["checking", "uploading", "downloading", "waiting", "tidying", "idle", "offline", "disconnected"];
   const state = shortText(v.state, 20);
   return {
     state: states.includes(state) ? state : "idle",
@@ -184,6 +185,10 @@ export function cleanMacStatus(input: unknown): MacStatus | undefined {
     waiting: num(v.waiting),
     tooBig: num(v.tooBig),
     checked: num(v.checked),
+    down: (() => {
+      const d = (v.down && typeof v.down === "object" ? v.down : {}) as Record<string, unknown>;
+      return { files: num(d.files), bytes: num(d.bytes), doneFiles: num(d.doneFiles), doneBytes: num(d.doneBytes) };
+    })(),
     current: (Array.isArray(v.current) ? v.current : []).slice(0, 32).map((path) => shortText(path)).filter(Boolean),
     recent: (Array.isArray(v.recent) ? v.recent : []).slice(-10).map((item) => {
       const entry = (item && typeof item === "object" ? item : {}) as Record<string, unknown>;

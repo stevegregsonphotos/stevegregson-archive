@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 4 November 2026, 23:10 (London)
+Last updated: 5 November 2026, 09:30 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -126,7 +126,15 @@ cost an extra Vercel build.
 - **LIVE 4 Nov: Productions page flash fixed** (its `<style>` was at the END
   of `ProductionManager.tsx`, after 525 rows; moved to the start of `<main>`).
 
-- **WAITING FOR "GO LIVE" (4 Nov night): People pages refresh only when
+- **WAITING FOR "GO LIVE" (5 Nov): coloured menu bar icon.** Cloud in the
+  menu bar's own colour with a coloured symbol inside (`cloudIcon` in
+  StatusBar.swift): green tick = all uploaded, blue ↑ uploading, blue ↓
+  bringing back, orange ! = stale/failed, slash = offline. agent.zsh now
+  reports "Bring back" as state `downloading` + `down` {files, bytes,
+  doneFiles, doneBytes}; Backstage panel shows it too. MB_VERSION=4.
+  Preview: `~/Pictures/Curated/IconPreview.swift` renders icon-preview.png
+  on Steve's Mac (check before go live).
+- **LIVE 5 Nov 09:10: People pages refresh only when
   affected.** `revalidateProductionContent` (now async — every caller
   awaits it) no longer revalidates `/people/[slug]` wholesale: it revalidates
   `/people/<slug>` (+ altSlugs) for people credited on the changed
@@ -164,7 +172,8 @@ cost an extra Vercel build.
 - Steve renamed "… copy" folders IN FINDER, so they re-uploaded under new
   names: Storage has both. Delete the "… copy" folders in Backstage once the
   renamed ones are up (Mockingbird 1, 80TH PARTY, others).
-- **Menu bar icon v2 LIVE 4 Nov 22:31** (v1 failed to
+- **Menu bar icon LIVE — built on Steve's Mac 5 Nov 01:09; overnight 8,923
+  uploads finished ~01:09 (1 file retrying).** (v1 failed to
   build: `@MainActor` class created from top-level code). v2 (`@main` +
   `-parse-as-library`, test-compiled OK on Steve's Mac,
   MB_VERSION=2, build moved to the END of the run so it never delays

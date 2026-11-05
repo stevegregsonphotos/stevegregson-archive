@@ -145,6 +145,7 @@ STATUS_FILE="$SUPPORT/status.json"
 RUN_STARTED=$EPOCHSECONDS
 STATUS_STATE="checking"
 plan_files=0; plan_bytes=0; checked=0
+down_files=0; down_bytes=0; down_f0=0; down_b0=0   # "Bring back" progress
 uploaded=0; uploaded_bytes=0; freed=0; freed_bytes=0; failed=0; pending=0
 onmac_files=0; onmac_bytes=0; next_clear=0
 last_status_write=0; last_status_send=0
@@ -178,6 +179,7 @@ write_status() {
   body+=",\"total\":{\"files\":$plan_files,\"bytes\":$plan_bytes},\"done\":{\"files\":$uploaded,\"bytes\":$uploaded_bytes}"
   body+=",\"checked\":$checked,\"failed\":$failed,\"waiting\":${pending:-0},\"tooBig\":${#too_big},\"current\":[$cur],\"recent\":[$rec]"
   body+=",\"onMac\":{\"files\":$onmac_files,\"bytes\":$onmac_bytes},\"nextClear\":$next_clear,\"offloadDays\":$OFFLOAD_DAYS"
+  body+=",\"down\":{\"files\":$down_files,\"bytes\":$down_bytes,\"doneFiles\":$(( fetched - down_f0 )),\"doneBytes\":$(( fetched_bytes - down_b0 ))}"
   body+=",\"freed\":{\"files\":$freed,\"bytes\":$freed_bytes},\"server\":\"$(json_escape "$SERVER")\"}"
   print -r -- "$body" > "$STATUS_FILE.tmp" && mv -f "$STATUS_FILE.tmp" "$STATUS_FILE"
   if [[ "$1" == now ]] || (( now - last_status_send >= 15 )); then
@@ -379,7 +381,7 @@ install_quick_actions() {
 # Built here from StatusBar.swift with Apple's free developer tools (the
 # same ones git uses), so there's nothing to buy or sign. It just reads
 # status.json. Bump MB_VERSION to rebuild it after StatusBar.swift changes.
-MB_VERSION=3
+MB_VERSION=4
 MB_LABEL="com.stevegregson.storage.menubar"
 MB_APP="$HOME/Applications/Steve Gregson Storage Progress.app"
 install_menubar() {
@@ -813,6 +815,10 @@ bring_back() {
     return
   fi
   log "Bringing back ${#todo} file(s) ($(human $need)) from Storage: $rel"
+  local state_before="$STATUS_STATE"
+  down_files=${#todo}; down_bytes=$need; down_f0=$fetched; down_b0=$fetched_bytes
+  STATUS_STATE="downloading"
+  write_status now
   for p in $todo; do
     while (( ${#RUNNING} >= UPLOAD_JOBS )); do
       sleep 0.2
@@ -828,6 +834,8 @@ bring_back() {
     reap
   done
   save_state; unsaved=0
+  STATUS_STATE="$state_before"; down_files=0; down_bytes=0; down_f0=$fetched; down_b0=$fetched_bytes
+  write_status now
   local got=$(( fetched - f0 )) bad=$(( failed - x0 ))
   failed=$x0
   if (( bad > 0 )); then

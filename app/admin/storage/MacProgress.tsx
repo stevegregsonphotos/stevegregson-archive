@@ -17,6 +17,7 @@ type Status = {
   waiting: number;
   tooBig: number;
   checked?: number;
+  down?: { files: number; bytes: number; doneFiles: number; doneBytes: number };
   current: string[];
   recent: Array<{ at: number; path: string }>;
   onMac: Pair;
@@ -74,6 +75,9 @@ function describe(mac: Mac, now: number) {
     tone = "warn";
   } else if (uploading) {
     headline = "Uploading " + plural(left.files, "file") + " · " + bytes(left.bytes) + " left";
+    tone = "busy";
+  } else if (s.state === "downloading" && s.down && s.down.files > s.down.doneFiles) {
+    headline = "Bringing back " + plural(s.down.files - s.down.doneFiles, "file") + " from Storage · " + bytes(Math.max(0, s.down.bytes - s.down.doneBytes)) + " left";
     tone = "busy";
   } else if (s.state === "checking") {
     headline = "Checking for new files" + (s.checked ? " (" + s.checked.toLocaleString("en-GB") + " so far)" : "") + "…";
@@ -180,7 +184,7 @@ export function MacProgressPanel() {
 
             {!d.stale && s.current.length > 0 ? (
               <div className={styles.list}>
-                <h3>Uploading now</h3>
+                <h3>{s.state === "downloading" ? "Bringing back now" : "Uploading now"}</h3>
                 <ul>{s.current.slice(0, 8).map((path) => <li key={path} title={path}>{shortPath(path)}</li>)}</ul>
               </div>
             ) : null}

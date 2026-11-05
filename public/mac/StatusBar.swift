@@ -29,6 +29,8 @@ struct Report {
     var waiting = 0
     var tooBig = 0
     var checked = 0
+    var down = Count()       // being brought back from Storage
+    var downDone = Count()
     var current: [String] = []
     var recent: [(at: TimeInterval, path: String)] = []
     var onMac = Count()
@@ -59,6 +61,9 @@ func readReport() -> Report? {
     r.waiting = Int(number(json["waiting"]))
     r.tooBig = Int(number(json["tooBig"]))
     r.checked = Int(number(json["checked"]))
+    let d = json["down"] as? [String: Any] ?? [:]
+    r.down = Count(files: Int(number(d["files"])), bytes: number(d["bytes"]))
+    r.downDone = Count(files: Int(number(d["doneFiles"])), bytes: number(d["doneBytes"]))
     r.current = json["current"] as? [String] ?? []
     for item in json["recent"] as? [[String: Any]] ?? [] {
         if let path = item["path"] as? String {
@@ -103,12 +108,62 @@ func dateText(_ time: TimeInterval) -> String {
     return formatter.string(from: Date(timeIntervalSince1970: time))
 }
 
+/// What's shown inside the cloud: nothing, a green tick (all uploaded),
+/// a blue arrow up (uploading) or down (bringing back), or an orange "!".
+enum Badge: Equatable {
+    case plain, offline, tick, up, down, warning
+}
+
+/// The cloud is drawn in the menu bar's own colour (white or black, like the
+/// other icons); only the symbol inside it is coloured.
+func cloudIcon(_ badge: Badge) -> NSImage? {
+    let cloudConfig = NSImage.SymbolConfiguration(pointSize: 15, weight: .regular)
+    let cloudName = badge == .offline ? "icloud.slash" : "icloud"
+    guard let plainCloud = NSImage(systemSymbolName: cloudName, accessibilityDescription: appName)?
+        .withSymbolConfiguration(cloudConfig) else { return nil }
+
+    let inside: (name: String, color: NSColor)?
+    switch badge {
+    case .plain, .offline: inside = nil
+    case .tick: inside = ("checkmark", .systemGreen)
+    case .up: inside = ("arrow.up", .systemBlue)
+    case .down: inside = ("arrow.down", .systemBlue)
+    case .warning: inside = ("exclamationmark", .systemOrange)
+    }
+    guard let inside,
+          let glyph = NSImage(systemSymbolName: inside.name, accessibilityDescription: nil)?
+            .withSymbolConfiguration(
+                NSImage.SymbolConfiguration(pointSize: 7.5, weight: .black)
+                    .applying(NSImage.SymbolConfiguration(paletteColors: [inside.color]))
+            ),
+          let cloud = NSImage(systemSymbolName: cloudName, accessibilityDescription: appName)?
+            .withSymbolConfiguration(cloudConfig.applying(NSImage.SymbolConfiguration(paletteColors: [.labelColor])))
+    else {
+        plainCloud.isTemplate = true
+        return plainCloud
+    }
+
+    let size = plainCloud.size
+    let image = NSImage(size: size, flipped: false) { rect in
+        cloud.draw(in: rect)
+        let g = glyph.size
+        // Centred in the body of the cloud (a little below the middle).
+        let origin = NSPoint(x: (rect.width - g.width) / 2, y: rect.height * 0.38 - g.height / 2)
+        glyph.draw(in: NSRect(origin: origin, size: g))
+        return true
+    }
+    image.isTemplate = false
+    image.accessibilityDescription = appName
+    return image
+}
+
 @MainActor
 final class StatusController: NSObject, NSMenuDelegate {
     let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     let menu = NSMenu()
     var report: Report?
     var timer: Timer?
+    var shownBadge: Badge?
 
     func start() {
         menu.delegate = self
@@ -130,32 +185,42 @@ final class StatusController: NSObject, NSMenuDelegate {
         return Count(files: max(0, r.total.files - r.done.files), bytes: max(0, r.total.bytes - r.done.bytes))
     }
 
+    var downloading: Bool {
+        guard let r = report, !stale else { return false }
+        return r.state == "downloading" && r.down.files > r.downDone.files
+    }
+
     @objc func refresh() {
         report = readReport()
-        var symbol = "checkmark.icloud"
+        var badge = Badge.tick
         var title = ""
         if let r = report {
             if stale {
-                symbol = "exclamationmark.icloud"
+                badge = .warning
             } else if r.state == "offline" || r.state == "disconnected" {
-                symbol = "icloud.slash"
+                badge = .offline
+            } else if downloading {
+                badge = .down
+                title = " \(r.down.files - r.downDone.files)"
             } else if r.state == "uploading" && remaining.files > 0 {
-                symbol = "icloud.and.arrow.up"
+                badge = .up
                 title = " \(remaining.files)"
             } else if r.state == "waiting" || r.waiting > 0 || r.state == "checking" {
-                symbol = "icloud.and.arrow.up"
+                badge = .up
                 title = " …"
             } else if r.failed > 0 {
-                symbol = "exclamationmark.icloud"
+                badge = .warning
             }
         } else {
-            symbol = "icloud"
+            badge = .plain
         }
         if let button = item.button {
-            let image = NSImage(systemSymbolName: symbol, accessibilityDescription: appName)
-            image?.isTemplate = true
-            button.image = image
-            button.title = image == nil && title.isEmpty ? "SG" : title
+            if badge != shownBadge {
+                let image = cloudIcon(badge)
+                button.image = image
+                shownBadge = image == nil ? nil : badge
+            }
+            button.title = button.image == nil && title.isEmpty ? "SG" : title
             button.toolTip = headline()
         }
     }
@@ -165,6 +230,10 @@ final class StatusController: NSObject, NSMenuDelegate {
         if r.state == "offline" { return "Can't reach Storage (offline?)" }
         if r.state == "disconnected" { return "This Mac is disconnected in Backstage" }
         if stale { return "Uploader hasn't checked in since \(dateText(r.updated))" }
+        if downloading {
+            let left = Count(files: r.down.files - r.downDone.files, bytes: max(0, r.down.bytes - r.downDone.bytes))
+            return "Bringing back \(plural(left.files, "file")) from Storage · \(size(left.bytes)) left"
+        }
         if r.state == "uploading" && remaining.files > 0 {
             return "Uploading \(plural(remaining.files, "file")) · \(size(remaining.bytes)) left"
         }
@@ -195,12 +264,15 @@ final class StatusController: NSObject, NSMenuDelegate {
         menu.addItem(bold)
 
         if let r = report {
+            if downloading {
+                info("\(r.downDone.files) of \(r.down.files) brought back · \(size(r.downDone.bytes)) of \(size(r.down.bytes))")
+            }
             if r.state == "uploading" && r.total.files > 0 {
                 info("\(r.done.files) of \(r.total.files) done · \(size(r.done.bytes)) of \(size(r.total.bytes))")
             }
             if !r.current.isEmpty {
                 menu.addItem(.separator())
-                info("Uploading now:")
+                info(downloading ? "Bringing back now:" : "Uploading now:")
                 for path in r.current.prefix(8) { info(shortPath(path), indent: 1) }
             }
             if r.waiting > 0 { info("\(plural(r.waiting, "file")) still copying in") }
