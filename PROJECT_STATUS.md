@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 5 November 2026, 11:15 (London)
+Last updated: 5 November 2026, 18:55 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -126,7 +126,18 @@ cost an extra Vercel build.
 - **LIVE 4 Nov: Productions page flash fixed** (its `<style>` was at the END
   of `ProductionManager.tsx`, after 525 rows; moved to the start of `<main>`).
 
-- **WAITING FOR "GO LIVE" (5 Nov): Mac renames/deletes mirrored to Storage.**
+- **WAITING FOR "GO LIVE" (5 Nov 18:50): client shared-folder page fix.** A
+  client couldn't download single photos: in Photos view long filenames
+  widened each tile over the next (grid items had min-content width), hiding
+  the ↓ button. `app/transfer/shared/[token]/shared.module.css`: tile
+  `grid-template-columns: minmax(0,1fr)` + min-width 0; names wrap to 2
+  lines so the photo number shows; ↓ never shrinks. Checked in Chromium at
+  1440px and 390px.
+- Tidy (5 Nov 11:30): Steve wants it ONLY for `MOUNTVIEW/MUSEUM - October
+  2026` and `Kings College School Wimbledon/Buckets - November 2026`. He
+  queued tidy-report for MUSEUM; it waits behind Graduation 2026 uploads.
+  Read the report with him before tidy-apply; then run Buckets.
+- **LIVE 5 Nov 11:24: Mac renames/deletes mirrored to Storage.**
   Steve's workflow: Lightroom exports Web + Full into the Storage folder, then
   Bridge edits metadata AND renames → every rename uploaded as a new file,
   old names stayed (folders doubled). Steve chose "Mirror it, like Dropbox".

@@ -312,10 +312,13 @@
   margin-top: 1rem;
 }
 
-.tile { display: grid; gap: 0.4rem; margin: 0; }
+/* min-width: 0 stops a long filename widening the tile over its neighbours. */
+.tile { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.4rem; min-width: 0; margin: 0; }
 
 .tileImage {
   display: grid;
+  width: 100%;
+  min-width: 0;
   overflow: hidden;
   border: 0;
   border-radius: 0.5rem;
@@ -326,12 +329,13 @@
   place-items: center;
 }
 
-.tileImage img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.4s ease; }
+.tileImage img { width: 100%; height: 100%; min-width: 0; object-fit: cover; transition: transform 0.4s ease; }
 .tileImage:hover img { transform: scale(1.03); }
 
 .tile figcaption { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; color: var(--muted); font-size: 0.78rem; }
-.tile figcaption span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tile figcaption .get { width: 2rem; height: 2rem; font-size: 0.85rem; }
+/* Whole filename on up to two lines, so the photo number is always visible. */
+.tile figcaption span { flex: 1; min-width: 0; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow-wrap: anywhere; line-height: 1.35; }
+.tile figcaption .get { flex: 0 0 auto; width: 2rem; height: 2rem; font-size: 0.85rem; }
 
 /* ---- Lightbox ---- */
 
