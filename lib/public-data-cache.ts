@@ -239,6 +239,11 @@ export function getCachedSelectedWorkPage() {
   return getSelectedWorkPage(readCachedSiteContent);
 }
 
+/** The About page photo record (see lib/about-portrait.ts). */
+export function getCachedAboutPortraitRaw() {
+  return getCachedSiteContent("about-portrait");
+}
+
 export function getCachedCommissionsImages() {
   return getCommissionsImages(readCachedSiteContent);
 }

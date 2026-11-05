@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import PublishingSettingsForm from "../../../components/admin/PublishingSettingsForm";
 import TestOpenAIConnection from "../../../components/admin/TestOpenAIConnection";
@@ -199,6 +200,19 @@ export default async function SettingsPage() {
               </article>
             ))}
           </div>
+        </section>
+
+        <section className="backstage-section">
+          <div className="backstage-section-heading">
+            <h2>About page photo</h2>
+            <p>The photo of you on the About page</p>
+          </div>
+
+          <p>
+            <Link href="/admin/about-photo" className="backstage-button">
+              Edit the About page photo
+            </Link>
+          </p>
         </section>
 
         <section className="backstage-section">

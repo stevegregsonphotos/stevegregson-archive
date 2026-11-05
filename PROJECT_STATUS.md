@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 5 November 2026, 10:35 (London)
+Last updated: 5 November 2026, 11:00 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -126,7 +126,17 @@ cost an extra Vercel build.
 - **LIVE 4 Nov: Productions page flash fixed** (its `<style>` was at the END
   of `ProductionManager.tsx`, after 525 rows; moved to the start of `<main>`).
 
-- **WAITING FOR "GO LIVE" (5 Nov): proofing visitors in their own table**
+- **WAITING FOR "GO LIVE" (5 Nov): About page photo editor.** Backstage ›
+  Settings › "Edit the About page photo" (`/admin/about-photo`): same
+  ImageEditor as Selected Work (crop/zoom/auto/brightness), "Upload a new
+  photo". Files in the Selected Work R2 store at `selected-work/about/`
+  (untouched original + edited display, unique names); record in
+  site_content key `about-portrait` (`lib/about-portrait.ts`), API
+  `/api/admin/about-portrait` (presign/save). About page reads it via
+  `getCachedAboutPortraitRaw` (selected-work tag + revalidatePath('/about')),
+  falls back to `/images/portrait/steve-gregson.webp`. Steve: photo "too big,
+  too much negative space".
+- **LIVE 5 Nov 10:27: proofing visitors in their own table**
   (Mountview graduation gallery: 300+ students + families). New table
   `proofing_visitors` (gallery_id, id, email, data jsonb, version) created
   on first use; existing visitors moved out of `proofing_galleries.data`

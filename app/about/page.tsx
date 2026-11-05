@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import PhotoLicenseJsonLd from "../../components/PhotoLicenseJsonLd";
 import Link from "next/link";
+import { getPublicAboutPortrait } from "../../lib/about-portrait";
 
 export const metadata: Metadata = {
   title: { absolute: "About Steve Gregson | London Theatre Photographer" },
@@ -32,7 +33,10 @@ export const metadata: Metadata = {
     "Steve Gregson is an award-winning London theatre photographer whose work includes productions at the Young Vic, Kiln Theatre, Orange Tree Theatre and in the West End.",
 };
 
-export default function AboutPage() {
+export default async function AboutPage() {
+  // Chosen and edited in Backstage › Settings › About page photo.
+  const portrait = await getPublicAboutPortrait();
+
   return (
     <>
       <main className="about">
@@ -40,7 +44,7 @@ export default function AboutPage() {
           pagePath="/about"
           photos={[
             {
-              src: "/images/portrait/steve-gregson.webp",
+              src: portrait.src,
               alt: "Steve Gregson, theatre and performing arts photographer",
             },
           ]}
@@ -64,7 +68,7 @@ export default function AboutPage() {
 
           <div className="portrait">
             <Image
-              src="/images/portrait/steve-gregson.webp"
+              src={portrait.src}
               alt="Steve Gregson, theatre and performing arts photographer"
               fill
               priority
