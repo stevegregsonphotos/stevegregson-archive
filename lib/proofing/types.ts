@@ -195,6 +195,12 @@ export type ProofingGallery = {
    */
   showFilenames?: boolean;
 
+  /*
+   * Shows a "Buy me a coffee" (Ko-fi) thank-you button by the downloads.
+   * For free galleries (e.g. graduations); off for paying clients.
+   */
+  showTipButton?: boolean;
+
   watermarkEnabled: boolean;
 
   /*

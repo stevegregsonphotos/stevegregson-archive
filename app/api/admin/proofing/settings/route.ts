@@ -68,6 +68,9 @@ export async function POST(request: Request) {
   const showFilenames =
     body.showFilenames === true;
 
+  const showTipButton =
+    body.showTipButton === true;
+
   const watermarkEnabled =
     body.watermarkEnabled === true;
 
@@ -307,6 +310,7 @@ export async function POST(request: Request) {
       status,
       downloadPermission,
       showFilenames,
+      showTipButton,
       watermarkEnabled,
       watermarkId:
         watermarkIdValue || undefined,

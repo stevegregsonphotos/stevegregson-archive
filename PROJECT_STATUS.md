@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 5 November 2026, 10:45 (London)
+Last updated: 5 November 2026, 10:35 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -142,8 +142,13 @@ cost an extra Vercel build.
   favourite/submit. Rehearsed on local Postgres: 300 simultaneous sign-ins,
   900 simultaneous favourites, 30 rapid clicks by one visitor, old-gallery
   move + duplicate merge, Backstage edit, delete — all pass; gallery record
-  263 bytes with 301 visitors. Ko-fi "buy me a coffee" button: Steve to send
-  his Ko-fi link; add to galleries in the same go-live.
+  263 bytes with 301 visitors.
+  SAME GO-LIVE: Ko-fi "Buy me a coffee" button, per-gallery setting
+  `showTipButton` (Backstage › gallery settings › "Buy me a coffee", default
+  off — paying clients never see it). Shown above the download buttons
+  (`.proofing-tip`, KOFI_URL https://ko-fi.com/stevegregsonphotography in
+  ProofingGalleryClient.tsx). Ko-fi set up 5 Nov: coffee mode, £3 each, Tip
+  wording, Stripe Radar Lite (free).
 - **LIVE 5 Nov 09:40: coloured menu bar icon.** Cloud in the
   menu bar's own colour with a coloured symbol inside (`cloudIcon` in
   StatusBar.swift): green tick = all uploaded, blue ↑ uploading, blue ↓

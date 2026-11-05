@@ -361,6 +361,9 @@ export default async function ProofingClientPage({
             showFilenames={
               gallery.showFilenames === true
             }
+            showTipButton={
+              gallery.showTipButton === true
+            }
             watermarkUrl={watermarkUrl}
             watermarkPosition={
               gallery.watermarkPosition

@@ -56,6 +56,7 @@ type ProofingSettingsEditorProps = {
   initialStatus: GalleryStatus;
   initialDownloadPermission: DownloadPermission;
   initialShowFilenames?: boolean;
+  initialShowTipButton?: boolean;
   initialWatermarkEnabled: boolean;
   initialWatermarkId?: string;
   initialWatermarkPosition?: WatermarkPosition;
@@ -97,6 +98,7 @@ export default function ProofingSettingsEditor({
   initialStatus,
   initialDownloadPermission,
   initialShowFilenames = false,
+  initialShowTipButton = false,
   initialWatermarkEnabled,
   initialWatermarkId,
   initialWatermarkPosition = "bottom-right",
@@ -121,6 +123,9 @@ export default function ProofingSettingsEditor({
 
   const [showFilenames, setShowFilenames] =
     useState(initialShowFilenames);
+
+  const [showTipButton, setShowTipButton] =
+    useState(initialShowTipButton);
 
   const [watermarkId, setWatermarkId] = useState(
     initialWatermarkEnabled
@@ -178,6 +183,7 @@ export default function ProofingSettingsEditor({
             status,
             downloadPermission,
             showFilenames,
+            showTipButton,
             watermarkEnabled,
             watermarkId,
             watermarkPosition,
@@ -457,6 +463,37 @@ export default function ProofingSettingsEditor({
           <p>
             Choose whether clients can see the
             original filename beneath each photograph.
+          </p>
+        </div>
+
+        <div className="proofing-settings-field">
+          <label htmlFor="proofing-tip-button">
+            Buy me a coffee
+          </label>
+
+          <select
+            id="proofing-tip-button"
+            value={showTipButton ? "show" : "hide"}
+            onChange={(event) => {
+              setShowTipButton(
+                event.target.value === "show",
+              );
+              setMessage("");
+            }}
+          >
+            <option value="hide">
+              Don&rsquo;t show
+            </option>
+
+            <option value="show">
+              Show a &ldquo;Buy me a coffee&rdquo; button
+            </option>
+          </select>
+
+          <p>
+            For free galleries such as graduations: a
+            friendly Ko-fi thank-you button beside the
+            downloads. Leave off for paying clients.
           </p>
         </div>
 

@@ -9,6 +9,9 @@ import {
 
 import ProofingWatermarkOverlay from "./ProofingWatermarkOverlay";
 
+// Steve's Ko-fi page ("Buy me a coffee"), shown when a gallery allows it.
+const KOFI_URL = "https://ko-fi.com/stevegregsonphotography";
+
 type ProofingClientImage = {
   id: string;
   originalFilename: string;
@@ -48,6 +51,7 @@ type ProofingGalleryClientProps = {
     | "web"
     | "selected";
   showFilenames?: boolean;
+  showTipButton?: boolean;
   watermarkUrl?: string;
   watermarkPosition?:
     | "top-left"
@@ -159,6 +163,7 @@ export default function ProofingGalleryClient({
   showIntroOnLoad = false,
   downloadPermission,
   showFilenames = false,
+  showTipButton = false,
   watermarkUrl,
   watermarkPosition,
   watermarkSize,
@@ -2321,6 +2326,25 @@ export default function ProofingGalleryClient({
           How to use this gallery
         </button>
       </div>
+
+    {showTipButton ? (
+      <aside className="proofing-tip">
+        <p>
+          These photos are free to download, with my
+          congratulations. If one of them made you smile,
+          you can buy me a coffee to say thanks. Every one
+          is genuinely appreciated.
+        </p>
+        <a
+          className="proofing-tip-button"
+          href={KOFI_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <span aria-hidden="true">☕</span> Buy me a coffee
+        </a>
+      </aside>
+    ) : null}
 
     {(downloadPermission === "web" && view === "all") ||
     (view === "favourites" &&

@@ -458,6 +458,9 @@ export default async function ProofingGalleryPage({
         initialShowFilenames={
           gallery.showFilenames === true
         }
+        initialShowTipButton={
+          gallery.showTipButton === true
+        }
         initialWatermarkEnabled={
           gallery.watermarkEnabled
         }
