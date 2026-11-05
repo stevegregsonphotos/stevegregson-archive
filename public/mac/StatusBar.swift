@@ -116,6 +116,12 @@ enum Badge: Equatable {
 
 /// The cloud is drawn in the menu bar's own colour (white or black, like the
 /// other icons); only the symbol inside it is coloured.
+/// Pure white on a dark menu bar, pure black on a light one: the same as
+/// the other menu bar icons (the standard text colour is slightly greyer).
+let menuBarInk = NSColor(name: nil) { appearance in
+    appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? .white : .black
+}
+
 func cloudIcon(_ badge: Badge) -> NSImage? {
     let cloudConfig = NSImage.SymbolConfiguration(pointSize: 15, weight: .regular)
     let cloudName = badge == .offline ? "icloud.slash" : "icloud"
@@ -137,7 +143,7 @@ func cloudIcon(_ badge: Badge) -> NSImage? {
                     .applying(NSImage.SymbolConfiguration(paletteColors: [inside.color]))
             ),
           let cloud = NSImage(systemSymbolName: cloudName, accessibilityDescription: appName)?
-            .withSymbolConfiguration(cloudConfig.applying(NSImage.SymbolConfiguration(paletteColors: [.labelColor])))
+            .withSymbolConfiguration(cloudConfig.applying(NSImage.SymbolConfiguration(paletteColors: [menuBarInk])))
     else {
         plainCloud.isTemplate = true
         return plainCloud
