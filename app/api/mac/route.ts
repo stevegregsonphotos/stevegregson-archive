@@ -16,10 +16,14 @@ import {
   recordMacUpload,
   saveMacStatus,
 } from "@/lib/mac/repository";
+import { applyPairs, MAX_PAIRS_PER_APPLY, planDelete } from "@/lib/client-archive/operations";
 
 // Used only by Steve's Mac app. Every request carries that Mac's secret
 // connection code. It can add files and empty folders, list the files in a
-// folder and download them (for "Bring back from Storage"). Nothing here can
+// folder and download them (for "Bring back from Storage"). The only removal
+// is "trash": when Steve renames or deletes a file on the Mac, the copy this
+// Mac uploaded goes to Deleted files (restorable for 30 days) — and only if
+// Storage still holds exactly what the Mac sent. Otherwise nothing here can
 // delete, move or rename anything in Storage.
 
 const MAX_SINGLE_UPLOAD = 5 * 1024 ** 3;
@@ -56,6 +60,8 @@ function alternativeName(path: string, attempt: number) {
 }
 
 const etagMatches = (etag: string, md5: string) => !/^[0-9a-f]{32}$/.test(etag) || etag === md5;
+
+export const maxDuration = 120;
 
 export async function POST(request: Request) {
   let body: Record<string, unknown>;
@@ -182,6 +188,62 @@ export async function POST(request: Request) {
         size: stored.sizeBytes,
         url: await createClientArchiveViewUrl(getClientArchiveKey(path), 3600),
       });
+    }
+
+    if (action === "trash") {
+      // Files renamed or deleted on the Mac. Each goes to Deleted files only if
+      // this Mac uploaded it and Storage still holds that exact version.
+      const list = Array.isArray(body.files) ? body.files.slice(0, 50) : [];
+      const results: Array<{ path: string; result: "trashed" | "kept" | "gone" }> = [];
+      const toTrash: string[] = [];
+      for (const raw of list) {
+        const item = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+        let md5 = md5Hex(item.md5Hex);
+        let size = Number(item.size);
+        let remotePath = storagePath(item.path);
+        if (!remotePath) continue;
+        if (!md5) {
+          // One-off tidy of older duplicates: the Mac no longer knows the
+          // fingerprint, so use the one recorded when this Mac uploaded it.
+          const known = await getMacUpload(remotePath);
+          if (!known || known.deviceId !== device.id) {
+            results.push({ path: String(item.path), result: known ? "kept" : "gone" });
+            continue;
+          }
+          md5 = known.md5Hex;
+          size = known.sizeBytes;
+        }
+        if (!Number.isFinite(size)) continue;
+        let record = await getMacUpload(remotePath);
+        if (!record || record.md5Hex !== md5 || record.sizeBytes !== size) {
+          const moved = await findMacUploadByOriginal(device.id, md5, size);
+          record = moved ? await getMacUpload(moved) : undefined;
+          remotePath = moved || remotePath;
+        }
+        if (!record || record.deviceId !== device.id || record.remotePath.split("/")[0] === ".trash") {
+          results.push({ path: String(item.path), result: record ? "kept" : "gone" });
+          continue;
+        }
+        const stored = await headArchiveObject(record.remotePath);
+        if (!stored) {
+          results.push({ path: String(item.path), result: "gone" });
+          continue;
+        }
+        if (stored.sizeBytes !== size || !etagMatches(stored.etag, md5)) {
+          // Changed in Storage since: leave it alone.
+          results.push({ path: String(item.path), result: "kept" });
+          continue;
+        }
+        toTrash.push(record.remotePath);
+        results.push({ path: String(item.path), result: "trashed" });
+      }
+      if (toTrash.length) {
+        const pairs = await planDelete(toTrash.map((path) => ({ kind: "file", path })));
+        for (let i = 0; i < pairs.length; i += MAX_PAIRS_PER_APPLY) {
+          await applyPairs(pairs.slice(i, i + MAX_PAIRS_PER_APPLY));
+        }
+      }
+      return json({ ok: true, results, trashed: toTrash.length });
     }
 
     if (action === "verify") {

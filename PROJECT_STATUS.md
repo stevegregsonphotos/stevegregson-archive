@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 5 November 2026, 11:00 (London)
+Last updated: 5 November 2026, 11:15 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -126,7 +126,26 @@ cost an extra Vercel build.
 - **LIVE 4 Nov: Productions page flash fixed** (its `<style>` was at the END
   of `ProductionManager.tsx`, after 525 rows; moved to the start of `<main>`).
 
-- **WAITING FOR "GO LIVE" (5 Nov): About page photo editor.** Backstage ›
+- **WAITING FOR "GO LIVE" (5 Nov): Mac renames/deletes mirrored to Storage.**
+  Steve's workflow: Lightroom exports Web + Full into the Storage folder, then
+  Bridge edits metadata AND renames → every rename uploaded as a new file,
+  old names stayed (folders doubled). Steve chose "Mirror it, like Dropbox".
+  `mirror_gone` in agent.zsh: a tracked file missing from the Mac whose
+  FOLDER STILL EXISTS → `api/mac` action `trash` (≤50/call; only if this
+  Mac uploaded it and Storage still holds that exact md5/size) → Deleted
+  files (30 days). Whole folder gone → Storage keeps all (forget only).
+  >300 missing and >50% of tracked → nothing trashed. Files the app clears
+  are forgotten when cleared, so never trashed. In-place metadata edits
+  already replaced the Storage copy (presign "ours → replace").
+  One-off tidy (Steve chose yes): `agent.zsh --request tidy-report <path>`
+  (path = Storage folder root → "ALL") writes `~/Library/Logs/Steve Gregson
+  Storage - tidy report.txt` (Storage files in folders still on the Mac,
+  not on the Mac, not "Freed space" in the log); `--request tidy-apply
+  <root>` trashes that list (server uses the recorded md5; not-ours kept).
+  Rehearsed with a fake server: rename, in-place edit, tidy, folder moved
+  away — all correct. After go live: Steve runs `install.sh --update`, then
+  tidy-report; Claude reads the report with him before tidy-apply.
+- **LIVE 5 Nov 10:50: About page photo editor.** Backstage ›
   Settings › "Edit the About page photo" (`/admin/about-photo`): same
   ImageEditor as Selected Work (crop/zoom/auto/brightness), "Upload a new
   photo". Files in the Selected Work R2 store at `selected-work/about/`

@@ -69,10 +69,13 @@ token() {
 REQ="$SUPPORT/requests"
 if [[ "$1" == "--request" ]]; then
   kind="$2"; shift 2
-  [[ "$kind" == bring-back || "$kind" == clear-now ]] || exit 0
+  [[ "$kind" == bring-back || "$kind" == clear-now || "$kind" == tidy-report || "$kind" == tidy-apply ]] || exit 0
   n=0
   for f in "$@"; do
     f="${f%/}"
+    if [[ "$kind" == tidy-* && "$f" == "$ROOT" ]]; then
+      print -r -- "$kind"$'\t'"ALL" >> "$REQ"; (( n++ )); continue
+    fi
     [[ "$f" == "$ROOT"/* ]] || continue
     print -r -- "$kind"$'\t'"${f#$ROOT/}" >> "$REQ"
     (( n++ ))
@@ -81,7 +84,9 @@ if [[ "$1" == "--request" ]]; then
     notify "Choose a folder or file inside the $APP_NAME folder."
     exit 0
   fi
-  if [[ "$kind" == bring-back ]]; then
+  if [[ "$kind" == tidy-* ]]; then
+    notify "Checking Storage for leftover copies… you'll get a message when it's done."
+  elif [[ "$kind" == bring-back ]]; then
     notify "Bringing back from Storage… you'll get a message when it's done."
   else
     notify "Clearing from this Mac (each file is checked in Storage first)…"
@@ -845,6 +850,59 @@ bring_back() {
   fi
 }
 
+# ---- One-off tidy of older duplicates (before renames were mirrored) ------
+# tidy-report: for each folder that still has files on the Mac, lists files
+# in Storage that aren't on the Mac any more and weren't cleared by this app
+# (i.e. old export names left behind by renaming in Bridge). Nothing is
+# changed. tidy-apply: sends exactly that list to Deleted files (only files
+# this Mac uploaded; restorable for 30 days).
+TIDY_REPORT="${LOG:h}/Steve Gregson Storage - tidy report.txt"
+tidy_report() {
+  local scope="$1" line rel dir p size reply count=0 bytes=0
+  [[ "$scope" == ALL ]] && scope=""
+  local -A onmac freed dirs
+  local -a out
+  while IFS= read -r -d '' f; do
+    rel="${f#$ROOT/}"; onmac[$rel]=1; dirs[${rel:h}]=1
+  done < <(find "$ROOT/$scope" -type f ! -name '.*' ! -path '*/.*' ! -name 'Icon?' -print0 2>/dev/null)
+  while IFS= read -r line; do
+    [[ "$line" == *"  Freed space: "*" is now only in Storage ("* ]] || continue
+    rel="${line#*  Freed space: }"; freed[${rel%" is now only in Storage ("*}]=1
+    p="${line##* is now only in Storage \(}"; freed[${p%\).}]=1
+  done < "$LOG"
+  for dir in ${(k)dirs}; do
+    [[ "$dir" == "." ]] && continue
+    reply=$(api "{\"action\":\"list\",\"path\":\"$(json_escape "$dir")\"}")
+    [[ "$(jget "$reply" ok)" == "true" ]] || continue
+    while IFS=$'\t' read -r p size; do
+      [[ -z "$p" || "${p:h}" != "$dir" ]] && continue
+      [[ -n "${onmac[$p]}" || -n "${freed[$p]}" ]] && continue
+      out+=("$p"$'\t'"$size"); (( count++ )); (( bytes += size ))
+    done <<< "$(jget "$reply" list)"
+    touch "$LOCK" 2>/dev/null
+  done
+  print -rl -- "${(o)out[@]}" > "$TIDY_REPORT"
+  log "Tidy report: $count leftover file(s) ($(human $bytes)) in Storage — see $TIDY_REPORT. Nothing changed."
+  notify "Found $count leftover cop$( (( count == 1 )) && print -n y || print -n ies) in Storage ($(human $bytes)). Nothing has been changed yet."
+}
+tidy_apply() {
+  local -a list
+  local p size body sep reply i trashed=0
+  [[ -s "$TIDY_REPORT" ]] || { notify "No tidy report to apply."; return; }
+  while IFS=$'\t' read -r p size; do [[ -n "$p" ]] && list+=("$p"); done < "$TIDY_REPORT"
+  for (( i = 1; i <= ${#list}; i += 50 )); do
+    body=""; sep=""
+    for p in "${(@)list[i,i+49]}"; do body+="$sep{\"path\":\"$(json_escape "$p")\"}"; sep=","; done
+    reply=$(api "{\"action\":\"trash\",\"files\":[$body]}")
+    [[ "$(jget "$reply" ok)" == "true" ]] || { log "Tidy stopped: $(jget "$reply" message)"; break; }
+    (( trashed += $(jget "$reply" trashed) ))
+    touch "$LOCK" 2>/dev/null
+  done
+  mv -f "$TIDY_REPORT" "$TIDY_REPORT.done" 2>/dev/null
+  log "Tidy: moved $trashed leftover cop$( (( trashed == 1 )) && print -n y || print -n ies) to Storage's Deleted files (restorable for 30 days)."
+  notify "Moved $trashed leftover cop$( (( trashed == 1 )) && print -n y || print -n ies) to Deleted files in Storage (restorable for 30 days)."
+}
+
 # Works through the right-click requests queued from Finder.
 process_requests() {
   [[ -s "$REQ" ]] || return
@@ -862,6 +920,8 @@ process_requests() {
     case "$kind" in
       clear-now)  clear_now "$rel" ;;
       bring-back) bring_back "$rel" ;;
+      tidy-report) tidy_report "$rel" ;;
+      tidy-apply)  tidy_apply ;;
     esac
   done < "$work"
   rm -f -- "$work"
@@ -873,11 +933,62 @@ process_requests
 # ---- 2. Free up space for files uploaded over OFFLOAD_DAYS ago ---------
 [[ "$OFFLOAD_SET" != "$OFFLOAD_DAYS" ]] && log "Days-to-keep setting was '$OFFLOAD_SET'; using $OFFLOAD_DAYS days instead (minimum is 1)."
 cutoff=$(( NOW - OFFLOAD_DAYS * 86400 ))
+
+# ---- Renamed or deleted on the Mac: mirror it, like Dropbox -------------
+# A file this Mac uploaded that's no longer on the Mac was renamed (e.g. in
+# Bridge) or deleted by Steve — files the app clears to save space are
+# forgotten when cleared, so they never get here. Its old copy in Storage
+# goes to Deleted files (restorable for 30 days). New names were uploaded
+# in step 1 above, so nothing is ever without a copy in Storage.
+# Only when the file's folder is still on the Mac (renamed or deleted inside
+# it, as Bridge does). If a whole folder has gone — moved out of the Storage
+# folder, renamed or deleted — Storage keeps everything: it's the archive.
+typeset -a gone_list
+gone_folders=0
 for rel in ${(k)S_SIZE}; do
-  if [[ ! -f "$ROOT/$rel" ]]; then
-    forget "$rel"          # removed from the Mac by hand; Storage keeps its copy
-    continue
+  [[ -f "$ROOT/$rel" ]] && continue
+  if [[ -d "$ROOT/${rel:h}" ]]; then
+    gone_list+=("$rel")
+  else
+    forget "$rel"; (( gone_folders++ ))
   fi
+done
+(( gone_folders > 0 )) && log "$gone_folders uploaded file(s) are gone from the Mac with their whole folder; Storage keeps them."
+mirror_gone() {
+  local total=${#S_SIZE} n=${#gone_list} i rel body sep reply trashed=0 done_n=0
+  (( n == 0 )) && return
+  # Safety: if a huge share of files vanished at once (folder moved away, disk
+  # problem), don't touch Storage; just stop tracking them, as before.
+  if (( n > 300 && n * 2 > total )); then
+    log "Not mirroring: $n of $total uploaded files disappeared from the Mac at once. Storage keeps them all."
+    notify "$n files disappeared from the Storage folder at once, so Storage has kept all its copies. If that was on purpose, delete them in Backstage."
+    for rel in $gone_list; do forget "$rel"; done
+    return
+  fi
+  for (( i = 1; i <= n; i += 50 )); do
+    body=""; sep=""
+    for rel in "${(@)gone_list[i,i+49]}"; do
+      body+="$sep{\"path\":\"$(json_escape "${S_REMOTE[$rel]:-$rel}")\",\"size\":${S_SIZE[$rel]:-0},\"md5Hex\":\"${S_MD5[$rel]}\"}"
+      sep=","
+    done
+    reply=$(api "{\"action\":\"trash\",\"files\":[$body]}")
+    if [[ "$(jget "$reply" ok)" != "true" ]]; then
+      log "Couldn't update Storage for renamed/deleted files (will try again): $(jget "$reply" message)"
+      break   # offline: keep them tracked and try next run
+    fi
+    (( trashed += $(jget "$reply" trashed) ))
+    for rel in "${(@)gone_list[i,i+49]}"; do forget "$rel"; (( done_n++ )); done
+    touch "$LOCK" 2>/dev/null
+  done
+  if (( trashed > 0 )); then
+    log "Renamed or deleted on the Mac: moved $trashed old cop$( (( trashed == 1 )) && print -n y || print -n ies) to Storage's Deleted files (restorable for 30 days)."
+  fi
+  save_state
+}
+mirror_gone
+
+for rel in ${(k)S_SIZE}; do
+  [[ -f "$ROOT/$rel" ]] || continue
   (( ${S_AT[$rel]} > cutoff )) && continue
   clear_one "$rel"
   touch "$LOCK" 2>/dev/null
