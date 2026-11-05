@@ -52,6 +52,10 @@ export async function POST(
   const introMessage =
     payload.introMessage?.trim() ?? "";
 
+  // The cover is only changed when the request includes it.
+  const changesCover =
+    "coverImageId" in payload;
+
   const coverImageId =
     payload.coverImageId?.trim() || undefined;
 
@@ -87,6 +91,7 @@ export async function POST(
    */
   if (
     coverImageId &&
+    gallery.coverUpload?.id !== coverImageId &&
     !gallery.images.some(
       (image) =>
         image.id === coverImageId,
@@ -113,7 +118,9 @@ export async function POST(
         introMessage:
           introMessage || undefined,
 
-        coverImageId,
+        coverImageId: changesCover
+          ? coverImageId
+          : currentGallery.coverImageId,
       }),
     );
 

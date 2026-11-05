@@ -64,9 +64,14 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const image = gallery.images.find(
-    (candidate) => candidate.id === imageId,
-  );
+  const image =
+    gallery.images.find(
+      (candidate) => candidate.id === imageId,
+    ) ??
+    // A photo uploaded just for the cover.
+    (gallery.coverUpload?.id === imageId
+      ? gallery.coverUpload
+      : undefined);
 
   if (!image) {
     return NextResponse.json(

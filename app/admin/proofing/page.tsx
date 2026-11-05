@@ -1,3 +1,4 @@
+import { getChosenCover } from "../../../lib/proofing/cover";
 import {
   getProofingCompanies,
   getProofingContacts,
@@ -309,13 +310,8 @@ export default async function ProofingPage() {
               .length ?? 0;
 
       const coverImage =
-        gallery.coverImageId
-          ? gallery.images.find(
-              (image) =>
-                image.id ===
-                gallery.coverImageId,
-            )
-          : gallery.images[0];
+        getChosenCover(gallery) ??
+        gallery.images[0];
 
       const coverImageUrl = coverImage
         ? `/api/admin/proofing/image?galleryId=${encodeURIComponent(

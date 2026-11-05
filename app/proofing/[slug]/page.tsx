@@ -129,7 +129,11 @@ export default async function ProofingClientPage({
    */
   if (!visitor) {
     const coverImage =
-      galleryBase.coverImageId
+      galleryBase.coverImageId &&
+      galleryBase.coverUpload?.id ===
+        galleryBase.coverImageId
+        ? galleryBase.coverUpload
+        : galleryBase.coverImageId
         ? (
             await getProofingGalleryImageBySlug(
               galleryBase.slug,

@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 5 November 2026, 21:55 (London)
+Last updated: 5 November 2026, 22:40 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -118,6 +118,29 @@ cost an extra Vercel build.
 - **X (Twitter) removed — LIVE 1 Nov:** taken out of the site's hidden profile lists (`SAME_AS` in `app/layout.tsx` and `/llms.txt`), and from the Google Business Profile social links (Google review pending). Steve doesn't use X and can't log in; don't add it back. Went live together with the three 29 Oct items below (People search, Mac folder fix, Storage folder Download), so those are LIVE too.
 
 ## Waiting / in progress
+
+- **Proofing upload + cover fixes (5 Nov, NOT pushed yet; committed locally,
+  waiting for Steve to OK the screenshots, then one test push, then "go live"):**
+  - Upload progress now sits under the gallery menu (Media / Settings /
+    Branding…), stays while switching tabs and sticks to the top when
+    scrolling. One shared upload engine (`ProofingUploadProvider` in
+    `ProofingUpload.tsx`, wrapped round the gallery page). Picking photos
+    starts the upload straight away; warns before closing the tab.
+  - Duplicate file names (case-insensitive) → "Replace them / Skip them /
+    Cancel". Replace updates the photo in place (keeps id, place,
+    favourites, notes, cover) and deletes the old file.
+  - Cause of the "listed twice": after a failed upload the button re-sent
+    the WHOLE selection. Now only failures are retried ("Retry N"), and the
+    server (`commitProofingImages` in `lib/proofing/repository.ts`) skips any
+    file name already in the gallery, so it can't double up again.
+  - Cover: `ProofingCoverPicker` in the sidebar and on Branding: "+ Add cover
+    photo" → Choose from gallery / Upload an image (cover-only photo stored
+    as `coverUpload` in the gallery record, id `cover-…`, served by the
+    normal image routes; route `app/api/admin/proofing/cover`). Admin no
+    longer pretends the first photo is the cover. Branding's Save button now
+    only saves the introduction.
+  - Tested: tsc, eslint, `npm run build` check, repository against local
+    Postgres, UI with mocked uploads (screenshots).
 
 - **LIVE 4 Nov:** Curated import opens on a **To import** view (Ready +
   Attention only); published ones under "Already published" / "Show

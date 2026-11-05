@@ -12,6 +12,8 @@ import {
   useSearchParams,
 } from "next/navigation";
 
+import { ProofingUploadStatus } from "./ProofingUpload";
+
 type WorkspaceTab =
   | "media"
   | "settings"
@@ -274,6 +276,8 @@ export default function ProofingWorkspace({
           </span>
         </div>
       </nav>
+
+      <ProofingUploadStatus />
 
       <div className="sp-gallery-workspace-content">
         {activeTab === "media" ? (

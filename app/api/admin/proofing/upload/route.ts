@@ -5,12 +5,13 @@ import {
 
 import {
   createProofingImageUploadUrl,
+  deleteProofingImage,
 } from "../../../../../lib/proofing/image-storage";
 
 import { NextResponse } from "next/server";
 
 import {
-  insertProofingImages,
+  commitProofingImages,
   proofingGalleryExists,
 } from "../../../../../lib/proofing/repository";
 
@@ -36,6 +37,7 @@ type CommitImage = {
   width: number;
   height: number;
   createdAt: string;
+  replaceImageId?: string;
 };
 
 function safeFilename(filename: string) {
@@ -66,6 +68,8 @@ function parseCommitImage(
   const width = Number(image.width);
   const height = Number(image.height);
   const createdAt = stringValue(image.createdAt);
+  const replaceImageId =
+    stringValue(image.replaceImageId);
 
   if (
     !imageId ||
@@ -87,6 +91,7 @@ function parseCommitImage(
     width,
     height,
     createdAt,
+    ...(replaceImageId ? { replaceImageId } : {}),
   };
 }
 
@@ -269,7 +274,7 @@ export async function POST(
     const validImages = images as CommitImage[];
 
     const proofingImages:
-      ProofingImage[] =
+      Array<ProofingImage & { replaceImageId?: string }> =
       validImages.map(
         (image) => ({
           id: image.imageId,
@@ -282,18 +287,38 @@ export async function POST(
           alt: image.originalFilename,
           sortOrder: 0,
           createdAt: image.createdAt,
+          ...(image.replaceImageId
+            ? { replaceImageId: image.replaceImageId }
+            : {}),
         }),
       );
 
+    // Already-listed file names are skipped here too, so a retried
+    // upload can never list the same photo twice.
     const result =
-      await insertProofingImages(
+      await commitProofingImages(
         galleryId,
         proofingImages,
       );
 
+    // Tidy away files nobody will use: skipped duplicates, and the old
+    // picture of each replaced photo.
+    await Promise.allSettled([
+      ...result.skipped.map((image) =>
+        deleteProofingImage(galleryId, image.webFilename),
+      ),
+      ...result.replaced.map((item) =>
+        deleteProofingImage(galleryId, item.oldWebFilename),
+      ),
+    ]);
+
     return NextResponse.json({
       ok: true,
-      committed: validImages.length,
+      committed: result.inserted.length,
+      replaced: result.replaced.length,
+      skipped: result.skipped.map(
+        (image) => image.originalFilename,
+      ),
       gallery: {
         id: galleryId,
         imageCount: result.imageCount,

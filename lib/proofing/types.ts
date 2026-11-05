@@ -165,6 +165,12 @@ export type ProofingGallery = {
   coverImageId?: string;
 
   /*
+   * A cover photo uploaded just for the cover, not one of the
+   * gallery's photos. When chosen, coverImageId equals its id.
+   */
+  coverUpload?: ProofingCoverUpload;
+
+  /*
    * Editable welcome/introduction shown to the
    * client before they enter the gallery.
    */
@@ -247,4 +253,12 @@ export type ProofingGallery = {
    * is no longer needed.
    */
   selection?: ProofingSelection;
+};
+
+export type ProofingCoverUpload = {
+  id: string;
+  webFilename: string;
+  originalFilename: string;
+  width: number;
+  height: number;
 };

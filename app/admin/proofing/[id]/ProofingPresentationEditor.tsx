@@ -4,17 +4,9 @@ import {
   useState,
 } from "react";
 
-type PresentationImage = {
-  id: string;
-  filename: string;
-  imageUrl: string;
-};
-
 type ProofingPresentationEditorProps = {
   galleryId: string;
   initialIntroMessage: string;
-  initialCoverImageId: string | null;
-  images: PresentationImage[];
   introTemplates: IntroTemplate[];
 };
 
@@ -33,8 +25,6 @@ type IntroTemplate = {
 export default function ProofingPresentationEditor({
   galleryId,
   initialIntroMessage,
-  initialCoverImageId,
-  images,
   introTemplates,
 }: ProofingPresentationEditorProps) {
   const [introMessage, setIntroMessage] =
@@ -51,11 +41,6 @@ export default function ProofingPresentationEditor({
 
       return matchingTemplate?.id ?? "custom";
     });
-
-  const [coverImageId, setCoverImageId] =
-    useState<string | null>(
-      initialCoverImageId,
-    );
 
   const [isSaving, setIsSaving] =
     useState(false);
@@ -87,7 +72,6 @@ export default function ProofingPresentationEditor({
           body: JSON.stringify({
             galleryId,
             introMessage,
-            coverImageId,
           }),
         },
       );
@@ -205,84 +189,6 @@ export default function ProofingPresentationEditor({
         />
       </div>
 
-      <div className="proofing-presentation-field">
-        <div className="proofing-presentation-field-heading">
-          <div>
-            <p className="proofing-presentation-label">
-              Gallery cover
-            </p>
-
-            <p className="proofing-presentation-help">
-              Choose one of the uploaded
-              photographs as the client gallery
-              cover.
-            </p>
-          </div>
-
-          {coverImageId ? (
-            <button
-              type="button"
-              className="proofing-cover-clear"
-              onClick={() => {
-                setCoverImageId(null);
-                setSaveState("idle");
-              }}
-            >
-              Remove cover
-            </button>
-          ) : null}
-        </div>
-
-        {images.length === 0 ? (
-          <p className="proofing-empty">
-            Upload photographs before choosing a
-            gallery cover.
-          </p>
-        ) : (
-          <div className="proofing-cover-grid">
-            {images.map((image) => {
-              const isSelected =
-                image.id === coverImageId;
-
-              return (
-                <button
-                  key={image.id}
-                  type="button"
-                  className={
-                    isSelected
-                      ? "proofing-cover-option proofing-cover-option-selected"
-                      : "proofing-cover-option"
-                  }
-                  onClick={() => {
-                    setCoverImageId(image.id);
-                    setSaveState("idle");
-                  }}
-                  aria-pressed={isSelected}
-                >
-                  <span className="proofing-cover-image">
-                    <img
-                      src={image.imageUrl}
-                      alt=""
-                      loading="lazy"
-                    />
-
-                    {isSelected ? (
-                      <span className="proofing-cover-selected-badge">
-                        Cover
-                      </span>
-                    ) : null}
-                  </span>
-
-                  <span className="proofing-cover-filename">
-                    {image.filename}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
       <div className="proofing-presentation-save">
         <button
           type="button"
@@ -294,12 +200,12 @@ export default function ProofingPresentationEditor({
             ? "Saving…"
             : saveState === "saved"
               ? "Saved ✓"
-              : "Save gallery presentation"}
+              : "Save introduction"}
         </button>
 
         {saveState === "saved" ? (
           <p className="proofing-presentation-success">
-            Gallery presentation saved.
+            Introduction saved.
           </p>
         ) : null}
 

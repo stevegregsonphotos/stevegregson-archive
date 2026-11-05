@@ -38,7 +38,13 @@ import {
   getProofingIntroTemplates,
 } from "../../../../lib/proofing/intro-templates";
 
+import {
+  getChosenCover,
+} from "../../../../lib/proofing/cover";
+
+import ProofingCoverPicker from "./ProofingCoverPicker";
 import ProofingMediaWorkspace from "./ProofingMediaWorkspace";
+import { ProofingUploadProvider } from "./ProofingUpload";
 import ProofingPresentationEditor from "./ProofingPresentationEditor";
 import ProofingSelectionCopy from "./ProofingSelectionCopy";
 import ProofingConsolidationEditor from "./ProofingConsolidationEditor";
@@ -355,23 +361,40 @@ export default async function ProofingGalleryPage({
     visitorFavouriteCount ||
     legacyFavouriteCount;
 
-  const coverImage =
-    gallery.coverImageId
-      ? gallery.images.find(
-          (image) =>
-            image.id ===
-            gallery.coverImageId,
-        )
-      : orderedImages[0];
+  const adminImageUrl = (imageId: string) =>
+    `/api/admin/proofing/image?galleryId=${encodeURIComponent(
+      gallery.id,
+    )}&imageId=${encodeURIComponent(imageId)}`;
 
-  const coverImageUrl =
-    coverImage
-      ? `/api/admin/proofing/image?galleryId=${encodeURIComponent(
-          gallery.id,
-        )}&imageId=${encodeURIComponent(
-          coverImage.id,
-        )}`
-      : null;
+  // Only a cover that has actually been chosen (the client page shows
+  // no cover otherwise), so an empty frame offers "+ Add cover photo".
+  const chosenCover = getChosenCover(gallery);
+
+  const coverPickerProps = {
+    galleryId: gallery.id,
+    cover: chosenCover
+      ? {
+          id: chosenCover.id,
+          filename:
+            "originalFilename" in chosenCover
+              ? String(chosenCover.originalFilename)
+              : "Cover",
+          imageUrl: adminImageUrl(chosenCover.id),
+        }
+      : null,
+    images: orderedImages.map((image) => ({
+      id: image.id,
+      filename: image.originalFilename,
+      imageUrl: adminImageUrl(image.id),
+    })),
+    uploadedCover: gallery.coverUpload
+      ? {
+          id: gallery.coverUpload.id,
+          filename: gallery.coverUpload.originalFilename,
+          imageUrl: adminImageUrl(gallery.coverUpload.id),
+        }
+      : null,
+  };
 
   const latestVisitor =
     [...(gallery.visitors ?? [])].sort(
@@ -521,29 +544,31 @@ export default async function ProofingGalleryPage({
         </p>
       </div>
 
+      <div className="proofing-presentation-field">
+        <p className="proofing-presentation-label">
+          Gallery cover
+        </p>
+
+        <p className="proofing-presentation-help">
+          Shown on the gallery&rsquo;s welcome page. Pick one of
+          this gallery&rsquo;s photos, or upload a photo just for
+          the cover. Changes save straight away.
+        </p>
+
+        <ProofingCoverPicker
+          {...coverPickerProps}
+          variant="panel"
+        />
+      </div>
+
       <ProofingPresentationEditor
         galleryId={gallery.id}
         initialIntroMessage={
           gallery.introMessage ?? ""
         }
-        initialCoverImageId={
-          gallery.coverImageId ?? null
-        }
         introTemplates={
           introTemplates
         }
-        images={orderedImages.map(
-          (image) => ({
-            id: image.id,
-            filename:
-              image.originalFilename,
-            imageUrl: `/api/admin/proofing/image?galleryId=${encodeURIComponent(
-              gallery.id,
-            )}&imageId=${encodeURIComponent(
-              image.id,
-            )}`,
-          }),
-        )}
       />
     </div>
   );
@@ -1156,20 +1181,21 @@ export default async function ProofingGalleryPage({
         </div>
       </header>
 
+      <ProofingUploadProvider
+        galleryId={gallery.id}
+        existingImages={orderedImages.map(
+          (image) => ({
+            id: image.id,
+            originalFilename:
+              image.originalFilename,
+          }),
+        )}
+      >
       <div className="sp-gallery-admin-body">
         <aside className="sp-gallery-admin-sidebar">
-          <div className="sp-gallery-sidebar-cover">
-            {coverImageUrl ? (
-              <img
-                src={coverImageUrl}
-                alt=""
-              />
-            ) : (
-              <div>
-                No cover image
-              </div>
-            )}
-          </div>
+          <ProofingCoverPicker
+            {...coverPickerProps}
+          />
 
           <div className="sp-gallery-sidebar-card">
             <div className="sp-gallery-sidebar-stat">
@@ -1341,6 +1367,7 @@ export default async function ProofingGalleryPage({
           </section>
         </section>
       </div>
+      </ProofingUploadProvider>
     </main>
   );
 }

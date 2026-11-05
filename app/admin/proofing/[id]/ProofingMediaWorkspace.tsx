@@ -265,9 +265,7 @@ export default function ProofingMediaWorkspace({
                 )}
               />
 
-              <ProofingUpload
-                galleryId={galleryId}
-              />
+              <ProofingUpload />
             </>
           )}
         </div>
@@ -291,9 +289,7 @@ export default function ProofingMediaWorkspace({
             building this client gallery.
           </p>
 
-          <ProofingUpload
-            galleryId={galleryId}
-          />
+          <ProofingUpload />
         </div>
       ) : (
         <div className="sp-media-grid">

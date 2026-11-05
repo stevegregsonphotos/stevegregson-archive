@@ -844,6 +844,138 @@ export async function insertProofingImages(
   };
 }
 
+/**
+ * Save photos that have just been uploaded. Photos whose file name is
+ * already in the gallery are skipped (so retrying an upload can never list
+ * a photo twice), unless they are marked to replace that photo, in which
+ * case the existing photo keeps its place, favourites and notes and just
+ * gets the new picture.
+ */
+export async function commitProofingImages(
+  galleryId: string,
+  images: Array<ProofingImage & { replaceImageId?: string }>,
+) {
+  const sql = getSql();
+
+  const existingRows = (await sql`
+    SELECT id, original_filename, web_filename
+    FROM proofing_images
+    WHERE gallery_id = ${galleryId}
+  `) as Array<{
+    id: string;
+    original_filename: string;
+    web_filename: string;
+  }>;
+
+  const byId = new Map(
+    existingRows.map((row) => [row.id, row]),
+  );
+  const takenNames = new Set(
+    existingRows.map((row) =>
+      row.original_filename.trim().toLowerCase(),
+    ),
+  );
+
+  const inserted: ProofingImage[] = [];
+  const replaced: Array<{ imageId: string; oldWebFilename: string }> = [];
+  const skipped: ProofingImage[] = [];
+  const queries = [];
+
+  const maxRows = await sql`
+    SELECT COALESCE(MAX(sort_order), -1) AS max_sort_order
+    FROM proofing_images
+    WHERE gallery_id = ${galleryId}
+  `;
+  let nextSortOrder =
+    Number(maxRows[0]?.max_sort_order ?? -1) + 1;
+
+  for (const image of images) {
+    const name = image.originalFilename.trim().toLowerCase();
+    const target = image.replaceImageId
+      ? byId.get(image.replaceImageId)
+      : undefined;
+
+    if (target) {
+      queries.push(sql`
+        UPDATE proofing_images
+        SET
+          web_filename = ${image.webFilename},
+          width = ${image.width},
+          height = ${image.height},
+          created_at = ${image.createdAt ?? new Date().toISOString()},
+          blur_data_url = NULL
+        WHERE gallery_id = ${galleryId}
+          AND id = ${target.id}
+      `);
+      replaced.push({
+        imageId: target.id,
+        oldWebFilename: target.web_filename,
+      });
+      byId.delete(target.id);
+      takenNames.add(name);
+      continue;
+    }
+
+    if (takenNames.has(name)) {
+      skipped.push(image);
+      continue;
+    }
+
+    takenNames.add(name);
+    inserted.push(image);
+    queries.push(sql`
+      INSERT INTO proofing_images (
+        id,
+        gallery_id,
+        original_filename,
+        web_filename,
+        width,
+        height,
+        alt,
+        sort_order,
+        created_at,
+        blur_data_url
+      )
+      VALUES (
+        ${image.id},
+        ${galleryId},
+        ${image.originalFilename},
+        ${image.webFilename},
+        ${image.width},
+        ${image.height},
+        ${image.alt},
+        ${nextSortOrder},
+        ${image.createdAt ?? new Date().toISOString()},
+        ${image.blurDataURL ?? null}
+      )
+      ON CONFLICT (id) DO NOTHING
+    `);
+    nextSortOrder += 1;
+  }
+
+  if (queries.length > 0) {
+    queries.push(sql`
+      UPDATE proofing_galleries
+      SET updated_at = now()
+      WHERE id = ${galleryId}
+    `);
+    await sql.transaction(queries);
+  }
+
+  const countRows = await sql`
+    SELECT COUNT(*)::integer AS image_count
+    FROM proofing_images
+    WHERE gallery_id = ${galleryId}
+  `;
+
+  return {
+    inserted,
+    replaced,
+    skipped,
+    imageCount: Number(countRows[0]?.image_count ?? 0),
+  };
+}
+
 export async function deleteProofingImageRecord(
   galleryId: string,
   imageId: string,
@@ -1050,7 +1182,13 @@ export async function getProofingImageAccess(
       pg.data->>'status' AS status,
       pg.data->>'expiresAt' AS expires_at,
       pg.data->>'coverImageId' AS cover_image_id,
-      pi.web_filename,
+      COALESCE(
+        pi.web_filename,
+        CASE
+          WHEN pg.data->'coverUpload'->>'id' = ${cleanImageId}
+            THEN pg.data->'coverUpload'->>'webFilename'
+        END
+      ) AS web_filename,
       (
         EXISTS (
           SELECT 1
@@ -1071,10 +1209,10 @@ export async function getProofingImageAccess(
         )
       ) AS is_visitor
     FROM proofing_galleries pg
-    JOIN proofing_images pi
+    LEFT JOIN proofing_images pi
       ON pi.gallery_id = pg.id::text
+     AND pi.id = ${cleanImageId}
     WHERE LOWER(pg.slug) = ${normalisedSlug}
-      AND pi.id = ${cleanImageId}
     LIMIT 1
   `;
 
@@ -1084,12 +1222,13 @@ export async function getProofingImageAccess(
         status: string | null;
         expires_at: string | null;
         cover_image_id: string | null;
-        web_filename: string;
+        web_filename: string | null;
         is_visitor: boolean;
       }
     | undefined;
 
-  if (!row) {
+  // No such photo (and not the gallery's uploaded cover).
+  if (!row || !row.web_filename) {
     return undefined;
   }
 
