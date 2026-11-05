@@ -177,17 +177,21 @@ export default async function AboutPage() {
           color: #f2eee6;
         }
 
+        /* Same width and edges as the biography below, with the intro
+           centred beside the headshot. */
         .hero {
           display: grid;
-          grid-template-columns: minmax(0, 1fr) minmax(260px, 28vw);
+          grid-template-columns: minmax(0, 1fr) minmax(260px, 26rem);
           gap: clamp(3rem, 7vw, 8rem);
+          max-width: 94rem;
           min-height: 0;
+          margin: 0 auto;
           padding: 7.5rem 6vw 3.5rem;
-          align-items: start;
+          align-items: center;
         }
 
         .intro {
-          align-self: start;
+          align-self: center;
           padding-top: 0.5rem;
           padding-bottom: 0;
         }
