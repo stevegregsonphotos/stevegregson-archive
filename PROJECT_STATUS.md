@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 6 November 2026, 18:31 (London)
+Last updated: 6 November 2026, 19:20 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -119,8 +119,21 @@ cost an extra Vercel build.
 
 ## Waiting / in progress
 
-- **Safari download fix #4 (6 Nov ~19:05, committed locally — waiting for
-  "go live"):** Steve still got a stalled .download at 18:54 (live #3):
+- **6 Nov 19:20 — Safari downloads RESOLVED (cause was Steve's Mac Safari,
+  not the site).** Fix #4 went live 18:58. Steve's Mac Safari then still
+  failed every storage download: Downloads list said "Zero KB of 5.2 MB —
+  Cannot create file" (correct name + size = site delivering correctly);
+  the .download bundle in ~/Downloads was EMPTY. Same link worked on his
+  iPhone; other sites (GitHub zip) downloaded fine in Mac Safari. Quitting
+  Safari (⌘Q) and reopening fixed it. So much of the afternoon's "Safari
+  failures" (fixes #1–#3) may have been this stuck Mac Safari state — next
+  time, FIRST check Safari's Downloads list for the real error and test on
+  a second device before changing code. Live link checked: R2 presigned
+  GET → JPEG, `response-content-disposition` attachment with the
+  original name. Claude signed in to the gallery in Chrome as
+  info@stevegregson.com (shows as a visitor).
+
+- **LIVE 6 Nov 18:58: Safari download fix #4:** Steve still got a stalled .download at 18:54 (live #3):
   the button was clickable during the 600 ms before preparing started (and
   after a failed prepare), using the old fetch→save path. Now (a) photos with
   a full-size original (`hasOriginal`, from `listProofingOriginalsCached`,
