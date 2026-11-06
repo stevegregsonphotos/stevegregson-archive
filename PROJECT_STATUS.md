@@ -119,6 +119,14 @@ cost an extra Vercel build.
 
 ## Waiting / in progress
 
+- **LIVE 6 Nov ~15:45: "Saved ✓" + coffee link after a single download.**
+  In the viewer, after Download finishes: "Saved ✓ Enjoy it! If it made you
+  smile, ☕ buy me a coffee" (Ko-fi link only when the gallery's "Buy me a
+  coffee" is on; otherwise just "Enjoy it!"). `savedImageId` state in
+  ProofingGalleryClient; `.proofing-viewer-saved` (own row under the
+  buttons; rules at the END of proofing.css because the viewer button
+  group has several older overrides).
+
 - **LIVE 6 Nov 15:20: Proofing "Any photo, one at a time" downloads.** New
   `downloadPermission` value `"single"` (types, settings route list,
   Settings › Downloads option, listed first). Viewer shows the Download

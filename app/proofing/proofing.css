@@ -1153,6 +1153,40 @@
   }
 }
 
+/* Thank-you line after a photo is saved (coffee link if switched on) */
+
+.proofing-viewer-saved {
+  width: 100%;
+  margin: 0.6rem 0 0;
+  color: rgba(242, 238, 230, 0.78);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  text-align: right;
+}
+
+.proofing-viewer-saved strong {
+  color: #c7a369;
+  font-weight: 700;
+}
+
+.proofing-viewer-saved a {
+  color: #c7a369;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  white-space: nowrap;
+}
+
+.proofing-viewer-saved a:hover {
+  color: #dcbd86;
+}
+
+@media (max-width: 600px) {
+  .proofing-viewer-saved {
+    text-align: center;
+  }
+}
+
 /* Keep viewer actions together beneath the photograph */
 
 .proofing-viewer-actions {
@@ -2784,4 +2818,25 @@
     width: 100%;
     justify-content: center;
   }
+}
+
+/* The "Saved ✓ … buy me a coffee" line sits on its own row under the
+   viewer buttons (computer and phone). */
+.proofing-viewer-actions,
+.proofing-viewer-actions .proofing-viewer-action-buttons {
+  flex-wrap: wrap;
+}
+
+.proofing-viewer-actions .proofing-viewer-saved {
+  grid-column: 1 / -1;
+  flex: 1 0 100%;
+  order: 99;
+  justify-self: center;
+  margin: 0.2rem 0 0;
+  text-align: center;
+}
+
+/* Keep the buttons centred once the "Saved" line has appeared. */
+.proofing-viewer-action-buttons:has(.proofing-viewer-saved) {
+  justify-content: center;
 }

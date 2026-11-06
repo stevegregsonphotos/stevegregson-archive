@@ -413,6 +413,15 @@ export default function ProofingGalleryClient({
   const [isDownloadingArchive, setIsDownloadingArchive] =
     useState(false);
 
+  // After a photo is saved, a thank-you line (with the coffee link when
+
+  // the gallery has it switched on) appears under the Download button.
+
+  const [savedImageId, setSavedImageId] =
+
+    useState<string | null>(null);
+
+
   const [
     downloadingImageId,
     setDownloadingImageId,
@@ -2026,6 +2035,8 @@ export default function ProofingGalleryClient({
         ),
       );
 
+      setSavedImageId(image.id);
+
       await recordDownloadSuccess(
         "single",
         [
@@ -3310,6 +3321,25 @@ export default function ProofingGalleryClient({
                           ? "Download selected photo"
                           : "Download photo"}
                     </button>
+                  ) : null}
+                  {savedImageId === viewerImage.id ? (
+                    <p className="proofing-viewer-saved" role="status">
+                      <strong>Saved ✓</strong>{" "}
+                      {showTipButton ? (
+                        <>
+                          Enjoy it! If it made you smile,{" "}
+                          <a
+                            href={KOFI_URL}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            <span aria-hidden="true">☕</span> buy me a coffee
+                          </a>
+                        </>
+                      ) : (
+                        "Enjoy it!"
+                      )}
+                    </p>
                   ) : null}
                 </div>
               </div>
