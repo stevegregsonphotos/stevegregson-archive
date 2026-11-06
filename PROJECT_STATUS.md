@@ -119,7 +119,7 @@ cost an extra Vercel build.
 
 ## Waiting / in progress
 
-- **Full-size download originals (6 Nov ~19:10, committed locally — waiting
+- **LIVE 6 Nov 18:46: Full-size download originals** (was waiting
   for "go live"):** proofs are capped at 2400px / 3.75 MB WebP
   (`ProofingUpload.tsx` shrinks ×0.85 until it fits → Mountview proofs came
   out 1734×1156). Now Steve can add his original JPEGs: sidebar card
