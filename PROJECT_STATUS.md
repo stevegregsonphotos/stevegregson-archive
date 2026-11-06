@@ -119,8 +119,8 @@ cost an extra Vercel build.
 
 ## Waiting / in progress
 
-- **Proofing quick-loading thumbnails (6 Nov ~16:00, committed locally, NOT
-  pushed — waiting for Steve's OK, then test push, then "go live"):** grid
+- **LIVE 6 Nov 15:10: Proofing quick-loading thumbnails.**
+  Grid
   tiles were the full 2400px proofs (measured 3.7 MB each; Mountview
   Graduation 533 photos ≈ 1.5 GB per visitor) and each went through
   `/api/proofing/image` (one Vercel call per tile). Now: thumbnails
