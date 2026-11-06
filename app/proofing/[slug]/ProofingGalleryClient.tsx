@@ -22,6 +22,34 @@ type ProofingClientImage = {
   thumbUrl?: string;
 };
 
+/*
+ * Safari (on Mac, and every browser on iPhone/iPad) stalls downloads that
+ * the page builds itself after a pause, leaving a half-finished
+ * ".download" file. There, photos download straight from storage through a
+ * hidden frame instead (the same way client Transfers do, which works).
+ */
+function isAppleWebKit() {
+  return (
+    typeof navigator !== "undefined" &&
+    /apple/i.test(navigator.vendor || "")
+  );
+}
+
+function downloadThroughFrame(url: string) {
+  const frame = document.createElement("iframe");
+  frame.style.display = "none";
+  frame.setAttribute("aria-hidden", "true");
+  frame.src = url;
+  document.body.appendChild(frame);
+  window.setTimeout(() => frame.remove(), 5 * 60 * 1000);
+}
+
+function singleDownloadUrl(gallerySlug: string, imageId: string) {
+  return `/api/proofing/download?gallery=${encodeURIComponent(
+    gallerySlug,
+  )}&image=${encodeURIComponent(imageId)}`;
+}
+
 function fullImageUrl(gallerySlug: string, imageId: string) {
   return `/api/proofing/image?gallery=${encodeURIComponent(
     gallerySlug,
@@ -1995,6 +2023,18 @@ export default function ProofingGalleryClient({
     );
     setDownloadError(null);
 
+    if (isAppleWebKit()) {
+      downloadThroughFrame(
+        singleDownloadUrl(gallerySlug, image.id),
+      );
+      setSavedImageId(image.id);
+      await recordDownloadSuccess("single", [image.id]).catch(
+        () => undefined,
+      );
+      setDownloadingImageId(null);
+      return;
+    }
+
     try {
       /*
        * This request still passes through the
@@ -2128,6 +2168,26 @@ export default function ProofingGalleryClient({
           result.message ||
             "The photographs could not be prepared for download.",
         );
+      }
+
+      // Safari: one photo after another, straight from storage (a zip
+      // built in the page stalls there).
+      if (isAppleWebKit()) {
+        for (const [index, file] of result.files.entries()) {
+          if (index > 0) {
+            await new Promise((resolve) => window.setTimeout(resolve, 900));
+          }
+          downloadThroughFrame(
+            singleDownloadUrl(gallerySlug, file.imageId),
+          );
+        }
+
+        await recordDownloadSuccess(
+          "archive",
+          result.files.map((file) => file.imageId),
+          result.archiveFilename,
+        ).catch(() => undefined);
+        return;
       }
 
       const { default: JSZip } =

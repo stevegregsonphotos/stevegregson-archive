@@ -119,6 +119,16 @@ cost an extra Vercel build.
 
 ## Waiting / in progress
 
+- **Safari download fix (6 Nov ~16:40, committed locally — waiting for
+  "go live"):** in Safari the viewer Download left a stalled
+  "<name>.download" file (page-built JPEG blob saved after an await).
+  `isAppleWebKit()` (navigator.vendor "Apple" = Mac Safari + all iOS
+  browsers) → `downloadThroughFrame(/api/proofing/download?…)` hidden
+  iframe, like Transfers (`lib/transfers/zip-client.ts startDownload`);
+  file arrives as the stored .webp. Favourites in Safari: one frame per
+  photo, 0.9 s apart (no zip). Other browsers unchanged (JPEG / zip).
+  Tested with a pretend-Safari Chromium; no real WebKit here.
+
 - **LIVE 6 Nov ~15:45: "Saved ✓" + coffee link after a single download.**
   In the viewer, after Download finishes: "Saved ✓ Enjoy it! If it made you
   smile, ☕ buy me a coffee" (Ko-fi link only when the gallery's "Buy me a
