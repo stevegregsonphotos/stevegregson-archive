@@ -233,8 +233,9 @@ const checks = [
   // Proofing delivery/downloads: signed R2 URLs; no image/ZIP proxy through Vercel.
   () => assertContains("app/api/proofing/image/route.ts", ["createProofingImageDownloadUrl", "NextResponse.redirect"]),
   () => assertNotContains("app/api/proofing/image/route.ts", ["from \"sharp\"", "getProofingImage(", "putRenderedProof("]),
-  () => assertContains("app/api/proofing/download/route.ts", ["createProofingImageDownloadUrl", "NextResponse.redirect"]),
-  () => assertContains("app/api/proofing/download-all/route.ts", ["createProofingImageDownloadUrl"]),
+  // (createProofingBestDownloadUrl = signed R2 link to the original JPEG or the proof.)
+  () => assertContains("app/api/proofing/download/route.ts", ["createProofingBestDownloadUrl", "NextResponse.redirect"]),
+  () => assertContains("app/api/proofing/download-all/route.ts", ["createProofingBestDownloadUrl"]),
   () => assertNotContains("app/api/proofing/download-all/route.ts", ["archiver", "getProofingImage("]),
   () => assertContains(
     "app/proofing/[slug]/ProofingGalleryClient.tsx",
