@@ -91,7 +91,8 @@ type ProofingGalleryClientProps = {
   downloadPermission:
     | "none"
     | "web"
-    | "selected";
+    | "selected"
+    | "single";
   showFilenames?: boolean;
   showTipButton?: boolean;
   watermarkUrl?: string;
@@ -2342,7 +2343,9 @@ export default function ProofingGalleryClient({
                     download the photographs available to you.
                     {downloadPermission === "selected"
                       ? " For this gallery, downloads are available for photographs you have selected."
-                      : " You can use the gallery download controls to save the available photographs."}
+                      : downloadPermission === "single"
+                        ? " Open any photograph and press Download to save it."
+                        : " You can use the gallery download controls to save the available photographs."}
                   </p>
                 </section>
               ) : null}
@@ -3283,6 +3286,7 @@ export default function ProofingGalleryClient({
                   </button>
 
                   {downloadPermission === "web" ||
+                  downloadPermission === "single" ||
                   (downloadPermission === "selected" &&
                     favouriteSet.has(viewerImage.id)) ? (
                     <button

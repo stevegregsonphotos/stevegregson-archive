@@ -1119,22 +1119,29 @@
   justify-content: center;
   min-height: 2.6rem;
   padding: 0 1rem;
-  border: 1px solid rgba(242, 238, 230, 0.35);
-  background: rgba(17, 16, 15, 0.82);
-  color: #f2eee6;
+  /* Gold, so it stands out next to Add note / Annotate. */
+  border: 1px solid #c7a369;
+  background: #c7a369;
+  color: #11100f;
+  cursor: pointer;
+  font: inherit;
   font-size: 0.48rem;
   font-weight: 700;
   letter-spacing: 0.12em;
   line-height: 1;
   text-decoration: none;
   text-transform: uppercase;
-  backdrop-filter: blur(8px);
 }
 
 .proofing-viewer-download:hover {
-  border-color: #c7a369;
-  background: #c7a369;
+  border-color: #dcbd86;
+  background: #dcbd86;
   color: #11100f;
+}
+
+.proofing-viewer-download:disabled {
+  cursor: progress;
+  opacity: 0.75;
 }
 
 @media (max-width: 600px) {

@@ -119,6 +119,16 @@ cost an extra Vercel build.
 
 ## Waiting / in progress
 
+- **Proofing "Any photo, one at a time" downloads (6 Nov ~15:40, committed
+  locally, NOT pushed — waiting for Steve's OK / "go live"):** new
+  `downloadPermission` value `"single"` (types, settings route list,
+  Settings › Downloads option, listed first). Viewer shows the Download
+  button for web/single (+ selected-if-favourite); `/api/proofing/download`
+  already allowed it; `download-all` now refuses "single". The viewer's
+  Download button is now gold for every mode (`.proofing-viewer-download`).
+  After go live Steve sets Mountview Graduation › Settings › Downloads to
+  "Any photo, one at a time".
+
 - **LIVE 6 Nov 15:10: Proofing quick-loading thumbnails.**
   Grid
   tiles were the full 2400px proofs (measured 3.7 MB each; Mountview

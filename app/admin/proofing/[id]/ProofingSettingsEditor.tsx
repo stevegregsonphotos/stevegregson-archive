@@ -12,7 +12,8 @@ type GalleryStatus =
 type DownloadPermission =
   | "none"
   | "web"
-  | "selected";
+  | "selected"
+  | "single";
 
 type WatermarkPosition =
   | "top-left"
@@ -419,8 +420,12 @@ export default function ProofingSettingsEditor({
               No downloads
             </option>
 
+            <option value="single">
+              Any photo, one at a time
+            </option>
+
             <option value="web">
-              Web-size downloads
+              Any photo, plus &ldquo;Download all&rdquo;
             </option>
 
             <option value="selected">
@@ -429,8 +434,9 @@ export default function ProofingSettingsEditor({
           </select>
 
           <p>
-            Choose what the client is permitted to
-            download.
+            {downloadPermission === "single"
+              ? "A gold Download button on every photo when it's opened. No \u201cDownload all\u201d, so big galleries stay quick."
+              : "Choose what the client is permitted to download."}
           </p>
         </div>
 

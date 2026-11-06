@@ -31,6 +31,7 @@ const validDownloadPermissions: ProofingDownloadPermission[] =
     "none",
     "web",
     "selected",
+    "single",
   ];
 
 const validWatermarkPositions: ProofingWatermarkPosition[] =

@@ -97,7 +97,11 @@ export async function GET(
     );
   }
 
-  if (gallery.downloadPermission === "none") {
+  if (
+    gallery.downloadPermission === "none" ||
+    // One at a time only: no whole-gallery download.
+    gallery.downloadPermission === "single"
+  ) {
     return NextResponse.json(
       {
         ok: false,

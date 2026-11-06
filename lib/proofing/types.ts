@@ -13,7 +13,9 @@ export type ProofingDownloadPermission =
   | "none"
   | "web"
   | "full"
-  | "selected";
+  | "selected"
+  /* Any photo, one at a time from the full-screen view (no "Download all"). */
+  | "single";
 
 export type ProofingWatermarkPosition =
   | "top-left"
