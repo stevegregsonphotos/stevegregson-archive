@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 6 November 2026, 15:00 (London)
+Last updated: 6 November 2026, 14:55 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -73,8 +73,8 @@ cost an extra Vercel build.
   previews (640px thumbs), Deleted files (30 days), Share with client
   (live folder links, per-person activity), Request files (clients upload
   into `Received/`).
-- **Transfers**: WeTransfer-style sending, progress in the Transfer
-  button, personal links per recipient, "Who's downloaded", first-download
+- **Transfers**: WeTransfer-style sending, progress strip under the menu
+  + in the Transfer button, personal links per recipient, "Who's downloaded", first-download
   email to Steve. There is no "sent" confirmation email (by design).
 - **Mac app "Steve Gregson Storage"**: `~/Steve Gregson Storage` uploads
   automatically; copies (not moves) from Dropbox/Drive/iCloud; clears Mac
@@ -119,21 +119,18 @@ cost an extra Vercel build.
 
 ## Waiting / in progress
 
-- **Transfers progress strip + full photo picker (6 Nov, committed locally,
-  NOT pushed — waiting for Steve to OK the screenshots; then push to test
-  together, then "go live"):** `app/admin/transfers/TransferWorkspace.tsx`
-  + `workspace.module.css`. (1) While sending, a strip sits right under the
-  Backstage menu (sticky at `top: 6.5rem`, full width): "Uploading N of M
-  files · <title>", bytes, %, gold bar. Afterwards it turns green "Transfer
-  sent · Emailed to …" with Open ↗ and × (orange if something failed). The
-  gold button still fills too. `--strip` on `.page` shifts the sticky send
-  card down. (2) Client page photos picker shows ALL queued photos, 40 per
-  page with ‹ Previous / Next › ("41–80 of 544 · page 2 of 14"); previews
-  made one page at a time (was first 60 only). Picks are kept across pages.
-  Checked: tsc, eslint, local preview with fake uploads (130 photos).
+- **LIVE 6 Nov ~14:55: Transfers progress strip + full photo picker.**
+  `app/admin/transfers/TransferWorkspace.tsx` + `workspace.module.css`.
+  (1) While sending, a strip sits right under the Backstage menu (sticky at
+  `top: 6.5rem`, full width): "Uploading N of M files · <title>", bytes, %,
+  gold bar. Afterwards green "Transfer sent · Emailed to …" with Open ↗ and
+  × (orange if something failed). Gold button still fills too. `--strip` on
+  `.page` shifts the sticky send card down. (2) Client page photos picker
+  shows ALL queued photos, 40 per page, ‹ Previous / Next › (was first 60
+  only); previews made one page at a time; picks kept across pages.
 
-- **Proofing upload + cover fixes (5 Nov) — PUSHED to the test branch
-  (b8e9ccb, 5 Nov 22:29), waiting for "go live":**
+- **LIVE (was already on live by 6 Nov): Proofing upload + cover fixes (5 Nov)
+  and About hero alignment:**
   - Upload progress now sits under the gallery menu (Media / Settings /
     Branding…), stays while switching tabs and sticks to the top when
     scrolling. One shared upload engine (`ProofingUploadProvider` in
@@ -162,7 +159,7 @@ cost an extra Vercel build.
 - **LIVE 4 Nov: Productions page flash fixed** (its `<style>` was at the END
   of `ProductionManager.tsx`, after 525 rows; moved to the start of `<main>`).
 
-- **WAITING FOR "GO LIVE" (5 Nov 21:55): About hero alignment.** `.hero` now
+- **LIVE (5 Nov): About hero alignment.** `.hero` now
   `max-width: 94rem; margin: 0 auto` (same edges as `.biography`), photo
   column `minmax(260px, 26rem)`, `.intro` vertically centred beside it.
 - **LIVE 5 Nov 20:40: smaller About photo.** Steve: "absolutely
