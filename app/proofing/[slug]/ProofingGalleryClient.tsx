@@ -2355,7 +2355,7 @@ export default function ProofingGalleryClient({
                     {downloadPermission === "selected"
                       ? " For this gallery, downloads are available for photographs you have selected."
                       : downloadPermission === "single"
-                        ? " Open any photograph and press Download to save it."
+                        ? " Open any photograph and press Download to save it, or add your favourites and download them together from the Favourites tab."
                         : " You can use the gallery download controls to save the available photographs."}
                   </p>
                 </section>
@@ -2417,7 +2417,8 @@ export default function ProofingGalleryClient({
     {(downloadPermission === "web" && view === "all") ||
     (view === "favourites" &&
       (toolbarAction ||
-        (downloadPermission === "selected" &&
+        ((downloadPermission === "selected" ||
+          downloadPermission === "single") &&
           favourites.length > 0))) ? (
     <div className="proofing-client-actions-above">
       {downloadPermission === "web" && view === "all" ? (
@@ -2435,7 +2436,8 @@ export default function ProofingGalleryClient({
         </button>
       ) : null}
 
-      {downloadPermission === "selected" &&
+      {(downloadPermission === "selected" ||
+        downloadPermission === "single") &&
       view === "favourites" &&
       favourites.length > 0 ? (
         <button
@@ -2446,9 +2448,13 @@ export default function ProofingGalleryClient({
         >
           {isDownloadingArchive
             ? "Preparing download…"
-            : `Download ${favourites.length} selected photo${
-                favourites.length === 1 ? "" : "s"
-              }`}
+            : downloadPermission === "single"
+              ? `Download ${favourites.length} favourite${
+                  favourites.length === 1 ? "" : "s"
+                }`
+              : `Download ${favourites.length} selected photo${
+                  favourites.length === 1 ? "" : "s"
+                }`}
         </button>
       ) : null}
 

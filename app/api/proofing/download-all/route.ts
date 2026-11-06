@@ -97,11 +97,7 @@ export async function GET(
     );
   }
 
-  if (
-    gallery.downloadPermission === "none" ||
-    // One at a time only: no whole-gallery download.
-    gallery.downloadPermission === "single"
-  ) {
+  if (gallery.downloadPermission === "none") {
     return NextResponse.json(
       {
         ok: false,
@@ -146,8 +142,16 @@ export async function GET(
     );
   }
 
+  /*
+   * "Selected" and "Any photo, one at a time" galleries only ever download
+   * this visitor's favourites in one go, never the whole gallery.
+   */
+  const favouritesOnly =
+    gallery.downloadPermission === "selected" ||
+    gallery.downloadPermission === "single";
+
   const imagesToDownload =
-    gallery.downloadPermission === "selected"
+    favouritesOnly
       ? gallery.images.filter((image) =>
           visitor.selection.favourites.some(
             (favourite) =>
@@ -161,7 +165,7 @@ export async function GET(
       {
         ok: false,
         message:
-          gallery.downloadPermission === "selected"
+          favouritesOnly
             ? "Select at least one photograph before downloading."
             : "There are no photographs to download.",
       },
@@ -223,7 +227,7 @@ export async function GET(
   return NextResponse.json({
     ok: true,
     archiveFilename: safeZipFilename(
-      gallery.downloadPermission === "selected"
+      favouritesOnly
         ? `${galleryName}-selected`
         : galleryName,
     ),

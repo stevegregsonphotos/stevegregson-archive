@@ -131,7 +131,9 @@ cost an extra Vercel build.
   `downloadPermission` value `"single"` (types, settings route list,
   Settings › Downloads option, listed first). Viewer shows the Download
   button for web/single (+ selected-if-favourite); `/api/proofing/download`
-  already allowed it; `download-all` now refuses "single". The viewer's
+  already allowed it. `download-all` + `download-event` treat "single"
+  like "selected" (favourites only, never the whole gallery), so the
+  Favourites tab shows "Download N favourites" (6 Nov ~15:55). The viewer's
   Download button is now gold for every mode (`.proofing-viewer-download`).
   After go live Steve sets Mountview Graduation › Settings › Downloads to
   "Any photo, one at a time".

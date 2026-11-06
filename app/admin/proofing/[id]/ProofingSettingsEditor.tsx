@@ -435,7 +435,7 @@ export default function ProofingSettingsEditor({
 
           <p>
             {downloadPermission === "single"
-              ? "A gold Download button on every photo when it's opened. No \u201cDownload all\u201d, so big galleries stay quick."
+              ? "A gold Download button on every photo when it's opened, and their favourites can be downloaded together. No \u201cDownload all\u201d, so big galleries stay quick."
               : "Choose what the client is permitted to download."}
           </p>
         </div>

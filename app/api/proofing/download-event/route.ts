@@ -314,7 +314,9 @@ export async function POST(
   ) {
     const expectedImageIds =
       gallery.downloadPermission ===
-      "selected"
+        "selected" ||
+      gallery.downloadPermission ===
+        "single"
         ? gallery.images
             .filter(
               (image) =>
