@@ -119,8 +119,7 @@ cost an extra Vercel build.
 
 ## Waiting / in progress
 
-- **Proofing "Any photo, one at a time" downloads (6 Nov ~15:40, committed
-  locally, NOT pushed — waiting for Steve's OK / "go live"):** new
+- **LIVE 6 Nov 15:20: Proofing "Any photo, one at a time" downloads.** New
   `downloadPermission` value `"single"` (types, settings route list,
   Settings › Downloads option, listed first). Viewer shows the Download
   button for web/single (+ selected-if-favourite); `/api/proofing/download`
