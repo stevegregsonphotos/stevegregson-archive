@@ -13,6 +13,8 @@ import {
 
 import {
   createProofingThumbUrls,
+  listProofingOriginalsCached,
+  proofingBaseName,
 } from "../../../lib/proofing/image-storage";
 
 import ProofingGalleryClient from "./ProofingGalleryClient";
@@ -207,6 +209,12 @@ export default async function ProofingClientPage({
    * browser fetches them straight from storage (no trip through Vercel
    * per photo). If signing fails the grid still works with full proofs.
    */
+  // Which photos have Steve's full-size original JPEG (downloaded directly).
+  const originals =
+    await listProofingOriginalsCached(gallery.id).catch(
+      () => new Set<string>(),
+    );
+
   const thumbUrls =
     await createProofingThumbUrls(
       gallery.id,
@@ -402,6 +410,7 @@ export default async function ProofingClientPage({
     width: image.width,
     height: image.height,
     thumbUrl: thumbUrls.get(image.webFilename),
+    hasOriginal: originals.has(proofingBaseName(image.webFilename)),
   }),
 )}
             initialFavourites={

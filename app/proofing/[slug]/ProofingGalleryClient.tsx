@@ -20,6 +20,8 @@ type ProofingClientImage = {
   height: number;
   /** Small, quick-loading version for the grid (if it has one). */
   thumbUrl?: string;
+  /** Steve added his full-size original JPEG (downloads straight). */
+  hasOriginal?: boolean;
 };
 
 /*
@@ -442,6 +444,10 @@ export default function ProofingGalleryClient({
   } | null>(null);
   const [preparingJpegId, setPreparingJpegId] =
     useState<string | null>(null);
+  // Safari: preparing failed for this photo → offer "Try again".
+  const [prepareFailedId, setPrepareFailedId] =
+    useState<string | null>(null);
+  const [prepareAttempt, setPrepareAttempt] = useState(0);
   // Favourites in Safari: the zip is made first, then a "Save" link appears.
   const [readyArchive, setReadyArchive] = useState<{
     url: string;
@@ -1096,7 +1102,9 @@ export default function ProofingGalleryClient({
         favouriteSet.has(viewerImage.id)));
 
   useEffect(() => {
-    if (!viewerImage || !viewerCanDownload) return;
+    // A full-size original is already a JPEG: it downloads with a plain
+    // link, nothing to prepare.
+    if (!viewerImage || !viewerCanDownload || viewerImage.hasOriginal) return;
     if (preparedJpeg?.imageId === viewerImage.id) return;
 
     let cancelled = false;
@@ -1104,6 +1112,7 @@ export default function ProofingGalleryClient({
     // Short pause so flicking quickly through photos doesn't prepare each.
     const timer = window.setTimeout(async () => {
       setPreparingJpegId(image.id);
+      setPrepareFailedId(null);
       try {
         const response = await fetch(
           `/api/proofing/download?gallery=${encodeURIComponent(
@@ -1130,7 +1139,9 @@ export default function ProofingGalleryClient({
           };
         });
       } catch {
-        // The Download button then falls back to downloading on click.
+        // Other browsers: the button downloads on click instead.
+        // Safari: it offers "Try again".
+        if (!cancelled) setPrepareFailedId(image.id);
       } finally {
         if (!cancelled) setPreparingJpegId(null);
       }
@@ -1141,7 +1152,7 @@ export default function ProofingGalleryClient({
       window.clearTimeout(timer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewerImage?.id, viewerCanDownload, gallerySlug]);
+  }, [viewerImage?.id, viewerCanDownload, gallerySlug, prepareAttempt]);
 
   // Fetch the photos either side of the open one, so Next / Previous
   // (and swiping) show them straight away.
@@ -3435,7 +3446,27 @@ export default function ProofingGalleryClient({
                   downloadPermission === "single" ||
                   (downloadPermission === "selected" &&
                     favouriteSet.has(viewerImage.id)) ? (
-                    preparedJpeg?.imageId === viewerImage.id ? (
+                    viewerImage.hasOriginal ? (
+                      // The simplest download there is: a link to the
+                      // original JPEG (sent as an attachment). Works in
+                      // every browser, Safari included.
+                      <a
+                        className="proofing-viewer-download"
+                        href={`/api/proofing/download?gallery=${encodeURIComponent(
+                          gallerySlug,
+                        )}&image=${encodeURIComponent(viewerImage.id)}`}
+                        onClick={() => {
+                          setSavedImageId(viewerImage.id);
+                          void recordDownloadSuccess("single", [
+                            viewerImage.id,
+                          ]).catch(() => undefined);
+                        }}
+                      >
+                        {downloadPermission === "selected"
+                          ? "Download selected photo"
+                          : "Download photo"}
+                      </a>
+                    ) : preparedJpeg?.imageId === viewerImage.id ? (
                       <a
                         className="proofing-viewer-download"
                         href={preparedJpeg.url}
@@ -3451,6 +3482,28 @@ export default function ProofingGalleryClient({
                           ? "Download selected photo"
                           : "Download photo"}
                       </a>
+                    ) : isAppleWebKit() ? (
+                      // Safari can only save a download that is ready the
+                      // moment it's clicked, so wait for the JPEG.
+                      prepareFailedId === viewerImage.id ? (
+                        <button
+                          type="button"
+                          className="proofing-viewer-download"
+                          onClick={() =>
+                            setPrepareAttempt((count) => count + 1)
+                          }
+                        >
+                          Try again
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className="proofing-viewer-download"
+                          disabled
+                        >
+                          Preparing download…
+                        </button>
+                      )
                     ) : (
                     <button
                       type="button"

@@ -119,6 +119,18 @@ cost an extra Vercel build.
 
 ## Waiting / in progress
 
+- **Safari download fix #4 (6 Nov ~19:05, committed locally — waiting for
+  "go live"):** Steve still got a stalled .download at 18:54 (live #3):
+  the button was clickable during the 600 ms before preparing started (and
+  after a failed prepare), using the old fetch→save path. Now (a) photos with
+  a full-size original (`hasOriginal`, from `listProofingOriginalsCached`,
+  60 s per-server cache, in the visitor page) download via a plain
+  `<a href=/api/proofing/download?…>` (302 → R2 JPEG attachment) — no
+  preparing at all; (b) otherwise, in Safari the button stays disabled
+  "Preparing download…" until the JPEG blob is ready, with "Try again" if
+  preparing fails (`prepareFailedId`, `prepareAttempt`). Other browsers keep
+  the click fallback.
+
 - **LIVE 6 Nov 18:46: Full-size download originals** (was waiting
   for "go live"):** proofs are capped at 2400px / 3.75 MB WebP
   (`ProofingUpload.tsx` shrinks ×0.85 until it fits → Mountview proofs came

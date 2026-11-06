@@ -107,6 +107,22 @@ export async function createProofingOriginalUploadUrl(
   );
 }
 
+/*
+ * Same as listProofingOriginals, remembered for a minute per server, for
+ * the visitor page (so 300 visitors don't each list the storage folder).
+ */
+const originalsCache = new Map<string, { at: number; names: Set<string> }>();
+
+export async function listProofingOriginalsCached(
+  galleryId: string,
+) {
+  const cached = originalsCache.get(galleryId);
+  if (cached && Date.now() - cached.at < 60_000) return cached.names;
+  const names = await listProofingOriginals(galleryId);
+  originalsCache.set(galleryId, { at: Date.now(), names });
+  return names;
+}
+
 /** Proofs with a full-size original, as a set of their webFilenames. */
 export async function listProofingOriginals(
   galleryId: string,
