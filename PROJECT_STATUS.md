@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 5 November 2026, 22:40 (London)
+Last updated: 6 November 2026, 15:00 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -119,8 +119,21 @@ cost an extra Vercel build.
 
 ## Waiting / in progress
 
-- **Proofing upload + cover fixes (5 Nov, NOT pushed yet; committed locally,
-  waiting for Steve to OK the screenshots, then one test push, then "go live"):**
+- **Transfers progress strip + full photo picker (6 Nov, committed locally,
+  NOT pushed — waiting for Steve to OK the screenshots; then push to test
+  together, then "go live"):** `app/admin/transfers/TransferWorkspace.tsx`
+  + `workspace.module.css`. (1) While sending, a strip sits right under the
+  Backstage menu (sticky at `top: 6.5rem`, full width): "Uploading N of M
+  files · <title>", bytes, %, gold bar. Afterwards it turns green "Transfer
+  sent · Emailed to …" with Open ↗ and × (orange if something failed). The
+  gold button still fills too. `--strip` on `.page` shifts the sticky send
+  card down. (2) Client page photos picker shows ALL queued photos, 40 per
+  page with ‹ Previous / Next › ("41–80 of 544 · page 2 of 14"); previews
+  made one page at a time (was first 60 only). Picks are kept across pages.
+  Checked: tsc, eslint, local preview with fake uploads (130 photos).
+
+- **Proofing upload + cover fixes (5 Nov) — PUSHED to the test branch
+  (b8e9ccb, 5 Nov 22:29), waiting for "go live":**
   - Upload progress now sits under the gallery menu (Media / Settings /
     Branding…), stays while switching tabs and sticks to the top when
     scrolling. One shared upload engine (`ProofingUploadProvider` in

@@ -20,8 +20,8 @@ import { MAX_BACKGROUNDS } from "@/lib/transfers/backgrounds";
 import RequestsPanel from "./RequestsPanel";
 import RecipientInput from "./RecipientInput";
 
-/** How many of the queued photos are offered as background choices. */
-const PICKABLE_LIMIT = 60;
+/** How many photos show per page when picking client page photos. */
+const PICK_PAGE_SIZE = 40;
 
 const ARCHIVE_SELECTION_KEY = "backstage-transfer-archive-selection";
 const EMPTY_SELECTION = { objectKeys: [] as string[], folderPaths: [] as string[] };
@@ -77,6 +77,14 @@ export default function TransferWorkspace({ initialTransfers, knownEmails: initi
   const [resultUrl, setResultUrl] = useState("");
   // Queue positions of photos picked as client-page backgrounds (in pick order).
   const [backgroundPicks, setBackgroundPicks] = useState<number[]>([]);
+  // Which page of photos the picker is showing (all queued photos, in pages).
+  const [pickPage, setPickPage] = useState(0);
+  // Upload numbers for the strip at the top of the page.
+  const [counts, setCounts] = useState<{ done: number; total: number; sent: number; size: number } | null>(null);
+  // After sending, the strip stays with the outcome until closed.
+  const [outcome, setOutcome] = useState<{ tone: "done" | "warn"; title: string } | null>(null);
+  const [sendingTitle, setSendingTitle] = useState("");
+  const [sentToText, setSentToText] = useState("");
   const folderRef = useRef<HTMLInputElement | null>(null);
   const { dragging, dropProps } = useFileDrop((files) => setQueue((q) => [...q, ...files]), !sending);
 
@@ -100,14 +108,21 @@ export default function TransferWorkspace({ initialTransfers, knownEmails: initi
 
   const totalBytes = queue.reduce((sum, item) => sum + item.file.size, 0);
 
-  // Small on-screen previews of the queued photos, so one can be picked as the background.
-  const pickable = useMemo(
+  // Every queued photo can be picked; previews are made one page at a time
+  // so hundreds of photos don't all load at once.
+  const pickableAll = useMemo(
     () => queue
       .map((item, index) => ({ index, item }))
-      .filter(({ item }) => canMakeBackdrop(item.file))
-      .slice(0, PICKABLE_LIMIT)
-      .map(({ index, item }) => ({ index, name: item.relativePath, url: URL.createObjectURL(item.file) })),
+      .filter(({ item }) => canMakeBackdrop(item.file)),
     [queue],
+  );
+  const pickPages = Math.max(1, Math.ceil(pickableAll.length / PICK_PAGE_SIZE));
+  const page = Math.min(pickPage, pickPages - 1);
+  const pickable = useMemo(
+    () => pickableAll
+      .slice(page * PICK_PAGE_SIZE, (page + 1) * PICK_PAGE_SIZE)
+      .map(({ index, item }) => ({ index, name: item.relativePath, url: URL.createObjectURL(item.file) })),
+    [pickableAll, page],
   );
   useEffect(() => () => pickable.forEach((p) => URL.revokeObjectURL(p.url)), [pickable]);
 
@@ -120,6 +135,7 @@ export default function TransferWorkspace({ initialTransfers, knownEmails: initi
   function clearQueue() {
     setQueue([]);
     setBackgroundPicks([]);
+    setPickPage(0);
   }
 
   async function refresh() {
@@ -147,6 +163,11 @@ export default function TransferWorkspace({ initialTransfers, knownEmails: initi
     });
     setSending(true);
     setResultUrl("");
+    setOutcome(null);
+    setCounts(null);
+    const sendTitle = title.trim();
+    setSendingTitle(sendTitle);
+    setSentToText(sentTo.join(", "));
     const stopWarning = warnBeforeLeaving();
     let transferId = "";
     try {
@@ -170,6 +191,7 @@ export default function TransferWorkspace({ initialTransfers, knownEmails: initi
       if (queue.length) {
         const uploadedIds = await uploadFilesToTransfer(transferId, queue, (p) => {
           setPercent(p.totalBytes ? Math.floor((p.sentBytes / p.totalBytes) * 100) : 0);
+          setCounts({ done: p.doneFiles, total: p.totalFiles, sent: p.sentBytes, size: p.totalBytes });
           setProgress(describeProgress(p));
         });
         const picks = backgroundPicks.filter((index) => uploadedIds[index]);
@@ -191,12 +213,14 @@ export default function TransferWorkspace({ initialTransfers, knownEmails: initi
       transferId = "";
       setResultUrl(finish.publicUrl);
       clearQueue(); setArchiveSelection(EMPTY_SELECTION); clearArchiveSelection(); setTitle(""); setMessage(""); setPassword("");
+      setOutcome({ tone: finish.email?.failed.length ? "warn" : "done", title: sendTitle });
       if (finish.email?.previewSuppressed) setProgress("Ready · emails aren't sent from previews, so copy the link below.");
       else if (finish.email?.failed.length) setProgress("Transfer is live, but the email to " + finish.email.failed.join(", ") + " didn't send. Copy the link below and send it yourself.");
       else setProgress("Sent");
       await refresh();
     } catch (error) {
       const reason = error instanceof Error ? error.message : "Transfer failed.";
+      setOutcome({ tone: "warn", title: sendTitle });
       if (transferId) {
         // Tidy up the half-finished transfer so nothing is left behind.
         await postTransferAction({ action: "abort", transferId }).catch(() => {});
@@ -213,9 +237,50 @@ export default function TransferWorkspace({ initialTransfers, knownEmails: initi
 
   const hasFiles = queue.length > 0 || archiveSelection.objectKeys.length > 0 || archiveSelection.folderPaths.length > 0;
   const ready = hasFiles && recipient.trim() && title.trim();
+  const showStrip = sending || outcome !== null;
+  const firstShown = page * PICK_PAGE_SIZE + 1;
+  const lastShown = Math.min((page + 1) * PICK_PAGE_SIZE, pickableAll.length);
 
   return (
-    <main className={styles.page}>
+    <main className={styles.page + (showStrip ? " " + styles.withStrip : "")}>
+      {showStrip ? (
+        <div
+          className={styles.strip + " " + (sending ? styles.stripBusy : outcome?.tone === "warn" ? styles.stripWarn : styles.stripDone)}
+          role="status"
+          aria-live="polite"
+        >
+          <div className={styles.stripText}>
+            <strong>
+              {sending
+                ? counts
+                  ? "Uploading " + Math.min(counts.done + 1, counts.total).toLocaleString("en-GB") + " of " + counts.total.toLocaleString("en-GB") + (counts.total === 1 ? " file" : " files")
+                  : "Sending…"
+                : outcome?.tone === "warn" ? "Transfer needs attention" : "Transfer sent"}
+              {sendingTitle ? <span className={styles.stripTitle}> · {sendingTitle}</span> : null}
+            </strong>
+            <span>
+              {sending
+                ? counts && counts.done < counts.total
+                  ? bytes(counts.sent) + " of " + bytes(counts.size) + " · keep this tab open until it finishes"
+                  : progress || "Keep this tab open until it finishes"
+                : progress === "Sent" && sentToText ? "Emailed to " + sentToText : progress}
+            </span>
+          </div>
+          {sending ? (
+            <span className={styles.stripPercent}>{percent ?? 0}%</span>
+          ) : (
+            <span className={styles.stripActions}>
+              {resultUrl ? <a href={resultUrl} target="_blank" rel="noopener">Open ↗</a> : null}
+              <button type="button" onClick={() => setOutcome(null)} aria-label="Close">×</button>
+            </span>
+          )}
+          {sending ? (
+            <div className={styles.stripBar} role="progressbar" aria-valuenow={percent ?? 0} aria-valuemin={0} aria-valuemax={100}>
+              <span style={{ width: Math.max(2, percent ?? 0) + "%" }} />
+            </div>
+          ) : null}
+        </div>
+      ) : null}
       <section className={styles.sendColumn}>
         <div
           className={styles.card + (dragging ? " " + styles.cardDragging : "")}
@@ -261,7 +326,7 @@ export default function TransferWorkspace({ initialTransfers, knownEmails: initi
               </div>
             )}
 
-            {pickable.length > 0 && (
+            {pickableAll.length > 0 && (
               <details className={styles.backgrounds} open={backgroundPicks.length > 0 || undefined}>
                 <summary>
                   <span>Client page photos</span>
@@ -284,6 +349,13 @@ export default function TransferWorkspace({ initialTransfers, knownEmails: initi
                     );
                   })}
                 </div>
+                {pickPages > 1 ? (
+                  <div className={styles.pager}>
+                    <button type="button" onClick={() => setPickPage(page - 1)} disabled={page === 0}>‹ Previous</button>
+                    <span>{firstShown.toLocaleString("en-GB")}–{lastShown.toLocaleString("en-GB")} of {pickableAll.length.toLocaleString("en-GB")} · page {page + 1} of {pickPages}</span>
+                    <button type="button" onClick={() => setPickPage(page + 1)} disabled={page >= pickPages - 1}>Next ›</button>
+                  </div>
+                ) : null}
                 {backgroundPicks.length ? <button type="button" className={styles.linkButton} onClick={() => setBackgroundPicks([])}>Use defaults instead</button> : null}
               </details>
             )}
