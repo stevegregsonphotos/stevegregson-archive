@@ -49,6 +49,7 @@ import ProofingPresentationEditor from "./ProofingPresentationEditor";
 import ProofingSelectionCopy from "./ProofingSelectionCopy";
 import ProofingConsolidationEditor from "./ProofingConsolidationEditor";
 import ProofingSidebarStatus from "./ProofingSidebarStatus";
+import ProofingThumbnails from "./ProofingThumbnails";
 import ProofingSettingsEditor from "./ProofingSettingsEditor";
 import ProofingUrlEditor from "./ProofingUrlEditor";
 import ProofingWorkspace from "./ProofingWorkspace";
@@ -1195,6 +1196,11 @@ export default async function ProofingGalleryPage({
         <aside className="sp-gallery-admin-sidebar">
           <ProofingCoverPicker
             {...coverPickerProps}
+          />
+
+          <ProofingThumbnails
+            galleryId={gallery.id}
+            imageCount={gallery.images.length}
           />
 
           <div className="sp-gallery-sidebar-card">

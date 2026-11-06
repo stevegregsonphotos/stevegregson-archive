@@ -12,6 +12,10 @@ import {
   useState,
 } from "react";
 import { useRouter } from "next/navigation";
+import {
+  makeProofThumbnail,
+  uploadProofThumbnail,
+} from "@/lib/proofing/thumbnail-client";
 
 const MAX_PROOF_DIMENSION = 2400;
 const MAX_UPLOAD_BYTES = 3.75 * 1024 * 1024;
@@ -265,6 +269,7 @@ type SignedUploadJob = {
   imageId: string;
   webFilename: string;
   uploadUrl: string;
+  thumbUploadUrl?: string;
 };
 
 async function uploadOne(
@@ -289,6 +294,16 @@ async function uploadOne(
     throw new Error(
       `Upload failed (HTTP ${r2Response.status}).`,
     );
+  }
+
+  // The small grid thumbnail. Not fatal: without it the gallery just
+  // shows the full proof, and "Make thumbnails" can fill it in later.
+  if (signed.thumbUploadUrl) {
+    await makeProofThumbnail(prepared.file)
+      .then((thumb) =>
+        uploadProofThumbnail(signed.thumbUploadUrl as string, thumb),
+      )
+      .catch(() => undefined);
   }
 
   return {

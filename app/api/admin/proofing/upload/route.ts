@@ -4,14 +4,18 @@ import {
 } from "@/lib/backstage-auth";
 
 import {
+  createProofingImageDownloadUrl,
   createProofingImageUploadUrl,
+  createProofingThumbUploadUrl,
   deleteProofingImage,
+  listProofingThumbs,
 } from "../../../../../lib/proofing/image-storage";
 
 import { NextResponse } from "next/server";
 
 import {
   commitProofingImages,
+  listProofingImageFiles,
   proofingGalleryExists,
 } from "../../../../../lib/proofing/repository";
 
@@ -28,6 +32,7 @@ type UploadRequest = {
   originalFilename?: unknown;
   originalFilenames?: unknown;
   images?: unknown;
+  webFilenames?: unknown;
 };
 
 type CommitImage = {
@@ -192,6 +197,12 @@ export async function POST(
                   galleryId,
                   webFilename,
                 ),
+              // The small grid thumbnail goes up alongside the proof.
+              thumbUploadUrl:
+                await createProofingThumbUploadUrl(
+                  galleryId,
+                  webFilename,
+                ),
             };
           },
         ),
@@ -201,6 +212,68 @@ export async function POST(
       ok: true,
       jobs,
     });
+  }
+
+  /*
+   * Thumbnails: which photos still need one (photos uploaded before
+   * thumbnails existed). Steve's browser then makes them.
+   */
+  if (action === "thumbs-status") {
+    const [images, thumbs] = await Promise.all([
+      listProofingImageFiles(galleryId),
+      listProofingThumbs(galleryId),
+    ]);
+    return NextResponse.json({
+      ok: true,
+      total: images.length,
+      missing: images
+        .filter((image) => !thumbs.has(image.webFilename))
+        .map((image) => image.webFilename),
+    });
+  }
+
+  /*
+   * For up to 24 photos: a link to read the proof and a link to upload
+   * its thumbnail. The photos move browser <-> R2 only, never via Vercel.
+   */
+  if (action === "presign-thumbs") {
+    const requested = Array.isArray(body.webFilenames)
+      ? body.webFilenames.map(stringValue).filter(Boolean)
+      : [];
+
+    if (requested.length === 0 || requested.length > 24) {
+      return NextResponse.json(
+        {
+          ok: false,
+          message: "Between 1 and 24 photos are required.",
+        },
+        { status: 400 },
+      );
+    }
+
+    const known = new Set(
+      (await listProofingImageFiles(galleryId)).map(
+        (image) => image.webFilename,
+      ),
+    );
+
+    const jobs = await Promise.all(
+      requested
+        .filter((webFilename) => known.has(webFilename))
+        .map(async (webFilename) => ({
+          webFilename,
+          sourceUrl: await createProofingImageDownloadUrl(
+            galleryId,
+            webFilename,
+          ),
+          thumbUploadUrl: await createProofingThumbUploadUrl(
+            galleryId,
+            webFilename,
+          ),
+        })),
+    );
+
+    return NextResponse.json({ ok: true, jobs });
   }
 
   /*

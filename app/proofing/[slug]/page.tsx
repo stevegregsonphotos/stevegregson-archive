@@ -11,6 +11,10 @@ import {
   getProofingConsolidatedSelection,
 } from "../../../lib/proofing/consolidated-repository";
 
+import {
+  createProofingThumbUrls,
+} from "../../../lib/proofing/image-storage";
+
 import ProofingGalleryClient from "./ProofingGalleryClient";
 import ProofingGalleryEntry from "./ProofingGalleryEntry";
 
@@ -197,6 +201,17 @@ export default async function ProofingClientPage({
     await getProofingConsolidatedSelection(
       gallery.id,
     );
+
+  /*
+   * Light thumbnail links for the whole grid, signed here in one go so the
+   * browser fetches them straight from storage (no trip through Vercel
+   * per photo). If signing fails the grid still works with full proofs.
+   */
+  const thumbUrls =
+    await createProofingThumbUrls(
+      gallery.id,
+      orderedImages.map((image) => image.webFilename),
+    ).catch(() => new Map<string, string>());
 
   /*
    * Older submitted selections were created
@@ -386,6 +401,7 @@ export default async function ProofingClientPage({
     alt: image.alt,
     width: image.width,
     height: image.height,
+    thumbUrl: thumbUrls.get(image.webFilename),
   }),
 )}
             initialFavourites={

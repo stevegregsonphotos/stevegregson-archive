@@ -3504,6 +3504,61 @@
   background: #181715;
 }
 
+.sp-gallery-thumbs p {
+  margin: 0.5rem 0 0;
+  color: rgba(242, 238, 230, 0.62);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.sp-gallery-thumbs-title {
+  color: #f2eee6;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.sp-gallery-thumbs p.sp-gallery-thumbs-good {
+  color: #8fc9a4;
+}
+
+.sp-gallery-thumbs p.sp-gallery-thumbs-note {
+  color: #e2a86b;
+}
+
+.sp-gallery-thumbs-button {
+  margin-top: 0.8rem;
+  width: 100%;
+  border: 0;
+  padding: 0.7rem 0.9rem;
+  background: #c7a369;
+  color: #11100f;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.sp-gallery-thumbs-button:hover {
+  background: #d6b47c;
+}
+
+.sp-gallery-thumbs-bar {
+  height: 0.28rem;
+  margin-top: 0.7rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(242, 238, 230, 0.1);
+}
+
+.sp-gallery-thumbs-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #c7a369;
+  transition: width 0.4s ease;
+}
+
 .sp-gallery-sidebar-stat {
   display: flex;
   align-items: baseline;

@@ -18,7 +18,49 @@ type ProofingClientImage = {
   alt: string;
   width: number;
   height: number;
+  /** Small, quick-loading version for the grid (if it has one). */
+  thumbUrl?: string;
 };
+
+function fullImageUrl(gallerySlug: string, imageId: string) {
+  return `/api/proofing/image?gallery=${encodeURIComponent(
+    gallerySlug,
+  )}&image=${encodeURIComponent(imageId)}`;
+}
+
+/*
+ * A grid tile. Loads the light thumbnail; if a photo has no thumbnail yet
+ * (or its link has run out), quietly falls back to the full proof.
+ */
+function GridImage({
+  gallerySlug,
+  image,
+  eager,
+}: {
+  gallerySlug: string;
+  image: ProofingClientImage;
+  eager: boolean;
+}) {
+  const full = fullImageUrl(gallerySlug, image.id);
+  const [src, setSrc] = useState(image.thumbUrl || full);
+
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={src}
+      alt={image.alt}
+      width={image.width || undefined}
+      height={image.height || undefined}
+      loading={eager ? "eager" : "lazy"}
+      decoding="async"
+      fetchPriority={eager ? "high" : "auto"}
+      onError={() => {
+        if (src !== full) setSrc(full);
+      }}
+      className="proofing-client-image"
+    />
+  );
+}
 
 type ProofingView =
   | "all"
@@ -1004,6 +1046,18 @@ export default function ProofingGalleryClient({
     viewerImageIndex < visibleImages.length - 1
       ? visibleImages[viewerImageIndex + 1]
       : null;
+
+  // Fetch the photos either side of the open one, so Next / Previous
+  // (and swiping) show them straight away.
+  useEffect(() => {
+    for (const neighbour of [nextViewerImage, previousViewerImage]) {
+      if (neighbour) {
+        const preload = new Image();
+        preload.decoding = "async";
+        preload.src = fullImageUrl(gallerySlug, neighbour.id);
+      }
+    }
+  }, [gallerySlug, nextViewerImage, previousViewerImage]);
 
   useEffect(() => {
     if (!viewerImage) {
@@ -2753,7 +2807,7 @@ export default function ProofingGalleryClient({
           favouriteImages.length === 0
         }
       >
-        {images.map((image) => {
+        {images.map((image, imageIndex) => {
           const isFavourite =
             favouriteSet.has(image.id);
 
@@ -2795,15 +2849,10 @@ export default function ProofingGalleryClient({
                       setViewerImageId(image.id)
                     }
                   >
-                    <img
-                      src={`/api/proofing/image?gallery=${encodeURIComponent(
-                        gallerySlug,
-                      )}&image=${encodeURIComponent(
-                        image.id,
-                      )}`}
-                      alt={image.alt}
-                      loading="lazy"
-                      className="proofing-client-image"
+                    <GridImage
+                      gallerySlug={gallerySlug}
+                      image={image}
+                      eager={imageIndex < 8}
                     />
                   </button>
 
@@ -2990,13 +3039,22 @@ export default function ProofingGalleryClient({
             >
               <div className="proofing-viewer-image-wrap">
                 <img
-                  src={`/api/proofing/image?gallery=${encodeURIComponent(
-                    gallerySlug,
-                  )}&image=${encodeURIComponent(
-                    viewerImage.id,
-                  )}`}
+                  key={viewerImage.id}
+                  src={fullImageUrl(gallerySlug, viewerImage.id)}
                   alt={viewerImage.alt}
                   className="proofing-viewer-image"
+                  // The thumbnail shows straight away while the full
+                  // proof arrives on top of it.
+                  style={
+                    viewerImage.thumbUrl
+                      ? {
+                          backgroundImage: `url("${viewerImage.thumbUrl}")`,
+                          backgroundSize: "contain",
+                          backgroundRepeat: "no-repeat",
+                          backgroundPosition: "center",
+                        }
+                      : undefined
+                  }
                 />
 
                 <ProofingWatermarkOverlay

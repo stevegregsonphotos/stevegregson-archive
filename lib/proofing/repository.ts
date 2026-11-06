@@ -1143,6 +1143,23 @@ export async function updateProofingGallery(
  * so thousands of thumbnails don't each download that list from the
  * database. `visitorIds` are the visitor codes from the browser's cookies.
  */
+/** Just each photo's id and stored file name (for thumbnail upkeep). */
+export async function listProofingImageFiles(
+  galleryId: string,
+) {
+  const sql = getSql();
+  const rows = (await sql`
+    SELECT id, web_filename
+    FROM proofing_images
+    WHERE gallery_id = ${galleryId}
+    ORDER BY sort_order
+  `) as Array<{ id: string; web_filename: string }>;
+  return rows.map((row) => ({
+    id: row.id,
+    webFilename: row.web_filename,
+  }));
+}
+
 export async function getProofingImageAccess(
   slug: string,
   imageId: string,

@@ -57,6 +57,111 @@ export function getProofingImageObjectKey(
   return `${safeSegment(galleryId)}/${safeSegment(webFilename)}`;
 }
 
+/*
+ * Small grid thumbnails live next to each proof as "thumb-<webFilename>",
+ * so deleting a gallery's folder removes them too.
+ */
+export function getProofingThumbFilename(
+  webFilename: string,
+) {
+  return `thumb-${safeSegment(webFilename)}`;
+}
+
+export async function createProofingThumbUploadUrl(
+  galleryId: string,
+  webFilename: string,
+) {
+  return createProofingImageUploadUrl(
+    galleryId,
+    getProofingThumbFilename(webFilename),
+  );
+}
+
+/** Proofs in this gallery that already have a thumbnail (by webFilename). */
+export async function listProofingThumbs(
+  galleryId: string,
+) {
+  const client = getClient();
+  const prefix = `${safeSegment(galleryId)}/thumb-`;
+  const found = new Set<string>();
+  let continuationToken: string | undefined;
+
+  do {
+    const page = await client.send(
+      new ListObjectsV2Command({
+        Bucket: getBucket(),
+        Prefix: prefix,
+        ContinuationToken: continuationToken,
+      }),
+    );
+    for (const item of page.Contents ?? []) {
+      if (item.Key) found.add(item.Key.slice(prefix.length));
+    }
+    continuationToken = page.IsTruncated
+      ? page.NextContinuationToken
+      : undefined;
+  } while (continuationToken);
+
+  return found;
+}
+
+/*
+ * Thumbnail links for a whole gallery, signed in one go when the page is
+ * built (instead of one trip through Vercel per photo). Links are signed
+ * for a fixed 6-hour window, so they stay identical across reloads and the
+ * browser can reuse photos it has already downloaded. Each link lasts 18
+ * hours, so a page opened late in a window still has at least 12.
+ */
+const THUMB_WINDOW_MS = 6 * 60 * 60 * 1000;
+const THUMB_LINK_SECONDS = 18 * 60 * 60;
+const thumbLinkCache = new Map<string, Map<string, string>>();
+
+export async function createProofingThumbUrls(
+  galleryId: string,
+  webFilenames: string[],
+) {
+  const window = Math.floor(Date.now() / THUMB_WINDOW_MS);
+  const cacheKey = `${galleryId}:${window}`;
+  let links = thumbLinkCache.get(cacheKey);
+
+  if (!links) {
+    // Forget older windows.
+    for (const key of thumbLinkCache.keys()) {
+      if (!key.endsWith(`:${window}`)) thumbLinkCache.delete(key);
+    }
+    links = new Map();
+    thumbLinkCache.set(cacheKey, links);
+  }
+
+  const missing = webFilenames.filter((name) => !links.has(name));
+
+  if (missing.length) {
+    const client = getClient();
+    const bucket = getBucket();
+    const signingDate = new Date(window * THUMB_WINDOW_MS);
+    const signed = await Promise.all(
+      missing.map((name) =>
+        getSignedUrl(
+          client,
+          new GetObjectCommand({
+            Bucket: bucket,
+            Key: getProofingImageObjectKey(
+              galleryId,
+              getProofingThumbFilename(name),
+            ),
+          }),
+          { expiresIn: THUMB_LINK_SECONDS, signingDate },
+        ),
+      ),
+    );
+    missing.forEach((name, index) => links.set(name, signed[index]));
+  }
+
+  return new Map(
+    webFilenames.map((name) => [name, links.get(name) as string]),
+  );
+}
+
 function getProofingNotesReportObjectKey(
   galleryId: string,
 ) {
@@ -309,6 +414,21 @@ export async function deleteProofingImage(
       Key: getProofingImageObjectKey(galleryId, webFilename),
     }),
   );
+
+  // Its thumbnail too (if it has one; nothing happens if not).
+  if (!webFilename.startsWith("thumb-")) {
+    await getClient()
+      .send(
+        new DeleteObjectCommand({
+          Bucket: getBucket(),
+          Key: getProofingImageObjectKey(
+            galleryId,
+            getProofingThumbFilename(webFilename),
+          ),
+        }),
+      )
+      .catch(() => undefined);
+  }
 }
 
 async function deleteProofingObjectsWithPrefix(

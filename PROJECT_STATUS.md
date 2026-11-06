@@ -119,6 +119,25 @@ cost an extra Vercel build.
 
 ## Waiting / in progress
 
+- **Proofing quick-loading thumbnails (6 Nov ~16:00, committed locally, NOT
+  pushed — waiting for Steve's OK, then test push, then "go live"):** grid
+  tiles were the full 2400px proofs (measured 3.7 MB each; Mountview
+  Graduation 533 photos ≈ 1.5 GB per visitor) and each went through
+  `/api/proofing/image` (one Vercel call per tile). Now: thumbnails
+  `<galleryId>/thumb-<webFilename>` in R2 (640px short side, webp 0.74,
+  ~60 KB), made in the browser (`lib/proofing/thumbnail-client.ts`).
+  New uploads make them (`thumbUploadUrl` from presign-batch). Older photos:
+  sidebar card "Quick-loading thumbnails" › Make thumbnails
+  (`ProofingThumbnails.tsx`; upload API actions `thumbs-status`,
+  `presign-thumbs`; R2 GET CORS from www confirmed working). Visitor page
+  signs all thumb links in one go (`createProofingThumbUrls`: fixed 6 h
+  signing window, 18 h expiry, cached per server → stable URLs, browser
+  reuses them; 533 signs ≈ 0.25 s). Grid `GridImage` falls back to the full
+  proof if a thumb is missing; first 8 tiles eager. Viewer: thumb shown
+  behind the full proof, next/previous preloaded. `deleteProofingImage`
+  also removes the thumb. After go live: Steve opens the gallery in
+  Backstage and presses Make thumbnails (keep tab open ~5–10 min).
+
 - **LIVE 6 Nov ~14:55: Transfers progress strip + full photo picker.**
   `app/admin/transfers/TransferWorkspace.tsx` + `workspace.module.css`.
   (1) While sending, a strip sits right under the Backstage menu (sticky at
