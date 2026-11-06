@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 6 November 2026, 14:55 (London)
+Last updated: 6 November 2026, 18:31 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -119,8 +119,8 @@ cost an extra Vercel build.
 
 ## Waiting / in progress
 
-- **Safari download fix #3 (6 Nov ~18:20, committed locally — waiting for
-  "go live"). Fixes #1/#2 FAILED in Steve's Safari:** the stored proofs are
+- **LIVE 6 Nov 18:31: Safari download fix #3 — Steve to confirm in Safari
+  + iPhone. Fixes #1/#2 FAILED in Steve's Safari:** the stored proofs are
   WebP and Safari won't take WebP downloads (Steve had hit this before —
   that's why the gallery converts to JPEG), and a download that starts
   after an await (fetch + convert) stalls as "<name>.download". Now: when
@@ -132,16 +132,14 @@ cost an extra Vercel build.
   `/api/proofing/download` now unused (harmless). NOT tested in real Safari
   (no WebKit here) — Steve must confirm.
 
-- **Safari download fix #2 (6 Nov ~16:45, committed locally — waiting for
-  "go live"):** fix #1 (live 16:30) still failed in Safari: it framed our
+- **Safari download fix #2 (live 16:40, FAILED in Steve's Safari):** fix #1 (live 16:30) still failed in Safari: it framed our
   own `/api/proofing/download`, but the site sends `X-Frame-Options: DENY`
   (next.config.ts) so Safari blocks the frame. Now, like Transfers, the page
   fetches `/api/proofing/download?…&link=1` (JSON `{url}` = R2 presigned
   link with attachment disposition) and frames THAT URL. Test harnesses must
   include the real headers — the 16:30 test mocked the route and missed it.
 
-- **LIVE 6 Nov 16:30: Safari download fix.** (was waiting for
-  "go live"):** in Safari the viewer Download left a stalled
+- **Safari download fix #1 (live 16:30, FAILED):** in Safari the viewer Download left a stalled
   "<name>.download" file (page-built JPEG blob saved after an await).
   `isAppleWebKit()` (navigator.vendor "Apple" = Mac Safari + all iOS
   browsers) → `downloadThroughFrame(/api/proofing/download?…)` hidden
