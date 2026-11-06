@@ -23,46 +23,15 @@ type ProofingClientImage = {
 };
 
 /*
- * Safari (on Mac, and every browser on iPhone/iPad) stalls downloads that
- * the page builds itself after a pause, leaving a half-finished
- * ".download" file. There, photos download straight from storage through a
- * hidden frame instead (the same way client Transfers do, which works).
+ * Safari (on Mac, and every browser on iPhone/iPad) stalls a download that
+ * starts a moment after the click (leaving a half-finished ".download"
+ * file), and doesn't cope with WebP. See preparedJpeg / readyArchive.
  */
 function isAppleWebKit() {
   return (
     typeof navigator !== "undefined" &&
     /apple/i.test(navigator.vendor || "")
   );
-}
-
-function downloadThroughFrame(url: string) {
-  const frame = document.createElement("iframe");
-  frame.style.display = "none";
-  frame.setAttribute("aria-hidden", "true");
-  frame.src = url;
-  document.body.appendChild(frame);
-  window.setTimeout(() => frame.remove(), 5 * 60 * 1000);
-}
-
-/** Asks the site for this photo's storage download link (Safari route). */
-async function storageDownloadLink(gallerySlug: string, imageId: string) {
-  const response = await fetch(
-    `/api/proofing/download?gallery=${encodeURIComponent(
-      gallerySlug,
-    )}&image=${encodeURIComponent(imageId)}&link=1`,
-    { cache: "no-store" },
-  );
-  const result = (await response.json().catch(() => ({}))) as {
-    ok?: boolean;
-    url?: string;
-    message?: string;
-  };
-  if (!response.ok || !result.ok || !result.url) {
-    throw new Error(
-      result.message || "The photograph could not be downloaded.",
-    );
-  }
-  return result.url;
 }
 
 function fullImageUrl(gallerySlug: string, imageId: string) {
@@ -460,6 +429,25 @@ export default function ProofingGalleryClient({
 
   // the gallery has it switched on) appears under the Download button.
 
+  /*
+   * Safari (Mac and every iPhone/iPad browser) only saves a download that
+   * starts the instant you click, and won't take WebP. So the JPEG of the
+   * open photo is made in the background as soon as it's opened; the
+   * Download button is then a plain link to that ready JPEG.
+   */
+  const [preparedJpeg, setPreparedJpeg] = useState<{
+    imageId: string;
+    url: string;
+    filename: string;
+  } | null>(null);
+  const [preparingJpegId, setPreparingJpegId] =
+    useState<string | null>(null);
+  // Favourites in Safari: the zip is made first, then a "Save" link appears.
+  const [readyArchive, setReadyArchive] = useState<{
+    url: string;
+    filename: string;
+    imageIds: string[];
+  } | null>(null);
   const [savedImageId, setSavedImageId] =
 
     useState<string | null>(null);
@@ -1099,6 +1087,61 @@ export default function ProofingGalleryClient({
     viewerImageIndex < visibleImages.length - 1
       ? visibleImages[viewerImageIndex + 1]
       : null;
+
+  const viewerCanDownload =
+    !!viewerImage &&
+    (downloadPermission === "web" ||
+      downloadPermission === "single" ||
+      (downloadPermission === "selected" &&
+        favouriteSet.has(viewerImage.id)));
+
+  useEffect(() => {
+    if (!viewerImage || !viewerCanDownload) return;
+    if (preparedJpeg?.imageId === viewerImage.id) return;
+
+    let cancelled = false;
+    const image = viewerImage;
+    // Short pause so flicking quickly through photos doesn't prepare each.
+    const timer = window.setTimeout(async () => {
+      setPreparingJpegId(image.id);
+      try {
+        const response = await fetch(
+          `/api/proofing/download?gallery=${encodeURIComponent(
+            gallerySlug,
+          )}&image=${encodeURIComponent(image.id)}`,
+          { cache: "no-store" },
+        );
+        if (!response.ok) throw new Error("HTTP " + response.status);
+        const jpeg = await convertProofingDownloadBlobToJpeg(
+          await response.blob(),
+        );
+        if (cancelled) return;
+        const url = URL.createObjectURL(jpeg);
+        setPreparedJpeg((previous) => {
+          if (previous) {
+            const old = previous.url;
+            // Safari may still be saving it; let go a little later.
+            window.setTimeout(() => URL.revokeObjectURL(old), 120_000);
+          }
+          return {
+            imageId: image.id,
+            url,
+            filename: browserDownloadFilename(image.originalFilename),
+          };
+        });
+      } catch {
+        // The Download button then falls back to downloading on click.
+      } finally {
+        if (!cancelled) setPreparingJpegId(null);
+      }
+    }, 350);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewerImage?.id, viewerCanDownload, gallerySlug]);
 
   // Fetch the photos either side of the open one, so Next / Previous
   // (and swiping) show them straight away.
@@ -2038,27 +2081,6 @@ export default function ProofingGalleryClient({
     );
     setDownloadError(null);
 
-    if (isAppleWebKit()) {
-      try {
-        downloadThroughFrame(
-          await storageDownloadLink(gallerySlug, image.id),
-        );
-        setSavedImageId(image.id);
-        await recordDownloadSuccess("single", [image.id]).catch(
-          () => undefined,
-        );
-      } catch (error) {
-        setDownloadError(
-          error instanceof Error
-            ? error.message
-            : "The photograph could not be downloaded.",
-        );
-      } finally {
-        setDownloadingImageId(null);
-      }
-      return;
-    }
-
     try {
       /*
        * This request still passes through the
@@ -2194,26 +2216,6 @@ export default function ProofingGalleryClient({
         );
       }
 
-      // Safari: one photo after another, straight from storage (a zip
-      // built in the page stalls there).
-      if (isAppleWebKit()) {
-        for (const [index, file] of result.files.entries()) {
-          if (index > 0) {
-            await new Promise((resolve) => window.setTimeout(resolve, 900));
-          }
-          downloadThroughFrame(
-            await storageDownloadLink(gallerySlug, file.imageId),
-          );
-        }
-
-        await recordDownloadSuccess(
-          "archive",
-          result.files.map((file) => file.imageId),
-          result.archiveFilename,
-        ).catch(() => undefined);
-        return;
-      }
-
       const { default: JSZip } =
         await import("jszip");
 
@@ -2267,6 +2269,20 @@ export default function ProofingGalleryClient({
           type: "blob",
           compression: "STORE",
         });
+
+      // Safari: offer the finished zip as a link to click (a download
+      // started after this wait would stall there).
+      if (isAppleWebKit()) {
+        setReadyArchive((previous) => {
+          if (previous) URL.revokeObjectURL(previous.url);
+          return {
+            url: URL.createObjectURL(archive),
+            filename: result.archiveFilename as string,
+            imageIds: (result.files ?? []).map((file) => file.imageId),
+          };
+        });
+        return;
+      }
 
       saveBrowserBlob(
         archive,
@@ -2520,7 +2536,28 @@ export default function ProofingGalleryClient({
         </button>
       ) : null}
 
-      {(downloadPermission === "selected" ||
+      {readyArchive && view === "favourites" ? (
+        <a
+          className="proofing-toolbar-download-button proofing-toolbar-save-ready"
+          href={readyArchive.url}
+          download={readyArchive.filename}
+          onClick={() => {
+            const ready = readyArchive;
+            void recordDownloadSuccess(
+              "archive",
+              ready.imageIds,
+              ready.filename,
+            ).catch(() => undefined);
+            window.setTimeout(() => {
+              setReadyArchive(null);
+              URL.revokeObjectURL(ready.url);
+            }, 120_000);
+          }}
+        >
+          Ready — save {readyArchive.imageIds.length} photo
+          {readyArchive.imageIds.length === 1 ? "" : "s"} (zip)
+        </a>
+      ) : (downloadPermission === "selected" ||
         downloadPermission === "single") &&
       view === "favourites" &&
       favourites.length > 0 ? (
@@ -3390,12 +3427,30 @@ export default function ProofingGalleryClient({
                   downloadPermission === "single" ||
                   (downloadPermission === "selected" &&
                     favouriteSet.has(viewerImage.id)) ? (
+                    preparedJpeg?.imageId === viewerImage.id ? (
+                      <a
+                        className="proofing-viewer-download"
+                        href={preparedJpeg.url}
+                        download={preparedJpeg.filename}
+                        onClick={() => {
+                          setSavedImageId(viewerImage.id);
+                          void recordDownloadSuccess("single", [
+                            viewerImage.id,
+                          ]).catch(() => undefined);
+                        }}
+                      >
+                        {downloadPermission === "selected"
+                          ? "Download selected photo"
+                          : "Download photo"}
+                      </a>
+                    ) : (
                     <button
                       type="button"
                       className="proofing-viewer-download"
                       disabled={
                         downloadingImageId ===
-                        viewerImage.id
+                          viewerImage.id ||
+                        preparingJpegId === viewerImage.id
                       }
                       onClick={() =>
                         void downloadSingleImage(
@@ -3403,7 +3458,9 @@ export default function ProofingGalleryClient({
                         )
                       }
                     >
-                      {downloadingImageId ===
+                      {preparingJpegId === viewerImage.id
+                        ? "Preparing download…"
+                        : downloadingImageId ===
                       viewerImage.id
                         ? "Downloading…"
                         : downloadPermission ===
@@ -3411,6 +3468,7 @@ export default function ProofingGalleryClient({
                           ? "Download selected photo"
                           : "Download photo"}
                     </button>
+                    )
                   ) : null}
                   {savedImageId === viewerImage.id ? (
                     <p className="proofing-viewer-saved" role="status">

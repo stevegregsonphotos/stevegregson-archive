@@ -119,6 +119,19 @@ cost an extra Vercel build.
 
 ## Waiting / in progress
 
+- **Safari download fix #3 (6 Nov ~18:20, committed locally — waiting for
+  "go live"). Fixes #1/#2 FAILED in Steve's Safari:** the stored proofs are
+  WebP and Safari won't take WebP downloads (Steve had hit this before —
+  that's why the gallery converts to JPEG), and a download that starts
+  after an await (fetch + convert) stalls as "<name>.download". Now: when
+  a photo opens in the viewer (350 ms debounce), its JPEG is made in the
+  background (`preparedJpeg`), and Download is a plain `<a href=blob
+  download=name.jpg>` → instant click, JPEG, all browsers. Favourites in
+  Safari: zip built, then gold "Ready — save N photos (zip)" link
+  (`readyArchive`); other browsers auto-save as before. `?link=1` on
+  `/api/proofing/download` now unused (harmless). NOT tested in real Safari
+  (no WebKit here) — Steve must confirm.
+
 - **Safari download fix #2 (6 Nov ~16:45, committed locally — waiting for
   "go live"):** fix #1 (live 16:30) still failed in Safari: it framed our
   own `/api/proofing/download`, but the site sends `X-Frame-Options: DENY`

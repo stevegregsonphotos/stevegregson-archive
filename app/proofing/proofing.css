@@ -2840,3 +2840,17 @@
 .proofing-viewer-action-buttons:has(.proofing-viewer-saved) {
   justify-content: center;
 }
+
+/* Safari favourites: the finished zip, ready to save with one click. */
+a.proofing-toolbar-save-ready {
+  border-color: #c7a369;
+  background: #c7a369;
+  color: #11100f;
+  text-decoration: none;
+}
+
+a.proofing-viewer-download {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
