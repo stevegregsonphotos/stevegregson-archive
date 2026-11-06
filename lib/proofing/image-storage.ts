@@ -77,6 +77,132 @@ export async function createProofingThumbUploadUrl(
   );
 }
 
+/*
+ * Full-size download originals: Steve's own JPEG, kept next to the proof as
+ * "orig-<proof name>.jpg" for galleries where visitors download. Removable
+ * in one go from Backstage (they're the big files).
+ */
+export function getProofingOriginalFilename(
+  webFilename: string,
+) {
+  return `orig-${safeSegment(webFilename).replace(/\.[^.]+$/, "")}.jpg`;
+}
+
+export async function createProofingOriginalUploadUrl(
+  galleryId: string,
+  webFilename: string,
+) {
+  return getSignedUrl(
+    getClient(),
+    new PutObjectCommand({
+      Bucket: getBucket(),
+      Key: getProofingImageObjectKey(
+        galleryId,
+        getProofingOriginalFilename(webFilename),
+      ),
+      ContentType: "image/jpeg",
+      CacheControl: "private, max-age=31536000",
+    }),
+    { expiresIn: 60 * 60 },
+  );
+}
+
+/** Proofs with a full-size original, as a set of their webFilenames. */
+export async function listProofingOriginals(
+  galleryId: string,
+) {
+  const keys = await listProofingObjectNames(galleryId, "orig-");
+  // "orig-<base>.jpg" → match against each proof's "<base>.<ext>".
+  return new Set([...keys].map((name) => name.replace(/\.jpg$/, "")));
+}
+
+export function proofingBaseName(webFilename: string) {
+  return safeSegment(webFilename).replace(/\.[^.]+$/, "");
+}
+
+/** Deletes every full-size original in a gallery. Returns how many. */
+export async function deleteProofingOriginals(
+  galleryId: string,
+) {
+  const names = [...(await listProofingObjectNames(galleryId, "orig-"))];
+  const client = getClient();
+  for (let start = 0; start < names.length; start += 20) {
+    await Promise.all(
+      names.slice(start, start + 20).map((name) =>
+        client.send(
+          new DeleteObjectCommand({
+            Bucket: getBucket(),
+            Key: getProofingImageObjectKey(galleryId, `orig-${name}`),
+          }),
+        ),
+      ),
+    );
+  }
+  return names.length;
+}
+
+/**
+ * Download link for a proof: the full-size original JPEG when there is
+ * one, otherwise the proof itself.
+ */
+export async function createProofingBestDownloadUrl(
+  galleryId: string,
+  webFilename: string,
+  baseName?: string,
+) {
+  const original = getProofingOriginalFilename(webFilename);
+  const hasOriginal = await proofingImageExists(galleryId, original);
+  if (!hasOriginal) {
+    return createProofingImageDownloadUrl(
+      galleryId,
+      webFilename,
+      baseName ? `${baseName}.webp` : undefined,
+    );
+  }
+  return getSignedUrl(
+    getClient(),
+    new GetObjectCommand({
+      Bucket: getBucket(),
+      Key: getProofingImageObjectKey(galleryId, original),
+      ResponseContentType: "image/jpeg",
+      ...(baseName
+        ? {
+            ResponseContentDisposition: `attachment; filename="${baseName.replace(/[\r\n"]/g, "")}.jpg"`,
+          }
+        : {}),
+    }),
+    { expiresIn: 15 * 60 },
+  );
+}
+
+async function listProofingObjectNames(
+  galleryId: string,
+  namePrefix: string,
+) {
+  const client = getClient();
+  const prefix = `${safeSegment(galleryId)}/${namePrefix}`;
+  const found = new Set<string>();
+  let continuationToken: string | undefined;
+
+  do {
+    const page = await client.send(
+      new ListObjectsV2Command({
+        Bucket: getBucket(),
+        Prefix: prefix,
+        ContinuationToken: continuationToken,
+      }),
+    );
+    for (const item of page.Contents ?? []) {
+      if (item.Key) found.add(item.Key.slice(prefix.length));
+    }
+    continuationToken = page.IsTruncated
+      ? page.NextContinuationToken
+      : undefined;
+  } while (continuationToken);
+
+  return found;
+}
+
 /** Proofs in this gallery that already have a thumbnail (by webFilename). */
 export async function listProofingThumbs(
   galleryId: string,
@@ -415,8 +541,22 @@ export async function deleteProofingImage(
     }),
   );
 
-  // Its thumbnail too (if it has one; nothing happens if not).
-  if (!webFilename.startsWith("thumb-")) {
+  // Its thumbnail and full-size original too (nothing happens if none).
+  if (
+    !webFilename.startsWith("thumb-") &&
+    !webFilename.startsWith("orig-")
+  ) {
+    await getClient()
+      .send(
+        new DeleteObjectCommand({
+          Bucket: getBucket(),
+          Key: getProofingImageObjectKey(
+            galleryId,
+            getProofingOriginalFilename(webFilename),
+          ),
+        }),
+      )
+      .catch(() => undefined);
     await getClient()
       .send(
         new DeleteObjectCommand({

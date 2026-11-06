@@ -6,6 +6,10 @@ import {
 import {
   createProofingImageDownloadUrl,
   createProofingImageUploadUrl,
+  createProofingOriginalUploadUrl,
+  deleteProofingOriginals,
+  listProofingOriginals,
+  proofingBaseName,
   createProofingThumbUploadUrl,
   deleteProofingImage,
   listProofingThumbs,
@@ -230,6 +234,60 @@ export async function POST(
         .filter((image) => !thumbs.has(image.webFilename))
         .map((image) => image.webFilename),
     });
+  }
+
+  /*
+   * Full-size download originals (Steve's own JPEGs, matched to the
+   * gallery's photos by file name in his browser).
+   */
+  if (action === "originals-status") {
+    const [images, originals] = await Promise.all([
+      listProofingImageFiles(galleryId),
+      listProofingOriginals(galleryId),
+    ]);
+    return NextResponse.json({
+      ok: true,
+      total: images.length,
+      images: images.map((image) => ({
+        webFilename: image.webFilename,
+        originalFilename: image.originalFilename,
+        hasOriginal: originals.has(proofingBaseName(image.webFilename)),
+      })),
+    });
+  }
+
+  if (action === "presign-originals") {
+    const requested = Array.isArray(body.webFilenames)
+      ? body.webFilenames.map(stringValue).filter(Boolean)
+      : [];
+    if (requested.length === 0 || requested.length > 24) {
+      return NextResponse.json(
+        { ok: false, message: "Between 1 and 24 photos are required." },
+        { status: 400 },
+      );
+    }
+    const known = new Set(
+      (await listProofingImageFiles(galleryId)).map(
+        (image) => image.webFilename,
+      ),
+    );
+    const jobs = await Promise.all(
+      requested
+        .filter((webFilename) => known.has(webFilename))
+        .map(async (webFilename) => ({
+          webFilename,
+          uploadUrl: await createProofingOriginalUploadUrl(
+            galleryId,
+            webFilename,
+          ),
+        })),
+    );
+    return NextResponse.json({ ok: true, jobs });
+  }
+
+  if (action === "remove-originals") {
+    const removed = await deleteProofingOriginals(galleryId);
+    return NextResponse.json({ ok: true, removed });
   }
 
   /*

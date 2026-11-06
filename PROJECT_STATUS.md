@@ -119,6 +119,26 @@ cost an extra Vercel build.
 
 ## Waiting / in progress
 
+- **Full-size download originals (6 Nov ~19:10, committed locally — waiting
+  for "go live"):** proofs are capped at 2400px / 3.75 MB WebP
+  (`ProofingUpload.tsx` shrinks ×0.85 until it fits → Mountview proofs came
+  out 1734×1156). Now Steve can add his original JPEGs: sidebar card
+  "Full-size downloads" (`ProofingOriginals.tsx`) → choose folder/files →
+  matched to photos by `originalFilename` base name (case-insensitive) →
+  PUT untouched to R2 as `<galleryId>/orig-<proof base>.jpg` (upload API
+  actions `originals-status`, `presign-originals`, `remove-originals`).
+  `/api/proofing/download` + `download-all` use `createProofingBestDownloadUrl`
+  (HEAD for the original; JPEG + attachment `<name>.jpg`, else the proof).
+  Gallery passes a JPEG through without re-encoding
+  (`convertProofingDownloadBlobToJpeg` checks FF D8 FF). "Remove full-size
+  originals" deletes them all (downloads fall back to proofs);
+  `deleteProofingImage` removes a photo's original too. Tested: storage
+  helpers against a local S3 stand-in (moto), card + visitor download with
+  real 4000px JPEGs (bytes identical). R2 6 Nov: productions 84.77 GB,
+  proofing 2.41 GB, selected-work 0.19 GB (~87 GB total, over the 10 GB free:
+  ≈ $1.16/month; Mountview originals 2.85 GB ≈ 4p/month). Steve plans to
+  remove them after ~a month.
+
 - **LIVE 6 Nov 18:31: Safari download fix #3 — Steve to confirm in Safari
   + iPhone. Fixes #1/#2 FAILED in Steve's Safari:** the stored proofs are
   WebP and Safari won't take WebP downloads (Steve had hit this before —

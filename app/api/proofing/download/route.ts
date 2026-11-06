@@ -1,5 +1,5 @@
 import {
-  createProofingImageDownloadUrl,
+  createProofingBestDownloadUrl,
 } from "../../../../lib/proofing/image-storage";
 
 import { cookies } from "next/headers";
@@ -36,7 +36,7 @@ function downloadFilename(
     .replace(/[\r\n"]/g, "")
     .trim();
 
-  return `${safeBase || "photograph"}.webp`;
+  return safeBase || "photograph";
 }
 
 export async function GET(
@@ -204,8 +204,9 @@ export async function GET(
   }
 
   try {
+    // The full-size original JPEG if Steve added one, else the proof.
     const downloadUrl =
-      await createProofingImageDownloadUrl(
+      await createProofingBestDownloadUrl(
         gallery.id,
         image.webFilename,
         downloadFilename(

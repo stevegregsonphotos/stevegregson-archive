@@ -3559,6 +3559,43 @@
   transition: width 0.4s ease;
 }
 
+.sp-gallery-originals-link {
+  display: block;
+  margin: 0.6rem auto 0;
+  border: 0;
+  padding: 0;
+  background: none;
+  color: rgba(242, 238, 230, 0.62);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.75rem;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.sp-gallery-originals-link:hover {
+  color: #f2eee6;
+}
+
+.sp-gallery-originals-confirm {
+  margin-top: 0.6rem;
+  border-top: 1px solid rgba(242, 238, 230, 0.12);
+  padding-top: 0.6rem;
+}
+
+.sp-gallery-originals-danger {
+  width: 100%;
+  margin-top: 0.6rem;
+  border: 1px solid #e08a6b;
+  padding: 0.6rem;
+  background: transparent;
+  color: #e9a189;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
 .sp-gallery-sidebar-stat {
   display: flex;
   align-items: baseline;

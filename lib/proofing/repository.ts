@@ -1149,14 +1149,15 @@ export async function listProofingImageFiles(
 ) {
   const sql = getSql();
   const rows = (await sql`
-    SELECT id, web_filename
+    SELECT id, web_filename, original_filename
     FROM proofing_images
     WHERE gallery_id = ${galleryId}
     ORDER BY sort_order
-  `) as Array<{ id: string; web_filename: string }>;
+  `) as Array<{ id: string; web_filename: string; original_filename: string }>;
   return rows.map((row) => ({
     id: row.id,
     webFilename: row.web_filename,
+    originalFilename: row.original_filename,
   }));
 }
 

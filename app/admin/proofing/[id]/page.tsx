@@ -50,6 +50,7 @@ import ProofingSelectionCopy from "./ProofingSelectionCopy";
 import ProofingConsolidationEditor from "./ProofingConsolidationEditor";
 import ProofingSidebarStatus from "./ProofingSidebarStatus";
 import ProofingThumbnails from "./ProofingThumbnails";
+import ProofingOriginals from "./ProofingOriginals";
 import ProofingSettingsEditor from "./ProofingSettingsEditor";
 import ProofingUrlEditor from "./ProofingUrlEditor";
 import ProofingWorkspace from "./ProofingWorkspace";
@@ -1199,6 +1200,11 @@ export default async function ProofingGalleryPage({
           />
 
           <ProofingThumbnails
+            galleryId={gallery.id}
+            imageCount={gallery.images.length}
+          />
+
+          <ProofingOriginals
             galleryId={gallery.id}
             imageCount={gallery.images.length}
           />

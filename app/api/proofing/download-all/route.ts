@@ -5,7 +5,7 @@ import {
 } from "next/server";
 
 import {
-  createProofingImageDownloadUrl,
+  createProofingBestDownloadUrl,
 } from "../../../../lib/proofing/image-storage";
 import {
   getProofingGalleryBySlug,
@@ -211,7 +211,7 @@ export async function GET(
         image.id,
       filename,
       url:
-        await createProofingImageDownloadUrl(
+        await createProofingBestDownloadUrl(
           gallery.id,
           image.webFilename,
         ),

@@ -1134,7 +1134,7 @@ export default function ProofingGalleryClient({
       } finally {
         if (!cancelled) setPreparingJpegId(null);
       }
-    }, 350);
+    }, 600);
 
     return () => {
       cancelled = true;
@@ -1582,6 +1582,14 @@ export default function ProofingGalleryClient({
   async function convertProofingDownloadBlobToJpeg(
     sourceBlob: Blob,
   ) {
+    // Steve's full-size original is already a JPEG: hand it over untouched.
+    const head = new Uint8Array(await sourceBlob.slice(0, 3).arrayBuffer());
+    if (head[0] === 0xff && head[1] === 0xd8 && head[2] === 0xff) {
+      return sourceBlob.type === "image/jpeg"
+        ? sourceBlob
+        : new Blob([sourceBlob], { type: "image/jpeg" });
+    }
+
     const bitmap =
       await createImageBitmap(
         sourceBlob,
