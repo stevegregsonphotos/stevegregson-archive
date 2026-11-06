@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import {
   getProofingCompanies,
   getProofingContacts,
@@ -1174,12 +1175,20 @@ export default async function ProofingGalleryPage({
             Preview
           </Link>
 
-          <ShareGalleryButton
-            galleryId={gallery.id}
-            recipientCount={
-              gallery.recipients?.length ?? 0
-            }
-          />
+          <Suspense fallback={null}>
+            <ShareGalleryButton
+              galleryId={gallery.id}
+              galleryTitle={gallery.title}
+              galleryUrl={`https://www.stevegregson.com/proofing/${encodeURIComponent(gallery.slug)}`}
+              isLive={gallery.status === "live"}
+              recipients={(gallery.recipients ?? []).map((recipient) => ({
+                id: recipient.id,
+                name: recipient.name,
+                company: recipient.company,
+                email: recipient.email,
+              }))}
+            />
+          </Suspense>
         </div>
       </header>
 

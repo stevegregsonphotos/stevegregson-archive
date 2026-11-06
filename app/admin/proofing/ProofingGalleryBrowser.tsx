@@ -209,82 +209,6 @@ export default function ProofingGalleryBrowser({
       ?.removeAttribute("open");
   }
 
-  async function shareGallery(
-    gallery: GalleryBrowserItem,
-    button: HTMLButtonElement,
-  ) {
-    closeMenu(button);
-
-    if (gallery.recipientCount === 0) {
-      window.alert(
-        "This gallery has no recipients assigned.",
-      );
-      return;
-    }
-
-    const confirmed =
-      window.confirm(
-        `Send "${gallery.title}" to ${gallery.recipientCount} recipient${
-          gallery.recipientCount === 1
-            ? ""
-            : "s"
-        } now?`,
-      );
-
-    if (!confirmed) {
-      return;
-    }
-
-    try {
-      const response =
-        await fetch(
-          "/api/admin/proofing/share",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
-            body: JSON.stringify({
-              galleryId: gallery.id,
-            }),
-          },
-        );
-
-      const result =
-        (await response.json()) as {
-          ok?: boolean;
-          message?: string;
-          sent?: number;
-        };
-
-      if (
-        !response.ok ||
-        !result.ok
-      ) {
-        throw new Error(
-          result.message ||
-            "Gallery could not be shared.",
-        );
-      }
-
-      window.alert(
-        result.message ||
-          `Gallery sent to ${result.sent ?? gallery.recipientCount} recipient${
-            (result.sent ??
-              gallery.recipientCount) === 1
-              ? ""
-              : "s"
-          }.`,
-      );
-    } catch (error) {
-      window.alert(
-        error instanceof Error
-          ? error.message
-          : "Gallery could not be shared.",
-      );
-    }
-  }
 
   async function copyGalleryUrl(
     gallery: GalleryBrowserItem,
@@ -634,15 +558,12 @@ export default function ProofingGalleryBrowser({
                   </summary>
 
                   <div className={styles.menu} role="menu">
-                    <button
-                      type="button"
+                    <Link
                       role="menuitem"
-                      onClick={(event) =>
-                        void shareGallery(gallery, event.currentTarget)
-                      }
+                      href={`/admin/proofing/${gallery.id}?share=1`}
                     >
                       Share gallery
-                    </button>
+                    </Link>
 
                     <Link
                       role="menuitem"

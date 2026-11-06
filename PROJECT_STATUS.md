@@ -119,6 +119,18 @@ cost an extra Vercel build.
 
 ## Waiting / in progress
 
+- **Share Gallery panel (6 Nov ~19:45, committed locally — waiting for
+  "go live"):** the button was disabled (silently) when a gallery had no
+  recipients — Steve: "awful UX". Now always clickable → panel
+  (`ShareGalleryButton.tsx`): gallery link + Copy link; "Email it to"
+  chips (current recipients + new ones); add saved contacts (suggestions
+  by name/email/company) or any email; "Send to N people"; warns if the
+  gallery isn't live. `/api/admin/proofing/share` now takes `add`
+  ([{contactId}|{email}], saved onto `gallery.recipients`, de-duplicated)
+  and `action: "contacts"` (address book for suggestions). Galleries list
+  ⋮ "Share gallery" opens the gallery page with `?share=1` (panel opens
+  itself). Tested in preview with mocked API (send body + clipboard).
+
 - **6 Nov 19:20 — Safari downloads RESOLVED (cause was Steve's Mac Safari,
   not the site).** Fix #4 went live 18:58. Steve's Mac Safari then still
   failed every storage download: Downloads list said "Zero KB of 5.2 MB —

@@ -6689,3 +6689,220 @@ input[type="email"],
     padding: 0.8rem 1.2rem;
   }
 }
+
+/* ---- Share Gallery panel ---- */
+
+.sp-gallery-share-link {
+  cursor: pointer;
+  font: inherit;
+}
+
+.sp-share-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  place-items: start center;
+  overflow-y: auto;
+  padding: 10vh 1rem 2rem;
+  background: rgba(8, 7, 7, 0.72);
+}
+
+.sp-share-panel {
+  width: min(100%, 34rem);
+  border: 1px solid rgba(242, 238, 230, 0.14);
+  padding: 1.4rem 1.5rem 1.3rem;
+  background: #1a1817;
+  color: #f2eee6;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+}
+
+.sp-share-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.sp-share-head h2 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.sp-share-close {
+  border: 0;
+  padding: 0;
+  background: none;
+  color: rgba(242, 238, 230, 0.6);
+  cursor: pointer;
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.sp-share-label {
+  margin: 1.2rem 0 0.45rem;
+  color: rgba(242, 238, 230, 0.55);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.sp-share-link-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.sp-share-link-row input,
+.sp-share-add input {
+  min-width: 0;
+  flex: 1;
+  border: 1px solid rgba(242, 238, 230, 0.2);
+  padding: 0.65rem 0.75rem;
+  background: #11100f;
+  color: #f2eee6;
+  font: inherit;
+  font-size: 0.9rem;
+}
+
+.sp-share-link-row button {
+  flex: none;
+  border: 1px solid #c7a369;
+  padding: 0 1rem;
+  background: transparent;
+  color: #e3c48f;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.sp-share-people {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.sp-share-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid rgba(242, 238, 230, 0.18);
+  border-radius: 999px;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.82rem;
+}
+
+.sp-share-chip span {
+  color: rgba(242, 238, 230, 0.65);
+}
+
+.sp-share-chip.is-new {
+  border-color: #c7a369;
+}
+
+.sp-share-chip button {
+  border: 0;
+  padding: 0 0 0 0.15rem;
+  background: none;
+  color: rgba(242, 238, 230, 0.6);
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.sp-share-empty {
+  color: rgba(242, 238, 230, 0.5);
+  font-size: 0.85rem;
+}
+
+.sp-share-add {
+  position: relative;
+  display: flex;
+  margin-top: 0.7rem;
+}
+
+.sp-share-suggestions {
+  position: absolute;
+  top: calc(100% + 0.25rem);
+  right: 0;
+  left: 0;
+  z-index: 2;
+  border: 1px solid rgba(242, 238, 230, 0.18);
+  background: #232120;
+}
+
+.sp-share-suggestions button {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 0.1rem;
+  border: 0;
+  border-bottom: 1px solid rgba(242, 238, 230, 0.08);
+  padding: 0.6rem 0.8rem;
+  background: none;
+  color: #f2eee6;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.sp-share-suggestions button:hover {
+  background: rgba(199, 163, 105, 0.14);
+}
+
+.sp-share-suggestions span {
+  color: rgba(242, 238, 230, 0.6);
+  font-size: 0.8rem;
+}
+
+.sp-share-note,
+.sp-share-message {
+  margin: 0.9rem 0 0;
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.sp-share-note,
+.sp-share-message.is-bad {
+  color: #e9a96b;
+}
+
+.sp-share-message.is-good {
+  color: #8fc9a4;
+}
+
+.sp-share-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  margin-top: 1.3rem;
+}
+
+.sp-share-cancel,
+.sp-share-send {
+  min-height: 2.6rem;
+  padding: 0 1.1rem;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.sp-share-cancel {
+  border: 1px solid rgba(242, 238, 230, 0.2);
+  background: transparent;
+  color: #f2eee6;
+}
+
+.sp-share-send {
+  border: 1px solid #c7a369;
+  background: #c7a369;
+  color: #11100f;
+}
+
+.sp-share-send:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
