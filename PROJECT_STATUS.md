@@ -119,7 +119,7 @@ cost an extra Vercel build.
 
 ## Waiting / in progress
 
-- **Safari download fix (6 Nov ~16:40, committed locally — waiting for
+- **LIVE 6 Nov 16:30: Safari download fix.** (was waiting for
   "go live"):** in Safari the viewer Download left a stalled
   "<name>.download" file (page-built JPEG blob saved after an await).
   `isAppleWebKit()` (navigator.vendor "Apple" = Mac Safari + all iOS
