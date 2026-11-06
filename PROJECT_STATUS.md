@@ -119,6 +119,14 @@ cost an extra Vercel build.
 
 ## Waiting / in progress
 
+- **Safari download fix #2 (6 Nov ~16:45, committed locally — waiting for
+  "go live"):** fix #1 (live 16:30) still failed in Safari: it framed our
+  own `/api/proofing/download`, but the site sends `X-Frame-Options: DENY`
+  (next.config.ts) so Safari blocks the frame. Now, like Transfers, the page
+  fetches `/api/proofing/download?…&link=1` (JSON `{url}` = R2 presigned
+  link with attachment disposition) and frames THAT URL. Test harnesses must
+  include the real headers — the 16:30 test mocked the route and missed it.
+
 - **LIVE 6 Nov 16:30: Safari download fix.** (was waiting for
   "go live"):** in Safari the viewer Download left a stalled
   "<name>.download" file (page-built JPEG blob saved after an await).

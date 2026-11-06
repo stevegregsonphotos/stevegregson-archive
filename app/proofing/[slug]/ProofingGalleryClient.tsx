@@ -44,10 +44,25 @@ function downloadThroughFrame(url: string) {
   window.setTimeout(() => frame.remove(), 5 * 60 * 1000);
 }
 
-function singleDownloadUrl(gallerySlug: string, imageId: string) {
-  return `/api/proofing/download?gallery=${encodeURIComponent(
-    gallerySlug,
-  )}&image=${encodeURIComponent(imageId)}`;
+/** Asks the site for this photo's storage download link (Safari route). */
+async function storageDownloadLink(gallerySlug: string, imageId: string) {
+  const response = await fetch(
+    `/api/proofing/download?gallery=${encodeURIComponent(
+      gallerySlug,
+    )}&image=${encodeURIComponent(imageId)}&link=1`,
+    { cache: "no-store" },
+  );
+  const result = (await response.json().catch(() => ({}))) as {
+    ok?: boolean;
+    url?: string;
+    message?: string;
+  };
+  if (!response.ok || !result.ok || !result.url) {
+    throw new Error(
+      result.message || "The photograph could not be downloaded.",
+    );
+  }
+  return result.url;
 }
 
 function fullImageUrl(gallerySlug: string, imageId: string) {
@@ -2024,14 +2039,23 @@ export default function ProofingGalleryClient({
     setDownloadError(null);
 
     if (isAppleWebKit()) {
-      downloadThroughFrame(
-        singleDownloadUrl(gallerySlug, image.id),
-      );
-      setSavedImageId(image.id);
-      await recordDownloadSuccess("single", [image.id]).catch(
-        () => undefined,
-      );
-      setDownloadingImageId(null);
+      try {
+        downloadThroughFrame(
+          await storageDownloadLink(gallerySlug, image.id),
+        );
+        setSavedImageId(image.id);
+        await recordDownloadSuccess("single", [image.id]).catch(
+          () => undefined,
+        );
+      } catch (error) {
+        setDownloadError(
+          error instanceof Error
+            ? error.message
+            : "The photograph could not be downloaded.",
+        );
+      } finally {
+        setDownloadingImageId(null);
+      }
       return;
     }
 
@@ -2178,7 +2202,7 @@ export default function ProofingGalleryClient({
             await new Promise((resolve) => window.setTimeout(resolve, 900));
           }
           downloadThroughFrame(
-            singleDownloadUrl(gallerySlug, file.imageId),
+            await storageDownloadLink(gallerySlug, file.imageId),
           );
         }
 

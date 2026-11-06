@@ -213,6 +213,20 @@ export async function GET(
         ),
       );
 
+    /*
+     * "?link=1": hand back the storage link instead of redirecting, so
+     * Safari can open it in a hidden frame (this site's own pages may not
+     * be framed, which Safari also applies to a redirect).
+     */
+    if (
+      request.nextUrl.searchParams.get("link") === "1"
+    ) {
+      return NextResponse.json(
+        { ok: true, url: downloadUrl },
+        { headers: { "Cache-Control": "no-store" } },
+      );
+    }
+
     return NextResponse.redirect(
       downloadUrl,
       302,
