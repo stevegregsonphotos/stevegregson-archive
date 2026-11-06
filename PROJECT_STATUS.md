@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 6 November 2026, 19:20 (London)
+Last updated: 6 November 2026, 21:21 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -119,7 +119,7 @@ cost an extra Vercel build.
 
 ## Waiting / in progress
 
-- **Share Gallery panel (6 Nov ~19:45, committed locally — waiting for
+- **LIVE 6 Nov 21:21: Share Gallery panel.** (was waiting for
   "go live"):** the button was disabled (silently) when a gallery had no
   recipients — Steve: "awful UX". Now always clickable → panel
   (`ShareGalleryButton.tsx`): gallery link + Copy link; "Email it to"
