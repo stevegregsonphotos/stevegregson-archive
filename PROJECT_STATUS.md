@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 9 November 2026, 23:41 (London)
+Last updated: 9 November 2026, 23:44 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -119,7 +119,14 @@ cost an extra Vercel build.
 
 ## Waiting / in progress
 
-- **WAITING FOR "GO LIVE" (test branch, 9 Nov 23:06): Safari proofing
+- **WAITING FOR "GO LIVE" (test branch, 9 Nov 23:44): full-size
+  originals retry.** Steve's first "Add full-size" run said "401 didn't
+  upload" (count, reason unknown — the card swallowed errors). Now
+  `ProofingOriginals.tsx` retries each PUT 3× (1.5 s / 3 s waits), logs
+  failures to the console and shows the first reason in the message.
+  His second run (23:41) was progressing: 134 → 141 in 30 s.
+
+- **LIVE 9 Nov 23:40 (commit c4c9d50): Safari proofing
   uploads.** Steve: 36 photos in 15 min. Safari can't encode WebP:
   `canvas.toBlob("image/webp")` silently returns PNG (ignores quality), so
   `prepareProofUpload` re-encoded big PNGs ~13 times per photo, shrinking

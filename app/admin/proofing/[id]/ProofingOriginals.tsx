@@ -85,6 +85,7 @@ export default function ProofingOriginals({ galleryId, imageCount }: { galleryId
     const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); };
     window.addEventListener("beforeunload", warn);
     let failures = 0;
+    let firstError = "";
 
     try {
       for (let start = 0; start < matches.length; start += BATCH) {
@@ -100,12 +101,25 @@ export default function ProofingOriginals({ galleryId, imageCount }: { galleryId
           while (next < batch.length) {
             const { row, file } = batch[next++];
             const url = links.get(row.webFilename);
-            try {
-              if (!url) throw new Error("no link");
-              const response = await fetch(url, { method: "PUT", headers: { "Content-Type": "image/jpeg" }, body: file });
-              if (!response.ok) throw new Error("HTTP " + response.status);
-            } catch {
+            // Big full-size files can drop on a home connection, so each
+            // one is tried up to 3 times before it counts as failed.
+            let lastError = "";
+            let ok = false;
+            for (let attempt = 0; attempt < 3 && !ok; attempt += 1) {
+              try {
+                if (!url) throw new Error("no upload link");
+                const response = await fetch(url, { method: "PUT", headers: { "Content-Type": "image/jpeg" }, body: file });
+                if (!response.ok) throw new Error("HTTP " + response.status);
+                ok = true;
+              } catch (error) {
+                lastError = error instanceof Error ? error.message : String(error);
+                if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 1500 * (attempt + 1)));
+              }
+            }
+            if (!ok) {
               failures += 1;
+              firstError ||= lastError;
+              console.warn("Full-size upload failed:", file.name, lastError);
             }
             setProgress((value) => ({ ...value, done: value.done + 1, sent: value.sent + file.size }));
           }
@@ -119,7 +133,7 @@ export default function ProofingOriginals({ galleryId, imageCount }: { galleryId
       window.removeEventListener("beforeunload", warn);
       await check();
       const notes = [];
-      if (failures) notes.push(failures + " didn't upload — choose them again to retry.");
+      if (failures) notes.push(failures + " didn't upload" + (firstError ? " (" + firstError + ")" : "") + " — choose them again to retry.");
       if (unmatched > 0) notes.push(unmatched + " gallery photo" + (unmatched === 1 ? "" : "s") + " had no matching JPEG in what you chose.");
       setMessage(notes.join(" "));
     }
