@@ -587,6 +587,60 @@ export async function deleteProofingImage(
   }
 }
 
+/**
+ * Delete many photos' files at once: each photo's proof, thumbnail and
+ * full-size original, up to 1,000 files per request, requests in parallel.
+ */
+export async function deleteProofingImages(
+  galleryId: string,
+  webFilenames: string[],
+) {
+  const client = getClient();
+  const bucket = getBucket();
+
+  const keys = webFilenames.flatMap((webFilename) => {
+    const own = getProofingImageObjectKey(galleryId, webFilename);
+
+    if (
+      webFilename.startsWith("thumb-") ||
+      webFilename.startsWith("orig-")
+    ) {
+      return [own];
+    }
+
+    return [
+      own,
+      getProofingImageObjectKey(
+        galleryId,
+        getProofingThumbFilename(webFilename),
+      ),
+      getProofingImageObjectKey(
+        galleryId,
+        getProofingOriginalFilename(webFilename),
+      ),
+    ];
+  });
+
+  const batches: string[][] = [];
+  for (let start = 0; start < keys.length; start += 1000) {
+    batches.push(keys.slice(start, start + 1000));
+  }
+
+  await Promise.all(
+    batches.map((batch) =>
+      client.send(
+        new DeleteObjectsCommand({
+          Bucket: bucket,
+          Delete: {
+            Objects: batch.map((Key) => ({ Key })),
+            Quiet: true,
+          },
+        }),
+      ),
+    ),
+  );
+}
+
 async function deleteProofingObjectsWithPrefix(
   prefix: string,
 ) {

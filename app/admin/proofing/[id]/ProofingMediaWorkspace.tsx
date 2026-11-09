@@ -27,6 +27,9 @@ type Props = {
   images: MediaImage[];
 };
 
+// Show a running count only when there's more than one batch.
+const batchLabelThreshold = 200;
+
 type DeleteResponse = {
   ok: boolean;
   message?: string;
@@ -46,6 +49,9 @@ export default function ProofingMediaWorkspace({
 
   const [isDeleting, setIsDeleting] =
     useState(false);
+
+  const [deletedCount, setDeletedCount] =
+    useState(0);
 
   const [errorMessage, setErrorMessage] =
     useState("");
@@ -141,8 +147,17 @@ export default function ProofingMediaWorkspace({
     setIsDeleting(true);
     setErrorMessage("");
 
+    // Sent in batches (one request per batch, not per photo), so
+    // deleting a whole gallery takes seconds rather than ~20 minutes.
+    const ids = [...selectedIds];
+    const batchSize = 200;
+    setDeletedCount(0);
+    let done = 0;
+
     try {
-      for (const imageId of selectedIds) {
+      for (let start = 0; start < ids.length; start += batchSize) {
+        const batch = ids.slice(start, start + batchSize);
+
         const response = await fetch(
           "/api/admin/proofing/delete-image",
           {
@@ -155,7 +170,7 @@ export default function ProofingMediaWorkspace({
 
             body: JSON.stringify({
               galleryId,
-              imageId,
+              imageIds: batch,
             }),
           },
         );
@@ -166,14 +181,23 @@ export default function ProofingMediaWorkspace({
         if (!response.ok || !data.ok) {
           throw new Error(
             data.message ??
-              "A photograph could not be deleted.",
+              "Some photographs could not be deleted.",
           );
         }
+
+        done = start + batch.length;
+        setDeletedCount(done);
       }
 
       setSelectedIds(new Set());
       router.refresh();
     } catch (error) {
+      // Keep only the photos that weren't deleted selected, and show
+      // the gallery as it now is.
+      if (done > 0) {
+        setSelectedIds(new Set(ids.slice(done)));
+        router.refresh();
+      }
       setErrorMessage(
         error instanceof Error
           ? error.message
@@ -245,7 +269,9 @@ export default function ProofingMediaWorkspace({
               }
             >
               {isDeleting
-                ? "Deleting…"
+                ? selectedCount > batchLabelThreshold
+                  ? `Deleting… ${deletedCount} of ${selectedCount}`
+                  : "Deleting…"
                 : `Delete ${selectedCount}`}
             </button>
           ) : (

@@ -1006,6 +1006,45 @@ export async function deleteProofingImageRecord(
   ]);
 }
 
+/**
+ * Remove many photos in one go (Backstage › Delete selected), then
+ * renumber the rest once. Doing this a photo at a time renumbered the
+ * whole gallery for every photo (500 photos took ~20 minutes).
+ */
+export async function deleteProofingImageRecords(
+  galleryId: string,
+  imageIds: string[],
+) {
+  if (imageIds.length === 0) {
+    return;
+  }
+
+  const sql = getSql();
+
+  await sql.transaction([
+    sql`
+      DELETE FROM proofing_images
+      WHERE gallery_id = ${galleryId}
+        AND id = ANY(${imageIds}::text[])
+    `,
+    sql`
+      WITH ordered AS (
+        SELECT
+          id,
+          ROW_NUMBER() OVER (
+            ORDER BY sort_order, id
+          ) - 1 AS next_sort_order
+        FROM proofing_images
+        WHERE gallery_id = ${galleryId}
+      )
+      UPDATE proofing_images AS image
+      SET sort_order = ordered.next_sort_order
+      FROM ordered
+      WHERE image.id = ordered.id
+    `,
+  ]);
+}
+
 export async function deleteProofingGallery(
   galleryId: string,
 ) {

@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 6 November 2026, 21:21 (London)
+Last updated: 9 November 2026, 22:50 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -118,6 +118,25 @@ cost an extra Vercel build.
 - **X (Twitter) removed — LIVE 1 Nov:** taken out of the site's hidden profile lists (`SAME_AS` in `app/layout.tsx` and `/llms.txt`), and from the Google Business Profile social links (Google review pending). Steve doesn't use X and can't log in; don't add it back. Went live together with the three 29 Oct items below (People search, Mac folder fix, Storage folder Download), so those are LIVE too.
 
 ## Waiting / in progress
+
+- **WAITING FOR "GO LIVE" (test branch, 9 Nov): fast proofing photo
+  delete.** Steve deleting all ~530 Mountview Graduation photos to
+  re-upload took ~20 min ("not acceptable"): Delete selected sent one
+  request per photo, and each re-read the whole gallery (all photos +
+  blur previews), rewrote it, renumbered every remaining photo and deleted
+  3 files one by one. Now `ProofingMediaWorkspace.tsx` sends batches of 200
+  (`imageIds`; button shows "Deleting… N of M" past 200);
+  `/api/admin/proofing/delete-image` (still takes single `imageId`) does
+  ONE favourites/cover tidy, `deleteProofingImageRecords` (one delete +
+  one renumber) and `deleteProofingImages` (proof+thumb+original via
+  DeleteObjects, 1,000 keys per call, parallel). Failure part-way keeps the
+  undeleted ones selected + refreshes. Rehearsed (local Postgres + neon shim
+  + moto, 533 photos, 4 visitors): 530 deleted in 3 requests / 21 DB calls,
+  0 rows and 0 files left, cover + favourites cleared, sort order
+  contiguous, retry harmless. No visual change except the counter.
+  Answered Steve: re-uploads make thumbnails automatically, Downloads
+  setting stays, re-add full-size originals via the card; same file names
+  could have used "Replace them" (keeps favourites) instead of deleting.
 
 - **LIVE 6 Nov 21:21: Share Gallery panel.** (was waiting for
   "go live"):** the button was disabled (silently) when a gallery had no
