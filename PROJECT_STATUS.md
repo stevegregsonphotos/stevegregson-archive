@@ -124,6 +124,8 @@ cost an extra Vercel build.
   upload" (count, reason unknown — the card swallowed errors). Now
   `ProofingOriginals.tsx` retries each PUT 3× (1.5 s / 3 s waits), logs
   failures to the console and shows the first reason in the message.
+  Also skips photos that already have an original (before, a retry
+  re-sent all 533, ~4 GB).
   His second run (23:41) was progressing: 134 → 141 in 30 s.
 
 - **LIVE 9 Nov 23:40 (commit c4c9d50): Safari proofing

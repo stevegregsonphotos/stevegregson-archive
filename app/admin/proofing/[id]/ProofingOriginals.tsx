@@ -68,16 +68,23 @@ export default function ProofingOriginals({ galleryId, imageCount }: { galleryId
     if (!fileList?.length) return;
     const jpegs = Array.from(fileList).filter((file) => /\.jpe?g$/i.test(file.name));
     const byName = new Map(jpegs.map((file) => [baseName(file.name), file]));
+    // Photos that already have their full-size file are skipped, so
+    // "Add the rest" only sends what's missing instead of everything again.
     const matches = rows
+      .filter((row) => !row.hasOriginal)
       .map((row) => ({ row, file: byName.get(baseName(row.originalFilename)) }))
       .filter((match): match is { row: ImageRow; file: File } => !!match.file);
 
     if (!matches.length) {
-      setMessage("None of those JPEGs match this gallery's photos by file name.");
+      setMessage(
+        rows.every((row) => row.hasOriginal)
+          ? "Every photo already has its full-size file."
+          : "None of those JPEGs match the photos still missing a full-size file.",
+      );
       return;
     }
 
-    const unmatched = rows.length - matches.length;
+    const unmatched = rows.filter((row) => !row.hasOriginal).length - matches.length;
     const size = matches.reduce((sum, match) => sum + match.file.size, 0);
     setMessage("");
     setPhase("working");
