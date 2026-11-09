@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 9 November 2026, 23:06 (London)
+Last updated: 9 November 2026, 23:41 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -135,6 +135,19 @@ cost an extra Vercel build.
   other uploaders still using webp toBlob (selected-work pipeline,
   ProductionUpload, edit-production, Curated import, client-image-editor)
   — not changed.
+  Chrome re-upload of Mountview Graduation 9 Nov ~23:13: 533 done
+  (407 replaced in place, 126 new — the slow delete hadn't finished).
+  Full-size originals then showed 0 → Steve to re-add them.
+
+- **9 Nov 23:40 — "yellowy" proofs: NOT a site bug.** Steve saw Backstage
+  photos warmer/duller than Lightroom/Finder. Measured: stored proof =
+  his sRGB JPEG (no HDR), and Finder's display = the file; but Chrome's
+  on-screen rendering was far off (blue curtain 17→3, screen turned
+  yellowish). His Mac uses a custom display profile "Calibrated
+  LCD_23-02-2023.icc" that Chrome mishandles. Clients see correct colours.
+  Advised: judge colour in Safari/phone, or chrome://flags › Force color
+  profile › Display P3 D65; consider recalibrating. Don't "fix" proof
+  colours in code.
 
 - **LIVE 9 Nov 22:38: fast proofing photo delete** (live commit
   73d785e; Steve to confirm real-world speed). Steve deleting all ~530 Mountview Graduation photos to
