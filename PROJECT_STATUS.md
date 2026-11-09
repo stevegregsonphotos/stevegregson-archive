@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 9 November 2026, 22:50 (London)
+Last updated: 9 November 2026, 22:40 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -119,8 +119,8 @@ cost an extra Vercel build.
 
 ## Waiting / in progress
 
-- **WAITING FOR "GO LIVE" (test branch, 9 Nov): fast proofing photo
-  delete.** Steve deleting all ~530 Mountview Graduation photos to
+- **LIVE 9 Nov 22:38: fast proofing photo delete** (live commit
+  73d785e; Steve to confirm real-world speed). Steve deleting all ~530 Mountview Graduation photos to
   re-upload took ~20 min ("not acceptable"): Delete selected sent one
   request per photo, and each re-read the whole gallery (all photos +
   blur previews), rewrote it, renumbered every remaining photo and deleted
