@@ -119,7 +119,7 @@ cost an extra Vercel build.
 
 ## Waiting / in progress
 
-- **WAITING FOR "GO LIVE" (test branch, 9 Nov 23:44): full-size
+- **LIVE 9 Nov 23:43 (commit ccfda47): full-size
   originals retry.** Steve's first "Add full-size" run said "401 didn't
   upload" (count, reason unknown — the card swallowed errors). Now
   `ProofingOriginals.tsx` retries each PUT 3× (1.5 s / 3 s waits), logs
