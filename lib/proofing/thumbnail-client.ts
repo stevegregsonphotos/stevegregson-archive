@@ -17,11 +17,41 @@ function loadImage(blob: Blob) {
   }).finally(() => URL.revokeObjectURL(url));
 }
 
-function toBlob(canvas: HTMLCanvasElement) {
+/*
+ * Safari can't make WebP pictures: asked for one, it quietly hands back a
+ * PNG, which ignores the quality setting and is several times bigger and
+ * far slower to make (uploads crawled, ~25 s per photo, and proofs were
+ * shrunk to 1734px trying to get the PNG under the size limit). So where
+ * the browser can't make WebP, use JPEG: fast, small, and every browser
+ * shows it. The stored file keeps its .webp name and label; browsers look
+ * at the picture itself, and downloads already pass JPEGs straight through.
+ */
+let encodeTypePromise: Promise<string> | null = null;
+
+export function proofEncodeType(): Promise<string> {
+  encodeTypePromise ??= new Promise<string>((resolve) => {
+    try {
+      const canvas = document.createElement("canvas");
+      canvas.width = 2;
+      canvas.height = 2;
+      canvas.toBlob(
+        (blob) => resolve(blob?.type === "image/webp" ? "image/webp" : "image/jpeg"),
+        "image/webp",
+        0.8,
+      );
+    } catch {
+      resolve("image/jpeg");
+    }
+  });
+  return encodeTypePromise;
+}
+
+async function toBlob(canvas: HTMLCanvasElement) {
+  const type = await proofEncodeType();
   return new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(
       (blob) => (blob ? resolve(blob) : reject(new Error("Couldn't make the thumbnail."))),
-      "image/webp",
+      type,
       THUMB_QUALITY,
     );
   });

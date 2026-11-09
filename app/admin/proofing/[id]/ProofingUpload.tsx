@@ -14,6 +14,7 @@ import {
 import { useRouter } from "next/navigation";
 import {
   makeProofThumbnail,
+  proofEncodeType,
   uploadProofThumbnail,
 } from "@/lib/proofing/thumbnail-client";
 
@@ -89,6 +90,9 @@ export async function prepareProofUpload(
       );
     }
 
+    // WebP where the browser can make it; JPEG in Safari (see
+    // proofEncodeType: Safari's "WebP" is really a huge, slow PNG).
+    const encodeType = await proofEncodeType();
     let quality = 0.82;
 
     while (true) {
@@ -124,7 +128,7 @@ export async function prepareProofUpload(
                 );
               }
             },
-            "image/webp",
+            encodeType,
             quality,
           );
         },

@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 9 November 2026, 22:40 (London)
+Last updated: 9 November 2026, 23:06 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -118,6 +118,23 @@ cost an extra Vercel build.
 - **X (Twitter) removed — LIVE 1 Nov:** taken out of the site's hidden profile lists (`SAME_AS` in `app/layout.tsx` and `/llms.txt`), and from the Google Business Profile social links (Google review pending). Steve doesn't use X and can't log in; don't add it back. Went live together with the three 29 Oct items below (People search, Mac folder fix, Storage folder Download), so those are LIVE too.
 
 ## Waiting / in progress
+
+- **WAITING FOR "GO LIVE" (test branch, 9 Nov 23:06): Safari proofing
+  uploads.** Steve: 36 photos in 15 min. Safari can't encode WebP:
+  `canvas.toBlob("image/webp")` silently returns PNG (ignores quality), so
+  `prepareProofUpload` re-encoded big PNGs ~13 times per photo, shrinking
+  ×0.85 until under 3.75 MB — that's why Mountview proofs were 1734×1156
+  and ~3.7 MB, and thumbs were ~1.2 MB PNGs. Now `proofEncodeType()`
+  (`lib/proofing/thumbnail-client.ts`, tested once) uses JPEG when the
+  browser can't make WebP; used for proofs + thumbnails. File keeps its
+  .webp name and `Content-Type: image/webp` label (signed upload URLs);
+  browsers sniff images, downloads pass JPEG through. Timed in Chrome with
+  toBlob patched to act like Safari (6 × 6000×4000 JPEGs): old 15.2 s →
+  1474px 2.9 MB PNGs; new 1.0 s → 2400px 0.4 MB JPEGs; real Chrome
+  unchanged. NOT checked in real Safari. Same Safari issue likely in
+  other uploaders still using webp toBlob (selected-work pipeline,
+  ProductionUpload, edit-production, Curated import, client-image-editor)
+  — not changed.
 
 - **LIVE 9 Nov 22:38: fast proofing photo delete** (live commit
   73d785e; Steve to confirm real-world speed). Steve deleting all ~530 Mountview Graduation photos to
