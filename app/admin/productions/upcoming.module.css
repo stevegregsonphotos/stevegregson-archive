@@ -336,3 +336,51 @@
   background: transparent;
   color: var(--gold);
 }
+
+/* ---------- Duplicate (double-cast copies) ---------- */
+
+.itemDuplicate {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.itemDuplicate:hover,
+.itemDuplicate:focus-visible {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+.itemDuplicate:disabled {
+  cursor: progress;
+  opacity: 0.6;
+}
+
+.itemError {
+  align-self: center;
+  margin-right: 12px;
+  color: #e08a7a;
+  font-size: 13px;
+}
+
+.copyNote {
+  margin: 12px 0 0;
+  padding: 12px 16px;
+  border: 1px solid var(--gold);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.copyNote strong {
+  color: var(--gold);
+}

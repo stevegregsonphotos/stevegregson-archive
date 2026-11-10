@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 10 November 2026, 10:06 (London)
+Last updated: 10 November 2026, 12:50 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -118,6 +118,17 @@ cost an extra Vercel build.
 - **X (Twitter) removed — LIVE 1 Nov:** taken out of the site's hidden profile lists (`SAME_AS` in `app/layout.tsx` and `/llms.txt`), and from the Google Business Profile social links (Google review pending). Steve doesn't use X and can't log in; don't add it back. Went live together with the three 29 Oct items below (People search, Mac folder fix, Storage folder Download), so those are LIVE too.
 
 ## Waiting / in progress
+
+- **LIVE 10 Nov 12:50: Duplicate for Upcoming drafts (double casts)**
+  (Steve OK'd the mockup and said go live; not yet tried for real).
+  Productions › Upcoming: each draft
+  has a Duplicate button; also in the draft editor's header (saves unsaved
+  changes first). API `action: "duplicate"` → `duplicateUpcomingDraft()`
+  copies everything (details, credits, notes) as a new draft titled
+  "<title> (copy)" (`duplicateTitle()`), opens it with `?copy=1`: gold
+  "This is a copy — rename it to show the cast" note + title selected.
+  Styles `.itemDuplicate` / `.copyNote` at end of
+  `app/admin/productions/upcoming.module.css`.
 
 - **LIVE 10 Nov 10:06: framed proofing viewer + Copy link.** Steve: in
   the client viewer, favourite/nav felt "clunky/hidden". Viewer

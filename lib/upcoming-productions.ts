@@ -237,6 +237,18 @@ export function summariseUpcoming(draft: UpcomingDraft): UpcomingSummary {
   };
 }
 
+/**
+ * Title for a duplicated draft (Steve's double-cast shows): "Babies" →
+ * "Babies (copy)". He renames it to the cast, e.g. "Babies - Blazers Company"
+ * (Curated import merges productions that share title+venue+month+year).
+ */
+export function duplicateTitle(title: string) {
+  const base = title.trim().replace(/\s*\(copy(?: \d+)?\)$/i, "");
+  const suffix = " (copy)";
+  if (!base) return "";
+  return `${base.slice(0, UPCOMING_LIMITS.title - suffix.length)}${suffix}`;
+}
+
 /** Drafts first (most recently edited first), then published ones. */
 export function sortUpcoming<T extends { status: string; updatedAt: string }>(drafts: T[]) {
   return [...drafts].sort((a, b) => {

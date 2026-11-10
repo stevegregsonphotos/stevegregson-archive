@@ -55,6 +55,53 @@ function Chips({ draft }: { draft: UpcomingSummary }) {
 
 type Variant = "productions" | "upload";
 
+/** Shared by the list and the draft editor: copies a draft and opens the copy to rename it. */
+export async function duplicateUpcoming(id: string) {
+  const response = await fetch("/api/admin/upcoming-productions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "duplicate", id }),
+  });
+  const result = (await response.json()) as { ok: boolean; message?: string; draft?: { id: string } };
+  if (!response.ok || !result.ok || !result.draft) {
+    throw new Error(result.message ?? "The draft could not be duplicated.");
+  }
+  return `/admin/productions/upcoming/${result.draft.id}?copy=1`;
+}
+
+function DuplicateButton({ id }: { id: string }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <>
+      {error ? (
+        <span className={styles.itemError} role="alert">
+          {error}
+        </span>
+      ) : null}
+      <button
+        type="button"
+        className={styles.itemDuplicate}
+        disabled={busy}
+        title="Make a copy — e.g. for the other cast — then rename it"
+        onClick={async () => {
+          setBusy(true);
+          setError(null);
+          try {
+            window.location.assign(await duplicateUpcoming(id));
+          } catch (caught) {
+            setError(caught instanceof Error ? caught.message : "The draft could not be duplicated.");
+            setBusy(false);
+          }
+        }}
+        data-testid="upcoming-duplicate"
+      >
+        {busy ? "Duplicating…" : "Duplicate"}
+      </button>
+    </>
+  );
+}
+
 function Item({ draft, variant = "productions" }: { draft: UpcomingSummary; variant?: Variant }) {
   const when = [draft.month ? MONTHS_SHORT[Number(draft.month) - 1] : "", draft.year].filter(Boolean).join(" ");
   const meta = [draft.venue.trim(), draft.company.trim(), when].filter(Boolean).join(" · ");
@@ -81,6 +128,11 @@ function Item({ draft, variant = "productions" }: { draft: UpcomingSummary; vari
         </span>
         <Chips draft={draft} />
       </Link>
+      {variant === "productions" && draft.status === "draft" ? (
+        <span className={styles.itemActions}>
+          <DuplicateButton id={draft.id} />
+        </span>
+      ) : null}
       {variant === "upload" && draft.status === "draft" ? (
         <span className={styles.itemActions}>
           {/* A full page load so Upload & publish reads ?upcoming= and fills the form. */}

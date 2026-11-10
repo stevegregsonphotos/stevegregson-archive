@@ -5,6 +5,7 @@ import {
   UPCOMING_LIMITS,
   UPCOMING_PRODUCTIONS_KEY,
   createUpcomingId,
+  duplicateTitle,
   readUpcomingStore,
   sortUpcoming,
   tidyCreditsForSave,
@@ -67,6 +68,34 @@ export async function createUpcomingDraft(input: UpcomingDraftInput) {
   };
   await writeDrafts([...drafts, draft]);
   return draft;
+}
+
+/** Copies a draft (all details, credits, notes) as a new draft titled "… (copy)". */
+export async function duplicateUpcomingDraft(id: string) {
+  const drafts = await loadForWrite();
+  const existing = drafts.find((draft) => draft.id === id);
+  if (!existing) throw new UpcomingStoreError("That upcoming production could not be found.", 404);
+  if (drafts.length >= UPCOMING_LIMITS.drafts) {
+    throw new UpcomingStoreError("You've reached the limit for upcoming drafts. Delete some old ones first.");
+  }
+  const now = new Date().toISOString();
+  const copy: UpcomingDraft = {
+    id: createUpcomingId(),
+    title: duplicateTitle(existing.title),
+    venue: existing.venue,
+    month: existing.month,
+    year: existing.year,
+    description: existing.description,
+    company: existing.company,
+    shootDates: existing.shootDates,
+    notes: existing.notes,
+    credits: existing.credits.map((credit) => ({ ...credit })),
+    status: "draft",
+    createdAt: now,
+    updatedAt: now,
+  };
+  await writeDrafts([...drafts, copy]);
+  return copy;
 }
 
 export async function updateUpcomingDraft(id: string, input: UpcomingDraftInput) {

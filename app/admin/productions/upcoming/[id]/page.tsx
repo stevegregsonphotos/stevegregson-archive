@@ -19,7 +19,7 @@ import {
   type UpcomingDraft,
   type UpcomingDraftInput,
 } from "../../../../../lib/upcoming-productions";
-import { formatEdited } from "../../UpcomingSection";
+import { duplicateUpcoming, formatEdited } from "../../UpcomingSection";
 
 import pe from "../../../edit-production/[slug]/production-edit.module.css";
 import sw from "../../../selected-work/backstage-selected-work.module.css";
@@ -94,6 +94,10 @@ export default function UpcomingDraftPage() {
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
   // Set just before we navigate away on purpose, so no "unsaved changes" prompt appears.
   const leavingRef = useRef(false);
+  // Opened straight after "Duplicate" (?copy=1): prompt Steve to rename it for the other cast.
+  const [isCopy, setIsCopy] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
+  const titleRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -111,6 +115,11 @@ export default function UpcomingDraftPage() {
           throw new Error(result.message ?? "That upcoming production could not be loaded.");
         }
         if (cancelled) return;
+        const params = new URLSearchParams(window.location.search);
+        if (params.get("copy") === "1") {
+          setIsCopy(true);
+          window.history.replaceState(null, "", window.location.pathname);
+        }
         setDraft(result.draft);
         dispatch({ type: "load", doc: docFromDraft(result.draft) });
       } catch (caught) {
@@ -126,6 +135,14 @@ export default function UpcomingDraftPage() {
   }, [isNew, routeId]);
 
   const { doc, saved } = state;
+  const docLoaded = Boolean(doc);
+
+  // Put the cursor in the title (text selected) so a copy can be renamed straight away.
+  useEffect(() => {
+    if (!isCopy || !docLoaded) return;
+    titleRef.current?.focus();
+    titleRef.current?.select();
+  }, [isCopy, docLoaded]);
   const dirty = Boolean(doc && saved && !same(doc, saved));
   // A brand-new draft counts as unsaved once anything has been typed.
   const changeCount = dirty ? Math.max(1, state.history.length) : 0;
@@ -206,6 +223,23 @@ export default function UpcomingDraftPage() {
     }
   }
 
+  /** Saves any changes first, then makes a copy and opens it to rename (double casts). */
+  async function duplicate() {
+    if (!draft || duplicating) return;
+    setDuplicating(true);
+    setSaveError(null);
+    try {
+      if (dirty && !(await save())) return;
+      const next = await duplicateUpcoming(draft.id);
+      leavingRef.current = true;
+      window.location.assign(next);
+    } catch (caught) {
+      setSaveError(caught instanceof Error ? caught.message : "The draft could not be duplicated.");
+    } finally {
+      setDuplicating(false);
+    }
+  }
+
   async function addPhotosAndPublish(route: "upload" | "curated" = "upload") {
     let target = draft;
     if (dirty || !target) {
@@ -279,6 +313,22 @@ export default function UpcomingDraftPage() {
               {draft && !published ? (
                 <span className={pe.cardMeta}>Last edited {formatEdited(draft.updatedAt)}</span>
               ) : null}
+              {draft && !published ? (
+                <button
+                  type="button"
+                  className={styles.itemDuplicate}
+                  disabled={duplicating || saving}
+                  title={
+                    dirty
+                      ? "Saves your changes, then makes a copy (e.g. for the other cast) to rename"
+                      : "Makes a copy (e.g. for the other cast) to rename"
+                  }
+                  onClick={() => void duplicate()}
+                  data-testid="duplicate-draft"
+                >
+                  {duplicating ? "Duplicating…" : "Duplicate"}
+                </button>
+              ) : null}
             </div>
           </header>
 
@@ -310,6 +360,15 @@ export default function UpcomingDraftPage() {
             </span>
           </p>
 
+          {isCopy && /\(copy\)$/i.test(doc.title.trim()) ? (
+            <p className={styles.copyNote} role="status" data-testid="copy-note">
+              <strong>This is a copy.</strong> Everything has been copied across — rename it to show the cast (for
+              example “{doc.title.trim().replace(/\s*\(copy\)$/i, "") || "Show"} - Blazers Company”), change any
+              credits that differ, then press Save. Each cast needs its own title so they stay as separate productions
+              in the archive.
+            </p>
+          ) : null}
+
           <div className={pe.detailsGrid} style={{ marginTop: 24 }}>
             <div className={pe.column}>
               <section className={pe.card} aria-labelledby="details-heading">
@@ -324,6 +383,7 @@ export default function UpcomingDraftPage() {
                   Title
                   <input
                     className={sw.input}
+                    ref={titleRef}
                     value={doc.title}
                     maxLength={UPCOMING_LIMITS.title}
                     onChange={(event) => field("title", "Title changed")(event.target.value)}

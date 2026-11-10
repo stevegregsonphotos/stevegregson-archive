@@ -6,6 +6,7 @@ import {
   UpcomingStoreError,
   createUpcomingDraft,
   deleteUpcomingDraft,
+  duplicateUpcomingDraft,
   getUpcomingDraft,
   listUpcomingDrafts,
   markUpcomingDraftPublished,
@@ -28,6 +29,7 @@ export const dynamic = "force-dynamic";
  *   GET ?id=<id>      one draft, in full
  *   POST { action: "create", draft }
  *   POST { action: "update", id, draft }
+ *   POST { action: "duplicate", id }        copy for a second cast → new draft
  *   POST { action: "delete", id, confirmation: "DELETE" }
  *   POST { action: "published", id, url }   after Upload & publish succeeds
  */
@@ -107,6 +109,11 @@ export async function POST(request: Request) {
 
     if (action === "update") {
       const draft = await updateUpcomingDraft(id, cleanUpcomingInput(body.draft));
+      return json({ ok: true, draft });
+    }
+
+    if (action === "duplicate") {
+      const draft = await duplicateUpcomingDraft(id);
       return json({ ok: true, draft });
     }
 
