@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 9 November 2026, 23:44 (London)
+Last updated: 10 November 2026, 10:06 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -118,6 +118,26 @@ cost an extra Vercel build.
 - **X (Twitter) removed — LIVE 1 Nov:** taken out of the site's hidden profile lists (`SAME_AS` in `app/layout.tsx` and `/llms.txt`), and from the Google Business Profile social links (Google review pending). Steve doesn't use X and can't log in; don't add it back. Went live together with the three 29 Oct items below (People search, Mac folder fix, Storage folder Download), so those are LIVE too.
 
 ## Waiting / in progress
+
+- **LIVE 10 Nov 10:06: framed proofing viewer + Copy link.** Steve: in
+  the client viewer, favourite/nav felt "clunky/hidden". Viewer
+  (`ProofingGalleryClient.tsx`, `.proofing-viewer.is-framed` section at
+  the END of `app/proofing/proofing.css`): sticky top bar = photo number,
+  file name, Favourite / Add note / Annotate / Download, close; photo
+  smaller in a frame (max 1180px, 100dvh−14.5rem); round ‹ › on the
+  frame edges. Phones (≤700px): top = Download | Add note | Annotate;
+  sticky bottom row `proofing-viewer-thumbbar` = ‹ Previous · ♡
+  Favourite · Next › (replaces round arrows + top Favourite). Photos are
+  never cropped. Settings › Gallery URL (`ProofingUrlEditor.tsx`, styles
+  at end of `app/admin/proofing/proofing.css`): shows
+  stevegregson.com/proofing/, Save + Copy link (copies saved full URL;
+  disabled with a hint while unsaved). Tested with a local esbuild
+  harness (gallery component + real CSS, sample crops of Steve's 1305) at
+  1440 and 390: screenshots shown to Steve before push. `next dev` in the
+  sandbox didn't hydrate (CSP/HMR) and `next build` needs DATABASE_URL —
+  use the harness approach. Pre-existing eslint errors in
+  ProofingGalleryClient (setState in effect ×3, unescaped ' at ~2943) —
+  not ours.
 
 - **LIVE 9 Nov 23:43 (commit ccfda47): full-size
   originals retry.** Steve's first "Add full-size" run said "401 didn't
