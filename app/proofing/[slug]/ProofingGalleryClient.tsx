@@ -3790,6 +3790,75 @@ export default function ProofingGalleryClient({
               ) : null}
             </div>
 
+            {/* Phones only: a thumb-reach row for the three things people
+                do on every photo. Hidden on computers (see proofing.css). */}
+            <div className="proofing-viewer-thumbbar">
+              <button
+                type="button"
+                className="proofing-viewer-thumbbar-nav"
+                aria-label="Previous photograph"
+                disabled={!previousViewerImage}
+                onClick={() =>
+                  previousViewerImage &&
+                  setViewerImageId(previousViewerImage.id)
+                }
+              >
+                <span aria-hidden="true">‹</span> Previous
+              </button>
+
+              {view === "consolidated" ? (
+                <button
+                  type="button"
+                  className={
+                    definitiveImageIdSet.has(viewerImage.id)
+                      ? "proofing-viewer-thumbbar-favourite is-favourite"
+                      : "proofing-viewer-thumbbar-favourite"
+                  }
+                  aria-pressed={definitiveImageIdSet.has(viewerImage.id)}
+                  disabled={updatingDefinitiveImageId !== null}
+                  onClick={() =>
+                    void toggleDefinitiveSelection(viewerImage.id)
+                  }
+                >
+                  <span aria-hidden="true">
+                    {definitiveImageIdSet.has(viewerImage.id) ? "♥" : "♡"}
+                  </span>
+                  {definitiveImageIdSet.has(viewerImage.id)
+                    ? "Selected"
+                    : "Select"}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className={
+                    favouriteSet.has(viewerImage.id)
+                      ? "proofing-viewer-thumbbar-favourite is-favourite"
+                      : "proofing-viewer-thumbbar-favourite"
+                  }
+                  aria-pressed={favouriteSet.has(viewerImage.id)}
+                  disabled={isSubmitting}
+                  onClick={() => toggleFavourite(viewerImage.id)}
+                >
+                  <span aria-hidden="true">
+                    {favouriteSet.has(viewerImage.id) ? "♥" : "♡"}
+                  </span>
+                  Favourite
+                </button>
+              )}
+
+              <button
+                type="button"
+                className="proofing-viewer-thumbbar-nav"
+                aria-label="Next photograph"
+                disabled={!nextViewerImage}
+                onClick={() =>
+                  nextViewerImage &&
+                  setViewerImageId(nextViewerImage.id)
+                }
+              >
+                Next <span aria-hidden="true">›</span>
+              </button>
+            </div>
           </div>
         ) : null}
 

@@ -3198,3 +3198,84 @@ a.proofing-viewer-download {
     right: 0.5rem;
   }
 }
+
+/* Phone bottom row: ‹ Previous · ♡ Favourite · Next › (thumb reach).
+   Hidden on computers. On phones it replaces the round arrows and the
+   top-bar Favourite, so nothing appears twice. */
+.proofing-viewer.is-framed .proofing-viewer-thumbbar {
+  display: none;
+}
+
+@media (max-width: 700px) {
+  .proofing-viewer.is-framed .proofing-viewer-thumbbar {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    display: grid;
+    grid-template-columns: 1fr 1.25fr 1fr;
+    gap: 0.5rem;
+    margin-top: auto;
+    padding: 0.6rem 0.75rem calc(0.6rem + env(safe-area-inset-bottom));
+    border-top: 1px solid rgba(242, 238, 230, 0.08);
+    background: rgba(14, 13, 12, 0.97);
+  }
+
+  .proofing-viewer.is-framed .proofing-viewer-thumbbar > button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    min-height: 3rem;
+    padding: 0 0.5rem;
+    border: 1px solid rgba(242, 238, 230, 0.28);
+    background: transparent;
+    color: #f2eee6;
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .proofing-viewer.is-framed .proofing-viewer-thumbbar > button span {
+    font-size: 1.15rem;
+    line-height: 1;
+  }
+
+  .proofing-viewer.is-framed .proofing-viewer-thumbbar > button:disabled {
+    opacity: 0.3;
+  }
+
+  .proofing-viewer.is-framed .proofing-viewer-thumbbar > .proofing-viewer-thumbbar-favourite {
+    border-color: #c7a369;
+    color: #c7a369;
+  }
+
+  .proofing-viewer.is-framed .proofing-viewer-thumbbar > .proofing-viewer-thumbbar-favourite.is-favourite {
+    background: #c7a369;
+    color: #11100f;
+  }
+
+  /* The bottom row takes over these on phones. */
+  .proofing-viewer.is-framed .proofing-viewer-nav,
+  .proofing-viewer.is-framed .proofing-viewer-action-buttons > .proofing-viewer-favourite {
+    display: none;
+  }
+
+  /* Top bar: Download | Add note | Annotate on one line. */
+  .proofing-viewer.is-framed .proofing-viewer-action-buttons {
+    grid-template-columns: 1.3fr 1fr 1fr;
+  }
+
+  .proofing-viewer.is-framed .proofing-viewer-action-buttons > button,
+  .proofing-viewer.is-framed .proofing-viewer-action-buttons > a {
+    letter-spacing: 0.06em;
+  }
+
+  /* Room for the top bar (~6.5rem) and bottom row (~4.5rem). */
+  .proofing-viewer.is-framed .proofing-viewer-image-wrap,
+  .proofing-viewer.is-framed .proofing-viewer-image {
+    max-height: calc(100dvh - 13.5rem);
+  }
+}
