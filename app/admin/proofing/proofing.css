@@ -6906,3 +6906,81 @@ input[type="email"],
   opacity: 0.45;
   cursor: default;
 }
+
+/* Gallery URL editor (Settings): address field, Save and Copy link
+   on one line; wraps on narrow screens. */
+.proofing-url-editor {
+  min-width: 0;
+}
+
+.proofing-url-editor-field {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 0.5rem;
+}
+
+.sp-workspace-url-panel .proofing-url-editor-field > span {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 0.1rem 0 0;
+  color: rgba(242, 238, 230, 0.5);
+  font-size: 0.62rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: nowrap;
+}
+
+.proofing-url-editor-field > input {
+  flex: 1 1 10rem;
+  min-width: 0;
+  min-height: 2.4rem;
+  padding: 0 0.75rem;
+  border: 1px solid rgba(242, 238, 230, 0.18);
+  background: rgba(242, 238, 230, 0.03);
+  color: #f2eee6;
+  font: inherit;
+  font-size: 0.7rem;
+}
+
+.proofing-url-editor-field > input:focus {
+  outline: none;
+  border-color: #c7a369;
+}
+
+.proofing-url-editor-field > button {
+  min-height: 2.4rem;
+  padding: 0 1rem;
+  border: 1px solid #c7a369;
+  background: #c7a369;
+  color: #11100f;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.proofing-url-editor-field > button.proofing-url-editor-copy {
+  background: transparent;
+  color: #c7a369;
+}
+
+.proofing-url-editor-field > button.proofing-url-editor-copy.is-copied {
+  border-color: #7fbf8a;
+  color: #7fbf8a;
+}
+
+.proofing-url-editor-field > button:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+
+.proofing-url-editor-message {
+  margin: 0.5rem 0 0;
+  color: rgba(242, 238, 230, 0.5);
+  font-size: 0.58rem;
+}

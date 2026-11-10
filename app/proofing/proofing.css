@@ -2854,3 +2854,347 @@ a.proofing-viewer-download {
   align-items: center;
   justify-content: center;
 }
+
+/* ==========================================================
+   Framed photo viewer (Nov 2026)
+   Steve: favourites/navigation felt hidden behind a huge
+   photo. Now: a top bar with the photo number, file name,
+   every action and close; the photo smaller, in a frame;
+   clear round previous/next buttons on the frame's edges.
+   Scoped to .is-framed so it overrides the older layers above.
+   ========================================================== */
+
+.proofing-viewer.is-framed {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  place-items: initial;
+  padding: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  background: #0b0a09;
+}
+
+.proofing-viewer.is-framed .proofing-viewer-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.9rem 1.5rem;
+  border-bottom: 1px solid rgba(242, 238, 230, 0.08);
+  background: rgba(14, 13, 12, 0.97);
+}
+
+.proofing-viewer.is-framed .proofing-viewer-actions {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1.25rem;
+  position: static;
+  inset: auto;
+  width: auto;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.proofing-viewer.is-framed .proofing-viewer-meta {
+  display: flex;
+  flex: 0 1 auto;
+  align-items: baseline;
+  gap: 0.9rem;
+  min-width: 0;
+}
+
+.proofing-viewer.is-framed .proofing-viewer-position {
+  order: -1;
+  color: #c7a369;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+}
+
+.proofing-viewer.is-framed .proofing-viewer-filename {
+  grid-column: auto;
+  justify-self: auto;
+  max-width: 26vw;
+  color: rgba(242, 238, 230, 0.6);
+  font-size: 0.72rem;
+  text-align: left;
+}
+
+.proofing-viewer.is-framed .proofing-viewer-action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  grid-column: auto;
+  justify-self: auto;
+}
+
+/* One consistent button style for favourite, note, annotate, download. */
+.proofing-viewer.is-framed .proofing-viewer-action-buttons > button,
+.proofing-viewer.is-framed .proofing-viewer-action-buttons > a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 2.6rem;
+  margin: 0;
+  padding: 0 1.1rem;
+  border: 1px solid rgba(242, 238, 230, 0.28);
+  border-radius: 0;
+  background: transparent;
+  color: #f2eee6;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  text-decoration: none;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.proofing-viewer.is-framed .proofing-viewer-action-buttons > button:hover,
+.proofing-viewer.is-framed .proofing-viewer-action-buttons > a:hover {
+  border-color: #c7a369;
+  color: #c7a369;
+}
+
+.proofing-viewer.is-framed .proofing-viewer-action-buttons > button:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+/* Favourite: gold outline, filled gold once chosen. */
+.proofing-viewer.is-framed .proofing-viewer-action-buttons > .proofing-viewer-favourite {
+  border-color: #c7a369;
+  color: #c7a369;
+}
+
+.proofing-viewer.is-framed .proofing-viewer-favourite span {
+  color: inherit;
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+.proofing-viewer.is-framed .proofing-viewer-action-buttons > .proofing-viewer-favourite.is-favourite {
+  background: #c7a369;
+  color: #11100f;
+}
+
+/* Download: solid gold. */
+.proofing-viewer.is-framed .proofing-viewer-action-buttons > .proofing-viewer-download {
+  border-color: #c7a369;
+  background: #c7a369;
+  color: #11100f;
+}
+
+.proofing-viewer.is-framed .proofing-viewer-action-buttons > .proofing-viewer-download:hover {
+  border-color: #d8b77f;
+  background: #d8b77f;
+  color: #11100f;
+}
+
+.proofing-viewer.is-framed .proofing-viewer-saved {
+  flex: 1 0 100%;
+  order: 99;
+  margin: 0.15rem 0 0;
+  text-align: right;
+}
+
+.proofing-viewer.is-framed .proofing-viewer-close {
+  position: static;
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  padding: 0 0 0.15rem;
+  border: 1px solid rgba(242, 238, 230, 0.28);
+  color: #f2eee6;
+  font-size: 1.5rem;
+}
+
+.proofing-viewer.is-framed .proofing-viewer-close:hover {
+  border-color: #c7a369;
+  color: #c7a369;
+}
+
+.proofing-viewer.is-framed .proofing-viewer-stage {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  width: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 1.75rem 4.75rem 2rem;
+}
+
+.proofing-viewer.is-framed .proofing-viewer-frame {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: min(100%, 1180px);
+  padding: 0.9rem;
+  border: 1px solid rgba(199, 163, 105, 0.22);
+  background: #161513;
+  box-shadow: 0 1.5rem 4rem rgba(0, 0, 0, 0.55);
+}
+
+.proofing-viewer.is-framed .proofing-viewer-image-wrap,
+.proofing-viewer.is-framed .proofing-viewer-image {
+  max-width: min(100%, calc(100vw - 11.5rem));
+  max-height: calc(100dvh - 14.5rem);
+}
+
+/* Previous / next: clear round buttons straddling the frame. */
+.proofing-viewer.is-framed .proofing-viewer-nav {
+  position: absolute;
+  top: 50%;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 3.25rem;
+  height: 3.25rem;
+  padding: 0 0 0.25rem;
+  transform: translateY(-50%);
+  border: 1px solid rgba(242, 238, 230, 0.35);
+  border-radius: 50%;
+  background: rgba(14, 13, 12, 0.85);
+  color: #f2eee6;
+  font-size: 2rem;
+  line-height: 1;
+  backdrop-filter: blur(4px);
+}
+
+.proofing-viewer.is-framed .proofing-viewer-nav:hover {
+  border-color: #c7a369;
+  color: #c7a369;
+}
+
+.proofing-viewer.is-framed .proofing-viewer-previous {
+  left: -1.65rem;
+  right: auto;
+}
+
+.proofing-viewer.is-framed .proofing-viewer-next {
+  right: -1.65rem;
+  left: auto;
+}
+
+.proofing-viewer.is-framed .proofing-annotation-editor,
+.proofing-viewer.is-framed .proofing-viewer-note-editor {
+  width: min(100%, 60rem);
+}
+
+/* Phones: number + name on top, then a 2 × 2 block of buttons
+   (Favourite | Download, Note | Annotate), photo framed below. */
+@media (max-width: 700px) {
+  .proofing-viewer.is-framed .proofing-viewer-topbar {
+    position: sticky;
+    display: block;
+    padding: 0.7rem 0.75rem 0.75rem;
+  }
+
+  .proofing-viewer.is-framed .proofing-viewer-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.6rem;
+  }
+
+  .proofing-viewer.is-framed .proofing-viewer-meta {
+    justify-content: flex-start;
+    min-height: 2.4rem;
+    align-items: center;
+    padding-right: 3rem;
+    text-align: left;
+  }
+
+  .proofing-viewer.is-framed .proofing-viewer-filename {
+    max-width: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .proofing-viewer.is-framed .proofing-viewer-action-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+
+  .proofing-viewer.is-framed .proofing-viewer-action-buttons > button,
+  .proofing-viewer.is-framed .proofing-viewer-action-buttons > a {
+    width: 100%;
+    min-height: 2.75rem;
+    padding: 0 0.5rem;
+    font-size: 0.6rem;
+  }
+
+  .proofing-viewer.is-framed .proofing-viewer-action-buttons > .proofing-viewer-download {
+    order: 1;
+  }
+
+  .proofing-viewer.is-framed .proofing-viewer-action-buttons > .proofing-viewer-note-button {
+    order: 2;
+  }
+
+  .proofing-viewer.is-framed .proofing-viewer-action-buttons > .proofing-viewer-annotation-button {
+    order: 3;
+  }
+
+  .proofing-viewer.is-framed .proofing-viewer-saved {
+    grid-column: 1 / -1;
+    text-align: center;
+  }
+
+  .proofing-viewer.is-framed .proofing-viewer-close {
+    position: absolute;
+    top: 0.7rem;
+    right: 0.75rem;
+    width: 2.4rem;
+    height: 2.4rem;
+  }
+
+  .proofing-viewer.is-framed .proofing-viewer-stage {
+    padding: 1rem 0.6rem 1.5rem;
+  }
+
+  .proofing-viewer.is-framed .proofing-viewer-frame {
+    padding: 0.4rem;
+  }
+
+  .proofing-viewer.is-framed .proofing-viewer-image-wrap,
+  .proofing-viewer.is-framed .proofing-viewer-image {
+    max-width: calc(100vw - 2.1rem);
+    max-height: calc(100dvh - 15rem);
+  }
+
+  .proofing-viewer.is-framed .proofing-viewer-nav {
+    width: 2.75rem;
+    height: 2.75rem;
+    font-size: 1.7rem;
+  }
+
+  .proofing-viewer.is-framed .proofing-viewer-previous {
+    left: 0.5rem;
+  }
+
+  .proofing-viewer.is-framed .proofing-viewer-next {
+    right: 0.5rem;
+  }
+}

@@ -3164,153 +3164,13 @@ export default function ProofingGalleryClient({
         {viewerImage ? (
           <div
             ref={viewerDialogRef}
-            className="proofing-viewer"
+            className="proofing-viewer is-framed"
             role="dialog"
             aria-modal="true"
             aria-label="Photograph viewer"
           >
-            <button
-              type="button"
-              className="proofing-viewer-close"
-              aria-label="Close photograph"
-              onClick={() => setViewerImageId(null)}
-            >
-              ×
-            </button>
-
-            {previousViewerImage ? (
-              <button
-                type="button"
-                className="proofing-viewer-nav proofing-viewer-previous"
-                aria-label="Previous photograph"
-                onClick={() =>
-                  setViewerImageId(previousViewerImage.id)
-                }
-              >
-                ‹
-              </button>
-            ) : null}
-
-            <div
-              className="proofing-viewer-stage"
-              onTouchStart={handleViewerTouchStart}
-              onTouchEnd={handleViewerTouchEnd}
-              onTouchCancel={handleViewerTouchCancel}
-            >
-              <div className="proofing-viewer-image-wrap">
-                <img
-                  key={viewerImage.id}
-                  src={fullImageUrl(gallerySlug, viewerImage.id)}
-                  alt={viewerImage.alt}
-                  className="proofing-viewer-image"
-                  // The thumbnail shows straight away while the full
-                  // proof arrives on top of it.
-                  style={
-                    viewerImage.thumbUrl
-                      ? {
-                          backgroundImage: `url("${viewerImage.thumbUrl}")`,
-                          backgroundSize: "contain",
-                          backgroundRepeat: "no-repeat",
-                          backgroundPosition: "center",
-                        }
-                      : undefined
-                  }
-                />
-
-                <ProofingWatermarkOverlay
-                  url={watermarkUrl}
-                  position={watermarkPosition}
-                  size={watermarkSize}
-                  opacity={watermarkOpacity}
-                />
-
-                {(
-                  annotationEditorImageId ===
-                    viewerImage.id
-                    ? annotationDraft
-                    : imageAnnotations[
-                        viewerImage.id
-                      ]
-                )?.marks.length ? (
-                  <svg
-                    className={
-                      annotationEditorImageId ===
-                      viewerImage.id
-                        ? "proofing-annotation-overlay is-editing"
-                        : "proofing-annotation-overlay"
-                    }
-                    viewBox="0 0 1000 1000"
-                    preserveAspectRatio="none"
-                    aria-label="Photograph annotation"
-                    onPointerDown={
-                      annotationEditorImageId ===
-                      viewerImage.id
-                        ? beginAnnotationStroke
-                        : undefined
-                    }
-                    onPointerMove={
-                      annotationEditorImageId ===
-                      viewerImage.id
-                        ? continueAnnotationStroke
-                        : undefined
-                    }
-                    onPointerUp={
-                      annotationEditorImageId ===
-                      viewerImage.id
-                        ? endAnnotationStroke
-                        : undefined
-                    }
-                    onPointerCancel={
-                      annotationEditorImageId ===
-                      viewerImage.id
-                        ? endAnnotationStroke
-                        : undefined
-                    }
-                  >
-                    {(
-                      annotationEditorImageId ===
-                        viewerImage.id
-                        ? annotationDraft
-                        : imageAnnotations[
-                            viewerImage.id
-                          ]
-                    )?.marks.map(
-                      (mark) => (
-                        <path
-                          key={
-                            mark.id
-                          }
-                          d={annotationPath(
-                            mark.points,
-                          )}
-                          className="proofing-annotation-path"
-                        />
-                      ),
-                    )}
-                  </svg>
-                ) : annotationEditorImageId ===
-                  viewerImage.id ? (
-                  <svg
-                    className="proofing-annotation-overlay is-editing"
-                    viewBox="0 0 1000 1000"
-                    preserveAspectRatio="none"
-                    aria-label="Draw on photograph"
-                    onPointerDown={
-                      beginAnnotationStroke
-                    }
-                    onPointerMove={
-                      continueAnnotationStroke
-                    }
-                    onPointerUp={
-                      endAnnotationStroke
-                    }
-                    onPointerCancel={
-                      endAnnotationStroke
-                    }
-                  />
-                ) : null}
-              </div>
-
+            {/* Top bar: where you are, every action, and close. */}
+            <div className="proofing-viewer-topbar">
               <div className="proofing-viewer-actions">
                 <div className="proofing-viewer-meta">
                   {(showFilenames ||
@@ -3553,6 +3413,165 @@ export default function ProofingGalleryClient({
                 </div>
               </div>
 
+              <button
+                type="button"
+                className="proofing-viewer-close"
+                aria-label="Close photograph"
+                onClick={() => setViewerImageId(null)}
+              >
+                ×
+              </button>
+            </div>
+
+            <div
+              className="proofing-viewer-stage"
+              onTouchStart={handleViewerTouchStart}
+              onTouchEnd={handleViewerTouchEnd}
+              onTouchCancel={handleViewerTouchCancel}
+            >
+              {/* The photo sits in a frame, with the arrows on its edges. */}
+              <div className="proofing-viewer-frame">
+                {previousViewerImage ? (
+                  <button
+                    type="button"
+                    className="proofing-viewer-nav proofing-viewer-previous"
+                    aria-label="Previous photograph"
+                    onClick={() =>
+                      setViewerImageId(previousViewerImage.id)
+                    }
+                  >
+                    ‹
+                  </button>
+                ) : null}
+
+                <div className="proofing-viewer-image-wrap">
+                  <img
+                    key={viewerImage.id}
+                    src={fullImageUrl(gallerySlug, viewerImage.id)}
+                    alt={viewerImage.alt}
+                    className="proofing-viewer-image"
+                    // The thumbnail shows straight away while the full
+                    // proof arrives on top of it.
+                    style={
+                      viewerImage.thumbUrl
+                        ? {
+                            backgroundImage: `url("${viewerImage.thumbUrl}")`,
+                            backgroundSize: "contain",
+                            backgroundRepeat: "no-repeat",
+                            backgroundPosition: "center",
+                          }
+                        : undefined
+                    }
+                  />
+
+                  <ProofingWatermarkOverlay
+                    url={watermarkUrl}
+                    position={watermarkPosition}
+                    size={watermarkSize}
+                    opacity={watermarkOpacity}
+                  />
+
+                  {(
+                    annotationEditorImageId ===
+                      viewerImage.id
+                      ? annotationDraft
+                      : imageAnnotations[
+                          viewerImage.id
+                        ]
+                  )?.marks.length ? (
+                    <svg
+                      className={
+                        annotationEditorImageId ===
+                        viewerImage.id
+                          ? "proofing-annotation-overlay is-editing"
+                          : "proofing-annotation-overlay"
+                      }
+                      viewBox="0 0 1000 1000"
+                      preserveAspectRatio="none"
+                      aria-label="Photograph annotation"
+                      onPointerDown={
+                        annotationEditorImageId ===
+                        viewerImage.id
+                          ? beginAnnotationStroke
+                          : undefined
+                      }
+                      onPointerMove={
+                        annotationEditorImageId ===
+                        viewerImage.id
+                          ? continueAnnotationStroke
+                          : undefined
+                      }
+                      onPointerUp={
+                        annotationEditorImageId ===
+                        viewerImage.id
+                          ? endAnnotationStroke
+                          : undefined
+                      }
+                      onPointerCancel={
+                        annotationEditorImageId ===
+                        viewerImage.id
+                          ? endAnnotationStroke
+                          : undefined
+                      }
+                    >
+                      {(
+                        annotationEditorImageId ===
+                          viewerImage.id
+                          ? annotationDraft
+                          : imageAnnotations[
+                              viewerImage.id
+                            ]
+                      )?.marks.map(
+                        (mark) => (
+                          <path
+                            key={
+                              mark.id
+                            }
+                            d={annotationPath(
+                              mark.points,
+                            )}
+                            className="proofing-annotation-path"
+                          />
+                        ),
+                      )}
+                    </svg>
+                  ) : annotationEditorImageId ===
+                    viewerImage.id ? (
+                    <svg
+                      className="proofing-annotation-overlay is-editing"
+                      viewBox="0 0 1000 1000"
+                      preserveAspectRatio="none"
+                      aria-label="Draw on photograph"
+                      onPointerDown={
+                        beginAnnotationStroke
+                      }
+                      onPointerMove={
+                        continueAnnotationStroke
+                      }
+                      onPointerUp={
+                        endAnnotationStroke
+                      }
+                      onPointerCancel={
+                        endAnnotationStroke
+                      }
+                    />
+                  ) : null}
+                </div>
+
+                {nextViewerImage ? (
+                  <button
+                    type="button"
+                    className="proofing-viewer-nav proofing-viewer-next"
+                    aria-label="Next photograph"
+                    onClick={() =>
+                      setViewerImageId(nextViewerImage.id)
+                    }
+                  >
+                    ›
+                  </button>
+                ) : null}
+              </div>
+
               {annotationEditorImageId ===
               viewerImage.id ? (
                 <div className="proofing-annotation-editor">
@@ -3771,18 +3790,6 @@ export default function ProofingGalleryClient({
               ) : null}
             </div>
 
-            {nextViewerImage ? (
-              <button
-                type="button"
-                className="proofing-viewer-nav proofing-viewer-next"
-                aria-label="Next photograph"
-                onClick={() =>
-                  setViewerImageId(nextViewerImage.id)
-                }
-              >
-                ›
-              </button>
-            ) : null}
           </div>
         ) : null}
 
