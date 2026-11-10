@@ -6984,3 +6984,57 @@ input[type="email"],
   color: rgba(242, 238, 230, 0.5);
   font-size: 0.58rem;
 }
+
+/* Selections: what each person downloaded (10 Nov) */
+
+.proofing-selection-downloads {
+  margin-top: 1.25rem;
+  border-top: 1px solid rgba(242, 238, 230, 0.12);
+  padding-top: 1rem;
+}
+
+.proofing-selection-downloads summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.9rem;
+  cursor: pointer;
+  list-style: none;
+}
+
+.proofing-selection-downloads summary::-webkit-details-marker {
+  display: none;
+}
+
+.proofing-selection-downloads summary::before {
+  content: "›";
+  display: inline-block;
+  width: 0.8rem;
+  color: #c7a369;
+  transition: transform 0.15s ease;
+}
+
+.proofing-selection-downloads[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.proofing-selection-downloads-label {
+  color: #c7a369;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.proofing-selection-downloads-meta {
+  color: rgba(242, 238, 230, 0.6);
+  font-size: 0.85rem;
+}
+
+.proofing-selection-downloads-none {
+  margin: 1.25rem 0 0;
+  border-top: 1px solid rgba(242, 238, 230, 0.12);
+  padding-top: 1rem;
+  color: rgba(242, 238, 230, 0.45);
+  font-size: 0.85rem;
+}

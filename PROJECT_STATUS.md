@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 10 November 2026, 12:50 (London)
+Last updated: 10 November 2026, 15:05 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -118,6 +118,16 @@ cost an extra Vercel build.
 - **X (Twitter) removed — LIVE 1 Nov:** taken out of the site's hidden profile lists (`SAME_AS` in `app/layout.tsx` and `/llms.txt`), and from the Google Business Profile social links (Google review pending). Steve doesn't use X and can't log in; don't add it back. Went live together with the three 29 Oct items below (People search, Mac folder fix, Storage folder Download), so those are LIVE too.
 
 ## Waiting / in progress
+
+- **LIVE 10 Nov 15:06: downloads on each person's card in Proofing ›
+  gallery › Selections** (Steve OK'd mockup, said go live). Steve asked if the gallery shows downloads: it
+  already did (Downloads tab: email, time, single/zip, file names; logged
+  when Download is pressed, so a failed save still counts). New: under
+  each visitor's favourites, a closed "Downloaded N photos · last <date>"
+  that opens to thumbnails (unique photos, newest first; matched by
+  visitorId, else email), or "No downloads yet". `downloadsByVisitor` in
+  `app/admin/proofing/[id]/page.tsx`; styles at end of
+  `app/admin/proofing/proofing.css`.
 
 - **LIVE 10 Nov 12:50: Duplicate for Upcoming drafts (double casts)**
   (Steve OK'd the mockup and said go live; not yet tried for real).

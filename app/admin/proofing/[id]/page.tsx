@@ -173,6 +173,36 @@ export default async function ProofingGalleryPage({
       gallery.id,
     );
 
+  /*
+   * Downloads per person, for their card in Selections: the photos they
+   * took (each once, newest download first) and when they last downloaded.
+   */
+  const downloadsByVisitor = new Map<
+    string,
+    { imageIds: string[]; lastAt: string; times: number }
+  >();
+  for (const event of downloadEvents) {
+    const key =
+      event.visitorId ||
+      event.visitorEmail.toLowerCase();
+    const entry =
+      downloadsByVisitor.get(key) ?? {
+        imageIds: [],
+        lastAt: event.createdAt,
+        times: 0,
+      };
+    entry.times += 1;
+    if (event.createdAt > entry.lastAt) {
+      entry.lastAt = event.createdAt;
+    }
+    for (const imageId of event.imageIds) {
+      if (!entry.imageIds.includes(imageId)) {
+        entry.imageIds.push(imageId);
+      }
+    }
+    downloadsByVisitor.set(key, entry);
+  }
+
   const imageNotes =
     await getProofingImageNotes(
       gallery.id,
@@ -706,6 +736,31 @@ export default async function ProofingGalleryPage({
                     image.originalFilename,
                 );
 
+              const downloads =
+                downloadsByVisitor.get(
+                  visitor.id,
+                ) ??
+                downloadsByVisitor.get(
+                  visitor.email.toLowerCase(),
+                );
+
+              const downloadedImages = (
+                downloads?.imageIds ?? []
+              )
+                .map((imageId) =>
+                  gallery.images.find(
+                    (image) =>
+                      image.id === imageId,
+                  ),
+                )
+                .filter(
+                  (
+                    image,
+                  ): image is NonNullable<
+                    typeof image
+                  > => Boolean(image),
+                );
+
               return (
                 <article
                   key={visitor.id}
@@ -815,6 +870,73 @@ export default async function ProofingGalleryPage({
                       This visitor has not
                       selected any photographs
                       yet.
+                    </p>
+                  )}
+
+                  {downloads ? (
+                    <details className="proofing-selection-downloads">
+                      <summary>
+                        <span className="proofing-selection-downloads-label">
+                          Downloaded{" "}
+                          {downloads.imageIds.length}{" "}
+                          photo
+                          {downloads.imageIds.length === 1
+                            ? ""
+                            : "s"}
+                        </span>
+                        <span className="proofing-selection-downloads-meta">
+                          {downloads.times === 1
+                            ? ""
+                            : `${downloads.times} downloads · `}
+                          last{" "}
+                          {formatDownloadDate(
+                            downloads.lastAt,
+                          )}
+                        </span>
+                      </summary>
+
+                      {downloadedImages.length > 0 ? (
+                        <div className="proofing-selection-thumbnails">
+                          {downloadedImages.map(
+                            (image) => (
+                              <figure
+                                key={image.id}
+                                className="proofing-selection-thumbnail"
+                              >
+                                <div className="proofing-selection-thumbnail-image">
+                                  <img
+                                    src={`/api/admin/proofing/image?galleryId=${encodeURIComponent(
+                                      gallery.id,
+                                    )}&imageId=${encodeURIComponent(
+                                      image.id,
+                                    )}`}
+                                    alt={image.alt}
+                                    loading="lazy"
+                                  />
+                                </div>
+
+                                <figcaption>
+                                  {image.originalFilename}
+                                </figcaption>
+                              </figure>
+                            ),
+                          )}
+                        </div>
+                      ) : null}
+
+                      {downloads.imageIds.length >
+                      downloadedImages.length ? (
+                        <p className="proofing-empty">
+                          {downloads.imageIds.length -
+                            downloadedImages.length}{" "}
+                          of these photos have since
+                          been removed from the gallery.
+                        </p>
+                      ) : null}
+                    </details>
+                  ) : (
+                    <p className="proofing-selection-downloads-none">
+                      No downloads yet
                     </p>
                   )}
                 </article>
