@@ -64,6 +64,9 @@ type ProofingGalleryPageProps = {
   params: Promise<{
     id: string;
   }>;
+  searchParams: Promise<{
+    person?: string | string[];
+  }>;
 };
 
 function formatShootDate(
@@ -128,8 +131,14 @@ function formatDownloadDate(
 
 export default async function ProofingGalleryPage({
   params,
+  searchParams,
 }: ProofingGalleryPageProps) {
   const { id } = await params;
+  const { person } = await searchParams;
+  const requestedPerson =
+    typeof person === "string"
+      ? person
+      : undefined;
 
   const gallery =
     await getProofingGallery(id);
@@ -606,6 +615,20 @@ export default async function ProofingGalleryPage({
     </div>
   );
 
+  // Opened from Proofing › Recent activity: show just that person.
+  const focusedVisitor = requestedPerson
+    ? (gallery.visitors ?? []).find(
+        (visitor) =>
+          visitor.id === requestedPerson ||
+          visitor.email.toLowerCase() ===
+            requestedPerson.toLowerCase(),
+      )
+    : undefined;
+
+  const shownVisitors = focusedVisitor
+    ? [focusedVisitor]
+    : (gallery.visitors ?? []);
+
   const selections = (
     <div className="sp-workspace-panel">
       <div className="sp-workspace-section-heading">
@@ -707,10 +730,28 @@ export default async function ProofingGalleryPage({
         </article>
       ) : null}
 
-      {gallery.visitors &&
-      gallery.visitors.length > 0 ? (
+      {focusedVisitor ? (
+        <div className="proofing-selection-focus">
+          <p>
+            Showing{" "}
+            <strong>{focusedVisitor.email}</strong>
+            {" "}only
+          </p>
+
+          <Link
+            href={`/admin/proofing/${encodeURIComponent(
+              gallery.id,
+            )}?tab=selections`}
+            scroll={false}
+          >
+            Show everyone ({gallery.visitors?.length ?? 0})
+          </Link>
+        </div>
+      ) : null}
+
+      {shownVisitors.length > 0 ? (
         <div className="proofing-selection-list">
-          {gallery.visitors.map(
+          {shownVisitors.map(
             (visitor) => {
               const selectedImages =
                 visitor.selection.favourites

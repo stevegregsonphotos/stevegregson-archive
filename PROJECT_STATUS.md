@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 14 November 2026, 12:10 (London)
+Last updated: 14 November 2026, 13:35 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -119,7 +119,17 @@ cost an extra Vercel build.
 
 ## Waiting / in progress
 
-- **WAITING FOR "GO LIVE" (test branch, 14 Nov): cut Neon database bill.**
+- **LIVE 14 Nov ~13:30: Recent activity rows clickable** (Steve saw the
+  mockup and said go live).
+  Proofing › Recent activity (and View all activity) rows are now links to
+  `/admin/proofing/<id>?tab=selections&person=<visitorId>`; the gallery
+  page (`searchParams.person`, matches id or email) then shows ONLY that
+  person's card with a "Showing X only · Show everyone (N)" bar
+  (`.proofing-selection-focus` at end of `app/admin/proofing/proofing.css`).
+  Hover styles in `proofing-galleries.module.css` (`a.activityRow`,
+  `.visitorLink`, `.go`).
+
+- **LIVE (found already on live branch 14 Nov 13:30): cut Neon database bill.**
   Vercel receipt (Oct) showed ~$13 Neon compute: the DB was awake ~16 h/day
   because the Mac app checked in every 5 min (each `/api/mac` call reads the
   DB, so it never got 5 idle minutes to sleep). Changes: Mac timer 5 → 60 min

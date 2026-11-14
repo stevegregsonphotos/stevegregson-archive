@@ -277,6 +277,15 @@ export default async function ProofingPage() {
           ).getTime(),
       );
 
+  function personSelectionsHref(
+    galleryId: string,
+    visitorId: string,
+  ) {
+    return `/admin/proofing/${encodeURIComponent(
+      galleryId,
+    )}?tab=selections&person=${encodeURIComponent(visitorId)}`;
+  }
+
   function formatActivityDate(
     value: string,
   ) {
@@ -405,9 +414,11 @@ export default async function ProofingPage() {
 
           {recentVisits.map(
             ({ galleryId, galleryTitle, visitor }) => (
-              <div
+              <Link
                 key={`${galleryId}-${visitor.id}`}
+                href={personSelectionsHref(galleryId, visitor.id)}
                 className={styles.activityRow}
+                title={`See ${visitor.email}'s favourites`}
               >
                 <span className={styles.activityWho}>
                   <span
@@ -421,15 +432,15 @@ export default async function ProofingPage() {
                   {visitor.email}
                 </span>
 
-                <Link
-                  href={`/admin/proofing/${galleryId}?tab=selections`}
-                  className={styles.activityGallery}
-                >
+                <span className={styles.activityGallery}>
                   {galleryTitle}
-                </Link>
+                </span>
 
                 <span className={styles.fav}>
                   {visitor.selection.favourites.length} ♥
+                  <span className={styles.go} aria-hidden="true">
+                    {" "}›
+                  </span>
                 </span>
 
                 <time
@@ -438,7 +449,7 @@ export default async function ProofingPage() {
                 >
                   {formatActivityDate(visitor.lastSeenAt)}
                 </time>
-              </div>
+              </Link>
             ),
           )}
 
@@ -477,20 +488,28 @@ export default async function ProofingPage() {
                     </div>
 
                     {activityGallery.visitors.map((visitor) => (
-                      <div
+                      <Link
                         key={visitor.id}
-                        className={styles.visitorRow}
+                        href={personSelectionsHref(
+                          activityGallery.galleryId,
+                          visitor.id,
+                        )}
+                        className={`${styles.visitorRow} ${styles.visitorLink}`}
+                        title={`See ${visitor.email}'s favourites`}
                       >
                         <span>{visitor.email}</span>
 
                         <span className={styles.fav}>
                           {visitor.selection.favourites.length}
+                          <span className={styles.go} aria-hidden="true">
+                            {" "}›
+                          </span>
                         </span>
 
                         <time dateTime={visitor.lastSeenAt}>
                           {formatActivityDate(visitor.lastSeenAt)}
                         </time>
-                      </div>
+                      </Link>
                     ))}
                   </div>
                 </details>

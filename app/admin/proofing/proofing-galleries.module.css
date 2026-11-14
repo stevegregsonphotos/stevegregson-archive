@@ -172,8 +172,34 @@
   text-decoration: none;
 }
 
-.activityGallery:hover {
+a.activityRow,
+a.visitorLink {
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+a.activityRow:hover,
+a.visitorLink:hover,
+a.activityRow:focus-visible,
+a.visitorLink:focus-visible {
+  background: var(--panel-2);
+  outline: none;
+}
+
+a.activityRow:hover .activityWho,
+a.visitorLink:hover > span:first-child {
   color: var(--gold);
+}
+
+.go {
+  opacity: 0.55;
+  transition: opacity 0.12s;
+}
+
+a.activityRow:hover .go,
+a.visitorLink:hover .go {
+  opacity: 1;
 }
 
 .dot {
