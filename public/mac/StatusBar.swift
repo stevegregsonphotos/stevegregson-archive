@@ -180,10 +180,10 @@ final class StatusController: NSObject, NSMenuDelegate {
         timer = Timer.scheduledTimer(timeInterval: 2, target: self, selector: #selector(refresh), userInfo: nil, repeats: true)
     }
 
-    /// No report for 15 minutes while the uploader should run every 5.
+    /// No report for 75 minutes while the uploader should run every 60.
     var stale: Bool {
         guard let r = report else { return true }
-        return Date().timeIntervalSince1970 - r.updated > 15 * 60
+        return Date().timeIntervalSince1970 - r.updated > 75 * 60
     }
 
     var remaining: Count {

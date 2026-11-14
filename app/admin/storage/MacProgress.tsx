@@ -26,7 +26,19 @@ type Status = {
 };
 type Mac = { id: string; name: string; receivedAt: string; status: Status };
 
-const STALE_MS = 15 * 60 * 1000; // the Mac checks in at least every 5 minutes when awake
+const STALE_MS = 75 * 60 * 1000; // the Mac checks in at least every 60 minutes when awake
+// Each check reads the database (Neon charges while it's awake), so check
+// often only while a Mac is actually busy.
+const BUSY_POLL_MS = 5000;
+const IDLE_POLL_MS = 60000;
+const BUSY_STATES = ["uploading", "downloading", "waiting", "checking", "tidying"];
+
+function anyBusy(list: Mac[] | null) {
+  if (!list) return false;
+  return list.some(
+    (mac) => BUSY_STATES.includes(mac.status.state) && Date.now() - new Date(mac.receivedAt).getTime() < 2 * 60 * 1000,
+  );
+}
 
 function bytes(value: number) {
   const units = ["B", "KB", "MB", "GB", "TB"];
@@ -109,10 +121,15 @@ function useMacProgress() {
   useEffect(() => {
     let alive = true;
     let timer = 0;
+    let busy = false;
+    let lastFetch = 0;
     async function poll() {
-      if (document.visibilityState === "visible") {
+      const due = Date.now() - lastFetch >= (busy ? BUSY_POLL_MS : IDLE_POLL_MS) - 500;
+      if (document.visibilityState === "visible" && due) {
+        lastFetch = Date.now();
         try {
           const list = await fetchProgress();
+          busy = anyBusy(list);
           if (alive) setMacs(list);
         } catch {
           /* try again next time */
@@ -120,7 +137,7 @@ function useMacProgress() {
       }
       if (alive) {
         setNow(Date.now()); // keeps "2 min ago" fresh
-        timer = window.setTimeout(() => void poll(), 5000);
+        timer = window.setTimeout(() => void poll(), BUSY_POLL_MS);
       }
     }
     void poll();

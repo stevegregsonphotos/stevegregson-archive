@@ -208,7 +208,7 @@ cat > "$PLIST" <<PLIST
   <key>ProgramArguments</key>
   <array><string>/bin/zsh</string><string>$SUPPORT/agent.zsh</string></array>
   <key>WatchPaths</key><array><string>$ROOT</string></array>
-  <key>StartInterval</key><integer>300</integer>
+  <key>StartInterval</key><integer>3600</integer>
   <key>RunAtLoad</key><true/>
   <key>ThrottleInterval</key><integer>15</integer>
   <key>ProcessType</key><string>Background</string>

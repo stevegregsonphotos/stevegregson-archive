@@ -258,6 +258,19 @@ self_update() {
 }
 [[ -z "$SGS_NO_UPDATE" ]] && self_update
 
+# ---- Hourly timer (was every 5 minutes) ----------------------------------
+# Each run talks to the website's database, so a 5-minute timer kept it awake
+# all day (Neon charges for awake time). New files still start a run straight
+# away (WatchPaths). launchd reads the new timer the next time the Mac
+# restarts or Steve logs in again.
+UPLOADER_PLIST="$HOME/Library/LaunchAgents/com.stevegregson.storage.plist"
+if [[ -f "$UPLOADER_PLIST" ]] \
+   && [[ "$(plutil -extract StartInterval raw -o - "$UPLOADER_PLIST" 2>/dev/null)" != "3600" ]]; then
+  if plutil -replace StartInterval -integer 3600 "$UPLOADER_PLIST" 2>/dev/null; then
+    log "Timer changed to every 60 minutes (takes effect after the next restart)."
+  fi
+fi
+
 # ---- Finder right-click options (Quick Actions) --------------------------
 # Written into ~/Library/Services by the app itself, so they arrive with the
 # daily self-update. Bump QA_VERSION to rewrite them.
@@ -386,7 +399,7 @@ install_quick_actions() {
 # Built here from StatusBar.swift with Apple's free developer tools (the
 # same ones git uses), so there's nothing to buy or sign. It just reads
 # status.json. Bump MB_VERSION to rebuild it after StatusBar.swift changes.
-MB_VERSION=4
+MB_VERSION=5
 MB_LABEL="com.stevegregson.storage.menubar"
 MB_APP="$HOME/Applications/Steve Gregson Storage Progress.app"
 install_menubar() {
