@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 14 November 2026, 13:35 (London)
+Last updated: 15 November 2026, 20:10 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -118,6 +118,25 @@ cost an extra Vercel build.
 - **X (Twitter) removed — LIVE 1 Nov:** taken out of the site's hidden profile lists (`SAME_AS` in `app/layout.tsx` and `/llms.txt`), and from the Google Business Profile social links (Google review pending). Steve doesn't use X and can't log in; don't add it back. Went live together with the three 29 Oct items below (People search, Mac folder fix, Storage folder Download), so those are LIVE too.
 
 ## Waiting / in progress
+
+- **WAITING FOR "go live" (test branch 15 Nov): Upcoming → curated
+  import now links on Import.** Steve's first real use (Jekyll & Hyde,
+  Rose Bruford, 15 Nov): Upcoming › "Use a curated folder" → chose folder
+  → pressed Import. The draft's details were only applied if he clicked
+  Edit and saved, so it published with the curator's details and the
+  draft stayed in Upcoming. Now Import first calls new
+  `/api/admin/curated-archive-import/link-upcoming` (draft details +
+  credits onto the override, blank draft fields keep curated ones, photos
+  untouched, sets `upcomingId`; skips if already linked or the draft is
+  already published — double casts: only the first import uses it); then
+  the publish route's existing `markLinkedUpcomingPublished` moves it out
+  of Upcoming. Confirm + banner wording changed. Not tried for real yet.
+- **Jekyll & Hyde (15 Nov): only 36 photos, not 37.** An earlier chat
+  told Steve it had added #0250 (bassist) to `pass-2.json`, but the file
+  on his Mac (~/Pictures/Curated/Jekyll-Hyde, 18:16) still has the
+  original 36 — the edit never landed. Site gallery shows 35 + the hero
+  (#0143). Plan offered: after go live, add #0250 for real, Finish, delete
+  the published production, re-import from the Upcoming draft.
 
 - **LIVE 14 Nov ~13:30: Recent activity rows clickable** (Steve saw the
   mockup and said go live).

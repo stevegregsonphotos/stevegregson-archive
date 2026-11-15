@@ -2342,7 +2342,9 @@ export default function CuratedArchiveImportClient({
 
     if (
       !window.confirm(
-        `Import "${production.title || production.production}" into the website archive now?`,
+        upcomingStart
+          ? `Import "${production.title || production.production}" into the website archive now, using the details and credits from your upcoming production “${upcomingStart.title}”?`
+          : `Import "${production.title || production.production}" into the website archive now?`,
       )
     ) {
       return;
@@ -2354,6 +2356,54 @@ export default function CuratedArchiveImportClient({
     setError("");
 
     try {
+      /*
+       * Started from Productions › Upcoming: copy that draft's details
+       * and credits onto this production first (unless it was already
+       * linked on the Edit page), so the import uses them and the draft
+       * leaves the Upcoming list once published.
+       */
+      if (upcomingStart) {
+        setImportProgressText(
+          "Using your upcoming production’s details…",
+        );
+
+        const linkResponse =
+          await fetch(
+            "/api/admin/curated-archive-import/link-upcoming",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
+              body: JSON.stringify({
+                production:
+                  production.production,
+                upcomingId:
+                  upcomingStart.id,
+              }),
+            },
+          );
+
+        const linkResult =
+          (await linkResponse.json().catch(
+            () => ({}),
+          )) as {
+            ok?: boolean;
+            message?: string;
+          };
+
+        if (
+          !linkResponse.ok ||
+          !linkResult.ok
+        ) {
+          throw new Error(
+            linkResult.message ||
+              "Couldn’t use the upcoming production’s details. Nothing was imported.",
+          );
+        }
+      }
+
       setImportProgressText(
         "Preparing production…",
       );
@@ -2928,10 +2978,10 @@ export default function CuratedArchiveImportClient({
           }}
         >
           Starting from your upcoming production “{upcomingStart.title}”.
-          Choose its curated folder below, then click Edit on the
-          production: its details and credits will be filled in from
-          the upcoming production for you to check and save before
-          importing.
+          Choose its curated folder below. When you press Import, the
+          production uses the upcoming production&rsquo;s details and
+          credits (Claude&rsquo;s photo picks are kept) and it leaves your
+          Upcoming list. To check the details first, click Edit.
         </p>
       ) : null}
 
