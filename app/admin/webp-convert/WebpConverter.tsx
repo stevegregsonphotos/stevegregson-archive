@@ -94,6 +94,8 @@ export default function WebpConverter() {
   const [stats, setStats] = useState({ productionsDone: 0, productionsTotal: 0, converted: 0, alreadyWebp: 0, failed: 0, before: 0, after: 0 });
   const [log, setLog] = useState<string[]>([]);
   const stopRef = useRef(false);
+  const autoRetriesRef = useRef(0);
+  const retryTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     // Read remembered progress after the first render (localStorage is browser-only).
@@ -105,6 +107,10 @@ export default function WebpConverter() {
   }
 
   async function start() {
+    if (retryTimerRef.current) {
+      window.clearTimeout(retryTimerRef.current);
+      retryTimerRef.current = null;
+    }
     stopRef.current = false;
     setRunning(true);
     const done = loadDone();
@@ -184,7 +190,20 @@ export default function WebpConverter() {
 
       setStatus(stopRef.current ? "Stopped. Press Start to carry on where it left off." : "Finished.");
     } catch (error) {
-      setStatus(`Stopped: ${error instanceof Error ? error.message : String(error)} — press Start to carry on.`);
+      const reason = error instanceof Error ? error.message : String(error);
+      // Overnight runs: a dropped connection shouldn't end the job. Wait a
+      // minute and carry on by itself (finished productions are skipped).
+      if (!stopRef.current && autoRetriesRef.current < 60) {
+        autoRetriesRef.current += 1;
+        setStatus(`Connection dropped (${reason}). Carrying on by itself in 1 minute… (retry ${autoRetriesRef.current})`);
+        note(`… connection dropped: ${reason}; retrying in 1 minute`);
+        setRunning(false);
+        retryTimerRef.current = window.setTimeout(() => {
+          if (!stopRef.current) void start();
+        }, 60_000);
+        return;
+      }
+      setStatus(`Stopped: ${reason} — press Start to carry on.`);
     } finally {
       setRunning(false);
     }
@@ -206,7 +225,7 @@ export default function WebpConverter() {
 
       <div className="webp-convert-actions">
         {running ? (
-          <button type="button" className="backstage-button" onClick={() => { stopRef.current = true; setStatus("Stopping after the current photos…"); }}>
+          <button type="button" className="backstage-button" onClick={() => { stopRef.current = true; if (retryTimerRef.current) window.clearTimeout(retryTimerRef.current); setStatus("Stopping after the current photos…"); }}>
             Stop
           </button>
         ) : (

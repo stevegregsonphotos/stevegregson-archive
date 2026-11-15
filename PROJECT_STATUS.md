@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 15 November 2026, 22:50 (London)
+Last updated: 15 November 2026, 23:20 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -140,6 +140,9 @@ cost an extra Vercel build.
   (cards 0.75, full 0.82, same pixel size), PUTs in place via
   `createProductionImageReplaceUrl` (same key → no DB change), re-checks it's
   WebP. 3 at a time; progress in localStorage (`webp-convert-done-v1`).
+  Auto-carries-on 1 min after a dropped connection (up to 60 times; one drop
+  at ~23:10 stopped it). 23:15: 76/528 productions, 1,806 converted,
+  7.4 GB → 0.38 GB, 3 problems (Decisions, connection drops; retried).
   AFTER IT FINISHES: images are cached `immutable` — purge Cloudflare cache for
   images.stevegregson.com, else the edge keeps serving old PNGs. Then re-run
   the Range survey to confirm; check R2 size (~85 GB should fall a lot).
