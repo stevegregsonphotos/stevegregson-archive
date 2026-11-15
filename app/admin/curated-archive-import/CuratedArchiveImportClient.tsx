@@ -12,6 +12,8 @@ import {
   type ImageEditorSettings,
 } from "@/lib/client-image-editor";
 
+import { proofEncodeType } from "@/lib/proofing/thumbnail-client";
+
 import styles from "./curated-import.module.css";
 
 type ExistingProduction = {
@@ -191,9 +193,45 @@ function parsePreflightMetadata(
 }
 
 
+/*
+ * Safari reports any dropped connection as a bare "Load failed". For
+ * requests that are safe to repeat (prepare, sign, link, R2 downloads),
+ * try again a few times before giving up, and say which step failed.
+ */
+async function fetchRetrying(
+  url: string,
+  init: RequestInit | undefined,
+  step: string,
+) {
+  let lastError: unknown = null;
+
+  for (let attempt = 1; attempt <= 4; attempt += 1) {
+    try {
+      return await fetch(url, init);
+    } catch (error) {
+      lastError = error;
+
+      if (attempt < 4) {
+        await new Promise((resolve) =>
+          setTimeout(resolve, 700 * 2 ** (attempt - 1)),
+        );
+      }
+    }
+  }
+
+  throw new Error(
+    `The connection dropped while ${step}, even after 4 tries (${
+      lastError instanceof Error ? lastError.message : String(lastError)
+    }). Nothing was published — press Import again.`,
+  );
+}
+
 async function createProductionCardBlob(
   source: Blob,
 ) {
+  // Safari can't make WebP (it silently returns a PNG): JPEG there.
+  const cardEncodeType =
+    await proofEncodeType();
   const objectUrl =
     URL.createObjectURL(
       source,
@@ -301,7 +339,7 @@ async function createProductionCardBlob(
               );
             }
           },
-          "image/webp",
+          cardEncodeType,
           0.75,
         );
       },
@@ -448,6 +486,10 @@ async function preparePublishedImage(
         height,
       );
 
+      // Safari can't make WebP (it silently returns a huge PNG): JPEG there.
+      const encodeType =
+        await proofEncodeType();
+
       blob =
         await new Promise<Blob>(
           (resolve, reject) => {
@@ -463,7 +505,7 @@ async function preparePublishedImage(
                   );
                 }
               },
-              "image/webp",
+              encodeType,
               0.82,
             );
           },
@@ -1989,7 +2031,7 @@ export default function CuratedArchiveImportClient({
     ) => void,
   ) {
     const prepareResponse =
-      await fetch(
+      await fetchRetrying(
         "/api/admin/curated-archive-import/publish",
         {
           method: "POST",
@@ -2003,6 +2045,7 @@ export default function CuratedArchiveImportClient({
               production.folder,
           }),
         },
+        "preparing the production",
       );
 
     const prepared =
@@ -2057,7 +2100,7 @@ export default function CuratedArchiveImportClient({
           batch.map(
             async (job) => {
               const signingResponse =
-                await fetch(
+                await fetchRetrying(
                   "/api/admin/curated-archive-import/publish",
                   {
                     method: "POST",
@@ -2078,6 +2121,7 @@ export default function CuratedArchiveImportClient({
                         job.outputFilename,
                     }),
                   },
+                  `preparing ${job.sourceFilepath}`,
                 );
 
               const signed =
@@ -2121,8 +2165,10 @@ export default function CuratedArchiveImportClient({
 
               try {
                 sourceResponse =
-                  await fetch(
+                  await fetchRetrying(
                     signed.sourceUrl,
+                    undefined,
+                    `downloading ${job.sourceFilepath}`,
                   );
               } catch (error) {
                 throw new Error(
@@ -2368,7 +2414,7 @@ export default function CuratedArchiveImportClient({
         );
 
         const linkResponse =
-          await fetch(
+          await fetchRetrying(
             "/api/admin/curated-archive-import/link-upcoming",
             {
               method: "POST",
@@ -2383,6 +2429,7 @@ export default function CuratedArchiveImportClient({
                   upcomingStart.id,
               }),
             },
+            "using your upcoming production’s details",
           );
 
         const linkResult =

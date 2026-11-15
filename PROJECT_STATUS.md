@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 15 November 2026, 20:10 (London)
+Last updated: 15 November 2026, 20:40 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -119,6 +119,18 @@ cost an extra Vercel build.
 
 ## Waiting / in progress
 
+- **WAITING FOR "go live" (test branch 15 Nov ~20:40): Curated import in
+  Safari.** Steve's Jekyll & Hyde import (37 photos, linked to Upcoming
+  OK) failed twice in Safari with a bare "Load failed" (nothing published).
+  Fixes: (1) Safari can't make WebP — `canvas.toBlob("image/webp")` gives
+  a big PNG — so Curated import (`preparePublishedImage`, card blob) and
+  `renderEditedImage` in `lib/client-image-editor.ts` (also used by Selected
+  Work etc.) now use `proofEncodeType()` → JPEG in Safari (upload label stays
+  image/webp, as Proofing). Productions imported from Safari before this may
+  be heavy PNGs — worth checking. (2) `fetchRetrying()` in
+  CuratedArchiveImportClient: prepare, sign-image, link-upcoming and R2
+  downloads retry 4× on dropped connections, then say which step failed.
+  Finalize is NOT retried (not safe to repeat). Not tested in real Safari.
 - **LIVE 15 Nov ~19:55: Upcoming → curated import now links on Import**
   (Steve said go live). Steve's first real use (Jekyll & Hyde,
   Rose Bruford, 15 Nov): Upcoming › "Use a curated folder" → chose folder
@@ -135,8 +147,8 @@ cost an extra Vercel build.
   told Steve it had added #0250 (bassist) to `pass-2.json`, but the file
   on his Mac (~/Pictures/Curated/Jekyll-Hyde, 18:16) still has the
   original 36 — the edit never landed. Site gallery shows 35 + the hero
-  (#0143). Plan offered (Steve hasn't said yes yet): add #0250 for real, Finish, delete
-  the published production, re-import from the Upcoming draft.
+  (#0143). DONE 15 Nov: #0250 added (checked on the Mac), Finish run (37 staged),
+  old production deleted; re-import pending (see Safari item above).
 
 - **LIVE 14 Nov ~13:30: Recent activity rows clickable** (Steve saw the
   mockup and said go live).

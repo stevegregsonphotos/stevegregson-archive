@@ -1,3 +1,5 @@
+import { proofEncodeType } from "@/lib/proofing/thumbnail-client";
+
 export type ImageEditorAspect =
   | "original"
   | "3:2"
@@ -555,6 +557,10 @@ export async function renderEditedImage(
     settings,
   );
 
+  // Safari can't make WebP (it silently returns a huge PNG): use JPEG there.
+  const encodeType =
+    await proofEncodeType();
+
   const blob =
     await new Promise<Blob>(
       (resolve, reject) => {
@@ -571,7 +577,7 @@ export async function renderEditedImage(
               ),
             );
           },
-          "image/webp",
+          encodeType,
           quality,
         );
       },
