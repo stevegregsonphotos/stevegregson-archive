@@ -119,8 +119,8 @@ cost an extra Vercel build.
 
 ## Waiting / in progress
 
-- **WAITING FOR "go live" (test branch 15 Nov): Upcoming → curated
-  import now links on Import.** Steve's first real use (Jekyll & Hyde,
+- **LIVE 15 Nov ~19:55: Upcoming → curated import now links on Import**
+  (Steve said go live). Steve's first real use (Jekyll & Hyde,
   Rose Bruford, 15 Nov): Upcoming › "Use a curated folder" → chose folder
   → pressed Import. The draft's details were only applied if he clicked
   Edit and saved, so it published with the curator's details and the
@@ -135,7 +135,7 @@ cost an extra Vercel build.
   told Steve it had added #0250 (bassist) to `pass-2.json`, but the file
   on his Mac (~/Pictures/Curated/Jekyll-Hyde, 18:16) still has the
   original 36 — the edit never landed. Site gallery shows 35 + the hero
-  (#0143). Plan offered: after go live, add #0250 for real, Finish, delete
+  (#0143). Plan offered (Steve hasn't said yes yet): add #0250 for real, Finish, delete
   the published production, re-import from the Upcoming draft.
 
 - **LIVE 14 Nov ~13:30: Recent activity rows clickable** (Steve saw the
