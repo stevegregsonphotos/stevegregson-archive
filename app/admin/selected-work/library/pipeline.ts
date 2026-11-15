@@ -13,6 +13,7 @@ import {
   getSelectedWorkImageUrl,
   getSelectedWorkPreviewUrl,
 } from "@/lib/selected-work-image-url";
+import { canvasToWebP } from "@/lib/webp-client";
 
 export const LIBRARY_API = "/api/admin/selected-work";
 export const VISION_API = "/api/admin/vision/analyse-image";
@@ -170,16 +171,7 @@ async function createSelectedWorkDerivativeBlob(source: Blob, maximumWidth: numb
 
     context.drawImage(bitmap, 0, 0, width, height);
 
-    return await new Promise<Blob>((resolve, reject) => {
-      canvas.toBlob(
-        (blob) => {
-          if (blob) resolve(blob);
-          else reject(new Error("Could not create the Selected Work preview."));
-        },
-        "image/webp",
-        quality,
-      );
-    });
+    return await canvasToWebP(canvas, quality);
   } finally {
     bitmap.close();
   }
@@ -213,16 +205,7 @@ async function createMainWebp(file: File) {
   context.drawImage(bitmap, 0, 0, outputWidth, outputHeight);
   bitmap.close();
 
-  const blob = await new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob(
-      (result) => {
-        if (result) resolve(result);
-        else reject(new Error(`Could not convert ${file.name} to WebP.`));
-      },
-      "image/webp",
-      0.82,
-    );
-  });
+  const blob = await canvasToWebP(canvas, 0.82);
 
   return { blob, width: outputWidth, height: outputHeight };
 }

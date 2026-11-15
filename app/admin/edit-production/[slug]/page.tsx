@@ -29,6 +29,7 @@ import PhotosTab, { HERO_TILE, type UploadProgress } from "./PhotosTab";
 
 import sw from "../../selected-work/backstage-selected-work.module.css";
 import styles from "./production-edit.module.css";
+import { canvasToWebP } from "@/lib/webp-client";
 
 type LoadResult = { ok: boolean; message?: string; production?: Production };
 type SaveResult = {
@@ -68,19 +69,7 @@ async function createProductionCardBlob(source: Blob) {
     const context = canvas.getContext("2d");
     if (!context) throw new Error("Could not prepare production gallery derivative.");
     context.drawImage(bitmap, 0, 0, width, height);
-    return await new Promise<Blob>((resolve, reject) => {
-      canvas.toBlob(
-        (blob) => {
-          if (!blob) {
-            reject(new Error("Could not create production gallery derivative."));
-            return;
-          }
-          resolve(blob);
-        },
-        "image/webp",
-        0.75,
-      );
-    });
+    return await canvasToWebP(canvas, 0.75);
   } finally {
     bitmap.close();
   }

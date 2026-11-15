@@ -98,7 +98,7 @@ const checks = [
     "app/admin/selected-work/library/pipeline.ts",
     [
       '"image/webp"',
-      "canvas.toBlob",
+      "canvasToWebP", // browser-side WebP (lib/webp-client.ts), in every browser
       "maximumWidth",
     ],
   ),

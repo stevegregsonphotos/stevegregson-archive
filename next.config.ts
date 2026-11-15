@@ -17,11 +17,11 @@ const nextConfig: NextConfig = {
       "object-src 'none'",
       "frame-ancestors 'none'",
       "form-action 'self'",
-      "script-src 'self' 'unsafe-inline'",
+      "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'",
       "style-src 'self' 'unsafe-inline'",
       "font-src 'self' data:",
       "img-src 'self' data: blob: https://images.stevegregson.com https://selected-work-images.stevegregson.com",
-      "connect-src 'self' https://*.r2.cloudflarestorage.com",
+      "connect-src 'self' https://*.r2.cloudflarestorage.com https://images.stevegregson.com",
     ].join("; ");
 
     const securityHeaders = [

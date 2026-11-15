@@ -217,6 +217,19 @@ export default async function SettingsPage() {
 
         <section className="backstage-section">
           <div className="backstage-section-heading">
+            <h2>Convert photos to WebP</h2>
+            <p>Swap heavy PNG/JPEG photos for proper WebP files</p>
+          </div>
+
+          <p>
+            <Link href="/admin/webp-convert" className="backstage-button">
+              Convert photos to WebP
+            </Link>
+          </p>
+        </section>
+
+        <section className="backstage-section">
+          <div className="backstage-section-heading">
             <h2>Proofing introductions</h2>
             <p>Reusable client messages</p>
           </div>

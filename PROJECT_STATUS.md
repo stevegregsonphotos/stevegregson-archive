@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 15 November 2026, 22:00 (London)
+Last updated: 15 November 2026, 22:50 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -119,6 +119,30 @@ cost an extra Vercel build.
 
 ## Waiting / in progress
 
+- **LIVE 15 Nov ~22:50: real WebP in every browser + Convert to WebP tool**
+  (Steve: "build both parts, immediately … get them going and converting").
+  FOUND 15 Nov (Range-read hero + 1st gallery photo of all 501 productions on
+  images.stevegregson.com): ~375 productions' full-size gallery files are PNG
+  under .webp names (median 4.9 MB vs 259 KB for real WebP); some cards too
+  (e.g. Jekyll). Cause: Safari can't encode WebP (toBlob → PNG) and every
+  uploader encoded in the browser. Nobody checked stored bytes.
+  (1) `lib/webp-client.ts` `canvasToWebP(canvas, q)`: native toBlob if the
+  browser can make WebP, else @jsquash/webp WASM (engine in `public/wasm/`,
+  `locateFile` → /wasm/; CSP has 'wasm-unsafe-eval'). Never returns PNG/JPEG.
+  Used by Curated import, ProductionUpload, edit-production, Selected Work
+  pipeline, `renderEditedImage`. Proofing still JPEG-in-Safari (unchanged).
+  Tested in Chromium with toBlob patched to act like Safari: 2560px → real
+  WebP 193 KB (PNG would be 5.1 MB), 0.9 s. Architecture check marker for
+  pipeline.ts is now `canvasToWebP`.
+  (2) Backstage › Settings › **Convert photos to WebP** (`/admin/webp-convert`,
+  API `/api/admin/webp-convert`: productions / files / sign). Browser
+  Range-reads each file (cache-busting query), re-encodes PNG/JPEG to WebP
+  (cards 0.75, full 0.82, same pixel size), PUTs in place via
+  `createProductionImageReplaceUrl` (same key → no DB change), re-checks it's
+  WebP. 3 at a time; progress in localStorage (`webp-convert-done-v1`).
+  AFTER IT FINISHES: images are cached `immutable` — purge Cloudflare cache for
+  images.stevegregson.com, else the edge keeps serving old PNGs. Then re-run
+  the Range survey to confirm; check R2 size (~85 GB should fall a lot).
 - **LIVE 15 Nov ~22:00: Editorial rhythm no longer crops** (Steve saw
   mockups of Jekyll & Hyde at 1440/390, said go live). Was: 2-up/3-up tiles
   forced to 3:2 (`object-fit: cover`) → portraits cropped. Now

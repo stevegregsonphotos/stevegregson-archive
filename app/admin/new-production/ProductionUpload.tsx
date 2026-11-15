@@ -20,6 +20,7 @@ import ci from "../curated-archive-import/curated-import.module.css";
 import pe from "../edit-production/[slug]/production-edit.module.css";
 import sw from "../selected-work/backstage-selected-work.module.css";
 import np from "./new-production.module.css";
+import { canvasToWebP } from "@/lib/webp-client";
 
 type LocalImage = {
   id: string;
@@ -611,32 +612,7 @@ async function prepareImage(
     );
 
     const blob =
-      await new Promise<Blob>(
-        (
-          resolve,
-          reject,
-        ) => {
-          canvas.toBlob(
-            (result) => {
-              if (
-                result
-              ) {
-                resolve(
-                  result,
-                );
-              } else {
-                reject(
-                  new Error(
-                    `Could not create ${outputFilename}.`,
-                  ),
-                );
-              }
-            },
-            "image/webp",
-            0.82,
-          );
-        },
-      );
+      await canvasToWebP(canvas, 0.82);
 
     const blurCanvas =
       document.createElement(
@@ -793,30 +769,7 @@ async function createProductionCardBlob(
       height,
     );
 
-    return await new Promise<Blob>(
-      (
-        resolve,
-        reject,
-      ) => {
-        canvas.toBlob(
-          (blob) => {
-            if (blob) {
-              resolve(
-                blob,
-              );
-            } else {
-              reject(
-                new Error(
-                  "The production card WebP could not be created.",
-                ),
-              );
-            }
-          },
-          "image/webp",
-          0.75,
-        );
-      },
-    );
+    return await canvasToWebP(canvas, 0.75);
   } finally {
     URL.revokeObjectURL(
       objectUrl,

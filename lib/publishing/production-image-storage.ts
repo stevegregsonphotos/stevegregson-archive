@@ -278,6 +278,52 @@ export async function listProductionImages(
   return keys;
 }
 
+/** Every object under a production's prefix, with its size in bytes. */
+export async function listProductionImageObjects(
+  productionSlug: string,
+) {
+  const prefix = `${safeSegment(productionSlug, "production slug")}/`;
+  const objects: Array<{ key: string; size: number }> = [];
+  let continuationToken: string | undefined;
+
+  do {
+    const response = await getClient().send(
+      new ListObjectsV2Command({
+        Bucket: getBucket(),
+        Prefix: prefix,
+        ContinuationToken: continuationToken,
+      }),
+    );
+    for (const object of response.Contents ?? []) {
+      if (object.Key) objects.push({ key: object.Key, size: Number(object.Size ?? 0) });
+    }
+    continuationToken = response.IsTruncated ? response.NextContinuationToken : undefined;
+  } while (continuationToken);
+
+  return objects;
+}
+
+/**
+ * Upload link that REPLACES an existing photo in place (same name), used by
+ * Backstage › Convert to WebP. relativePath is e.g. "01-name.webp" or
+ * "__cards/01-name.webp".
+ */
+export async function createProductionImageReplaceUrl(
+  productionSlug: string,
+  relativePath: string,
+) {
+  return getSignedUrl(
+    getClient(),
+    new PutObjectCommand({
+      Bucket: getBucket(),
+      Key: getProductionObjectKeyFromRelativePath(productionSlug, relativePath),
+      ContentType: "image/webp",
+      CacheControl: "public, max-age=31536000, immutable",
+    }),
+    { expiresIn: 30 * 60 },
+  );
+}
+
 export async function deleteProductionImages(
   productionSlug: string,
 ) {

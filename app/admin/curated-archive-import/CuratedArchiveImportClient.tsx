@@ -12,7 +12,7 @@ import {
   type ImageEditorSettings,
 } from "@/lib/client-image-editor";
 
-import { proofEncodeType } from "@/lib/proofing/thumbnail-client";
+import { canvasToWebP } from "@/lib/webp-client";
 
 import styles from "./curated-import.module.css";
 
@@ -229,9 +229,6 @@ async function fetchRetrying(
 async function createProductionCardBlob(
   source: Blob,
 ) {
-  // Safari can't make WebP (it silently returns a PNG): JPEG there.
-  const cardEncodeType =
-    await proofEncodeType();
   const objectUrl =
     URL.createObjectURL(
       source,
@@ -320,30 +317,8 @@ async function createProductionCardBlob(
       height,
     );
 
-    return await new Promise<Blob>(
-      (
-        resolve,
-        reject,
-      ) => {
-        canvas.toBlob(
-          (blob) => {
-            if (blob) {
-              resolve(
-                blob,
-              );
-            } else {
-              reject(
-                new Error(
-                  "The production card WebP could not be created.",
-                ),
-              );
-            }
-          },
-          cardEncodeType,
-          0.75,
-        );
-      },
-    );
+    // Real WebP in every browser (Safari via the in-page converter).
+    return await canvasToWebP(canvas, 0.75);
   } finally {
     URL.revokeObjectURL(
       objectUrl,
@@ -486,30 +461,8 @@ async function preparePublishedImage(
         height,
       );
 
-      // Safari can't make WebP (it silently returns a huge PNG): JPEG there.
-      const encodeType =
-        await proofEncodeType();
-
-      blob =
-        await new Promise<Blob>(
-          (resolve, reject) => {
-            canvas.toBlob(
-              (result) => {
-                if (result) {
-                  resolve(result);
-                } else {
-                  reject(
-                    new Error(
-                      `Could not create ${outputFilename}.`,
-                    ),
-                  );
-                }
-              },
-              encodeType,
-              0.82,
-            );
-          },
-        );
+      // Real WebP in every browser (Safari via the in-page converter).
+      blob = await canvasToWebP(canvas, 0.82);
     }
 
     const width = canvas.width;

@@ -1,4 +1,4 @@
-import { proofEncodeType } from "@/lib/proofing/thumbnail-client";
+import { canvasToWebP } from "@/lib/webp-client";
 
 export type ImageEditorAspect =
   | "original"
@@ -557,31 +557,8 @@ export async function renderEditedImage(
     settings,
   );
 
-  // Safari can't make WebP (it silently returns a huge PNG): use JPEG there.
-  const encodeType =
-    await proofEncodeType();
-
-  const blob =
-    await new Promise<Blob>(
-      (resolve, reject) => {
-        canvas.toBlob(
-          (result) => {
-            if (result) {
-              resolve(result);
-              return;
-            }
-
-            reject(
-              new Error(
-                "The edited image could not be exported.",
-              ),
-            );
-          },
-          encodeType,
-          quality,
-        );
-      },
-    );
+  // Real WebP in every browser (Safari via the in-page converter).
+  const blob = await canvasToWebP(canvas, quality);
 
   return {
     blob,
