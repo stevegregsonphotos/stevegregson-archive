@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 15 November 2026, 20:40 (London)
+Last updated: 15 November 2026, 22:00 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -119,8 +119,20 @@ cost an extra Vercel build.
 
 ## Waiting / in progress
 
-- **WAITING FOR "go live" (test branch 15 Nov ~20:40): Curated import in
-  Safari.** Steve's Jekyll & Hyde import (37 photos, linked to Upcoming
+- **LIVE 15 Nov ~22:00: Editorial rhythm no longer crops** (Steve saw
+  mockups of Jekyll & Hyde at 1440/390, said go live). Was: 2-up/3-up tiles
+  forced to 3:2 (`object-fit: cover`) → portraits cropped. Now
+  `ProductionGallery.tsx` renders editorial as rows of 1/2/3
+  (`.curated-production-gallery-rows`, CSS before the 1100px media block in
+  globals.css): each figure gets inline `aspect-ratio` + `flex-grow` = its
+  shape, so a row shares one height, nothing cropped; single photo capped
+  at 88vh tall; phones one column. Shape read from the photo's blur
+  placeholder (`lib/blur-aspect.ts`: PNG/WebP/JPEG header; fallback 1.5).
+  Other presets unchanged (grid-2/grid-3/feature still crop to 3:2).
+  Harness: SSR the component via esbuild from a folder INSIDE the repo
+  (else two Reacts), playwright screenshots, wait for images to load.
+- **LIVE 15 Nov ~22:00: Curated import in Safari** (Steve said go live;
+  his retry after quitting Safari had already worked). Steve's Jekyll & Hyde import (37 photos, linked to Upcoming
   OK) failed twice in Safari with a bare "Load failed" (nothing published).
   Fixes: (1) Safari can't make WebP — `canvas.toBlob("image/webp")` gives
   a big PNG — so Curated import (`preparePublishedImage`, card blob) and
@@ -148,7 +160,7 @@ cost an extra Vercel build.
   on his Mac (~/Pictures/Curated/Jekyll-Hyde, 18:16) still has the
   original 36 — the edit never landed. Site gallery shows 35 + the hero
   (#0143). DONE 15 Nov: #0250 added (checked on the Mac), Finish run (37 staged),
-  old production deleted; re-import pending (see Safari item above).
+  old production deleted; re-imported OK in Safari 15 Nov ~21:45.
 
 - **LIVE 14 Nov ~13:30: Recent activity rows clickable** (Steve saw the
   mockup and said go live).

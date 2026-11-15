@@ -58,7 +58,7 @@ export const PRODUCTION_GALLERY_LAYOUT_OPTIONS: Array<{
   {
     value: "editorial",
     name: "Editorial rhythm",
-    description: "A repeating pattern: one full width, then two side by side, then three.",
+    description: "A repeating pattern: one big, then two side by side, then three. Nothing is cropped: portraits stay portrait.",
   },
 ];
 

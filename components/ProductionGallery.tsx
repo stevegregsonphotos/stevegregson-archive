@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 
 import {
   getProductionCardImageUrl,
@@ -8,6 +8,7 @@ import {
 } from "../lib/production-image-url";
 import type { ProductionGalleryLayout } from "../lib/production-gallery-layouts";
 import type { ProductionImage } from "../lib/productions";
+import { aspectFromBlurDataURL } from "../lib/blur-aspect";
 
 import ImageViewer from "./ImageViewer";
 
@@ -77,6 +78,95 @@ export function ProductionGallery({
       alt: image.alt,
     })),
   ];
+
+  /*
+   * Editorial rhythm: rows of 1, 2, then 3 photos. Every photo keeps its
+   * own shape (never cropped): photos in a row share one height and take
+   * widths in proportion to their shape, so portraits sit narrower beside
+   * landscapes. Shapes come from each photo's blur placeholder.
+   */
+  if (layout === "editorial") {
+    const rows: Array<Array<{ image: ProductionImage; index: number; ratio: number }>> = [];
+    const pattern = [1, 2, 3];
+    let cursor = 0;
+    let step = 0;
+
+    while (cursor < images.length) {
+      const size = pattern[step % pattern.length];
+      rows.push(
+        images.slice(cursor, cursor + size).map((image, offset) => ({
+          image,
+          index: cursor + offset,
+          ratio: aspectFromBlurDataURL(image.blurDataURL) ?? 1.5,
+        })),
+      );
+      cursor += size;
+      step += 1;
+    }
+
+    return (
+      <>
+        <section
+          className="curated-production-gallery curated-production-gallery-rows"
+          aria-label={`${title} photography`}
+        >
+          {rows.map((row) => {
+            const rowRatio = row.reduce((sum, item) => sum + item.ratio, 0);
+            const single = row.length === 1;
+
+            return (
+              <div
+                className={`curated-production-row${single ? " curated-production-row-single" : ""}`}
+                key={row[0].image.src}
+                style={
+                  single
+                    ? ({ "--row-ratio": rowRatio } as CSSProperties)
+                    : undefined
+                }
+              >
+                {row.map(({ image, index, ratio }) => (
+                  <figure
+                    className="curated-production-shot curated-production-row-shot"
+                    key={image.src}
+                    style={{ flexGrow: ratio, aspectRatio: String(ratio) }}
+                  >
+                    <button
+                      className="curated-production-image-button"
+                      type="button"
+                      onClick={() => setViewerIndex(index + 1)}
+                      aria-label={`Open photograph ${index + 2} from ${title} fullscreen`}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={getProductionImageUrl(productionSlug, image.src)}
+                        srcSet={`${getProductionCardImageUrl(productionSlug, image.src)} 1000w, ${getProductionImageUrl(productionSlug, image.src)} 2560w`}
+                        sizes={
+                          single
+                            ? PRESET_SIZES.full
+                            : `(max-width: 760px) calc(100vw - 1.5rem), ${Math.ceil((94 * ratio) / rowRatio)}vw`
+                        }
+                        alt={image.alt}
+                        width={Math.round(1000 * ratio)}
+                        height={1000}
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    </button>
+                  </figure>
+                ))}
+              </div>
+            );
+          })}
+        </section>
+
+        <ImageViewer
+          images={viewerImages}
+          initialIndex={viewerIndex}
+          onClose={() => setViewerIndex(null)}
+        />
+      </>
+    );
+  }
 
   if (layout && layout !== "per-photo") {
     return (

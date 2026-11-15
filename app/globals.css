@@ -1403,6 +1403,73 @@ a {
   margin: 0 0 2vw;
 }
 
+/*
+ * Editorial rhythm (rows of 1, 2, 3). Nothing is cropped: each photo's box
+ * has its own shape (aspect-ratio set inline) and flex-grow in proportion
+ * to it, so photos in a row share one height. A single photo is as wide as
+ * fits, capped so a portrait is never taller than the screen.
+ */
+.curated-production-gallery.curated-production-gallery-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4vw;
+}
+
+.curated-production-row {
+  display: flex;
+  gap: 2vw;
+  align-items: flex-start;
+}
+
+.curated-production-row-shot {
+  flex-basis: 0;
+  flex-shrink: 1;
+  min-width: 0;
+  margin: 0;
+}
+
+.curated-production-row-single {
+  justify-content: center;
+}
+
+.curated-production-row-single .curated-production-row-shot {
+  flex: 0 1 auto;
+  width: min(100%, calc(88vh * var(--row-ratio, 1.5)));
+}
+
+.curated-production-row-shot .curated-production-image-button {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.curated-production-row-shot .curated-production-image-button img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  object-fit: cover;
+}
+
+@media (max-width: 760px) {
+  .curated-production-gallery.curated-production-gallery-rows {
+    gap: 0.75rem;
+    padding: 3.5rem 0.75rem;
+  }
+
+  .curated-production-row {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .curated-production-row .curated-production-row-shot,
+  .curated-production-row-single .curated-production-row-shot {
+    flex: none;
+    width: 100%;
+    margin: 0;
+  }
+}
+
 @media (max-width: 1100px) {
   .curated-production-gallery-preset .curated-production-preset-shot {
     grid-column: span 3;
