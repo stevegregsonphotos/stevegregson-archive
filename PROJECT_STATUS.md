@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 15 November 2026, 23:20 (London)
+Last updated: 16 November 2026, 07:40 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -143,9 +143,14 @@ cost an extra Vercel build.
   Auto-carries-on 1 min after a dropped connection (up to 60 times; one drop
   at ~23:10 stopped it). 23:15: 76/528 productions, 1,806 converted,
   7.4 GB → 0.38 GB, 3 problems (Decisions, connection drops; retried).
-  AFTER IT FINISHES: images are cached `immutable` — purge Cloudflare cache for
-  images.stevegregson.com, else the edge keeps serving old PNGs. Then re-run
-  the Range survey to confirm; check R2 size (~85 GB should fall a lot).
+  **FINISHED overnight (16 Nov ~07:30): 528/528 productions, 0 problems.**
+  ~15,850 photos converted in total (2 runs: 1,806 + 14,052), ~65.7 GB →
+  ~3.1 GB. Verified 07:35: Range-read 1,999 files across all 501 public
+  productions (first, second, a card, middle, last; cache-busted) → all
+  real WebP. Plain (uncached-query) URLs spot-checked → WebP. Productions
+  bucket should now be ~19 GB (was 84.77), still a bit over R2's 10 GB free.
+  STILL TO DO: Cloudflare › Caching › Purge Everything (asked Steve), and
+  check R2 size in the Cloudflare dashboard.
 - **LIVE 15 Nov ~22:00: Editorial rhythm no longer crops** (Steve saw
   mockups of Jekyll & Hyde at 1440/390, said go live). Was: 2-up/3-up tiles
   forced to 3:2 (`object-fit: cover`) → portraits cropped. Now
