@@ -5,6 +5,7 @@ import {
   isBackstageRequestAuthenticated,
 } from "@/lib/backstage-auth";
 import { getAdminProductionSummaries } from "@/lib/productions-repository";
+import { createSelectedWorkUploadUrl } from "@/lib/selected-work-storage";
 import {
   createProductionImageReplaceUrl,
   listProductionImageObjects,
@@ -21,6 +22,9 @@ export const dynamic = "force-dynamic";
  * no production records change. Never reads or converts images itself.
  */
 
+// Selected Work / About photos shown on the site (not the kept originals).
+const SAFE_SELECTED_KEY = /^selected-work\/[a-z0-9][a-z0-9/_.-]*\.(?:webp|png|jpe?g)$/i;
+
 const SAFE_RELATIVE = /^(?:__cards\/)?[A-Za-z0-9][A-Za-z0-9._-]*\.webp$/;
 
 export async function POST(request: Request) {
@@ -36,6 +40,22 @@ export async function POST(request: Request) {
   }
 
   try {
+    if (body.action === "sign-selected") {
+      const keys = Array.isArray(body.paths) ? body.paths : [];
+      if (
+        keys.length === 0 ||
+        keys.length > 20 ||
+        !keys.every((k) => typeof k === "string" && SAFE_SELECTED_KEY.test(k) && !k.includes("..") && !/original/i.test(k))
+      ) {
+        return NextResponse.json({ ok: false, message: "Invalid file list." }, { status: 400 });
+      }
+      const urls: Record<string, string> = {};
+      for (const key of keys as string[]) {
+        urls[key] = await createSelectedWorkUploadUrl(key, "image/webp");
+      }
+      return NextResponse.json({ ok: true, urls });
+    }
+
     if (body.action === "productions") {
       const productions = await getAdminProductionSummaries();
       return NextResponse.json({

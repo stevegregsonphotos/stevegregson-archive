@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 16 November 2026, 07:50 (London)
+Last updated: 16 November 2026, 08:45 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -119,6 +119,21 @@ cost an extra Vercel build.
 
 ## Waiting / in progress
 
+- **16 Nov: website health check (Steve asked after the WebP discovery).**
+  PageSpeed mobile: home 100, archive 92, Jekyll & Hyde 96 (a11y/BP/SEO
+  92–100). Crawled all 1,604 sitemap pages: 0 broken internal links
+  (1,611), 0 broken images (17,011; HEAD), 0 production-gallery images
+  without alt. Found: (1) 4 PNG files left in Selected Work bucket — About
+  display photo (`selected-work/about/steve-gregson-display-…png`, 945 KB)
+  and the campaign banner on /marketing-pr (main, __display, __previews).
+  Fix: webp-convert API action `sign-selected` (keys under selected-work/,
+  never "original"), converted in Chrome in place. (2) Images served with
+  `Cache-Control: max-age=14400` (4 h, Cloudflare default; stored objects
+  have no Cache-Control, also before the conversion) → Cloudflare Cache Rule
+  for images.stevegregson.com + selected-work-images: browser + edge TTL
+  30 days. (3) NOT done (Steve: maybe later): iPhones (3× screens) pick the
+  2560w file (~360 KB) over the 1000w card; a ~1600w middle size would
+  roughly halve it — needs an overnight generation run for ~15k photos.
 - **LIVE 15 Nov ~22:50: real WebP in every browser + Convert to WebP tool**
   (Steve: "build both parts, immediately … get them going and converting").
   FOUND 15 Nov (Range-read hero + 1st gallery photo of all 501 productions on
