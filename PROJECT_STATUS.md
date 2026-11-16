@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 16 November 2026, 07:40 (London)
+Last updated: 16 November 2026, 07:50 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -149,8 +149,9 @@ cost an extra Vercel build.
   productions (first, second, a card, middle, last; cache-busted) → all
   real WebP. Plain (uncached-query) URLs spot-checked → WebP. Productions
   bucket should now be ~19 GB (was 84.77), still a bit over R2's 10 GB free.
-  STILL TO DO: Cloudflare › Caching › Purge Everything (asked Steve), and
-  check R2 size in the Cloudflare dashboard.
+  16 Nov 07:47: Cloudflare Purge Everything done (Steve signed in, Claude
+  clicked; "Purge request successfully received"). R2 total storage now
+  21.94 GB (all buckets; was ~87 GB) — ~12 GB over the free 10 GB.
 - **LIVE 15 Nov ~22:00: Editorial rhythm no longer crops** (Steve saw
   mockups of Jekyll & Hyde at 1440/390, said go live). Was: 2-up/3-up tiles
   forced to 3:2 (`object-fit: cover`) → portraits cropped. Now
