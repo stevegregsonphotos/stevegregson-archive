@@ -1486,6 +1486,15 @@ a {
     width: 100%;
     margin: 0;
   }
+
+  /*
+   * Phones: portraits at 70% width, centred, so they cover about the same
+   * area as a full-width landscape (Steve, 18 Nov 2026: too big at 100%).
+   */
+  .curated-production-row .curated-production-row-shot.curated-production-row-shot-portrait {
+    width: 70%;
+    align-self: center;
+  }
 }
 
 @media (max-width: 1100px) {

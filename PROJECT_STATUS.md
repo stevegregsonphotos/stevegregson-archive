@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 18 November 2026, 20:10 (London)
+Last updated: 18 November 2026, 20:20 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -123,7 +123,10 @@ cost an extra Vercel build.
   in its month** (Steve: "just do it", skipped checking the preview; this
   status commit pushed to live only — fast-forward the test branch with
   the next job). Steve saw mockups (Babies, TOAD, Mockingbird 1) and asked
-  to fix every gallery. Phones: one photo per row (unchanged).
+  to fix every gallery. Phones: one photo per row; LIVE 20:20 (Steve
+  approved from a mockup, pushed to live only): portraits on phones at 70%
+  width, centred (`.curated-production-row-shot-portrait`, set when shape
+  < 1; ≈ same area as a full-width landscape). Desktop unchanged.
   (1) **Balanced rows** is the new default (`balancedRows()` +
   `landscapeEndingOrder()` in `lib/production-gallery-layouts.ts`,
   rendered in `ProductionGallery.tsx` with the editorial row markup,

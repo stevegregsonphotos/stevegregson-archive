@@ -177,7 +177,7 @@ export function ProductionGallery({
               >
                 {row.map(({ image, index, ratio }) => (
                   <figure
-                    className="curated-production-shot curated-production-row-shot"
+                    className={`curated-production-shot curated-production-row-shot${ratio < 1 ? " curated-production-row-shot-portrait" : ""}`}
                     key={image.src}
                     style={
                       single
