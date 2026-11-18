@@ -84,8 +84,45 @@ type ProofingView =
 type ConsolidatedApprover = {
   name: string;
   you: boolean;
+  colour: string;
+  /* Approved now (a participant who hasn't been back = their favourites). */
   imageIds: string[];
+  /* Original favourites (participants only). */
+  pickedIds: string[];
 };
+
+/* One coloured tag per person: filled = approves it; outline = picked it
+   originally but has since taken their approval back. */
+function PersonTags({
+  people,
+  imageId,
+}: {
+  people: ConsolidatedApprover[];
+  imageId: string;
+}) {
+  const tags = people.flatMap((person, index) => {
+    const approves = person.imageIds.includes(imageId);
+    const picked = person.pickedIds.includes(imageId);
+    if (!approves && !picked) return [];
+    return [
+      <span
+        key={index}
+        className={approves ? "proofing-person-tag" : "proofing-person-tag is-withdrawn"}
+        style={{ "--person": person.colour } as React.CSSProperties}
+        title={
+          approves
+            ? picked
+              ? `${person.name}: picked and approves`
+              : `${person.name}: approves`
+            : `${person.name}: picked originally, no longer approves`
+        }
+      >
+        {person.name}
+      </span>,
+    ];
+  });
+  return tags.length ? <span className="proofing-person-tags">{tags}</span> : null;
+}
 
 type ConsolidatedClientSelection = {
   title: string;
@@ -2983,27 +3020,29 @@ export default function ProofingGalleryClient({
             </h2>
 
             <p className="proofing-review-copy">
-              This view combines everyone&apos;s
-              favourites. Use the heart on each
-              photograph to approve it. A photograph
-              is in the final selection once
-              everyone has approved it.
+              Everyone&apos;s favourites in one place.
+              Each person has a colour: their tag on a
+              photograph means they picked or approved
+              it. Use the heart to approve or take back
+              your approval. Original favourites count
+              as approvals, so a photograph with every
+              colour is in the final selection.
             </p>
 
             {approvers.length ? (
-              <p className="proofing-approval-people">
-                Approving:{" "}
+              <div className="proofing-person-key" aria-label="Who is which colour">
                 {approvers.map((person, index) => (
-                  <span key={index}>
-                    {index ? " · " : ""}
-                    <strong>
-                      {person.name}
-                      {person.you ? " (you)" : ""}
-                    </strong>{" "}
-                    {person.imageIds.length}
+                  <span
+                    key={index}
+                    className="proofing-person-tag"
+                    style={{ "--person": person.colour } as React.CSSProperties}
+                  >
+                    {person.name}
+                    {person.you ? " (you)" : ""}
+                    <em>{person.imageIds.length}</em>
                   </span>
                 ))}
-              </p>
+              </div>
             ) : null}
 
             <label className="proofing-approval-filter">
@@ -3223,49 +3262,17 @@ export default function ProofingGalleryClient({
                       <strong className="proofing-approval-agreed">
                         ✓ Approved by everyone
                       </strong>
-                    ) : (approvalsByImageId.get(image.id) ?? []).length ? (
+                    ) : (
                       <span className="proofing-approval-line">
-                        Approved by{" "}
-                        {(approvalsByImageId.get(image.id) ?? []).join(", ")}
-                        {" · "}
                         {(approvalsByImageId.get(image.id) ?? []).length} of{" "}
-                        {approvers.length}
-                      </span>
-                    ) : (
-                      <span className="proofing-approval-line">
-                        Not approved yet
+                        {approvers.length} approve
                       </span>
                     )}
 
-                    {consolidatedMetadata
-                      .selectedByAll ? (
-                      <strong className="proofing-consolidated-all">
-                        In everyone&apos;s favourites
-                      </strong>
-                    ) : (
-                      <span>
-                        In{" "}
-                        {
-                          consolidatedMetadata
-                            .participantCount
-                        }{" "}
-                        {consolidatedMetadata
-                          .participantCount ===
-                        1
-                          ? "person's"
-                          : "people's"}{" "}
-                        favourites
-                      </span>
-                    )}
-
-                    {consolidatedMetadata
-                      .labels.length > 0 ? (
-                      <span className="proofing-consolidated-labels">
-                        {consolidatedMetadata.labels.join(
-                          " · ",
-                        )}
-                      </span>
-                    ) : null}
+                    <PersonTags
+                      people={approvers}
+                      imageId={image.id}
+                    />
                   </div>
                 ) : null}
 

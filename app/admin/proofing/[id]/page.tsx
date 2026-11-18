@@ -14,6 +14,7 @@ import {
 import {
   approvedByEveryone,
   buildProofingApprovalPeople,
+  proofingPersonColour,
   getProofingConsolidatedApprovals,
   getProofingConsolidatedSelection,
 } from "../../../../lib/proofing/consolidated-repository";
@@ -682,17 +683,6 @@ export default async function ProofingGalleryPage({
                   : "Hidden from clients"}
               </p>
 
-              {approvalPeople.length ? (
-                <p className="proofing-selection-meta">
-                  Approving:{" "}
-                  {approvalPeople
-                    .map(
-                      (person) =>
-                        `${person.name} (${person.imageIds.length})`,
-                    )
-                    .join(" · ")}
-                </p>
-              ) : null}
             </div>
 
             <div className="proofing-selection-count">
@@ -747,6 +737,80 @@ export default async function ProofingGalleryPage({
               yet.
             </p>
           )}
+
+          {approvalPeople.length ? (
+            <div className="proofing-people-approvals">
+              <p className="proofing-section-label">
+                Each person
+              </p>
+              {approvalPeople.map((person, index) => {
+                const ordered = [...gallery.images].sort(
+                  (a, b) => a.sortOrder - b.sortOrder,
+                );
+                const approved = ordered.filter((image) =>
+                  person.imageIds.includes(image.id),
+                );
+                const added = person.imageIds.filter(
+                  (id) => !person.pickedIds.includes(id),
+                ).length;
+                const withdrawn = person.pickedIds.filter(
+                  (id) => !person.imageIds.includes(id),
+                ).length;
+                return (
+                  <details
+                    key={person.key}
+                    className="proofing-person-row"
+                    style={{ "--person": proofingPersonColour(index) } as React.CSSProperties}
+                  >
+                    <summary>
+                      <span className="proofing-person-dot" aria-hidden="true" />
+                      <strong>{person.name}</strong>
+                      <span>
+                        {person.isParticipant
+                          ? `picked ${person.pickedIds.length} · approves ${approved.length}`
+                          : `approves ${approved.length}`}
+                        {person.isParticipant && (added || withdrawn)
+                          ? ` (${[
+                              added ? `+${added} added` : "",
+                              withdrawn ? `−${withdrawn} taken back` : "",
+                            ]
+                              .filter(Boolean)
+                              .join(", ")})`
+                          : ""}
+                      </span>
+                    </summary>
+                    {approved.length ? (
+                      <>
+                        <div className="proofing-selection-thumbnails">
+                          {approved.map((image) => (
+                            <figure key={image.id} className="proofing-selection-thumbnail">
+                              <div className="proofing-selection-thumbnail-image">
+                                <img
+                                  src={`/api/admin/proofing/image?galleryId=${encodeURIComponent(
+                                    gallery.id,
+                                  )}&imageId=${encodeURIComponent(image.id)}`}
+                                  alt={image.alt}
+                                  loading="lazy"
+                                />
+                              </div>
+                              <figcaption>{image.originalFilename}</figcaption>
+                            </figure>
+                          ))}
+                        </div>
+                        <div className="proofing-selection-actions">
+                          <ProofingSelectionCopy
+                            filenames={approved.map((image) => image.originalFilename)}
+                          />
+                        </div>
+                      </>
+                    ) : (
+                      <p className="proofing-empty">Nothing approved.</p>
+                    )}
+                  </details>
+                );
+              })}
+            </div>
+          ) : null}
 
           {earlierDefinitiveCount ? (
             <p className="proofing-selection-meta">

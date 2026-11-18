@@ -245,6 +245,7 @@ export async function POST(
       visitorId,
       imageId,
       name,
+      existing ? [] : participant?.imageIds ?? [],
     );
 
   const people = buildProofingApprovalPeople(

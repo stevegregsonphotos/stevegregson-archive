@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 18 November 2026, 12:05 (London)
+Last updated: 18 November 2026, 12:30 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -147,6 +147,15 @@ cost an extra Vercel build.
   Selections card: "Approved by everyone" + "Approving: name (n)"; old
   shared picks kept, mentioned if any. Rehearsed on local Postgres (3
   people × 3 photos at once, double-click, take-back) — correct.
+  ADDED same day (Steve: show who picked what; others unlikely to come
+  back): a participant's ORIGINAL FAVOURITES COUNT AS THEIR APPROVALS until
+  they click (first click copies their favourites, then toggles). Each
+  person has a colour (`PROOFING_PERSON_COLOURS`, by list order): key at
+  top + coloured name tags per photo (filled = approves, struck-through
+  outline = picked originally, taken back). Backstage card: "Each person"
+  rows (colour bar, picked/approves counts, thumbnails, Copy for Lightroom
+  per person). Participants without a Backstage label show as
+  "Participant N" — Steve should add labels.
 
 - **16 Nov: website health check (Steve asked after the WebP discovery).**
   PageSpeed mobile: home 100, archive 92, Jekyll & Hyde 96 (a11y/BP/SEO

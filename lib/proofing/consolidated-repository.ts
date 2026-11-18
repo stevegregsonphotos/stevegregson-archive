@@ -496,11 +496,16 @@ export async function toggleProofingConsolidatedApproval(
   visitorId: string,
   imageId: string,
   name: string,
+  /* A participant's first click starts from their original favourites. */
+  initialIds: string[] = [],
 ): Promise<string[]> {
   await ensureApprovalStore();
+  const firstIds = initialIds.includes(imageId)
+    ? initialIds.filter((id) => id !== imageId)
+    : [...initialIds, imageId];
   const rows = (await getSql().query(
     `INSERT INTO proofing_consolidated_approvals (gallery_id, visitor_id, name, image_ids)
-     VALUES ($1, $2, $3, jsonb_build_array($4::text))
+     VALUES ($1, $2, $3, $5::jsonb)
      ON CONFLICT (gallery_id, visitor_id) DO UPDATE SET
        name = CASE WHEN $3 <> '' THEN $3 ELSE proofing_consolidated_approvals.name END,
        image_ids = CASE
@@ -510,7 +515,7 @@ export async function toggleProofingConsolidatedApproval(
        END,
        updated_at = now()
      RETURNING image_ids`,
-    [galleryId, visitorId, name.trim().slice(0, 40), imageId],
+    [galleryId, visitorId, name.trim().slice(0, 40), imageId, JSON.stringify(firstIds)],
   )) as Array<{ image_ids: unknown }>;
   return stringArray(rows[0]?.image_ids);
 }
@@ -518,9 +523,28 @@ export async function toggleProofingConsolidatedApproval(
 export type ProofingApprovalPerson = {
   key: string; // visitor id — server-side only, never sent to visitors
   name: string;
+  /* Approved now. A participant who hasn't been back = their favourites. */
   imageIds: string[];
+  /* Their original favourites (participants only). */
+  pickedIds: string[];
   isParticipant: boolean;
 };
+
+/* Each person's colour, by their place in the list (same everywhere). */
+export const PROOFING_PERSON_COLOURS = [
+  "#5ab0f0",
+  "#f08a7a",
+  "#7ed49b",
+  "#c79bf0",
+  "#f2c94c",
+  "#4fd1c5",
+  "#f59fc8",
+  "#b8b8b8",
+];
+
+export function proofingPersonColour(index: number) {
+  return PROOFING_PERSON_COLOURS[index % PROOFING_PERSON_COLOURS.length];
+}
 
 /* Everyone whose approval counts: participants first, then other approvers. */
 export function buildProofingApprovalPeople(
@@ -533,7 +557,8 @@ export function buildProofingApprovalPeople(
     return {
       key: participant.visitorId,
       name: approval?.name || participant.publicLabel || `Participant ${index + 1}`,
-      imageIds: approval?.imageIds ?? [],
+      imageIds: approval ? approval.imageIds : participant.imageIds,
+      pickedIds: participant.imageIds,
       isParticipant: true,
     };
   });
@@ -541,7 +566,7 @@ export function buildProofingApprovalPeople(
   for (const approval of approvals) {
     if (participantIds.has(approval.visitorId)) continue;
     if (!approval.imageIds.length) continue; // took everything back: no longer counted
-    people.push({ key: approval.visitorId, name: approval.name, imageIds: approval.imageIds, isParticipant: false });
+    people.push({ key: approval.visitorId, name: approval.name, imageIds: approval.imageIds, pickedIds: [], isParticipant: false });
   }
   return people;
 }
@@ -560,9 +585,11 @@ export function clientApprovalPeople(
   people: ProofingApprovalPerson[],
   visitorId: string,
 ) {
-  return people.map((person) => ({
+  return people.map((person, index) => ({
     name: person.name,
     you: person.key === visitorId,
+    colour: proofingPersonColour(index),
     imageIds: person.imageIds,
+    pickedIds: person.pickedIds,
   }));
 }

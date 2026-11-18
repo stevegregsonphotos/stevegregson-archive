@@ -7075,3 +7075,57 @@ input[type="email"],
 .proofing-selection-focus a:hover {
   color: #f2eee6;
 }
+
+/* Consolidated selection: one row per person, in their colour (18 Nov). */
+.proofing-people-approvals {
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid rgba(242, 238, 230, 0.12);
+}
+
+.proofing-person-row {
+  border: 1px solid rgba(242, 238, 230, 0.12);
+  border-left: 4px solid var(--person);
+  margin-top: 0.6rem;
+  padding: 0 0.9rem;
+}
+
+.proofing-person-row summary {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  padding: 0.75rem 0;
+  cursor: pointer;
+  list-style: none;
+}
+
+.proofing-person-row summary::-webkit-details-marker {
+  display: none;
+}
+
+.proofing-person-row summary::after {
+  content: "▸";
+  margin-left: auto;
+  opacity: 0.6;
+}
+
+.proofing-person-row[open] summary::after {
+  content: "▾";
+}
+
+.proofing-person-row summary > span:last-of-type {
+  color: rgba(242, 238, 230, 0.6);
+  font-size: 0.85rem;
+}
+
+.proofing-person-dot {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+  background: var(--person);
+}
+
+.proofing-person-row[open] {
+  padding-bottom: 1rem;
+}

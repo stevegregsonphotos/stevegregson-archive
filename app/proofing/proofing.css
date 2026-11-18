@@ -3337,3 +3337,50 @@ a.proofing-viewer-download {
   color: inherit;
   border: 1px solid rgba(242, 238, 230, 0.3);
 }
+
+/* Person colours: key at the top + a tag per person on each photograph. */
+.proofing-person-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.9rem;
+}
+
+.proofing-person-key .proofing-person-tag {
+  font-size: 0.8rem;
+  padding: 0.3rem 0.6rem;
+}
+
+.proofing-person-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.4rem;
+}
+
+.proofing-person-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.12rem 0.45rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: #111;
+  background: var(--person);
+  border: 1px solid var(--person);
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.proofing-person-tag em {
+  font-style: normal;
+  font-weight: 700;
+  opacity: 0.7;
+}
+
+.proofing-person-tag.is-withdrawn {
+  color: var(--person);
+  background: transparent;
+  text-decoration: line-through;
+}
