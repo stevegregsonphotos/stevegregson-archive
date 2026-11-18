@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 18 November 2026, 12:30 (London)
+Last updated: 18 November 2026, 11:55 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -119,7 +119,7 @@ cost an extra Vercel build.
 
 ## Waiting / in progress
 
-- **WAITING FOR "go live" (18 Nov): share the consolidated selection with
+- **LIVE 18 Nov ~11:55 (Steve tested on preview, said go live): share the consolidated selection with
   someone new** (Steve: poster designer must sign in themselves and see it).
   Any visitor could already open the Consolidated tab (when "Show … to
   clients" is ticked), but sign-in dropped them on the full gallery and the
@@ -131,8 +131,9 @@ cost an extra Vercel build.
   recipients; needs gallery live + selection saved as visible; email wording
   `kind: "consolidated"` in `lib/proofing/email.ts`). `ProofingGalleryEntry`
   keeps `view=consolidated` after sign-in.
-- **NOT PUSHED YET (18 Nov, committed locally → push to test branch once
-  Steve OKs the mockups): per-person approvals in Consolidated.** Before:
+- **LIVE 18 Nov ~11:55: per-person approvals in Consolidated.** (This
+  status commit was pushed to live only — fast-forward the test branch
+  with the next job's push.) Before:
   ONE shared `definitive_image_ids` list — any visitor's click toggled it
   for everyone. Now each person approves for themselves (table
   `proofing_consolidated_approvals` gallery_id+visitor_id, name, image_ids;
