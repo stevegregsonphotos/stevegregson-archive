@@ -4,8 +4,11 @@ import {
 } from "next/server";
 
 import {
+  buildProofingApprovalPeople,
+  clientApprovalPeople,
+  getProofingConsolidatedApprovals,
   getProofingConsolidatedSelection,
-  toggleProofingDefinitiveSelection,
+  toggleProofingConsolidatedApproval,
 } from "@/lib/proofing/consolidated-repository";
 
 import {
@@ -19,6 +22,8 @@ export const dynamic = "force-dynamic";
 type RequestBody = {
   gallerySlug?: unknown;
   imageId?: unknown;
+  /* The person's name, asked for the first time they approve a photo. */
+  name?: unknown;
 };
 
 function cleanString(
@@ -203,18 +208,54 @@ export async function POST(
     );
   }
 
-  const saved =
-    await toggleProofingDefinitiveSelection(
+  /*
+   * Each person approves for themselves. The first time, we need a name to
+   * show the others (participants use their Backstage label if they have one).
+   */
+  const approvals =
+    await getProofingConsolidatedApprovals(
       gallery.id,
-      imageId,
     );
+  const existing = approvals.find(
+    (approval) => approval.visitorId === visitorId,
+  );
+  const participant = consolidated.participants.find(
+    (candidate) => candidate.visitorId === visitorId,
+  );
+  const name =
+    cleanString(body.name).slice(0, 40) ||
+    existing?.name ||
+    participant?.publicLabel ||
+    "";
+
+  if (!name) {
+    return NextResponse.json(
+      {
+        ok: false,
+        needName: true,
+        message: "Please add your name so others can see who approved.",
+      },
+      { status: 409 },
+    );
+  }
+
+  const imageIds =
+    await toggleProofingConsolidatedApproval(
+      gallery.id,
+      visitorId,
+      imageId,
+      name,
+    );
+
+  const people = buildProofingApprovalPeople(
+    consolidated,
+    await getProofingConsolidatedApprovals(gallery.id),
+  );
 
   return NextResponse.json({
     ok: true,
-    selected:
-      saved.selected,
-    definitiveImageIds:
-      saved.definitiveImageIds,
+    selected: imageIds.includes(imageId),
+    approvers: clientApprovalPeople(people, visitorId),
   });
 }
 
@@ -339,9 +380,13 @@ export async function GET(
     );
   }
 
+  const people = buildProofingApprovalPeople(
+    consolidated,
+    await getProofingConsolidatedApprovals(gallery.id),
+  );
+
   return NextResponse.json({
     ok: true,
-    definitiveImageIds:
-      consolidated.definitiveImageIds,
+    approvers: clientApprovalPeople(people, visitorId),
   });
 }

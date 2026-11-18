@@ -12,6 +12,9 @@ import {
 } from "../../../../lib/proofing/repository";
 
 import {
+  approvedByEveryone,
+  buildProofingApprovalPeople,
+  getProofingConsolidatedApprovals,
   getProofingConsolidatedSelection,
 } from "../../../../lib/proofing/consolidated-repository";
 
@@ -152,23 +155,28 @@ export default async function ProofingGalleryPage({
       gallery.id,
     );
 
+  /*
+   * Final selection = photos EVERY person approving has approved
+   * (participants + anyone else approving, e.g. a designer).
+   */
+  const approvalPeople = consolidated
+    ? buildProofingApprovalPeople(
+        consolidated,
+        await getProofingConsolidatedApprovals(gallery.id).catch(() => []),
+      )
+    : [];
+  const agreedIds = approvedByEveryone(approvalPeople);
+
+  // Before 18 Nov there was one shared "definitive" list; kept, shown if used.
+  const earlierDefinitiveCount = consolidated
+    ? consolidated.definitiveImageIds.length
+    : 0;
+
   const definitiveImages =
     consolidated
-      ? consolidated.definitiveImageIds
-          .map((imageId) =>
-            gallery.images.find(
-              (image) =>
-                image.id === imageId,
-            ),
-          )
-          .filter(
-            (
-              image,
-            ): image is NonNullable<
-              typeof image
-            > =>
-              Boolean(image),
-          )
+      ? [...gallery.images]
+          .sort((a, b) => a.sortOrder - b.sortOrder)
+          .filter((image) => agreedIds.has(image.id))
       : [];
 
   const definitiveFilenames =
@@ -673,6 +681,18 @@ export default async function ProofingGalleryPage({
                   ? "Visible to clients"
                   : "Hidden from clients"}
               </p>
+
+              {approvalPeople.length ? (
+                <p className="proofing-selection-meta">
+                  Approving:{" "}
+                  {approvalPeople
+                    .map(
+                      (person) =>
+                        `${person.name} (${person.imageIds.length})`,
+                    )
+                    .join(" · ")}
+                </p>
+              ) : null}
             </div>
 
             <div className="proofing-selection-count">
@@ -680,7 +700,7 @@ export default async function ProofingGalleryPage({
                 {definitiveImages.length}
               </strong>
 
-              <span>Definitive</span>
+              <span>Approved by everyone</span>
             </div>
           </header>
 
@@ -723,10 +743,20 @@ export default async function ProofingGalleryPage({
             </>
           ) : (
             <p className="proofing-empty">
-              No definitive photographs selected
+              No photographs approved by everyone
               yet.
             </p>
           )}
+
+          {earlierDefinitiveCount ? (
+            <p className="proofing-selection-meta">
+              {earlierDefinitiveCount} photograph
+              {earlierDefinitiveCount === 1 ? " was" : "s were"}{" "}
+              picked under the old shared &ldquo;definitive&rdquo;
+              button (before each person approved separately).
+              They&apos;re kept, but don&apos;t count here.
+            </p>
+          ) : null}
         </article>
       ) : null}
 

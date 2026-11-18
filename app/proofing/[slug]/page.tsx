@@ -8,6 +8,9 @@ import {
 } from "../../../lib/proofing/repository";
 
 import {
+  buildProofingApprovalPeople,
+  clientApprovalPeople,
+  getProofingConsolidatedApprovals,
   getProofingConsolidatedSelection,
 } from "../../../lib/proofing/consolidated-repository";
 
@@ -250,6 +253,17 @@ export default async function ProofingClientPage({
    * Visitor IDs and email addresses are not
    * included in the client payload.
    */
+  const approvalPeople =
+    consolidatedSelection?.visible &&
+    consolidatedSelection.participants.length > 0
+      ? buildProofingApprovalPeople(
+          consolidatedSelection,
+          await getProofingConsolidatedApprovals(
+            gallery.id,
+          ).catch(() => []),
+        )
+      : [];
+
   const clientConsolidatedSelection =
     consolidatedSelection?.visible &&
     consolidatedSelection.participants.length > 0
@@ -303,9 +317,11 @@ export default async function ProofingClientPage({
           return {
             title:
               consolidatedSelection.title,
-            definitiveImageIds:
-              consolidatedSelection
-                .definitiveImageIds,
+            approvers:
+              clientApprovalPeople(
+                approvalPeople,
+                visitor.id,
+              ),
             participantCount,
             images:
               orderedImages.flatMap(

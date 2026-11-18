@@ -441,3 +441,128 @@ export async function toggleProofingDefinitiveSelection(
     definitiveImageIds,
   };
 }
+
+/*
+ * Per-person approvals (18 Nov 2026). Each person in the Consolidated view
+ * approves photos for themselves; a photo is final once EVERYONE has
+ * approved it. "Everyone" = the selection's participants plus anyone else
+ * who has approved at least one photo (e.g. a poster designer).
+ * The old shared definitive_image_ids list is left untouched.
+ */
+let approvalStorePromise: Promise<void> | null = null;
+
+function ensureApprovalStore() {
+  approvalStorePromise ??= (async () => {
+    await getSql().query(
+      "CREATE TABLE IF NOT EXISTS proofing_consolidated_approvals (gallery_id text NOT NULL, visitor_id text NOT NULL, name text NOT NULL, image_ids jsonb NOT NULL DEFAULT '[]'::jsonb, created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY (gallery_id, visitor_id))",
+    );
+  })().catch((error) => {
+    approvalStorePromise = null;
+    throw error;
+  });
+  return approvalStorePromise;
+}
+
+export type ProofingConsolidatedApproval = {
+  visitorId: string;
+  name: string;
+  imageIds: string[];
+  createdAt: string;
+};
+
+export async function getProofingConsolidatedApprovals(
+  galleryId: string,
+): Promise<ProofingConsolidatedApproval[]> {
+  await ensureApprovalStore();
+  const rows = (await getSql().query(
+    "SELECT visitor_id, name, image_ids, created_at FROM proofing_consolidated_approvals WHERE gallery_id = $1 ORDER BY created_at, visitor_id",
+    [galleryId],
+  )) as Array<{ visitor_id: string; name: string; image_ids: unknown; created_at: string | Date }>;
+  return rows.map((row) => ({
+    visitorId: row.visitor_id,
+    name: row.name,
+    imageIds: stringArray(row.image_ids),
+    createdAt: isoDate(row.created_at),
+  }));
+}
+
+/*
+ * Toggle one photo for one person, atomically (two people clicking at once
+ * never overwrite each other). `name` is used when the person has no row
+ * yet (or to rename them).
+ */
+export async function toggleProofingConsolidatedApproval(
+  galleryId: string,
+  visitorId: string,
+  imageId: string,
+  name: string,
+): Promise<string[]> {
+  await ensureApprovalStore();
+  const rows = (await getSql().query(
+    `INSERT INTO proofing_consolidated_approvals (gallery_id, visitor_id, name, image_ids)
+     VALUES ($1, $2, $3, jsonb_build_array($4::text))
+     ON CONFLICT (gallery_id, visitor_id) DO UPDATE SET
+       name = CASE WHEN $3 <> '' THEN $3 ELSE proofing_consolidated_approvals.name END,
+       image_ids = CASE
+         WHEN proofing_consolidated_approvals.image_ids ? $4
+         THEN proofing_consolidated_approvals.image_ids - $4
+         ELSE proofing_consolidated_approvals.image_ids || jsonb_build_array($4::text)
+       END,
+       updated_at = now()
+     RETURNING image_ids`,
+    [galleryId, visitorId, name.trim().slice(0, 40), imageId],
+  )) as Array<{ image_ids: unknown }>;
+  return stringArray(rows[0]?.image_ids);
+}
+
+export type ProofingApprovalPerson = {
+  key: string; // visitor id — server-side only, never sent to visitors
+  name: string;
+  imageIds: string[];
+  isParticipant: boolean;
+};
+
+/* Everyone whose approval counts: participants first, then other approvers. */
+export function buildProofingApprovalPeople(
+  selection: ProofingConsolidatedSelection,
+  approvals: ProofingConsolidatedApproval[],
+): ProofingApprovalPerson[] {
+  const byVisitor = new Map(approvals.map((approval) => [approval.visitorId, approval]));
+  const people: ProofingApprovalPerson[] = selection.participants.map((participant, index) => {
+    const approval = byVisitor.get(participant.visitorId);
+    return {
+      key: participant.visitorId,
+      name: approval?.name || participant.publicLabel || `Participant ${index + 1}`,
+      imageIds: approval?.imageIds ?? [],
+      isParticipant: true,
+    };
+  });
+  const participantIds = new Set(selection.participants.map((p) => p.visitorId));
+  for (const approval of approvals) {
+    if (participantIds.has(approval.visitorId)) continue;
+    if (!approval.imageIds.length) continue; // took everything back: no longer counted
+    people.push({ key: approval.visitorId, name: approval.name, imageIds: approval.imageIds, isParticipant: false });
+  }
+  return people;
+}
+
+/* Photos every counted person has approved (in no particular order). */
+export function approvedByEveryone(people: ProofingApprovalPerson[]) {
+  if (!people.length) return new Set<string>();
+  const [first, ...rest] = people;
+  return new Set(
+    first.imageIds.filter((imageId) => rest.every((person) => person.imageIds.includes(imageId))),
+  );
+}
+
+/* What a visitor's browser gets: names only, plus which one is them. */
+export function clientApprovalPeople(
+  people: ProofingApprovalPerson[],
+  visitorId: string,
+) {
+  return people.map((person) => ({
+    name: person.name,
+    you: person.key === visitorId,
+    imageIds: person.imageIds,
+  }));
+}

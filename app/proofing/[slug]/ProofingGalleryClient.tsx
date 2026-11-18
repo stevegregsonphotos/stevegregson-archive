@@ -81,10 +81,17 @@ type ProofingView =
   | "favourites"
   | "consolidated";
 
+type ConsolidatedApprover = {
+  name: string;
+  you: boolean;
+  imageIds: string[];
+};
+
 type ConsolidatedClientSelection = {
   title: string;
   participantCount: number;
-  definitiveImageIds: string[];
+  /* Everyone whose approval counts (participants + anyone else approving). */
+  approvers: ConsolidatedApprover[];
   images: Array<{
     imageId: string;
     labels: string[];
@@ -149,7 +156,8 @@ type SubmitResponse = {
 type ConsolidatedFavouriteResponse = {
   ok: boolean;
   selected?: boolean;
-  definitiveImageIds?: string[];
+  approvers?: ConsolidatedApprover[];
+  needName?: boolean;
   message?: string;
 };
 
@@ -235,13 +243,29 @@ export default function ProofingGalleryClient({
   const [favourites, setFavourites] =
     useState<string[]>(initialFavourites);
 
+  /* Everyone approving, and (definitiveImageIds) the photos YOU approved. */
+  const [approvers, setApprovers] =
+    useState<ConsolidatedApprover[]>(
+      consolidatedSelection?.approvers ?? [],
+    );
+
   const [
     definitiveImageIds,
     setDefinitiveImageIds,
   ] = useState<string[]>(
-    consolidatedSelection
-      ?.definitiveImageIds ?? [],
+    consolidatedSelection?.approvers.find(
+      (person) => person.you,
+    )?.imageIds ?? [],
   );
+
+  const [onlyAgreed, setOnlyAgreed] =
+    useState(false);
+
+  /* First approval by someone with no name yet: ask for one. */
+  const [namePromptImageId, setNamePromptImageId] =
+    useState<string | null>(null);
+  const [approverName, setApproverName] =
+    useState("");
 
   const [
     updatingDefinitiveImageId,
@@ -322,20 +346,24 @@ export default function ProofingGalleryClient({
         if (
           !data.ok ||
           !Array.isArray(
-            data.definitiveImageIds,
+            data.approvers,
           )
         ) {
           return;
         }
 
+        const mine =
+          data.approvers.find(
+            (person) => person.you,
+          )?.imageIds ?? [];
+
+        setApprovers(data.approvers);
+
         setDefinitiveImageIds(
           (current) =>
-            sameSelection(
-              current,
-              data.definitiveImageIds ?? [],
-            )
+            sameSelection(current, mine)
               ? current
-              : data.definitiveImageIds ?? [],
+              : mine,
         );
       } catch (error) {
         if (
@@ -1012,6 +1040,30 @@ export default function ProofingGalleryClient({
       [consolidatedSelection],
     );
 
+  /* Who approved each photo, and which photos everyone has approved. */
+  const approvalsByImageId =
+    useMemo(() => {
+      const map = new Map<string, string[]>();
+      for (const person of approvers) {
+        for (const imageId of person.imageIds) {
+          const names = map.get(imageId) ?? [];
+          names.push(person.you ? `${person.name} (you)` : person.name);
+          map.set(imageId, names);
+        }
+      }
+      return map;
+    }, [approvers]);
+
+  const agreedImageIdSet =
+    useMemo(() => {
+      const agreed = new Set<string>();
+      if (!approvers.length) return agreed;
+      for (const [imageId, names] of approvalsByImageId) {
+        if (names.length === approvers.length) agreed.add(imageId);
+      }
+      return agreed;
+    }, [approvers, approvalsByImageId]);
+
   const definitiveImageIdSet =
     useMemo(
       () =>
@@ -1054,7 +1106,11 @@ export default function ProofingGalleryClient({
     view === "favourites"
       ? favouriteImages
       : view === "consolidated"
-        ? consolidatedImages
+        ? onlyAgreed
+          ? consolidatedImages.filter((image) =>
+              agreedImageIdSet.has(image.id),
+            )
+          : consolidatedImages
         : images;
 
   const visibleImages =
@@ -1366,8 +1422,19 @@ export default function ProofingGalleryClient({
     }
   }
 
+  function applyApprovers(
+    next: ConsolidatedApprover[],
+  ) {
+    setApprovers(next);
+    setDefinitiveImageIds(
+      next.find((person) => person.you)
+        ?.imageIds ?? [],
+    );
+  }
+
   async function toggleDefinitiveSelection(
     imageId: string,
+    name?: string,
   ) {
     if (
       updatingDefinitiveImageId
@@ -1415,6 +1482,7 @@ export default function ProofingGalleryClient({
             body: JSON.stringify({
               gallerySlug,
               imageId,
+              ...(name ? { name } : {}),
             }),
           },
         );
@@ -1423,20 +1491,25 @@ export default function ProofingGalleryClient({
         (await response.json()) as
           ConsolidatedFavouriteResponse;
 
+      if (data.needName) {
+        setDefinitiveImageIds(previous);
+        setNamePromptImageId(imageId);
+        return;
+      }
+
       if (
         !response.ok ||
         !data.ok
       ) {
         throw new Error(
           data.message ??
-            "Definitive selection could not be updated.",
+            "Your approval could not be saved.",
         );
       }
 
-      setDefinitiveImageIds(
-        data.definitiveImageIds ??
-          [],
-      );
+      if (Array.isArray(data.approvers)) {
+        applyApprovers(data.approvers);
+      }
     } catch (error) {
       setDefinitiveImageIds(
         previous,
@@ -1445,7 +1518,7 @@ export default function ProofingGalleryClient({
       alert(
         error instanceof Error
           ? error.message
-          : "Definitive selection could not be updated.",
+          : "Your approval could not be saved.",
       );
     } finally {
       setUpdatingDefinitiveImageId(
@@ -2449,8 +2522,10 @@ export default function ProofingGalleryClient({
                   <p>
                     Everyone can make their own favourites.
                     The <strong>Consolidated</strong> view
-                    brings your shared selection together so
-                    the final choices can be agreed.
+                    brings them together. Approve the
+                    photographs you&apos;re happy with: once
+                    everyone has approved a photograph, it&apos;s
+                    in the final selection.
                   </p>
                 </section>
               ) : null}
@@ -2908,28 +2983,48 @@ export default function ProofingGalleryClient({
             </h2>
 
             <p className="proofing-review-copy">
-              This view combines the selections
-              from the participants chosen for
-              this gallery. Photographs selected
-              by more than one participant are
-              highlighted. Use the hearts to
-              create the final shared selection
-              — changes are visible to everyone
-              with access to this gallery.
+              This view combines everyone&apos;s
+              favourites. Use the heart on each
+              photograph to approve it. A photograph
+              is in the final selection once
+              everyone has approved it.
             </p>
+
+            {approvers.length ? (
+              <p className="proofing-approval-people">
+                Approving:{" "}
+                {approvers.map((person, index) => (
+                  <span key={index}>
+                    {index ? " · " : ""}
+                    <strong>
+                      {person.name}
+                      {person.you ? " (you)" : ""}
+                    </strong>{" "}
+                    {person.imageIds.length}
+                  </span>
+                ))}
+              </p>
+            ) : null}
+
+            <label className="proofing-approval-filter">
+              <input
+                type="checkbox"
+                checked={onlyAgreed}
+                onChange={(event) =>
+                  setOnlyAgreed(event.target.checked)
+                }
+              />
+              Only show photographs approved by everyone
+            </label>
           </div>
 
           <div className="proofing-consolidated-definitive-summary">
             <strong>
-              {definitiveImageIds.length}
+              {agreedImageIdSet.size}
             </strong>
 
             <span>
-              definitive selection
-              {definitiveImageIds.length ===
-              1
-                ? ""
-                : "s"}
+              approved by everyone
             </span>
 
           </div>
@@ -2988,8 +3083,14 @@ export default function ProofingGalleryClient({
             ) ||
             (
               view === "consolidated" &&
-              !consolidatedImageIdSet.has(
-                image.id,
+              (
+                !consolidatedImageIdSet.has(
+                  image.id,
+                ) ||
+                (
+                  onlyAgreed &&
+                  !agreedImageIdSet.has(image.id)
+                )
               )
             ) ||
             !orientationMatches(image);
@@ -3036,8 +3137,8 @@ export default function ProofingGalleryClient({
                       }
                       aria-label={
                         isDefinitive
-                          ? `Remove ${image.originalFilename} from definitive selection`
-                          : `Add ${image.originalFilename} to definitive selection`
+                          ? `Take back your approval of ${image.originalFilename}`
+                          : `Approve ${image.originalFilename}`
                       }
                       disabled={
                         updatingDefinitiveImageId !==
@@ -3059,7 +3160,7 @@ export default function ProofingGalleryClient({
                           </span>
 
                           <span className="proofing-selected-label">
-                            Definitive
+                            Approved
                           </span>
                         </>
                       ) : (
@@ -3118,24 +3219,42 @@ export default function ProofingGalleryClient({
                 {view === "consolidated" &&
                 consolidatedMetadata ? (
                   <div className="proofing-consolidated-meta">
+                    {agreedImageIdSet.has(image.id) ? (
+                      <strong className="proofing-approval-agreed">
+                        ✓ Approved by everyone
+                      </strong>
+                    ) : (approvalsByImageId.get(image.id) ?? []).length ? (
+                      <span className="proofing-approval-line">
+                        Approved by{" "}
+                        {(approvalsByImageId.get(image.id) ?? []).join(", ")}
+                        {" · "}
+                        {(approvalsByImageId.get(image.id) ?? []).length} of{" "}
+                        {approvers.length}
+                      </span>
+                    ) : (
+                      <span className="proofing-approval-line">
+                        Not approved yet
+                      </span>
+                    )}
+
                     {consolidatedMetadata
                       .selectedByAll ? (
                       <strong className="proofing-consolidated-all">
-                        Selected by all
+                        In everyone&apos;s favourites
                       </strong>
                     ) : (
                       <span>
-                        Selected by{" "}
+                        In{" "}
                         {
                           consolidatedMetadata
                             .participantCount
                         }{" "}
-                        participant
                         {consolidatedMetadata
                           .participantCount ===
                         1
-                          ? ""
-                          : "s"}
+                          ? "person's"
+                          : "people's"}{" "}
+                        favourites
                       </span>
                     )}
 
@@ -3225,8 +3344,8 @@ export default function ProofingGalleryClient({
                       {definitiveImageIdSet.has(
                         viewerImage.id,
                       )
-                        ? "Definitive selection"
-                        : "Add to definitive selection"}
+                        ? "Approved by you"
+                        : "Approve"}
                     </button>
                   ) : (
                     <button
@@ -3824,8 +3943,8 @@ export default function ProofingGalleryClient({
                     {definitiveImageIdSet.has(viewerImage.id) ? "♥" : "♡"}
                   </span>
                   {definitiveImageIdSet.has(viewerImage.id)
-                    ? "Selected"
-                    : "Select"}
+                    ? "Approved"
+                    : "Approve"}
                 </button>
               ) : (
                 <button
@@ -3861,6 +3980,69 @@ export default function ProofingGalleryClient({
             </div>
           </div>
         ) : null}
+
+      {namePromptImageId ? (
+        <div
+          className="proofing-intro-modal-backdrop"
+          role="presentation"
+        >
+          <form
+            className="proofing-intro-modal proofing-approval-name"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="proofing-approval-name-title"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const name = approverName.trim();
+              if (!name) return;
+              const imageId = namePromptImageId;
+              setNamePromptImageId(null);
+              void toggleDefinitiveSelection(imageId, name);
+            }}
+          >
+            <p className="proofing-client-eyebrow">
+              Approving photographs
+            </p>
+
+            <h2 id="proofing-approval-name-title">
+              What should we call you?
+            </h2>
+
+            <p className="proofing-intro-modal-message">
+              Everyone approving can see who has approved
+              each photograph. A short name or role is
+              perfect, e.g. &ldquo;Designer&rdquo;.
+            </p>
+
+            <input
+              autoFocus
+              value={approverName}
+              maxLength={40}
+              placeholder="Your name or role"
+              aria-label="Your name or role"
+              onChange={(event) =>
+                setApproverName(event.target.value)
+              }
+            />
+
+            <div className="proofing-approval-name-actions">
+              <button
+                type="button"
+                className="is-secondary"
+                onClick={() => setNamePromptImageId(null)}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={!approverName.trim()}
+              >
+                Approve photograph
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
 
     </>
   );

@@ -3279,3 +3279,61 @@ a.proofing-viewer-download {
     max-height: calc(100dvh - 13.5rem);
   }
 }
+
+/* Per-person approvals in the Consolidated view (18 Nov 2026). */
+.proofing-approval-people {
+  margin: 0.9rem 0 0;
+  font-size: 0.85rem;
+  color: rgba(242, 238, 230, 0.7);
+  line-height: 1.6;
+}
+
+.proofing-approval-people strong {
+  color: #f2eee6;
+  font-weight: 600;
+}
+
+.proofing-approval-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+  color: rgba(242, 238, 230, 0.8);
+  cursor: pointer;
+}
+
+.proofing-approval-agreed {
+  display: block;
+  color: #c7a369;
+  font-weight: 600;
+}
+
+.proofing-approval-line {
+  display: block;
+  color: rgba(242, 238, 230, 0.72);
+}
+
+.proofing-approval-name input {
+  width: 100%;
+  margin: 0.5rem 0 1.25rem;
+  padding: 0.75rem 0.85rem;
+  font: inherit;
+  font-size: 16px; /* stops iPhones zooming in */
+  color: inherit;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(242, 238, 230, 0.25);
+}
+
+.proofing-approval-name-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.proofing-approval-name-actions .is-secondary {
+  background: transparent;
+  color: inherit;
+  border: 1px solid rgba(242, 238, 230, 0.3);
+}

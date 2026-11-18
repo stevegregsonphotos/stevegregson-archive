@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 18 November 2026, 11:35 (London)
+Last updated: 18 November 2026, 12:05 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -130,8 +130,23 @@ cost an extra Vercel build.
   "share-consolidated"`, `emails[]` → emails ONLY them, not saved as gallery
   recipients; needs gallery live + selection saved as visible; email wording
   `kind: "consolidated"` in `lib/proofing/email.ts`). `ProofingGalleryEntry`
-  keeps `view=consolidated` after sign-in. NOTE: anyone signed in can still
-  tick/untick the final picks in Consolidated (unchanged).
+  keeps `view=consolidated` after sign-in.
+- **NOT PUSHED YET (18 Nov, committed locally → push to test branch once
+  Steve OKs the mockups): per-person approvals in Consolidated.** Before:
+  ONE shared `definitive_image_ids` list — any visitor's click toggled it
+  for everyone. Now each person approves for themselves (table
+  `proofing_consolidated_approvals` gallery_id+visitor_id, name, image_ids;
+  auto-created; atomic jsonb toggle). "Everyone" = participants + anyone
+  else with ≥1 approval (`buildProofingApprovalPeople`,
+  `approvedByEveryone` in consolidated-repository.ts). First approval by
+  someone without a Backstage label → "What should we call you?" box
+  (API 409 `needName`). Visitors get names only (`clientApprovalPeople`).
+  Gallery: heart = Approve/Approved, per-photo "Approved by A, B · 2 of 3"
+  or "✓ Approved by everyone", "Only show approved by everyone" filter;
+  old "Selected by all" now "In everyone's favourites". Backstage
+  Selections card: "Approved by everyone" + "Approving: name (n)"; old
+  shared picks kept, mentioned if any. Rehearsed on local Postgres (3
+  people × 3 photos at once, double-click, take-back) — correct.
 
 - **16 Nov: website health check (Steve asked after the WebP discovery).**
   PageSpeed mobile: home 100, archive 92, Jekyll & Hyde 96 (a11y/BP/SEO
