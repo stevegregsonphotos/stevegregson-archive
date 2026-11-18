@@ -119,7 +119,8 @@ cost an extra Vercel build.
 
 ## Waiting / in progress
 
-- **WAITING FOR "go live" (18 Nov 14:25): Harry's card fix.** Steve
+- **LIVE 18 Nov ~14:25: Harry's card fix.** (Status commit pushed to live
+  only — fast-forward the test branch with the next job.) Steve
   couldn't find the designer's (Harry, Dick Whittington Promo - KHT) 37
   approvals: his own visitor card said "0 photographs selected" (it counts
   favourites only) and the Each person rows started closed. Now: Each
