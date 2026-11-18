@@ -46,11 +46,32 @@ type SaveResponse = {
 
 type ProofingConsolidationEditorProps = {
   galleryId: string;
+  gallerySlug: string;
+  isLive: boolean;
 };
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function ProofingConsolidationEditor({
   galleryId,
+  gallerySlug,
+  isLive,
 }: ProofingConsolidationEditorProps) {
+  // What's actually saved (the checkbox can be changed without saving).
+  const [savedVisible, setSavedVisible] =
+    useState(false);
+  const [shareEmails, setShareEmails] =
+    useState("");
+  const [shareBusy, setShareBusy] =
+    useState(false);
+  const [shareCopied, setShareCopied] =
+    useState(false);
+  const [shareMessage, setShareMessage] =
+    useState<{ tone: "good" | "bad"; text: string } | null>(null);
+  const selectionUrl = `https://www.stevegregson.com/proofing/${encodeURIComponent(
+    gallerySlug,
+  )}?view=consolidated`;
+
   const [visitors, setVisitors] =
     useState<Visitor[]>([]);
 
@@ -141,6 +162,10 @@ export default function ProofingConsolidationEditor({
           );
 
           setVisible(
+            data.consolidated
+              .visible === true,
+          );
+          setSavedVisible(
             data.consolidated
               .visible === true,
           );
@@ -308,6 +333,9 @@ export default function ProofingConsolidationEditor({
       setVisible(
         data.consolidated.visible === true,
       );
+      setSavedVisible(
+        data.consolidated.visible === true,
+      );
 
       setMessage(
         data.consolidated.visible
@@ -332,6 +360,46 @@ export default function ProofingConsolidationEditor({
       setIsSaving(
         false,
       );
+    }
+  }
+
+  async function copySelectionLink() {
+    try {
+      await navigator.clipboard.writeText(selectionUrl);
+      setShareCopied(true);
+      window.setTimeout(() => setShareCopied(false), 2500);
+    } catch {
+      setShareMessage({ tone: "bad", text: "Couldn't copy — select the link and copy it instead." });
+    }
+  }
+
+  const typedShareEmails = shareEmails
+    .split(/[\s,;]+/)
+    .map((value) => value.trim().toLowerCase())
+    .filter(Boolean);
+  const shareEmailsValid =
+    typedShareEmails.length > 0 &&
+    typedShareEmails.every((value) => EMAIL_PATTERN.test(value));
+  const canShare = hasExisting && savedVisible && isLive;
+
+  async function sendSelection() {
+    if (!shareEmailsValid || shareBusy || !canShare) return;
+    setShareBusy(true);
+    setShareMessage(null);
+    try {
+      const response = await fetch("/api/admin/proofing/share", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ galleryId, action: "share-consolidated", emails: typedShareEmails }),
+      });
+      const data = (await response.json().catch(() => ({}))) as { ok?: boolean; message?: string };
+      if (!response.ok || !data.ok) throw new Error(data.message || "The selection could not be sent.");
+      setShareEmails("");
+      setShareMessage({ tone: "good", text: "✓ " + (data.message || "Selection sent.") });
+    } catch (error) {
+      setShareMessage({ tone: "bad", text: error instanceof Error ? error.message : "The selection could not be sent." });
+    } finally {
+      setShareBusy(false);
     }
   }
 
@@ -767,6 +835,103 @@ export default function ProofingConsolidationEditor({
           {message}
         </p>
       ) : null}
+
+      <div
+        className="proofing-consolidation-share"
+        style={{
+          marginTop: "2rem",
+          paddingTop: "1.5rem",
+          borderTop: "1px solid rgba(242, 238, 230, 0.14)",
+        }}
+      >
+        <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 600 }}>
+          Share this selection
+        </h3>
+        <p
+          style={{
+            margin: "0.4rem 0 1rem",
+            color: "rgba(242, 238, 230, 0.55)",
+            fontSize: "0.8rem",
+            lineHeight: 1.6,
+          }}
+        >
+          For someone who wasn&apos;t choosing, e.g. the poster designer. They
+          sign in with their own email address and the gallery opens straight
+          on the consolidated selection. Only the people you type here are
+          emailed.
+        </p>
+
+        {!canShare ? (
+          <p style={{ margin: "0 0 1rem", color: "#e6a29a", fontSize: "0.8rem" }}>
+            {!hasExisting
+              ? "Create the consolidated selection first."
+              : !savedVisible
+                ? "Tick “Show consolidated selection to clients” and press Update first."
+                : "Make the gallery live in Settings first."}
+          </p>
+        ) : null}
+
+        <div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap" }}>
+          <input
+            readOnly
+            value={selectionUrl}
+            aria-label="Selection link"
+            onFocus={(event) => event.currentTarget.select()}
+            style={{ flex: "1 1 18rem", minWidth: 0 }}
+          />
+          <button
+            type="button"
+            className="backstage-button"
+            disabled={!canShare}
+            onClick={() => void copySelectionLink()}
+          >
+            {shareCopied ? "Copied ✓" : "Copy link"}
+          </button>
+        </div>
+
+        <div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap", marginTop: "0.75rem" }}>
+          <input
+            type="text"
+            inputMode="email"
+            value={shareEmails}
+            placeholder="designer@example.com"
+            aria-label="Email the selection to"
+            disabled={!canShare || shareBusy}
+            onChange={(event) => {
+              setShareEmails(event.target.value);
+              setShareMessage(null);
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                void sendSelection();
+              }
+            }}
+            style={{ flex: "1 1 18rem", minWidth: 0 }}
+          />
+          <button
+            type="button"
+            className="backstage-button backstage-button-primary"
+            disabled={!canShare || !shareEmailsValid || shareBusy}
+            onClick={() => void sendSelection()}
+          >
+            {shareBusy ? "Sending…" : "Email the selection"}
+          </button>
+        </div>
+
+        {shareMessage ? (
+          <p
+            role="status"
+            style={{
+              margin: "0.75rem 0 0",
+              color: shareMessage.tone === "bad" ? "#e6a29a" : "#c7a369",
+              fontSize: "0.85rem",
+            }}
+          >
+            {shareMessage.text}
+          </p>
+        ) : null}
+      </div>
     </section>
   );
 }

@@ -367,13 +367,17 @@ type ProofingGalleryShareEmailOptions = {
   galleryTitle: string;
   galleryUrl: string;
   recipients: ProofingGalleryShareRecipient[];
+  /* "consolidated": the email is about the agreed (consolidated) selection. */
+  kind?: "gallery" | "consolidated";
 };
 
 export async function sendProofingGalleryShareEmails({
   galleryTitle,
   galleryUrl,
   recipients,
+  kind = "gallery",
 }: ProofingGalleryShareEmailOptions) {
+  const isSelection = kind === "consolidated";
   const {
     apiKey,
     from,
@@ -413,7 +417,9 @@ export async function sendProofingGalleryShareEmails({
         to: email,
 
         subject:
-          `Your private photography gallery — ${galleryTitle}`,
+          isSelection
+            ? `Selected photographs — ${galleryTitle}`
+            : `Your private photography gallery — ${galleryTitle}`,
 
         replyTo:
           photographerEmail,
@@ -423,11 +429,15 @@ export async function sendProofingGalleryShareEmails({
             ? `Hello ${recipient.name},`
             : "Hello,",
           "",
-          `Your private photography gallery "${galleryTitle}" is ready to view.`,
+          isSelection
+            ? `The selected photographs from "${galleryTitle}" are ready to view.`
+            : `Your private photography gallery "${galleryTitle}" is ready to view.`,
           "",
           galleryUrl,
           "",
-          "Use your email address to enter the gallery. Your favourites will be saved so you can return to them later.",
+          isSelection
+            ? "Enter your own email address to open the gallery. It opens straight on the selected photographs."
+            : "Use your email address to enter the gallery. Your favourites will be saved so you can return to them later.",
           "",
           "Steve Gregson Photography",
         ].join("\n"),
@@ -439,7 +449,7 @@ export async function sendProofingGalleryShareEmails({
             </p>
 
             <h1 style="font-size:30px;font-weight:400;margin:0 0 24px;">
-              Your private gallery
+              ${isSelection ? "Selected photographs" : "Your private gallery"}
             </h1>
 
             <p>
@@ -451,9 +461,9 @@ export async function sendProofingGalleryShareEmails({
             </p>
 
             <p>
-              Your private photography gallery
+              ${isSelection ? "The selected photographs from" : "Your private photography gallery"}
               <strong>${safeGalleryTitle}</strong>
-              is ready to view.
+              ${isSelection ? "are" : "is"} ready to view.
             </p>
 
             <p style="margin:32px 0;">
@@ -467,14 +477,16 @@ export async function sendProofingGalleryShareEmails({
                   text-decoration:none;
                 "
               >
-                View gallery
+                ${isSelection ? "View the selection" : "View gallery"}
               </a>
             </p>
 
             <p>
-              Use your email address to enter the gallery.
-              Your favourites will be saved so you can
-              return to them later.
+              ${
+                isSelection
+                  ? "Enter your own email address to open the gallery. It opens straight on the selected photographs."
+                  : "Use your email address to enter the gallery. Your favourites will be saved so you can return to them later."
+              }
             </p>
 
             <p style="margin-top:32px;">

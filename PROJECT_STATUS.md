@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 16 November 2026, 08:45 (London)
+Last updated: 18 November 2026, 11:35 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -118,6 +118,20 @@ cost an extra Vercel build.
 - **X (Twitter) removed — LIVE 1 Nov:** taken out of the site's hidden profile lists (`SAME_AS` in `app/layout.tsx` and `/llms.txt`), and from the Google Business Profile social links (Google review pending). Steve doesn't use X and can't log in; don't add it back. Went live together with the three 29 Oct items below (People search, Mac folder fix, Storage folder Download), so those are LIVE too.
 
 ## Waiting / in progress
+
+- **WAITING FOR "go live" (18 Nov): share the consolidated selection with
+  someone new** (Steve: poster designer must sign in themselves and see it).
+  Any visitor could already open the Consolidated tab (when "Show … to
+  clients" is ticked), but sign-in dropped them on the full gallery and the
+  normal Share Gallery emails EVERY recipient. Now: Backstage › gallery ›
+  consolidation box › **Share this selection** (end of
+  `ProofingConsolidationEditor.tsx`): link `…/proofing/<slug>?view=consolidated`
+  + Copy link, and "Email the selection" (share route `action:
+  "share-consolidated"`, `emails[]` → emails ONLY them, not saved as gallery
+  recipients; needs gallery live + selection saved as visible; email wording
+  `kind: "consolidated"` in `lib/proofing/email.ts`). `ProofingGalleryEntry`
+  keeps `view=consolidated` after sign-in. NOTE: anyone signed in can still
+  tick/untick the final picks in Consolidated (unchanged).
 
 - **16 Nov: website health check (Steve asked after the WebP discovery).**
   PageSpeed mobile: home 100, archive 92, Jekyll & Hyde 96 (a11y/BP/SEO

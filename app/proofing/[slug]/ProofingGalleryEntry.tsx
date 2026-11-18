@@ -89,10 +89,16 @@ export default function ProofingGalleryEntry({
         );
       }
 
+      // A shared selection link (?view=consolidated) keeps opening on the
+      // consolidated selection after signing in.
+      const openOnSelection =
+        new URLSearchParams(window.location.search).get("view") ===
+        "consolidated";
+
       window.location.assign(
         `/proofing/${encodeURIComponent(
           gallerySlug,
-        )}?welcome=1`,
+        )}?welcome=1${openOnSelection ? "&view=consolidated" : ""}`,
       );
     } catch (error) {
       setError(

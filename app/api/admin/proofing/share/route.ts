@@ -13,6 +13,7 @@ import {
   getProofingCompanies,
   getProofingContacts,
 } from "@/lib/proofing/contacts-repository";
+import { getProofingConsolidatedSelection } from "@/lib/proofing/consolidated-repository";
 import type { ProofingGalleryRecipient } from "@/lib/proofing/types";
 import { randomUUID } from "node:crypto";
 
@@ -27,6 +28,10 @@ type ShareRequest = {
   action?: unknown;
   /* People to add to the gallery's recipients before sending. */
   add?: unknown;
+  /* action "share-consolidated": email ONLY these addresses a link that
+     opens on the consolidated selection (not saved as gallery recipients,
+     and nobody else on the gallery is emailed). */
+  emails?: unknown;
 };
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -92,6 +97,80 @@ export async function POST(
           : undefined,
       })),
     });
+  }
+
+  /*
+   * Send the consolidated selection to someone new (e.g. a poster
+   * designer). They sign in with their own email and land on it.
+   */
+  if (body.action === "share-consolidated") {
+    const emails = [
+      ...new Set(
+        (Array.isArray(body.emails) ? body.emails : [])
+          .map((value) => String(value ?? "").trim().toLowerCase())
+          .filter((value) => EMAIL.test(value)),
+      ),
+    ].slice(0, 20);
+
+    if (!emails.length) {
+      return NextResponse.json(
+        { ok: false, message: "Add at least one email address." },
+        { status: 400 },
+      );
+    }
+
+    const gallery = await getProofingGallery(galleryId);
+    if (!gallery) {
+      return NextResponse.json(
+        { ok: false, message: "Gallery not found." },
+        { status: 404 },
+      );
+    }
+    if (gallery.status !== "live") {
+      return NextResponse.json(
+        { ok: false, message: "Make the gallery live before sharing it." },
+        { status: 409 },
+      );
+    }
+
+    const consolidated = await getProofingConsolidatedSelection(gallery.id);
+    if (!consolidated?.visible || !consolidated.participants.length) {
+      return NextResponse.json(
+        {
+          ok: false,
+          message:
+            "Tick \"Show consolidated selection to clients\" and update it before sharing.",
+        },
+        { status: 409 },
+      );
+    }
+
+    try {
+      const origin = new URL(request.url).origin;
+      const result = await sendProofingGalleryShareEmails({
+        galleryTitle: gallery.title,
+        galleryUrl: `${origin}/proofing/${encodeURIComponent(gallery.slug)}?view=consolidated`,
+        recipients: emails.map((email) => ({ email })),
+        kind: "consolidated",
+      });
+      return NextResponse.json({
+        ok: true,
+        sent: result.sent,
+        message: `Selection sent to ${emails.join(", ")}.`,
+      });
+    } catch (error) {
+      console.error("Consolidated selection share failed:", error);
+      return NextResponse.json(
+        {
+          ok: false,
+          message:
+            error instanceof Error
+              ? error.message
+              : "The selection could not be sent.",
+        },
+        { status: 500 },
+      );
+    }
   }
 
   /*

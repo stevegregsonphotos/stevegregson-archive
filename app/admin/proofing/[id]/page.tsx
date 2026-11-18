@@ -995,6 +995,8 @@ export default async function ProofingGalleryPage({
 
       <ProofingConsolidationEditor
         galleryId={gallery.id}
+        gallerySlug={gallery.slug}
+        isLive={gallery.status === "live"}
       />
     </div>
   );
