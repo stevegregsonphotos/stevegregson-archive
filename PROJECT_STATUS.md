@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 18 November 2026, 20:05 (London)
+Last updated: 18 November 2026, 20:10 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -119,9 +119,11 @@ cost an extra Vercel build.
 
 ## Waiting / in progress
 
-- **WAITING FOR "go live" (18 Nov ~20:05, test branch): new default
-  gallery layout + newest import first in its month.** Steve saw mockups
-  (Babies, TOAD, Mockingbird 1) and asked to fix every gallery.
+- **LIVE 18 Nov ~20:10: new default gallery layout + newest import first
+  in its month** (Steve: "just do it", skipped checking the preview; this
+  status commit pushed to live only — fast-forward the test branch with
+  the next job). Steve saw mockups (Babies, TOAD, Mockingbird 1) and asked
+  to fix every gallery. Phones: one photo per row (unchanged).
   (1) **Balanced rows** is the new default (`balancedRows()` +
   `landscapeEndingOrder()` in `lib/production-gallery-layouts.ts`,
   rendered in `ProductionGallery.tsx` with the editorial row markup,
