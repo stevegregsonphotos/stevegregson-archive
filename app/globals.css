@@ -1437,6 +1437,23 @@ a {
   width: min(100%, calc(88vh * var(--row-ratio, 1.5)));
 }
 
+/*
+ * Balanced rows (default layout): tighter, even gaps so rows read as one
+ * picture wall; a photo on its own row is capped at 80% of the screen
+ * height.
+ */
+.curated-production-gallery.curated-production-gallery-balanced {
+  gap: clamp(0.6rem, 0.9vw, 1rem);
+}
+
+.curated-production-gallery-balanced .curated-production-row {
+  gap: clamp(0.6rem, 0.9vw, 1rem);
+}
+
+.curated-production-gallery-balanced .curated-production-row-single .curated-production-row-shot {
+  width: min(100%, calc(80vh * var(--row-ratio, 1.5)));
+}
+
 .curated-production-row-shot .curated-production-image-button {
   display: block;
   width: 100%;
@@ -1463,7 +1480,8 @@ a {
   }
 
   .curated-production-row .curated-production-row-shot,
-  .curated-production-row-single .curated-production-row-shot {
+  .curated-production-row-single .curated-production-row-shot,
+  .curated-production-gallery-balanced .curated-production-row-single .curated-production-row-shot {
     flex: none;
     width: 100%;
     margin: 0;

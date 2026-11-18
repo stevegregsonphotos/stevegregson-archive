@@ -593,6 +593,25 @@
   background: #1d1b19;
 }
 
+.previewRows {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.previewRow {
+  display: flex;
+  gap: 5px;
+  justify-content: center;
+}
+
+.previewRow img {
+  display: block;
+  height: auto;
+  object-fit: cover;
+  background: #1d1b19;
+}
+
 .previewCrop {
   aspect-ratio: 3 / 2;
   object-fit: cover;

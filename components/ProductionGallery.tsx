@@ -6,7 +6,11 @@ import {
   getProductionCardImageUrl,
   getProductionImageUrl,
 } from "../lib/production-image-url";
-import type { ProductionGalleryLayout } from "../lib/production-gallery-layouts";
+import {
+  balancedRows,
+  landscapeEndingOrder,
+  type ProductionGalleryLayout,
+} from "../lib/production-gallery-layouts";
 import type { ProductionImage } from "../lib/productions";
 import { aspectFromBlurDataURL } from "../lib/blur-aspect";
 
@@ -20,7 +24,7 @@ type ProductionGalleryProps = {
     alt: string;
   };
   images: ProductionImage[];
-  /** Gallery layout preset; missing or "per-photo" renders each photo's own layout. */
+  /** Gallery layout preset; missing (or the retired "per-photo") renders balanced rows. */
   layout?: ProductionGalleryLayout;
 };
 
@@ -31,8 +35,10 @@ const PRESET_SIZES = {
   full: "(max-width: 760px) calc(100vw - 1.5rem), 94vw",
 } as const;
 
+type RowItem = { image: ProductionImage; index: number; ratio: number };
+
 function presetSizes(
-  layout: Exclude<ProductionGalleryLayout, "per-photo">,
+  layout: Exclude<ProductionGalleryLayout, "per-photo" | "balanced">,
   index: number,
 ) {
   switch (layout) {
@@ -55,12 +61,28 @@ export function ProductionGallery({
   title,
   productionSlug,
   hero,
-  images,
+  images: sourceImages,
   layout,
 }: ProductionGalleryProps) {
   const [viewerIndex, setViewerIndex] = useState<
     number | null
   >(null);
+
+  const ratioOf = (image: ProductionImage) =>
+    aspectFromBlurDataURL(image.blurDataURL) ?? 1.5;
+
+  const rowLayout =
+    layout !== "grid-3" &&
+    layout !== "grid-2" &&
+    layout !== "feature" &&
+    layout !== "masonry";
+
+  /* Row layouts end on a centred landscape; the viewer follows the same order. */
+  const images = rowLayout
+    ? landscapeEndingOrder(sourceImages.map(ratioOf)).map(
+        (index) => sourceImages[index],
+      )
+    : sourceImages;
 
   const viewerImages = [
     {
@@ -85,29 +107,58 @@ export function ProductionGallery({
    * widths in proportion to their shape, so portraits sit narrower beside
    * landscapes. Shapes come from each photo's blur placeholder.
    */
-  if (layout === "editorial") {
-    const rows: Array<Array<{ image: ProductionImage; index: number; ratio: number }>> = [];
-    const pattern = [1, 2, 3];
-    let cursor = 0;
-    let step = 0;
+  /*
+   * Row layouts. Every photo keeps its own shape (never cropped): photos in
+   * a row share one height and take widths in proportion to their shape,
+   * so portraits sit narrower beside landscapes. Shapes come from each
+   * photo's blur placeholder.
+   *  - Balanced rows (default): see balancedRows() in production-gallery-layouts.
+   *  - Editorial rhythm: rows of 1, 2, then 3 photos.
+   */
+  if (rowLayout) {
+    const rows: RowItem[][] = [];
 
-    while (cursor < images.length) {
-      const size = pattern[step % pattern.length];
-      rows.push(
-        images.slice(cursor, cursor + size).map((image, offset) => ({
-          image,
-          index: cursor + offset,
-          ratio: aspectFromBlurDataURL(image.blurDataURL) ?? 1.5,
-        })),
-      );
-      cursor += size;
-      step += 1;
+    if (layout === "editorial") {
+      const pattern = [1, 2, 3];
+      const end = images.length - 1;
+      let cursor = 0;
+      let step = 0;
+
+      while (cursor < end) {
+        const size = pattern[step % pattern.length];
+        rows.push(
+          images.slice(cursor, Math.min(cursor + size, end)).map((image, offset) => ({
+            image,
+            index: cursor + offset,
+            ratio: ratioOf(image),
+          })),
+        );
+        cursor += size;
+        step += 1;
+      }
+
+      if (end >= 0) {
+        rows.push([{ image: images[end], index: end, ratio: ratioOf(images[end]) }]);
+      }
+    } else {
+      const ratios = images.map(ratioOf);
+      for (const row of balancedRows(ratios)) {
+        rows.push(
+          row.map((index) => ({
+            image: images[index],
+            index,
+            ratio: ratios[index],
+          })),
+        );
+      }
     }
+
+    const balanced = layout !== "editorial";
 
     return (
       <>
         <section
-          className="curated-production-gallery curated-production-gallery-rows"
+          className={`curated-production-gallery curated-production-gallery-rows${balanced ? " curated-production-gallery-balanced" : ""}`}
           aria-label={`${title} photography`}
         >
           {rows.map((row) => {
@@ -128,7 +179,11 @@ export function ProductionGallery({
                   <figure
                     className="curated-production-shot curated-production-row-shot"
                     key={image.src}
-                    style={{ flexGrow: ratio, aspectRatio: String(ratio) }}
+                    style={
+                      single
+                        ? { aspectRatio: String(ratio) }
+                        : { flexGrow: ratio, aspectRatio: String(ratio) }
+                    }
                   >
                     <button
                       className="curated-production-image-button"
@@ -168,8 +223,7 @@ export function ProductionGallery({
     );
   }
 
-  if (layout && layout !== "per-photo") {
-    return (
+  return (
       <>
         <section
           className={`curated-production-gallery curated-production-gallery-preset curated-production-gallery-${layout}`}
@@ -212,49 +266,4 @@ export function ProductionGallery({
         />
       </>
     );
-  }
-
-  return (
-    <>
-      <section
-        className="curated-production-gallery"
-        aria-label={`${title} photography`}
-      >
-        {images.map((image, index) => (
-          <figure
-            className={`curated-production-shot curated-production-shot-${image.layout}`}
-            key={image.src}
-          >
-                          <button
-                className="curated-production-image-button"
-                type="button"
-                onClick={() =>
-                  setViewerIndex(index + 1)
-                }
-                aria-label={`Open photograph ${index + 2} from ${title} fullscreen`}
-              >
-                {/* srcSet: sharp full-size copy on large/retina screens, light card copy elsewhere. */}
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={getProductionImageUrl(productionSlug, image.src)}
-                  srcSet={`${getProductionCardImageUrl(productionSlug, image.src)} 1000w, ${getProductionImageUrl(productionSlug, image.src)} 2560w`}
-                  sizes="(max-width: 768px) calc(100vw - 2.8rem), 90vw"
-                  alt={image.alt}
-                  width={2000}
-                  height={1333}
-                  loading="lazy"
-                  decoding="async"
-                />
-              </button>
-          </figure>
-        ))}
-      </section>
-
-      <ImageViewer
-        images={viewerImages}
-        initialIndex={viewerIndex}
-        onClose={() => setViewerIndex(null)}
-      />
-    </>
-  );
 }

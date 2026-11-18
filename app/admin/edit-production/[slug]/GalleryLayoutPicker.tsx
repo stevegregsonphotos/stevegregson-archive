@@ -2,31 +2,21 @@
 
 /* eslint-disable @next/next/no-img-element -- photos come from our own image host at fixed sizes */
 
-import type { CSSProperties } from "react";
+import { useState, type CSSProperties } from "react";
 
 import {
+  DEFAULT_PRODUCTION_GALLERY_LAYOUT,
   PRODUCTION_GALLERY_LAYOUT_OPTIONS,
+  balancedRows,
+  landscapeEndingOrder,
   presetTile,
   type ProductionGalleryLayout,
 } from "../../../../lib/production-gallery-layouts";
 import { getProductionCardImageUrl } from "../../../../lib/production-image-url";
 
-import type { GalleryLayout, ProductionImage } from "./editor-state";
+import type { ProductionImage } from "./editor-state";
 
 import styles from "./production-edit.module.css";
-
-/* Grid columns used by the public per-photo layout (12-column grid in globals.css). */
-const PER_PHOTO_COLUMNS: Record<GalleryLayout, string> = {
-  wide: "2 / 12",
-  left: "1 / 8",
-  right: "7 / 13",
-  medium: "3 / 11",
-  full: "1 / 13",
-  "left-small": "2 / 7",
-  "right-small": "7 / 12",
-  "wide-left": "1 / 10",
-  "wide-right": "4 / 13",
-};
 
 const PREVIEW_COUNT = 9;
 
@@ -38,6 +28,24 @@ function Diagram({ layout }: { layout: ProductionGalleryLayout }) {
       <span className={`${styles.diagram} ${styles.diagramMasonry}`} aria-hidden="true">
         {heights.map((height, index) => (
           <span key={index} style={{ height }} />
+        ))}
+      </span>
+    );
+  }
+  if (layout === "balanced") {
+    const rows: Array<[string, number]> = [
+      ["1 / 7", 14],
+      ["1 / 4", 10],
+      ["4 / 7", 10],
+      ["1 / 2", 10],
+      ["2 / 5", 10],
+      ["5 / 7", 10],
+      ["2 / 6", 12],
+    ];
+    return (
+      <span className={styles.diagram} aria-hidden="true">
+        {rows.map(([column, height], index) => (
+          <span key={index} style={{ gridColumn: column, height }} />
         ))}
       </span>
     );
@@ -72,6 +80,47 @@ function Diagram({ layout }: { layout: ProductionGalleryLayout }) {
   );
 }
 
+/** Balanced rows preview: the same rule as the public page, on the first photos. */
+function BalancedPreview({ images, url }: { images: ProductionImage[]; url: (image: ProductionImage) => string }) {
+  const [ratios, setRatios] = useState<Record<string, number>>({});
+  const shapes = images.map((image) => ratios[image.src] ?? 1.5);
+  const order = landscapeEndingOrder(shapes);
+  const ordered = order.map((index) => images[index]);
+  const orderedShapes = order.map((index) => shapes[index]);
+
+  return (
+    <div className={styles.previewRows}>
+      {balancedRows(orderedShapes).map((row) => (
+        <div key={ordered[row[0]].src} className={styles.previewRow}>
+          {row.map((index) => {
+            const image = ordered[index];
+            const ratio = orderedShapes[index];
+            return (
+              <img
+                key={image.src}
+                src={url(image)}
+                alt=""
+                loading="lazy"
+                style={
+                  row.length === 1
+                    ? { aspectRatio: String(ratio), width: `${Math.min(100, ratio * 32)}%` }
+                    : { aspectRatio: String(ratio), flexGrow: ratio, flexBasis: 0, minWidth: 0 }
+                }
+                onLoad={(event) => {
+                  const { naturalWidth, naturalHeight } = event.currentTarget;
+                  if (naturalWidth && naturalHeight && ratios[image.src] === undefined) {
+                    setRatios((current) => ({ ...current, [image.src]: naturalWidth / naturalHeight }));
+                  }
+                }}
+              />
+            );
+          })}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function Preview({
   layout,
   images,
@@ -97,20 +146,8 @@ function Preview({
     );
   }
 
-  if (layout === "per-photo") {
-    return (
-      <div className={`${styles.previewGrid} ${styles.previewGrid12}`}>
-        {shown.map((image) => (
-          <img
-            key={image.src}
-            src={url(image)}
-            alt=""
-            loading="lazy"
-            style={{ gridColumn: PER_PHOTO_COLUMNS[image.layout] ?? PER_PHOTO_COLUMNS.wide }}
-          />
-        ))}
-      </div>
-    );
+  if (layout === "balanced" || layout === "per-photo") {
+    return <BalancedPreview images={shown} url={url} />;
   }
 
   return (
@@ -177,7 +214,7 @@ export default function GalleryLayoutPicker({
               >
                 <Diagram layout={option.value} />
                 <span className={styles.presetName}>{option.name}</span>
-                {option.value === "per-photo" ? <span className={styles.presetDefault}>Default · current</span> : null}
+                {option.value === DEFAULT_PRODUCTION_GALLERY_LAYOUT ? <span className={styles.presetDefault}>Default</span> : null}
               </button>
             );
           })}

@@ -562,6 +562,136 @@ export async function moveProductionWithinArchiveMonth(
   };
 }
 
+let processedAtColumnReady:
+  Promise<void> | null = null;
+
+function ensureProcessedAtColumn() {
+  processedAtColumnReady ??=
+    getSql()
+      .query(
+        "ALTER TABLE productions ADD COLUMN IF NOT EXISTS processed_at timestamptz",
+      )
+      .then(() => undefined)
+      .catch((error) => {
+        processedAtColumnReady = null;
+        throw error;
+      });
+
+  return processedAtColumnReady;
+}
+
+/**
+ * Productions only have a month and year, so shows in the same month tie.
+ * When a curated show is imported, remember when its photos were last
+ * exported/edited (`processedAt`) and place it within its month: newest
+ * first, above shows from that month that have no date (imported earlier).
+ * Steve can still move it with the Earlier/Later arrows afterwards.
+ */
+export async function placeProductionWithinMonthByProcessedDate(
+  slug: string,
+  processedAt: string,
+) {
+  const processedTime =
+    Date.parse(processedAt);
+
+  if (!Number.isFinite(processedTime)) {
+    return { placed: false };
+  }
+
+  await ensureProcessedAtColumn();
+
+  const sql = getSql();
+
+  const targetRows = await sql`
+    UPDATE productions
+    SET processed_at = ${new Date(processedTime).toISOString()}
+    WHERE lower(slug) = lower(${slug})
+      AND deleted_at IS NULL
+    RETURNING id, month, year
+  `;
+
+  const target =
+    targetRows[0] as
+      | {
+          id: string;
+          month: number | null;
+          year: number;
+        }
+      | undefined;
+
+  if (!target) {
+    return { placed: false };
+  }
+
+  const monthRows = await sql`
+    SELECT
+      id,
+      processed_at
+    FROM productions
+    WHERE year = ${target.year}
+      AND month IS NOT DISTINCT FROM
+        ${target.month}::integer
+      AND deleted_at IS NULL
+    ORDER BY
+      archive_position ASC NULLS LAST,
+      title ASC
+  `;
+
+  const others =
+    (
+      monthRows as Array<{
+        id: string;
+        processed_at: string | Date | null;
+      }>
+    ).filter(
+      (row) => row.id !== target.id,
+    );
+
+  const insertAt =
+    others.findIndex((row) => {
+      if (!row.processed_at) {
+        return true;
+      }
+
+      const time =
+        new Date(row.processed_at).getTime();
+
+      return (
+        !Number.isFinite(time) ||
+        time < processedTime
+      );
+    });
+
+  const reordered = [...others];
+
+  reordered.splice(
+    insertAt < 0
+      ? reordered.length
+      : insertAt,
+    0,
+    { id: target.id, processed_at: null },
+  );
+
+  await sql.transaction(
+    reordered.map(
+      (production, position) =>
+        sql`
+          UPDATE productions
+          SET archive_position = ${position}
+          WHERE id = ${production.id}
+            AND deleted_at IS NULL
+        `,
+    ),
+  );
+
+  return {
+    placed: true,
+    position: reordered.findIndex(
+      (row) => row.id === target.id,
+    ),
+  };
+}
+
 export type ProductionNavigationEntry = {
   slug: string;
   title: string;
@@ -982,7 +1112,7 @@ export async function getProduction(
 /**
  * The production's gallery layout preset, kept in site_content.
  * Never throws: any problem (no table yet, no key, bad value) means
- * the default per-photo layout, so public pages always render.
+ * the default (balanced rows) layout, so public pages always render.
  */
 export async function getProductionGalleryLayout(
   slug: string,

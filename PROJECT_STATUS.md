@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 18 November 2026, 14:25 (London)
+Last updated: 18 November 2026, 20:05 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -118,6 +118,41 @@ cost an extra Vercel build.
 - **X (Twitter) removed — LIVE 1 Nov:** taken out of the site's hidden profile lists (`SAME_AS` in `app/layout.tsx` and `/llms.txt`), and from the Google Business Profile social links (Google review pending). Steve doesn't use X and can't log in; don't add it back. Went live together with the three 29 Oct items below (People search, Mac folder fix, Storage folder Download), so those are LIVE too.
 
 ## Waiting / in progress
+
+- **WAITING FOR "go live" (18 Nov ~20:05, test branch): new default
+  gallery layout + newest import first in its month.** Steve saw mockups
+  (Babies, TOAD, Mockingbird 1) and asked to fix every gallery.
+  (1) **Balanced rows** is the new default (`balancedRows()` +
+  `landscapeEndingOrder()` in `lib/production-gallery-layouts.ts`,
+  rendered in `ProductionGallery.tsx` with the editorial row markup,
+  `.curated-production-gallery-balanced` in globals.css): rows of 2–3 by
+  photo shape (target sum 2.6), first photo + a landscape ~every 8 on its
+  own row (≤80vh), nothing cropped. EVERY row gallery (balanced AND
+  editorial) ends on a lone centred landscape (Steve's request): if the
+  order ends on a portrait, the latest landscape moves to the end (viewer
+  follows). Old "As set per photo" (each photo alone, staggered) is
+  RETIRED: stored `per-photo` reads as default; per-photo layout buttons
+  and bulk "Set layout" removed from Backstage Photos (image.layout data
+  kept). Hand-picked presets (TOAD = editorial) unchanged. Also fixed:
+  editorial single photos ignored the screen-height cap (inline flexGrow),
+  e.g. TOAD portrait 1714 px tall. Tested: SSR of the real component +
+  globals.css with Mockingbird's 35 shapes (1440/390), then the same rows
+  injected into the live page in Chrome.
+  (2) **Curated imports go to the top of their month by date.** Shows
+  only have month+year, so same-month shows tied (TOAD landed 5th/6th).
+  `prepareCuratedProduction` now returns `processedAt` = latest `modified`
+  of the chosen photos in final-selection.json (Steve's export/Bridge
+  date; capture dates are stripped and he won't export full metadata).
+  Publish route calls `placeProductionWithinMonthByProcessedDate()`
+  (`productions.processed_at` timestamptz, auto-added): newest first,
+  above undated same-month shows, renumbers `archive_position`; Earlier/
+  Later arrows still work. Rehearsed on local Postgres. TOAD itself was
+  imported before this: Steve to press Move earlier.
+- **18 Nov curations (free route):** Frozen (Mountview, Sumarr cast, 53
+  photos, hero #0218, showstoppers first then show order); TOAD (Rose
+  Bruford, 34, hero #0040, published). Frozen re-run Finish → Delete from
+  upload → re-upload. Archive lists two Frozen pages ("Disney's Frozen"
+  and "… Sumarr Cast") with no gallery seen — Steve to check.
 
 - **LIVE 18 Nov ~14:25: Harry's card fix.** (Status commit pushed to live
   only — fast-forward the test branch with the next job.) Steve

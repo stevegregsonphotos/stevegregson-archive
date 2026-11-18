@@ -78,6 +78,8 @@ export type PreparedCuratedProduction = {
   stagedDirectory: string;
   payload: PublishPayload | null;
   images: SourceImage[];
+  /** Latest file date among the chosen photos (when Steve last exported/edited them). Used to order shows within a month. */
+  processedAt: string | null;
 };
 
 function normaliseProductionName(
@@ -704,6 +706,7 @@ export async function prepareCuratedProduction(
             sourceRootId?: unknown;
             sourceRootPath?: unknown;
             alt?: unknown;
+            modified?: unknown;
           }>;
         }
       | null = null;
@@ -828,6 +831,10 @@ export async function prepareCuratedProduction(
                   : undefined,
               sourceHero:
                 image.hero === true,
+              modified:
+                typeof image.modified === "string"
+                  ? image.modified
+                  : null,
             },
           ];
         },
@@ -1266,7 +1273,32 @@ export async function prepareCuratedProduction(
           }
         : null;
 
+    const processedTimes =
+      selectedIndexes.flatMap(
+        (index) => {
+          const modified =
+            sourceByIndex.get(index)
+              ?.modified;
+          const time =
+            modified
+              ? Date.parse(modified)
+              : Number.NaN;
+
+          return Number.isFinite(time)
+            ? [time]
+            : [];
+        },
+      );
+
+    const processedAt =
+      processedTimes.length > 0
+        ? new Date(
+            Math.max(...processedTimes),
+          ).toISOString()
+        : null;
+
     return {
+      processedAt,
       production,
       folder:
         entry.name,

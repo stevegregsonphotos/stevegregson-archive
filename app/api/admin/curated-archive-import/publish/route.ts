@@ -20,6 +20,7 @@ import {
   type PublishedImageMetadata,
 } from "@/lib/publishing/publish-production";
 import {
+  placeProductionWithinMonthByProcessedDate,
   productionExists,
 } from "@/lib/productions-repository";
 import {
@@ -491,6 +492,20 @@ export async function POST(
           heroAsset,
           galleryAssets,
         );
+
+      if (prepared.processedAt) {
+        try {
+          await placeProductionWithinMonthByProcessedDate(
+            payload.slug,
+            prepared.processedAt,
+          );
+        } catch (placeError) {
+          console.error(
+            "Could not place the production within its month:",
+            placeError,
+          );
+        }
+      }
 
       await revalidateProductionContent(
         payload.slug,

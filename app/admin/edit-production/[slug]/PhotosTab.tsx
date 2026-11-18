@@ -5,16 +5,12 @@
 import { useEffect, useRef, useState, type DragEvent, type SyntheticEvent } from "react";
 
 import {
-  DEFAULT_PRODUCTION_GALLERY_LAYOUT,
-  PRODUCTION_GALLERY_LAYOUT_OPTIONS,
   type ProductionGalleryLayout,
 } from "../../../../lib/production-gallery-layouts";
 import { getProductionCardImageUrl, getProductionImageUrl } from "../../../../lib/production-image-url";
 
 import GalleryLayoutPicker from "./GalleryLayoutPicker";
 import {
-  LAYOUT_OPTIONS,
-  layoutLabel,
   needsDescription,
   type Doc,
   type GalleryLayout,
@@ -89,8 +85,6 @@ export default function PhotosTab({
   const panelRef = useRef<HTMLElement>(null);
 
   const heroChanged = doc.hero !== publishedHero;
-  const presetActive = doc.galleryLayout !== DEFAULT_PRODUCTION_GALLERY_LAYOUT;
-  const presetName = PRODUCTION_GALLERY_LAYOUT_OPTIONS.find((option) => option.value === doc.galleryLayout)?.name;
   const selected = images.filter((image) => selection.has(image.src));
   const remaining = images.filter(needsDescription);
   const describedCount = images.length - remaining.length;
@@ -131,14 +125,6 @@ export default function PhotosTab({
     change(label, key, (current) => ({
       ...current,
       images: current.images.map((image) => (image.src === src ? { ...image, ...changes } : image)),
-    }));
-  }
-
-  function setLayouts(srcs: string[], layout: GalleryLayout) {
-    const set = new Set(srcs);
-    change(srcs.length === 1 ? "Layout changed" : `Layout set on ${srcs.length} photos`, undefined, (current) => ({
-      ...current,
-      images: current.images.map((image) => (set.has(image.src) ? { ...image, layout } : image)),
     }));
   }
 
@@ -224,30 +210,6 @@ export default function PhotosTab({
     finishDrag();
   }
 
-  const layoutControls = (image: ProductionImage) => (
-    <div className={styles.panelSection}>
-      <span className={styles.panelLabel}>Layout on the page</span>
-      {presetActive ? (
-        <p className={styles.overrideNote} data-testid="preset-override-note">
-          The gallery layout “{presetName}” is in use, so this setting is not shown on the site at the moment. It is
-          kept for if you switch back to “As set per photo”.
-        </p>
-      ) : null}
-      <div className={presetActive ? `${styles.layoutButtons} ${styles.layoutMuted}` : styles.layoutButtons}>
-        {LAYOUT_OPTIONS.map((option) => (
-          <button
-            key={option.value}
-            type="button"
-            className={image.layout === option.value ? `${styles.layoutButton} ${styles.layoutButtonOn}` : styles.layoutButton}
-            aria-pressed={image.layout === option.value}
-            onClick={() => setLayouts([image.src], option.value)}
-          >
-            {option.label}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
 
   return (
     <div>
@@ -332,24 +294,6 @@ export default function PhotosTab({
           <button type="button" className={sw.btn} disabled={working} onClick={() => void analyse(selected.map((image) => image.src))}>
             Describe with AI
           </button>
-          <select
-            className={styles.bulkLayout}
-            aria-label="Set layout for the selected photos"
-            value=""
-            disabled={working}
-            onChange={(event) => {
-              const layout = event.target.value as GalleryLayout;
-              if (layout) setLayouts(selected.map((image) => image.src), layout);
-            }}
-            data-testid="bulk-layout"
-          >
-            <option value="">Set layout ▾</option>
-            {LAYOUT_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
           <button
             type="button"
             className={sw.btnDanger}
@@ -533,7 +477,7 @@ export default function PhotosTab({
                     {image.src}
                   </span>
                   <span className={isNew ? `${styles.photoChip} ${styles.photoChipNew}` : styles.photoChip}>
-                    {[isNew ? "New" : "", presetActive ? "" : layoutLabel(image.layout)].filter(Boolean).join(" · ")}
+                    {[isNew ? "New" : ""].filter(Boolean).join(" · ")}
                   </span>
                 </figcaption>
               </figure>
@@ -656,7 +600,6 @@ export default function PhotosTab({
               </p>
             ) : null}
 
-            {layoutControls(activeImage)}
 
             <div className={styles.panelSection}>
               <span className={styles.panelLabel}>Hero</span>
