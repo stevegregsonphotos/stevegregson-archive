@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 18 November 2026, 20:20 (London)
+Last updated: 18 November 2026, 21:30 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -118,6 +118,17 @@ cost an extra Vercel build.
 - **X (Twitter) removed — LIVE 1 Nov:** taken out of the site's hidden profile lists (`SAME_AS` in `app/layout.tsx` and `/llms.txt`), and from the Google Business Profile social links (Google review pending). Steve doesn't use X and can't log in; don't add it back. Went live together with the three 29 Oct items below (People search, Mac folder fix, Storage folder Download), so those are LIVE too.
 
 ## Waiting / in progress
+
+- **LIVE 18 Nov ~21:30: Send files card shows progress like WeTransfer**
+  (Steve saw mockups, said go live). Steve: after pressing Transfer the
+  card looked unchanged, so he thought it wasn't working. Now the card body
+  is replaced by `SendProgressPanel.tsx` while sending (gold ring + big %,
+  "Uploading N of M files", GB done, title + recipient, "Keep this tab
+  open"; spins "Starting…" first). After: green tick "Transfer sent" +
+  link (Copy / Open) + "Send another" (back to the form); failure: orange
+  "!" + reason + "Back to try again" (files stay selected). Strip × also
+  returns to the form. Styles at end of `workspace.module.css`. No Cancel
+  button. Test + live branches both at this commit.
 
 - **LIVE 18 Nov ~20:10: new default gallery layout + newest import first
   in its month** (Steve: "just do it", skipped checking the preview; this

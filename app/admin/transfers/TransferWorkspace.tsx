@@ -19,6 +19,7 @@ import { canMakeBackdrop, uploadTransferBackdrop } from "@/lib/transfers/backdro
 import { MAX_BACKGROUNDS } from "@/lib/transfers/backgrounds";
 import RequestsPanel from "./RequestsPanel";
 import RecipientInput from "./RecipientInput";
+import SendProgressPanel from "./SendProgressPanel";
 
 /** How many photos show per page when picking client page photos. */
 const PICK_PAGE_SIZE = 40;
@@ -240,6 +241,21 @@ export default function TransferWorkspace({ initialTransfers, knownEmails: initi
   const showStrip = sending || outcome !== null;
   const firstShown = page * PICK_PAGE_SIZE + 1;
   const lastShown = Math.min((page + 1) * PICK_PAGE_SIZE, pickableAll.length);
+  // While sending and after, the card shows a big progress ring instead of the form.
+  const panelState = sending ? "sending" : outcome ? (outcome.tone === "warn" ? "warn" : "done") : null;
+  const panelHeadline = sending
+    ? counts && counts.total
+      ? "Uploading " + Math.min(counts.done + 1, counts.total).toLocaleString("en-GB") + " of " + counts.total.toLocaleString("en-GB") + (counts.total === 1 ? " file" : " files")
+      : "Sending…"
+    : outcome?.tone === "warn" ? "Transfer needs attention" : "Transfer sent";
+  const panelDetail = sending
+    ? counts && counts.done < counts.total ? bytes(counts.sent) + " of " + bytes(counts.size) : progress
+    : progress === "Sent" ? "" : progress;
+  function backToForm() {
+    setOutcome(null);
+    setProgress("");
+    setResultUrl("");
+  }
 
   return (
     <main className={styles.page + (showStrip ? " " + styles.withStrip : "")}>
@@ -271,7 +287,7 @@ export default function TransferWorkspace({ initialTransfers, knownEmails: initi
           ) : (
             <span className={styles.stripActions}>
               {resultUrl ? <a href={resultUrl} target="_blank" rel="noopener">Open ↗</a> : null}
-              <button type="button" onClick={() => setOutcome(null)} aria-label="Close">×</button>
+              <button type="button" onClick={backToForm} aria-label="Close">×</button>
             </span>
           )}
           {sending ? (
@@ -286,6 +302,20 @@ export default function TransferWorkspace({ initialTransfers, knownEmails: initi
           className={styles.card + (dragging ? " " + styles.cardDragging : "")}
           {...dropProps}
         >
+          {panelState ? (
+            <div className={styles.cardBody}>
+              <SendProgressPanel
+                state={panelState}
+                percent={sending ? percent : 100}
+                headline={panelHeadline}
+                detail={panelDetail}
+                title={sendingTitle}
+                recipients={sentToText}
+                resultUrl={resultUrl}
+                onReset={backToForm}
+              />
+            </div>
+          ) : (<>
           <div className={styles.cardBody}>
             <h1 className={styles.cardTitle}>Send files</h1>
 
@@ -393,6 +423,7 @@ export default function TransferWorkspace({ initialTransfers, knownEmails: initi
               </div>
             )}
           </div>
+          </>)}
         </div>
       </section>
 
