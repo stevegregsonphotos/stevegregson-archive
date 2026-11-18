@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 18 November 2026, 11:55 (London)
+Last updated: 18 November 2026, 14:25 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -118,6 +118,16 @@ cost an extra Vercel build.
 - **X (Twitter) removed — LIVE 1 Nov:** taken out of the site's hidden profile lists (`SAME_AS` in `app/layout.tsx` and `/llms.txt`), and from the Google Business Profile social links (Google review pending). Steve doesn't use X and can't log in; don't add it back. Went live together with the three 29 Oct items below (People search, Mac folder fix, Storage folder Download), so those are LIVE too.
 
 ## Waiting / in progress
+
+- **WAITING FOR "go live" (18 Nov 14:25): Harry's card fix.** Steve
+  couldn't find the designer's (Harry, Dick Whittington Promo - KHT) 37
+  approvals: his own visitor card said "0 photographs selected" (it counts
+  favourites only) and the Each person rows started closed. Now: Each
+  person rows open by default; a visitor card shows "Approved N in the
+  consolidated selection" when they have an approvals row
+  (`consolidatedApprovalCount` in `app/admin/proofing/[id]/page.tsx`).
+  Steve said leave the rest for now (e.g. "approved by everyone" = 6 =
+  James ∩ Zoe ∩ Harry — offered to make Harry's picks the final list).
 
 - **LIVE 18 Nov ~11:55 (Steve tested on preview, said go live): share the consolidated selection with
   someone new** (Steve: poster designer must sign in themselves and see it).

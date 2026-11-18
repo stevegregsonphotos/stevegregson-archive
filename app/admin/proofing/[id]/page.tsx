@@ -160,12 +160,19 @@ export default async function ProofingGalleryPage({
    * Final selection = photos EVERY person approving has approved
    * (participants + anyone else approving, e.g. a designer).
    */
-  const approvalPeople = consolidated
-    ? buildProofingApprovalPeople(
-        consolidated,
-        await getProofingConsolidatedApprovals(gallery.id).catch(() => []),
-      )
+  const consolidatedApprovals = consolidated
+    ? await getProofingConsolidatedApprovals(gallery.id).catch(() => [])
     : [];
+  const approvalPeople = consolidated
+    ? buildProofingApprovalPeople(consolidated, consolidatedApprovals)
+    : [];
+  // Approvals made in the Consolidated view, by visitor (for their own card).
+  const consolidatedApprovalCount = new Map(
+    consolidatedApprovals.map((approval) => [
+      approval.visitorId,
+      approval.imageIds.length,
+    ]),
+  );
   const agreedIds = approvedByEveryone(approvalPeople);
 
   // Before 18 Nov there was one shared "definitive" list; kept, shown if used.
@@ -759,6 +766,7 @@ export default async function ProofingGalleryPage({
                 return (
                   <details
                     key={person.key}
+                    open
                     className="proofing-person-row"
                     style={{ "--person": proofingPersonColour(index) } as React.CSSProperties}
                   >
@@ -943,6 +951,14 @@ export default async function ProofingGalleryPage({
                           </>
                         ) : null}
                       </p>
+
+                      {consolidatedApprovalCount.get(visitor.id) ? (
+                        <p className="proofing-selection-meta">
+                          Approved{" "}
+                          {consolidatedApprovalCount.get(visitor.id)} in the
+                          consolidated selection (see Each person above)
+                        </p>
+                      ) : null}
                     </div>
 
                     <div className="proofing-selection-count">
