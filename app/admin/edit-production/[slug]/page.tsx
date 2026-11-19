@@ -26,6 +26,7 @@ import {
   type ProductionImage,
 } from "./editor-state";
 import PhotosTab, { HERO_TILE, type UploadProgress } from "./PhotosTab";
+import DownloadPhotos from "./DownloadPhotos";
 
 import sw from "../../selected-work/backstage-selected-work.module.css";
 import styles from "./production-edit.module.css";
@@ -478,6 +479,15 @@ export default function EditProductionPage() {
               <a className={sw.liveLink} href={`/productions/${production.slug}`} target="_blank" rel="noreferrer">
                 View production ↗
               </a>
+              <DownloadPhotos
+                slug={production.slug}
+                title={production.title}
+                venue={production.venue}
+                month={production.month}
+                year={production.year}
+                hero={production.hero}
+                images={production.images.map((image) => image.src)}
+              />
             </div>
           </header>
 

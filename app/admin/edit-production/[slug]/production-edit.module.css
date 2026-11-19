@@ -830,3 +830,210 @@
   color: var(--danger);
   font-size: 13px;
 }
+
+/* ---------- Download photos (header button + panel) ---------- */
+
+.download {
+  position: relative;
+  align-self: center;
+}
+
+.downloadButton,
+.downloadGo {
+  display: inline-block;
+  border: 1px solid var(--gold);
+  border-radius: 2px;
+  padding: 11px 18px;
+  background: var(--gold);
+  color: #111;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-align: center;
+  text-decoration: none;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.downloadButton:hover,
+.downloadGo:hover {
+  background: var(--cream);
+  border-color: var(--cream);
+}
+
+.downloadGo {
+  width: 100%;
+  margin-top: 14px;
+  padding: 13px;
+}
+
+.downloadGo:disabled {
+  opacity: 0.45;
+  cursor: default;
+  background: var(--gold);
+  border-color: var(--gold);
+}
+
+.downloadPanel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 40;
+  width: min(420px, calc(100vw - 32px));
+  border: 1px solid rgba(199, 163, 105, 0.55);
+  padding: 22px;
+  background: #141210;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+  color: var(--cream);
+  font-size: 13px;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.downloadTitle {
+  margin: 0 0 4px;
+  font-family: var(--serif);
+  font-size: 24px;
+  font-weight: 400;
+}
+
+.downloadLede {
+  margin: 0 0 16px;
+  color: var(--muted);
+}
+
+.downloadOption {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 10px;
+  border: 1px solid var(--line);
+  padding: 14px;
+  cursor: pointer;
+}
+
+.downloadOption input {
+  flex: none;
+  margin-top: 3px;
+  accent-color: var(--gold);
+}
+
+.downloadOption > span {
+  display: grid;
+  gap: 3px;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.downloadOption strong {
+  color: var(--cream);
+  font-size: 14px;
+}
+
+.downloadOptionOn {
+  border-color: var(--gold);
+  background: rgba(199, 163, 105, 0.08);
+}
+
+.downloadOptionOff {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.downloadOk {
+  margin: 0;
+  color: #7fc48a !important;
+}
+
+.downloadWarn {
+  color: var(--gold) !important;
+}
+
+.downloadMuted {
+  margin: 0;
+  color: var(--muted);
+}
+
+.downloadError {
+  margin: 10px 0 0;
+  color: #e8956b;
+}
+
+.downloadStatus {
+  margin: 10px 0 0;
+  color: var(--cream);
+}
+
+.downloadFolder {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.downloadFolder button,
+.downloadCrumbs button {
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--gold);
+  font: inherit;
+  cursor: pointer;
+}
+
+.downloadCrumbs {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.downloadFolders {
+  max-height: 280px;
+  overflow-y: auto;
+  margin: 0;
+  border: 1px solid var(--line);
+  padding: 4px 0;
+  list-style: none;
+}
+
+.downloadFolders li button {
+  width: 100%;
+  border: 0;
+  padding: 8px 12px;
+  background: none;
+  color: var(--cream);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.downloadFolders li button:hover {
+  background: rgba(199, 163, 105, 0.12);
+}
+
+.downloadFolders li.downloadMuted {
+  padding: 8px 12px;
+}
+
+.downloadRow {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+}
+
+.downloadRow .downloadGo {
+  flex: 1;
+}
+
+.downloadGhost {
+  margin-top: 14px;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  padding: 12px 16px;
+  background: none;
+  color: var(--cream);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}

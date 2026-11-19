@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 18 November 2026, 21:30 (London)
+Last updated: 19 November 2026, 09:20 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -118,6 +118,26 @@ cost an extra Vercel build.
 - **X (Twitter) removed — LIVE 1 Nov:** taken out of the site's hidden profile lists (`SAME_AS` in `app/layout.tsx` and `/llms.txt`), and from the Google Business Profile social links (Google review pending). Steve doesn't use X and can't log in; don't add it back. Went live together with the three 29 Oct items below (People search, Mac folder fix, Storage folder Download), so those are LIVE too.
 
 ## Waiting / in progress
+
+- **WAITING FOR "GO LIVE" (19 Nov): Download photos on Productions › Edit**
+  (Steve OK'd mockup; a director asked for a show's website photos). Gold
+  button in the editor header (`DownloadPhotos.tsx`) → panel: **Full res**
+  or **Web res**, one zip. Website keeps only 2560px WebP copies, named
+  `hero-`/`NN-` + slug of the ORIGINAL Web file name, so
+  `lib/production-download/match.ts` pairs them with Storage files (size
+  words FullRes/WebRes ignored; else unique frame number; double casts
+  pick the folder nearer the title). API `/api/admin/production-download`
+  (`match`: finds the show folder by title/year/month + venue≈client, two
+  levels + year folders, or Steve's chosen folder; `folders`: picker).
+  Full = Storage only (missing ones left out, says how many). Web = all
+  in Storage → streamed zip (`transfer-zip-sw.js`, like Storage folder
+  Download); otherwise JSZip in the page: Storage Web files + website
+  copies converted to JPEG 0.92, then "Ready — save zip" link (Safari).
+  Zip keeps Steve's file names (Finder sorts by name, not gallery order).
+  Tested: matcher unit test, panel rendered with mock data (screenshots).
+  NOT tested for real: preview uses the `client-archive-preview` Storage
+  area (empty), and R2 CORS may not allow the preview domain — real test
+  only after go live.
 
 - **LIVE 18 Nov ~21:30: Send files card shows progress like WeTransfer**
   (Steve saw mockups, said go live). Steve: after pressing Transfer the
