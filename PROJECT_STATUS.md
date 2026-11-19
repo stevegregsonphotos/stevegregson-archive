@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 19 November 2026, 09:20 (London)
+Last updated: 19 November 2026, 09:25 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -119,7 +119,7 @@ cost an extra Vercel build.
 
 ## Waiting / in progress
 
-- **WAITING FOR "GO LIVE" (19 Nov): Download photos on Productions › Edit**
+- **LIVE 19 Nov ~09:25: Download photos on Productions › Edit**
   (Steve OK'd mockup; a director asked for a show's website photos). Gold
   button in the editor header (`DownloadPhotos.tsx`) → panel: **Full res**
   or **Web res**, one zip. Website keeps only 2560px WebP copies, named
@@ -137,7 +137,7 @@ cost an extra Vercel build.
   Tested: matcher unit test, panel rendered with mock data (screenshots).
   NOT tested for real: preview uses the `client-archive-preview` Storage
   area (empty), and R2 CORS may not allow the preview domain — real test
-  only after go live.
+  only after go live. Steve to try it on the director's show.
 
 - **LIVE 18 Nov ~21:30: Send files card shows progress like WeTransfer**
   (Steve saw mockups, said go live). Steve: after pressing Transfer the
