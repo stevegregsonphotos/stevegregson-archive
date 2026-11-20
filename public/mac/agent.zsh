@@ -221,6 +221,16 @@ api() {
     "$SERVER/api/mac"
 }
 
+# Same, for requests that move files to Deleted files: these can take longer
+# than a minute for a batch, and must not be sent twice by an automatic retry.
+api_slow() {
+  curl -sS --max-time 240 \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Content-Type: application/json" \
+    --data-binary "$1" \
+    "$SERVER/api/mac"
+}
+
 # Read one value from a JSON reply (plutil is built into macOS).
 jget() {
   print -r -- "$1" | plutil -extract "$2" raw -o - - 2>/dev/null
@@ -1144,14 +1154,23 @@ tidy_apply() {
   local p size body sep reply i trashed=0
   [[ -s "$TIDY_REPORT" ]] || { notify "No tidy report to apply."; return; }
   while IFS=$'\t' read -r p size; do [[ -n "$p" ]] && list+=("$p"); done < "$TIDY_REPORT"
-  for (( i = 1; i <= ${#list}; i += 50 )); do
+  local stopped=0
+  for (( i = 1; i <= ${#list}; i += 25 )); do
     body=""; sep=""
-    for p in "${(@)list[i,i+49]}"; do body+="$sep{\"path\":\"$(json_escape "$p")\"}"; sep=","; done
-    reply=$(api "{\"action\":\"trash\",\"files\":[$body]}")
-    [[ "$(jget "$reply" ok)" == "true" ]] || { log "Tidy stopped: $(jget "$reply" message)"; break; }
+    for p in "${(@)list[i,i+24]}"; do body+="$sep{\"path\":\"$(json_escape "$p")\"}"; sep=","; done
+    reply=$(api_slow "{\"action\":\"trash\",\"files\":[$body]}")
+    [[ "$(jget "$reply" ok)" == "true" ]] || { log "Tidy stopped part-way (it will carry on next time): $(jget "$reply" message)"; stopped=1; break; }
     (( trashed += $(jget "$reply" trashed) ))
     touch "$LOCK" 2>/dev/null
+    write_status
   done
+  if (( stopped )); then
+    # Keep the list; the next run finishes it (files already moved are skipped).
+    touch "$SUPPORT/tidy-apply-pending"
+    log "Tidy: moved $trashed so far; the rest will follow on the next run."
+    return
+  fi
+  rm -f "$SUPPORT/tidy-apply-pending"
   mv -f "$TIDY_REPORT" "$TIDY_REPORT.done" 2>/dev/null
   touch "$SUPPORT/leftovers-reviewed"   # from now on leftovers are tidied automatically
   log "Tidy: moved $trashed leftover cop$( (( trashed == 1 )) && print -n y || print -n ies) to Storage's Deleted files (restorable for 30 days)."
@@ -1240,19 +1259,19 @@ done
 mirror_gone() {
   local n=${#gone_list} i rel body sep reply trashed=0
   (( n == 0 )) && return
-  for (( i = 1; i <= n; i += 50 )); do
+  for (( i = 1; i <= n; i += 25 )); do
     body=""; sep=""
-    for rel in "${(@)gone_list[i,i+49]}"; do
+    for rel in "${(@)gone_list[i,i+24]}"; do
       body+="$sep{\"path\":\"$(json_escape "${S_REMOTE[$rel]:-$rel}")\",\"size\":${S_SIZE[$rel]:-0},\"md5Hex\":\"${S_MD5[$rel]}\",\"exact\":true}"
       sep=","
     done
-    reply=$(api "{\"action\":\"trash\",\"files\":[$body]}")
+    reply=$(api_slow "{\"action\":\"trash\",\"files\":[$body]}")
     if [[ "$(jget "$reply" ok)" != "true" ]]; then
       log "Couldn't update Storage for renamed/deleted files (will try again): $(jget "$reply" message)"
       break   # offline: keep them tracked and try next run
     fi
     (( trashed += $(jget "$reply" trashed) ))
-    for rel in "${(@)gone_list[i,i+49]}"; do forget "$rel"; done
+    for rel in "${(@)gone_list[i,i+24]}"; do forget "$rel"; done
     touch "$LOCK" 2>/dev/null
     write_status
   done
@@ -1275,6 +1294,11 @@ mirror_gone
 # The very first check only writes a report (nothing moved) so Steve and
 # Claude can look at it first; after that it tidies automatically.
 leftovers() {
+  # An interrupted clean-up (Steve approved it) carries on first.
+  if [[ -f "$SUPPORT/tidy-apply-pending" && -s "$TIDY_REPORT" ]]; then
+    log "Carrying on with the clean-up that stopped part-way…"
+    tidy_apply
+  fi
   local -a dirs candidates
   local -A hist cleared
   local d p size reply line i body sep trashed=0 total_bytes=0
@@ -1309,10 +1333,10 @@ leftovers() {
     notify "Found ${#candidates} old copies ($(human $total_bytes)) left in Storage by renames. Nothing has been changed yet."
     return
   fi
-  for (( i = 1; i <= ${#candidates}; i += 50 )); do
+  for (( i = 1; i <= ${#candidates}; i += 25 )); do
     body=""; sep=""
-    for line in "${(@)candidates[i,i+49]}"; do body+="$sep{\"path\":\"$(json_escape "${line%%$'\t'*}")\"}"; sep=","; done
-    reply=$(api "{\"action\":\"trash\",\"files\":[$body]}")
+    for line in "${(@)candidates[i,i+24]}"; do body+="$sep{\"path\":\"$(json_escape "${line%%$'\t'*}")\"}"; sep=","; done
+    reply=$(api_slow "{\"action\":\"trash\",\"files\":[$body]}")
     [[ "$(jget "$reply" ok)" == "true" ]] || { log "Leftover tidy stopped (will try again): $(jget "$reply" message)"; break; }
     (( trashed += $(jget "$reply" trashed) ))
     touch "$LOCK" 2>/dev/null

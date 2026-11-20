@@ -205,8 +205,19 @@ cost an extra Vercel build.
   it; `lib/mac/busy-client.ts` `macBusyFor(paths)`; Storage shows an amber
   banner for the open folder (polls 20 s) and confirms before Send as
   transfer; Transfers confirms before sending a Storage selection.
-  NEXT: after go live, Steve runs `install.sh --update`; read the tidy
-  report with him, then `--request tidy-apply`.
+  18:35 Steve updated the Mac; leftover check found 1,307 old copies
+  (12 GB: Frozen full res 731, web res/Sumaar 388, Reefer root 188 — all
+  old names, OK'd). 18:42 he ran tidy-apply → **every trash batch timed
+  out** (Mac api() waits 60 s; my per-file sequential trash made 50 files
+  take >60 s; curl --retry resent batches). FIX (commit after 18:45, on
+  test branch, waiting go live): server `trash` checks 8 at a time, plans
+  each file separately (8 at a time), then one `applyPairs` pass; agent
+  `api_slow` (240 s, no retry) for trash, batches of 25, interrupted
+  tidy keeps the report + `tidy-apply-pending` → resumed at the start of
+  `leftovers()` next run. THEN: Steve `install.sh --update`, check log,
+  finish clean-up, then he renames "Sumaar" → "Sumarr" in Finder (first
+  real folder-rename test — check log for "Moved in Storage" +
+  "Folder renamed/moved").
 
 - **LIVE 20 Nov ~13:30: Pause uploads + faster Transfers when the tab is
   in the background** (Steve: Mac uploads hogged the line so transfers

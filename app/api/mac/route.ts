@@ -287,24 +287,26 @@ export async function POST(request: Request) {
       const list = Array.isArray(body.files) ? body.files.slice(0, 50) : [];
       const results: Array<{ path: string; result: "trashed" | "kept" | "gone" }> = [];
       const toTrash: string[] = [];
-      for (const raw of list) {
+      // Checked 8 at a time (each needs a few lookups), so a batch of 50 is quick.
+      let nextItem = 0;
+      const checkOne = async (raw: unknown) => {
         const item = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
         let md5 = md5Hex(item.md5Hex);
         let size = Number(item.size);
         let remotePath = storagePath(item.path);
-        if (!remotePath) continue;
+        if (!remotePath) return;
         if (!md5) {
           // One-off tidy of older duplicates: the Mac no longer knows the
           // fingerprint, so use the one recorded when this Mac uploaded it.
           const known = await getMacUpload(remotePath);
           if (!known || known.deviceId !== device.id) {
             results.push({ path: String(item.path), result: known ? "kept" : "gone" });
-            continue;
+            return;
           }
           md5 = known.md5Hex;
           size = known.sizeBytes;
         }
-        if (!Number.isFinite(size)) continue;
+        if (!Number.isFinite(size)) return;
         let record = await getMacUpload(remotePath);
         if ((!record || record.md5Hex !== md5 || record.sizeBytes !== size) && item.exact !== true) {
           const moved = await findMacUploadByOriginal(device.id, md5, size);
@@ -313,41 +315,52 @@ export async function POST(request: Request) {
         }
         if (!record || record.deviceId !== device.id || record.remotePath.split("/")[0] === ".trash") {
           results.push({ path: String(item.path), result: record ? "kept" : "gone" });
-          continue;
+          return;
         }
         const stored = await headArchiveObject(record.remotePath);
         if (!stored) {
           results.push({ path: String(item.path), result: "gone" });
-          continue;
+          return;
         }
         if (stored.sizeBytes !== size || !etagMatches(stored.etag, md5)) {
           // Changed in Storage since: leave it alone.
           results.push({ path: String(item.path), result: "kept" });
-          continue;
+          return;
         }
         if (toTrash.includes(record.remotePath)) {
           // Two Mac names pointed at the same Storage file: trash it once.
           results.push({ path: String(item.path), result: "gone" });
-          continue;
+          return;
         }
         toTrash.push(record.remotePath);
         results.push({ path: String(item.path), result: "trashed" });
-      }
-      // One file at a time, so a file that has just vanished (or any other
-      // hiccup) can't stop the rest of the batch going to Deleted files.
+      };
+      await Promise.all(Array.from({ length: Math.min(8, list.length) }, async () => {
+        while (nextItem < list.length) await checkOne(list[nextItem++]);
+      }));
+      // Each file is planned on its own (so one that has just vanished can't
+      // stop the rest), 8 at a time; then all the moves into Deleted files
+      // are done together in big batches. Keeps a batch of 50 to seconds —
+      // the Mac only waits 60 s for an answer.
+      const planned: Array<{ from: string; to: string }> = [];
       let trashed = 0;
-      for (const path of toTrash) {
-        try {
-          const pairs = await planDelete([{ kind: "file", path }]);
-          for (let i = 0; i < pairs.length; i += MAX_PAIRS_PER_APPLY) {
-            await applyPairs(pairs.slice(i, i + MAX_PAIRS_PER_APPLY));
+      let next = 0;
+      const planOne = async () => {
+        while (next < toTrash.length) {
+          const path = toTrash[next++];
+          try {
+            planned.push(...(await planDelete([{ kind: "file", path }])));
+            trashed += 1;
+          } catch (error) {
+            console.warn("Mac trash skipped " + path, error);
+            const row = results.find((entry) => entry.result === "trashed" && (entry.path === path || storagePath(entry.path) === path));
+            if (row) row.result = "gone";
           }
-          trashed += 1;
-        } catch (error) {
-          console.warn("Mac trash skipped " + path, error);
-          const row = results.find((entry) => entry.result === "trashed" && (entry.path === path || storagePath(entry.path) === path));
-          if (row) row.result = "gone";
         }
+      };
+      await Promise.all(Array.from({ length: Math.min(8, toTrash.length) }, planOne));
+      for (let i = 0; i < planned.length; i += MAX_PAIRS_PER_APPLY) {
+        await applyPairs(planned.slice(i, i + MAX_PAIRS_PER_APPLY));
       }
       return json({ ok: true, results, trashed });
     }
