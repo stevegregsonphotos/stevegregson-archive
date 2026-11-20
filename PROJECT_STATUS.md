@@ -120,8 +120,8 @@ cost an extra Vercel build.
 ## Waiting / in progress
 
 - **20 Nov ~17:40: Storage duplicates fix + Cancel transfer + real folder
-  counts + Email-to Enter fix — COMMITTED LOCALLY, NOT PUSHED** (Steve to OK
-  mockups first, then test branch, then "go live"). Steve sent a client a
+  counts + Email-to Enter fix — ON TEST BRANCH 18:10 (commit 3fa6c68,
+  preview built OK), WAITING FOR "go live". Steve sent a client a
   19 GB folder full of duplicates (Storage said 199 files until Load more).
   CAUSES (from his log): (a) `mirror_gone` safety cap ">300 and >50% gone →
   don't mirror" fired 20 Nov 11:58 when he renamed/moved all of Reefer
@@ -184,6 +184,14 @@ cost an extra Vercel build.
   files still upload new + trash old. Storage-side renames do NOT follow
   onto the Mac — advise: sort on the Mac while photos are there; sort in
   Storage only for shows already cleared off the Mac.
+  CHECK 18:15 (Steve worried about today's sends): every Transfer since
+  10 Nov read via `/api/admin/transfers`. GSA (Reefer Web 389, Full 389,
+  GIF) and Rose Bruford (Jekyll & Hyde 270) CLEAN — 1..N, no repeats, one
+  naming pattern. Only Mountview Frozen sends have dupes/.folder. Storage:
+  RB Jekyll full res 270 + TOAD full res 272 clean (live share of Jekyll
+  folder to maisie.laurie.newman@gmail.com OK); GSA Reefer Web/Full 389
+  clean but 193 old root copies left in "Reefer Madness - November 2026"
+  (not in any transfer) — leftover check will list them.
   NEXT: after go live, Steve runs `install.sh --update`; read the tidy
   report with him, then `--request tidy-apply`.
 
