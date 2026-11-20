@@ -144,10 +144,9 @@ cost an extra Vercel build.
   (`mac-resume` → `mac_devices.resume_requested_at`, cleared once the Mac
   isn't paused). DB stays awake while paused (1 call/min). Rehearsed on
   Linux with shims + fake server: pause, paused run, Backstage resume,
-  timed expiry, manual resume. Steve paused by hand 12:49 with the Terminal
-  `launchctl bootout` command: he must run
-  `launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.stevegregson.storage.plist`
-  (or the Mac's next restart) to get the uploader — and this update — back.
+  timed expiry, manual resume. CONFIRMED on Steve's Mac 13:23: installed
+  via `install.sh --update`, `--pause-until 0` paused + notified, menu bar
+  rebuilt 13:23:46 and shows Resume / Pause for longer.
 - **20 Nov: Web exports too big.** Recent Web JPEGs are near-max quality:
   Reefer Madness (GSA) 3000×2000 ~2.8 MB, Frozen 2048px ~1.8 MB. Told Steve:
   Lightroom Web preset Quality 75–80, long edge 2048, 72 ppi, Screen/Standard
