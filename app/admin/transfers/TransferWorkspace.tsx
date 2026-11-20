@@ -9,6 +9,8 @@ import {
   filesFromInput as inputFiles,
   formatBytes as bytes,
   oversizedFiles,
+  changedFilesMessage,
+  changedSincePicked,
   postTransferAction,
   uploadFilesToTransfer,
   warnBeforeLeaving,
@@ -19,6 +21,7 @@ import { canMakeBackdrop, uploadTransferBackdrop } from "@/lib/transfers/backdro
 import { MAX_BACKGROUNDS } from "@/lib/transfers/backgrounds";
 import RequestsPanel from "./RequestsPanel";
 import RecipientInput from "./RecipientInput";
+import { macBusyFor, macBusyText } from "@/lib/mac/busy-client";
 import SendProgressPanel from "./SendProgressPanel";
 
 /** How many photos show per page when picking client page photos. */
@@ -156,6 +159,25 @@ export default function TransferWorkspace({ initialTransfers, knownEmails: initi
       setProgress("These files are over 5 GB and can't be sent in one piece yet: " + tooBig.slice(0, 3).join(", ") + (tooBig.length > 3 ? " and " + (tooBig.length - 3) + " more" : "") + ".");
       return;
     }
+    // Picked files that changed since (e.g. Bridge metadata edits) can't be
+    // sent — say so straight away, before anything is created.
+    const changed = await changedSincePicked(queue);
+    if (changed.length) {
+      clearQueue(); // the old picks can't be read any more; pick again
+      setOutcome({ tone: "warn", title: title.trim() });
+      setProgress(changedFilesMessage(changed));
+      return;
+    }
+    // Files chosen from Storage: is the Mac still sending newer versions of them?
+    if (archiveSelection.objectKeys.length || archiveSelection.folderPaths.length) {
+      const paths = [
+        ...archiveSelection.folderPaths,
+        // Storage keys are "<storage area>/<path>".
+        ...archiveSelection.objectKeys.map((key) => key.split("/").slice(1).join("/")),
+      ];
+      const busy = await macBusyFor(paths, 0);
+      if (busy && !window.confirm(macBusyText(busy) + "\n\nSend anyway?")) return;
+    }
     const sentTo = recipient.split(/[,\n;]/).map((v) => v.trim()).filter(Boolean);
     // Suggest these next time too (the server keeps them as well).
     setKnownEmails((known) => {
@@ -225,7 +247,7 @@ export default function TransferWorkspace({ initialTransfers, knownEmails: initi
       if (transferId) {
         // Tidy up the half-finished transfer so nothing is left behind.
         await postTransferAction({ action: "abort", transferId }).catch(() => {});
-        setProgress(reason + " Nothing was sent; your files are still selected, so you can press Transfer to try again.");
+        setProgress(/changed on your Mac/.test(reason) ? reason : reason + " Nothing was sent; your files are still selected, so you can press Transfer to try again.");
       } else {
         setProgress(reason);
       }

@@ -166,6 +166,8 @@ export type MacStatus = {
   paused: boolean;
   /** When a pause ends (epoch seconds); 0 = until resumed. */
   pausedUntil: number;
+  /** Folders with changes still waiting to reach Storage (path + how many files). */
+  busyFolders: Array<{ path: string; files: number }>;
 };
 
 const num = (value: unknown) => (typeof value === "number" && Number.isFinite(value) ? Math.max(0, Math.round(value)) : 0);
@@ -204,6 +206,10 @@ export function cleanMacStatus(input: unknown): MacStatus | undefined {
     offloadDays: num(v.offloadDays),
     paused: v.paused === true || state === "paused",
     pausedUntil: num(v.pausedUntil),
+    busyFolders: (Array.isArray(v.busyFolders) ? v.busyFolders : []).slice(0, 200).map((item) => {
+      const entry = (item && typeof item === "object" ? item : {}) as Record<string, unknown>;
+      return { path: shortText(entry.path), files: num(entry.files) };
+    }).filter((item) => item.path && item.files > 0),
   };
 }
 

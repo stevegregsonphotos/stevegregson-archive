@@ -135,6 +135,42 @@ function holdTabAwake<T>(work: () => Promise<T>): Promise<T> {
 }
 
 /**
+ * True if the browser can still read this file. A file that was changed on
+ * the Mac after it was picked (e.g. Bridge saving a metadata edit, or the
+ * Storage app replacing it) can no longer be read, and every upload of it
+ * fails — which used to show up as a misleading "check your internet" error.
+ */
+async function canRead(file: File) {
+  try {
+    await file.slice(0, 1).arrayBuffer();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Files (by name) that changed after being picked. Checks 1 byte of each. */
+export async function changedSincePicked(queue: QueuedFile[]) {
+  const bad: string[] = [];
+  let next = 0;
+  const check = async () => {
+    while (next < queue.length) {
+      const item = queue[next++];
+      if (!(await canRead(item.file))) bad.push(item.relativePath || item.file.name);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(16, queue.length) }, check));
+  return bad;
+}
+
+export function changedFilesMessage(names: string[]) {
+  const example = names[0].split("/").pop();
+  return (names.length === 1 ? "\"" + example + "\" has" : names.length.toLocaleString("en-GB") + " files (e.g. \"" + example + "\") have") +
+    " changed on your Mac since you picked them — probably a metadata edit in Bridge. " +
+    "Nothing was sent. Please pick the files or folder again, then press Transfer.";
+}
+
+/**
  * Uploads every queued file with live byte progress. Sending happens in a
  * background worker (6 at a time) so it keeps full speed when the tab isn't
  * in front; the next batch of upload links is signed while the current one
@@ -148,6 +184,9 @@ export async function uploadQueue<J extends { uploadUrl: string }>(
   onProgress: OnProgress,
 ) {
   if (!queue.length) return;
+  // Before sending anything: are all the picked files still readable?
+  const changed = await changedSincePicked(queue);
+  if (changed.length) throw new Error(changedFilesMessage(changed));
   return holdTabAwake(async () => {
     const worker = await startUploadWorker();
     if (!worker) return uploadQueueInPage(queue, sign, afterBatch, onProgress);
@@ -272,11 +311,13 @@ function uploadQueueWithWorker<J extends { uploadUrl: string }>(
         rounds.set(slot, round);
         const name = queue[slot].file.name;
         if (round > WORKER_ROUNDS) {
-          fail(new Error(
-            reason === "network"
-              ? "Couldn't reach file storage while uploading " + name + ". Check your internet connection (or the storage CORS settings) and try again."
-              : "Upload failed for " + name + " (" + reason + ") after " + WORKER_ROUNDS * 2 + " tries.",
-          ));
+          void canRead(queue[slot].file).then((readable) => fail(new Error(
+            !readable
+              ? changedFilesMessage([queue[slot].relativePath || name])
+              : reason === "network"
+                ? "Couldn't reach file storage while uploading " + name + ". Check your internet connection and try again."
+                : "Upload failed for " + name + " (" + reason + ") after " + WORKER_ROUNDS * 2 + " tries.",
+          )));
           return;
         }
         // A fresh link in case the old one expired or was rejected.
@@ -341,6 +382,7 @@ async function uploadQueueInPage<J extends { uploadUrl: string }>(
             loaded.set(slot, 0);
             const reason = error instanceof Error ? error.message : "unknown";
             if (attempt >= ATTEMPTS) {
+              if (!(await canRead(queued.file))) throw new Error(changedFilesMessage([queued.relativePath || queued.file.name]));
               throw new Error(
                 reason === "network"
                   ? "Couldn't reach file storage while uploading " + queued.file.name + ". Check your internet connection (or the storage CORS settings) and try again."

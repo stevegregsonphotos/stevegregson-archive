@@ -245,6 +245,7 @@ last_status_write=0; last_status_send=0
 PAUSED=false; PAUSED_UNTIL=0
 typeset -a too_big RECENT        # RECENT: "epoch<TAB>path", newest last
 typeset -A JOB_REL
+typeset -A BUSY          # folder -> files in it still to upload (for Backstage's "still updating" warning)
 
 # Files uploaded but still on this Mac, and when the next one is due to clear.
 onmac_stats() {
@@ -275,6 +276,11 @@ write_status() {
   body+=",\"onMac\":{\"files\":$onmac_files,\"bytes\":$onmac_bytes},\"nextClear\":$next_clear,\"offloadDays\":$OFFLOAD_DAYS"
   body+=",\"down\":{\"files\":$down_files,\"bytes\":$down_bytes,\"doneFiles\":$(( fetched - down_f0 )),\"doneBytes\":$(( fetched_bytes - down_b0 ))}"
   body+=",\"paused\":$PAUSED,\"pausedUntil\":$PAUSED_UNTIL"
+  # Folders with changes still waiting to reach Storage, so Backstage can
+  # warn before Steve sends one of them to a client.
+  local bf="" bsep="" bd
+  for bd in ${(k)BUSY}; do bf+="$bsep{\"path\":\"$(json_escape "$bd")\",\"files\":${BUSY[$bd]}}"; bsep=","; done
+  body+=",\"busyFolders\":[$bf]"
   body+=",\"freed\":{\"files\":$freed,\"bytes\":$freed_bytes},\"server\":\"$(json_escape "$SERVER")\"}"
   print -r -- "$body" > "$STATUS_FILE.tmp" && mv -f "$STATUS_FILE.tmp" "$STATUS_FILE"
   if [[ "$1" == now ]] || (( now - last_status_send >= 15 )); then
@@ -666,6 +672,7 @@ if is_paused; then
     zstat -A st -- "$file" 2>/dev/null || continue
     [[ -n "${S_SIZE[$rel]}" && "${S_SIZE[$rel]}" == "${st[8]}" && "${S_MTIME[$rel]}" == "${st[10]}" ]] && continue
     (( pending++ ))
+    (( BUSY[${rel:h}]++ ))
   done < <(find "$ROOT" -type f ! -name '.*' ! -path '*/.*' ! -name 'Icon?' -print0 2>/dev/null)
   write_status now
   start_pause_watch
@@ -756,6 +763,11 @@ collect() {
   rm -f "$RESULTS/$n" "$RESULTS/$n.tmp"
   unset "JOB_REL[$n]"
   f=("${(@ps:\t:)line}")
+  # Safely in Storage now: no longer "still updating". (Failed or changed
+  # files stay counted until a later pass gets them up.)
+  if [[ "${f[1]}" == ok || "${f[1]}" == got ]]; then
+    if (( ${BUSY[${rel:h}]:-0} > 1 )); then (( BUSY[${rel:h}]-- )); else unset "BUSY[${rel:h}]"; fi
+  fi
   case "${f[1]}" in
     ok)
       if [[ -n "${f[6]}" ]]; then
@@ -818,6 +830,7 @@ upload_pass() {
   pending=0; checked=0
   # Tracked files no longer at their name on the Mac, by size+fingerprint:
   # a new file with the same contents is the same photo renamed/moved.
+  BUSY=()
   GONE_BY_KEY=()
   for r in ${(k)S_SIZE}; do
     [[ -f "$ROOT/$r" || -z "${S_MD5[$r]}" ]] && continue
@@ -841,6 +854,7 @@ upload_pass() {
 
     # Wait until a file has finished copying in.
     newest=$(( mtime > ctime ? mtime : ctime ))
+    (( BUSY[${rel:h}]++ ))
     (( NOW - newest < SETTLE_SECONDS )) && { (( pending++ )); continue; }
 
     if (( size > MAX_BYTES )); then

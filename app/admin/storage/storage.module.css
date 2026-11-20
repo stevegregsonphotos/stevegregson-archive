@@ -1095,3 +1095,21 @@
   font-weight: 600;
   vertical-align: 0.1em;
 }
+
+/* "Still updating from your Mac" warning (20 Nov) */
+.macBusy {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0 0 1rem;
+  border: 1px solid #ecd29a;
+  border-radius: 0.8rem;
+  padding: 0.8rem 1rem;
+  background: #fdf7ea;
+  color: #5c4519;
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.macBusy strong {
+  color: #8a5a00;
+}

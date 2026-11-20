@@ -192,6 +192,20 @@ cost an extra Vercel build.
   folder to maisie.laurie.newman@gmail.com OK); GSA Reefer Web/Full 389
   clean but 193 old root copies left in "Reefer Madness - November 2026"
   (not in any transfer) — leftover check will list them.
+  ADDED 18:25 (local, NOT yet on test branch — Steve to OK mockup
+  `storage-still-updating.png`): (1) **TOAD transfer kept failing** when
+  picked from the Mac (Vercel Hobby keeps 1 h of logs, so cause unproven):
+  a picked file changed after picking (Bridge edit) can't be read → worker
+  PUT "network" ×4 → "check your internet" and "Back to try again" reused
+  the stale picks. Now `changedSincePicked()` reads 1 byte of every picked
+  file before creating the transfer (TransferWorkspace) and in
+  `uploadQueue`; clear message + queue cleared; failure path re-checks
+  readability. (2) **"Still updating from your Mac"**: agent.zsh reports
+  `busyFolders` [{path, files}] in status (BUSY built per upload pass,
+  incl. settling/failed files; paused runs too); `cleanMacStatus` keeps
+  it; `lib/mac/busy-client.ts` `macBusyFor(paths)`; Storage shows an amber
+  banner for the open folder (polls 20 s) and confirms before Send as
+  transfer; Transfers confirms before sending a Storage selection.
   NEXT: after go live, Steve runs `install.sh --update`; read the tidy
   report with him, then `--request tidy-apply`.
 

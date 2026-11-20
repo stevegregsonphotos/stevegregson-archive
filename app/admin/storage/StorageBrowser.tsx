@@ -16,6 +16,7 @@ import { useFileDrop } from "@/lib/transfers/use-file-drop";
 import { downloadAsZip, prepareZip, type ZipFile } from "@/lib/transfers/zip-client";
 import Link from "next/link";
 import ShareDialog from "./ShareDialog";
+import { macBusyFor, macBusyText, type MacBusy } from "@/lib/mac/busy-client";
 import { shareApi, type AdminShare } from "./share-api";
 import {
   ChevronIcon,
@@ -139,6 +140,8 @@ export default function StorageBrowser() {
   const [rootFolders, setRootFolders] = useState<Folder[]>([]);
   const [treeChildren, setTreeChildren] = useState<Record<string, Folder[]>>({});
   const [message, setMessage] = useState("");
+  // Is the Mac still sending changes to the folder on screen?
+  const [macBusy, setMacBusy] = useState<MacBusy | null>(null);
   const [busy, setBusy] = useState(false);
   const [selected, setSelected] = useState<Item[]>([]);
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -235,6 +238,26 @@ export default function StorageBrowser() {
     }, 0);
     return () => window.clearTimeout(timer);
   }, [load, loadShared]);
+
+  // Check every 20 seconds whether the Mac still has changes on the way for
+  // the folder on screen (shown as a warning above the files).
+  useEffect(() => {
+    let stopped = false;
+    const check = async () => {
+      const busy = await macBusyFor([listing.path], 0);
+      if (!stopped) setMacBusy(busy);
+    };
+    void check();
+    const timer = window.setInterval(check, 20000);
+    return () => { stopped = true; window.clearInterval(timer); };
+  }, [listing.path]);
+
+  /** Before sending: warn if the Mac hasn't finished uploading changes to these items. */
+  async function okToSend(items: Item[]) {
+    const busy = await macBusyFor(items.map((item) => item.path), 0);
+    if (!busy) return true;
+    return window.confirm(macBusyText(busy) + "\n\nSend anyway?");
+  }
 
   async function loadMore(all = false) {
     if (!listing.nextCursor) return;
@@ -495,8 +518,9 @@ export default function StorageBrowser() {
   const fileItem = (file: FileItem): Item => ({ kind: "file", path: file.path, name: file.name, objectKey: file.objectKey });
   const folderItem = (folder: Folder): Item => ({ kind: "folder", path: folder.path, name: folder.name });
 
-  function sendSelection() {
+  async function sendSelection() {
     if (!selected.length) return;
+    if (!(await okToSend(selected))) return;
     try {
       sessionStorage.setItem("backstage-transfer-archive-selection", JSON.stringify({
         objectKeys: selected.filter((i) => i.kind === "file").map((i) => i.objectKey),
@@ -611,7 +635,8 @@ export default function StorageBrowser() {
   const closeShare = useCallback(() => setShareFor(null), []);
 
   function sendSelectionFor(items: Item[]) {
-    return () => {
+    return async () => {
+      if (!(await okToSend(items))) return;
       try {
         sessionStorage.setItem("backstage-transfer-archive-selection", JSON.stringify({
           objectKeys: items.filter((i) => i.kind === "file").map((i) => i.objectKey),
@@ -753,6 +778,13 @@ export default function StorageBrowser() {
                 <button className={view === "list" ? styles.viewActive : ""} type="button" onClick={() => setView("list")} title="List" aria-label="List view"><ListIcon /></button>
                 <button className={view === "grid" ? styles.viewActive : ""} type="button" onClick={() => setView("grid")} title="Thumbnails" aria-label="Thumbnail view"><GridIcon /></button>
               </div>
+            </div>
+          ) : null}
+
+          {mode === "files" && macBusy ? (
+            <div className={styles.macBusy} role="status">
+              <strong>Still updating from your Mac</strong>
+              <span>{macBusyText(macBusy)}</span>
             </div>
           ) : null}
 
