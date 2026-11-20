@@ -28,6 +28,7 @@ type Status = {
 };
 type Mac = { id: string; name: string; receivedAt: string; status: Status };
 
+const RUN_REPORT_MAX_AGE_MS = 15 * 60 * 1000;
 const STALE_MS = 75 * 60 * 1000; // the Mac checks in at least every 60 minutes when awake
 // Each check reads the database (Neon charges while it's awake), so check
 // often only while a Mac is actually busy.
@@ -81,13 +82,21 @@ function shortPath(path: string) {
 
 function describe(mac: Mac, now: number) {
   const s = mac.status;
-  const stale = now - new Date(mac.receivedAt).getTime() > STALE_MS;
+  const age = now - new Date(mac.receivedAt).getTime();
+  const stale = age > STALE_MS;
+  // A mid-run report ("uploading", "checking"…) is refreshed every 15 seconds
+  // while the Mac works. One older than 15 minutes is left over from a run
+  // that has ended, so don't keep showing it as live progress.
+  const leftover = !stale && age > RUN_REPORT_MAX_AGE_MS && (s.state === "uploading" || s.state === "checking" || s.state === "downloading" || s.state === "waiting");
   const left: Pair = { files: Math.max(0, s.total.files - s.done.files), bytes: Math.max(0, s.total.bytes - s.done.bytes) };
-  const uploading = !stale && s.state === "uploading" && left.files > 0;
+  const uploading = !stale && !leftover && s.state === "uploading" && left.files > 0;
   let headline = "Everything is uploaded";
   let tone: "busy" | "ok" | "warn" | "quiet" = "ok";
   if (stale) {
     headline = "Mac asleep or offline";
+    tone = "quiet";
+  } else if (leftover) {
+    headline = "Last heard from the Mac " + Math.round(age / 60000) + " min ago";
     tone = "quiet";
   } else if (s.state === "paused") {
     headline = "Uploads paused " + pauseEnd(s.pausedUntil || 0, now);

@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 20 November 2026, 19:25 (London)
+Last updated: 20 November 2026, 20:30 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -118,6 +118,21 @@ cost an extra Vercel build.
 - **X (Twitter) removed — LIVE 1 Nov:** taken out of the site's hidden profile lists (`SAME_AS` in `app/layout.tsx` and `/llms.txt`), and from the Google Business Profile social links (Google review pending). Steve doesn't use X and can't log in; don't add it back. Went live together with the three 29 Oct items below (People search, Mac folder fix, Storage folder Download), so those are LIVE too.
 
 ## Waiting / in progress
+
+- **LIVE 20 Nov ~20:30: stuck "Still updating from your Mac" banner fixed.**
+  After the 19:18 rename the banner + "371 files left" stayed for an hour
+  (files were fine: Mac vs Storage names+sizes identical). Causes: (1) the
+  run's final "idle" report was sent in the background and macOS kills it
+  when the launchd job exits → Backstage kept the last mid-run report;
+  (2) renamed files ("moved") weren't counted as done. Fix: agent.zsh
+  `write_status final` sends synchronously (curl 20 s) at the end of a run
+  and of a paused run; done = uploaded + moved. Backstage: busy-client
+  ignores busy reports older than 15 min (`BUSY_REPORT_MAX_AGE_MS`);
+  MacProgress shows "Last heard from the Mac N min ago" for mid-run reports
+  older than 15 min. Mac needs `install.sh --update` (or daily self-update).
+  Also 20:15: told Steve all Frozen sends were downloaded; drafted an email
+  asking Mountview to discard the two Sumarr sends; Steve to resend clean
+  ones from Storage (full res "Full-…Sumarr" 388, web res/Sumarr 388).
 
 - **20 Nov ~17:40: Storage duplicates fix + Cancel transfer + real folder
   counts + Email-to Enter fix — LIVE 20 Nov ~18:30 (Steve said go live;

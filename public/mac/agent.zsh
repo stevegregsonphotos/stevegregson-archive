@@ -273,7 +273,7 @@ onmac_stats() {
 # Writes the report; "now" also sends it to the website straight away.
 write_status() {
   local now=$EPOCHSECONDS cur="" rec="" sep="" n entry body
-  [[ "$1" != now ]] && (( now - last_status_write < 1 )) && return
+  [[ "$1" != now && "$1" != final ]] && (( now - last_status_write < 1 )) && return
   last_status_write=$now
   for n in ${(k)JOB_REL}; do cur+="$sep\"$(json_escape "${JOB_REL[$n]}")\""; sep=","; done
   sep=""
@@ -281,7 +281,7 @@ write_status() {
     rec+="$sep{\"at\":${entry%%$'\t'*},\"path\":\"$(json_escape "${entry#*$'\t'}")\"}"; sep=","
   done
   body="{\"v\":1,\"state\":\"$STATUS_STATE\",\"updated\":$now,\"runStarted\":$RUN_STARTED"
-  body+=",\"total\":{\"files\":$plan_files,\"bytes\":$plan_bytes},\"done\":{\"files\":$uploaded,\"bytes\":$uploaded_bytes}"
+  body+=",\"total\":{\"files\":$plan_files,\"bytes\":$plan_bytes},\"done\":{\"files\":$(( uploaded + moved )),\"bytes\":$(( uploaded_bytes + moved_bytes ))}"
   body+=",\"checked\":$checked,\"failed\":$failed,\"waiting\":${pending:-0},\"tooBig\":${#too_big},\"current\":[$cur],\"recent\":[$rec]"
   body+=",\"onMac\":{\"files\":$onmac_files,\"bytes\":$onmac_bytes},\"nextClear\":$next_clear,\"offloadDays\":$OFFLOAD_DAYS"
   body+=",\"down\":{\"files\":$down_files,\"bytes\":$down_bytes,\"doneFiles\":$(( fetched - down_f0 )),\"doneBytes\":$(( fetched_bytes - down_b0 ))}"
@@ -293,7 +293,15 @@ write_status() {
   body+=",\"busyFolders\":[$bf]"
   body+=",\"freed\":{\"files\":$freed,\"bytes\":$freed_bytes},\"server\":\"$(json_escape "$SERVER")\"}"
   print -r -- "$body" > "$STATUS_FILE.tmp" && mv -f "$STATUS_FILE.tmp" "$STATUS_FILE"
-  if [[ "$1" == now ]] || (( now - last_status_send >= 15 )); then
+  if [[ "$1" == final ]]; then
+    # The run's last report: send it and wait for it. (Sent in the
+    # background, macOS stops it when the run ends, and Backstage would keep
+    # showing a mid-run "still uploading" report until the next run.)
+    last_status_send=$now
+    [[ -z "$SGS_NO_STATUS_SEND" ]] && curl -sS --max-time 20 --retry 1 \
+      -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+      --data-binary "{\"action\":\"status\",\"status\":$body}" "$SERVER/api/mac" >/dev/null 2>&1
+  elif [[ "$1" == now ]] || (( now - last_status_send >= 15 )); then
     last_status_send=$now
     [[ -z "$SGS_NO_STATUS_SEND" ]] && { api "{\"action\":\"status\",\"status\":$body}" >/dev/null 2>&1 &! }
   fi
@@ -328,7 +336,7 @@ CLEARED="$SUPPORT/cleared-paths.txt"
 typeset -A TOUCHED      # folders where something was uploaded or renamed this run
 typeset -A GONE_BY_KEY  # "size:md5" -> old Mac path, for spotting renames
 typeset -A DIRMAP       # old folder -> new folder, when a whole folder was renamed/moved
-moved=0
+moved=0; moved_bytes=0
 if [[ ! -f "$SUPPORT/history-from-log" ]]; then
   if [[ -f "$LOG" ]]; then
     {
@@ -684,7 +692,7 @@ if is_paused; then
     (( pending++ ))
     (( BUSY[${rel:h}]++ ))
   done < <(find "$ROOT" -type f ! -name '.*' ! -path '*/.*' ! -name 'Icon?' -print0 2>/dev/null)
-  write_status now
+  write_status final
   start_pause_watch
   [[ -z "$SGS_NO_MENUBAR" ]] && install_menubar
   exit 0
@@ -792,6 +800,7 @@ collect() {
         fi
         forget "${f[6]}"
         (( moved++ ))
+        (( moved_bytes += f[2] ))
       else
         S_AT[$rel]=$NOW
         (( uploaded++ ))
@@ -1385,7 +1394,7 @@ fi
 
 onmac_stats
 STATUS_STATE="idle"
-write_status now
+write_status final
 
 # Built last, so a first (slow, low-priority) build never holds up uploads.
 [[ -z "$SGS_NO_MENUBAR" ]] && install_menubar

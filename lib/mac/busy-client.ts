@@ -20,6 +20,9 @@ type MacStatusRow = {
   status?: { busyFolders?: Array<{ path: string; files: number }>; paused?: boolean };
 };
 
+/** How old a "still sending" report can be before it is ignored. */
+export const BUSY_REPORT_MAX_AGE_MS = 15 * 60 * 1000;
+
 let cache: { at: number; macs: MacStatusRow[] } | undefined;
 
 async function loadMacs(maxAgeMs: number) {
@@ -55,8 +58,11 @@ export async function macBusyFor(paths: string[], maxAgeMs = 15000): Promise<Mac
     const folders = new Set<string>();
     for (const mac of macs) {
       const received = new Date(mac.receivedAt).getTime();
-      // A Mac that hasn't reported for a week is probably not in use.
-      if (!received || Date.now() - received > 7 * 24 * 60 * 60 * 1000) continue;
+      // While the Mac is working it reports every 15 seconds, and it sends a
+      // final "all done" report when it finishes. A "still sending" report
+      // older than 15 minutes is left over from a run that has ended (or the
+      // Mac went to sleep), so it isn't trusted.
+      if (!received || Date.now() - received > BUSY_REPORT_MAX_AGE_MS) continue;
       for (const busy of mac.status?.busyFolders || []) {
         if (!paths.some((path) => overlaps(busy.path, path))) continue;
         files += busy.files;
@@ -78,9 +84,7 @@ export function macBusyText(busy: MacBusy) {
   const where = busy.folders.length === 1 ? "“" + busy.folders[0].split("/").slice(-2).join(" › ") + "”" : busy.folders.length + " folders here";
   const status = busy.paused
     ? " Uploads are paused on your Mac, so they won't arrive until you resume."
-    : busy.minutesAgo > 10
-      ? " (Your Mac last checked in " + busy.minutesAgo + " minutes ago — it may be asleep.)"
-      : "";
+    : "";
   return "Your Mac is still sending changes to " + where + ": " + what + " not in Storage yet (new exports, edits or renames)." + status +
     " Wait until it says everything's uploaded before sending, or the client may get old names or metadata.";
 }
