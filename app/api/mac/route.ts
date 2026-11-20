@@ -8,7 +8,13 @@ import {
   listClientArchive,
   listClientArchiveFilesRecursive,
   listClientArchiveDirectFiles,
+  listArchiveObjectsUnder,
+  archiveObjectExists,
+  deleteArchiveObjects,
+  ensureArchiveFolderMarker,
 } from "@/lib/client-archive/storage";
+import { moveSharePaths } from "@/lib/shares/repository";
+import { moveFileRequestPaths } from "@/lib/requests/repository";
 import {
   authenticateMac,
   cleanMacStatus,
@@ -196,6 +202,72 @@ export async function POST(request: Request) {
       return json({ ok: true, count: lines.length, list: lines.join("\n") });
     }
 
+    if (action === "move") {
+      // A file renamed or moved on the Mac without being changed (same size
+      // and fingerprint as what this Mac uploaded): rename it in Storage too,
+      // instead of uploading it again and leaving the old name behind.
+      const from = storagePath(body.from);
+      const to = storagePath(body.to);
+      const md5 = md5Hex(body.md5Hex);
+      const size = Number(body.size);
+      if (!from || !to || !md5 || !Number.isFinite(size) || from === to) return json({ ok: false, message: "Invalid move." }, 400);
+      if (from.split("/")[0] === ".trash" || to.split("/")[0] === ".trash") return json({ ok: false, message: "Invalid move." }, 400);
+      const record = await getMacUpload(from);
+      if (!record || record.deviceId !== device.id || record.md5Hex !== md5 || record.sizeBytes !== size) {
+        return json({ ok: false, code: "not_ours", message: "Storage's copy isn't the one this Mac uploaded." }, 409);
+      }
+      const stored = await headArchiveObject(from);
+      if (!stored || stored.sizeBytes !== size || !etagMatches(stored.etag, md5)) {
+        return json({ ok: false, code: "changed", message: "Storage's copy has changed or gone." }, 409);
+      }
+      if (await archiveObjectExists(to)) return json({ ok: false, code: "taken", message: "Something already has that name in Storage." }, 409);
+      await applyPairs([{ from, to }]);
+      const parent = to.split("/").slice(0, -1).join("/");
+      if (parent) await ensureArchiveFolderMarker(parent);
+      return json({ ok: true, remotePath: to });
+    }
+
+    if (action === "merge-folder") {
+      // A folder renamed on the Mac: once its photos have been renamed in
+      // Storage (above), bring across anything left in the old Storage folder
+      // — e.g. photos already cleared from the Mac — so the show isn't split
+      // across two folders. Shares and file requests follow the folder.
+      const from = storagePath(body.from);
+      const to = storagePath(body.to);
+      if (!from || !to || from === to || to.startsWith(from + "/") || from.startsWith(to + "/")) return json({ ok: false, message: "Invalid folder." }, 400);
+      if (from.split("/")[0] === ".trash" || to.split("/")[0] === ".trash") return json({ ok: false, message: "Invalid folder." }, 400);
+      const objects = await listArchiveObjectsUnder(from, 20000);
+      const pairs: Array<{ from: string; to: string }> = [];
+      const markers: string[] = [];
+      let kept = 0;
+      for (const object of objects) {
+        const rest = object.path.slice(from.length + 1);
+        if (rest.split("/").pop() === ".folder") { markers.push(object.path); continue; }
+        const target = to + "/" + rest;
+        if (await archiveObjectExists(target)) { kept += 1; continue; }   // never overwrite
+        pairs.push({ from: object.path, to: target });
+      }
+      for (let i = 0; i < pairs.length; i += MAX_PAIRS_PER_APPLY) await applyPairs(pairs.slice(i, i + MAX_PAIRS_PER_APPLY));
+      await ensureArchiveFolderMarker(to);
+      if (!kept) {
+        await deleteArchiveObjects(markers);
+        await moveSharePaths(from, to);
+        await moveFileRequestPaths(from, to);
+      }
+      return json({ ok: true, moved: pairs.length, kept });
+    }
+
+    if (action === "remove-empty-folder") {
+      // After a rename: the old folder in Storage, if nothing is left in it
+      // but Storage's own empty-folder markers.
+      const path = storagePath(body.path);
+      if (!path || path.split("/")[0] === ".trash" || !path.includes("/")) return json({ ok: true, removed: false });
+      const objects = await listArchiveObjectsUnder(path, 2000);
+      if (objects.some((object) => object.path.split("/").pop() !== ".folder")) return json({ ok: true, removed: false });
+      await deleteArchiveObjects(objects.map((object) => object.path));
+      return json({ ok: true, removed: objects.length > 0 });
+    }
+
     if (action === "download") {
       // A short-lived link to fetch one file back onto the Mac.
       const path = storagePath(body.path);
@@ -234,7 +306,7 @@ export async function POST(request: Request) {
         }
         if (!Number.isFinite(size)) continue;
         let record = await getMacUpload(remotePath);
-        if (!record || record.md5Hex !== md5 || record.sizeBytes !== size) {
+        if ((!record || record.md5Hex !== md5 || record.sizeBytes !== size) && item.exact !== true) {
           const moved = await findMacUploadByOriginal(device.id, md5, size);
           record = moved ? await getMacUpload(moved) : undefined;
           remotePath = moved || remotePath;

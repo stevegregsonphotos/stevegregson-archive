@@ -310,6 +310,9 @@ done < "$STATE"
 HISTORY="$SUPPORT/uploaded-paths.txt"
 CLEARED="$SUPPORT/cleared-paths.txt"
 typeset -A TOUCHED      # folders where something was uploaded or renamed this run
+typeset -A GONE_BY_KEY  # "size:md5" -> old Mac path, for spotting renames
+typeset -A DIRMAP       # old folder -> new folder, when a whole folder was renamed/moved
+moved=0
 if [[ ! -f "$SUPPORT/history-from-log" ]]; then
   if [[ -f "$LOG" ]]; then
     {
@@ -690,6 +693,21 @@ upload_one() {
   md5=$(md5_of "$file")
   [[ ${#md5} -eq 32 ]] || { finish skip; return; }
 
+  # Renamed or moved on the Mac without being changed (Finder rename, moved
+  # into a new folder, Bridge rename with no metadata edit)? Then rename the
+  # copy in Storage instead of uploading it again — no duplicate, no wait.
+  local old="${GONE_BY_KEY[$size:$md5]}"
+  if [[ -n "$old" ]]; then
+    reply=$(api "{\"action\":\"move\",\"from\":\"$(json_escape "${S_REMOTE[$old]:-$old}")\",\"to\":\"$(json_escape "$rel")\",\"size\":$size,\"md5Hex\":\"$md5\"}")
+    if [[ "$(jget "$reply" ok)" == "true" ]]; then
+      remote=$(jget "$reply" remotePath)
+      log "Moved in Storage: $old → $rel"
+      finish "ok"$'\t'"$size"$'\t'"$mtime"$'\t'"$md5"$'\t'"$remote"$'\t'"$old"
+      return
+    fi
+    # Not possible (e.g. that name is taken): upload as normal below.
+  fi
+
   reply=$(api "{\"action\":\"presign\",\"path\":\"$(json_escape "$rel")\",\"size\":$size,\"md5Hex\":\"$md5\"}")
   if [[ "$(jget "$reply" ok)" != "true" ]]; then
     if [[ "$(jget "$reply" code)" == "too_big" ]]; then finish big; return; fi
@@ -740,11 +758,25 @@ collect() {
   f=("${(@ps:\t:)line}")
   case "${f[1]}" in
     ok)
-      S_SIZE[$rel]=${f[2]}; S_MTIME[$rel]=${f[3]}; S_MD5[$rel]=${f[4]}; S_AT[$rel]=$NOW; S_REMOTE[$rel]=${f[5]}
+      if [[ -n "${f[6]}" ]]; then
+        # Renamed in Storage from its old Mac name: keep its upload time (so
+        # clearing stays on schedule) and stop tracking the old name.
+        S_AT[$rel]=${S_AT[${f[6]}]:-$NOW}
+        local od="${f[6]:h}" nd="${rel:h}"
+        if [[ "$od" != "$nd" ]]; then
+          # Same folder → same new folder for every photo = a folder rename/move.
+          if [[ -z "${DIRMAP[$od]}" ]]; then DIRMAP[$od]=$nd
+          elif [[ "${DIRMAP[$od]}" != "$nd" ]]; then DIRMAP[$od]="!"; fi
+        fi
+        forget "${f[6]}"
+        (( moved++ ))
+      else
+        S_AT[$rel]=$NOW
+        (( uploaded++ ))
+        (( uploaded_bytes += f[2] ))
+      fi
+      S_SIZE[$rel]=${f[2]}; S_MTIME[$rel]=${f[3]}; S_MD5[$rel]=${f[4]}; S_REMOTE[$rel]=${f[5]}
       print -r -- "${f[5]:-$rel}" >> "$HISTORY"
-      TOUCHED[${rel:h}]=1
-      (( uploaded++ ))
-      (( uploaded_bytes += f[2] ))
       (( unsaved++ ))
       RECENT+=("$EPOCHSECONDS"$'\t'"$rel")
       (( ${#RECENT} > 6 )) && RECENT=("${(@)RECENT[-6,-1]}")
@@ -781,9 +813,16 @@ reap() {
 }
 
 upload_pass() {
-  local i
+  local i r
   local -a c_file c_rel c_size c_mtime st
   pending=0; checked=0
+  # Tracked files no longer at their name on the Mac, by size+fingerprint:
+  # a new file with the same contents is the same photo renamed/moved.
+  GONE_BY_KEY=()
+  for r in ${(k)S_SIZE}; do
+    [[ -f "$ROOT/$r" || -z "${S_MD5[$r]}" ]] && continue
+    GONE_BY_KEY[${S_SIZE[$r]}:${S_MD5[$r]}]=$r
+  done
   STATUS_STATE="checking"
   write_status now
   # First find everything to upload, so progress can show how much is left.
@@ -855,6 +894,43 @@ done
 onmac_stats
 STATUS_STATE="tidying"
 write_status
+
+# ---- Folders renamed or moved on the Mac ---------------------------------
+# Every photo that came from one old folder went to the same new folder, and
+# the old folder is gone from the Mac: it was renamed/moved. Bring across
+# anything still in the old Storage folder (e.g. photos already cleared from
+# the Mac), then remove the old folder (and empty parents) if nothing is left.
+if (( moved > 0 )); then
+  log "Renamed/moved on the Mac: renamed $moved file(s) in Storage to match (nothing uploaded again)."
+  # A renamed show folder shows up as its sub-folders moving ("Show/Web" →
+  # "Show fixed/Web"); add the show folder itself, so loose files in it come
+  # too. Deepest first, so sub-folders are done before their parents.
+  for od in ${(k)DIRMAP}; do
+    nd=${DIRMAP[$od]}; [[ "$nd" == "!" ]] && continue
+    while [[ "$od" == */* && "$nd" == */* && "${od:t}" == "${nd:t}" && "${od:h}" != "${nd:h}" && ! -d "$ROOT/${od:h}" ]]; do
+      od=${od:h}; nd=${nd:h}
+      if [[ -z "${DIRMAP[$od]}" ]]; then DIRMAP[$od]=$nd
+      elif [[ "${DIRMAP[$od]}" != "$nd" ]]; then DIRMAP[$od]="!"; break; fi
+    done
+  done
+  for od in ${(Ok)DIRMAP}; do
+    nd=${DIRMAP[$od]}
+    [[ "$nd" == "!" || -d "$ROOT/$od" ]] && continue
+    reply=$(api "{\"action\":\"merge-folder\",\"from\":\"$(json_escape "$od")\",\"to\":\"$(json_escape "$nd")\"}")
+    if [[ "$(jget "$reply" ok)" == "true" ]]; then
+      log "Folder renamed/moved on the Mac: $od → $nd ($(jget "$reply" moved) more file(s) moved in Storage, $(jget "$reply" kept) kept where a name was already taken)."
+      d="$od"
+      while [[ "$d" == */* && ! -d "$ROOT/$d" ]]; do
+        api "{\"action\":\"remove-empty-folder\",\"path\":\"$(json_escape "$d")\"}" >/dev/null
+        d="${d:h}"
+      done
+    else
+      log "Couldn't finish moving folder $od → $nd in Storage: $(jget "$reply" message)"
+    fi
+    touch "$LOCK" 2>/dev/null
+  done
+  notify "Renamed $moved file$( (( moved == 1 )) || print -n s) in Storage to match your Mac (nothing uploaded again)."
+fi
 
 # Clears one uploaded file from the Mac, but only once the Mac copy is
 # unchanged AND Storage confirms it holds an exact copy. 0 = cleared.
@@ -1153,7 +1229,7 @@ mirror_gone() {
   for (( i = 1; i <= n; i += 50 )); do
     body=""; sep=""
     for rel in "${(@)gone_list[i,i+49]}"; do
-      body+="$sep{\"path\":\"$(json_escape "${S_REMOTE[$rel]:-$rel}")\",\"size\":${S_SIZE[$rel]:-0},\"md5Hex\":\"${S_MD5[$rel]}\"}"
+      body+="$sep{\"path\":\"$(json_escape "${S_REMOTE[$rel]:-$rel}")\",\"size\":${S_SIZE[$rel]:-0},\"md5Hex\":\"${S_MD5[$rel]}\",\"exact\":true}"
       sep=","
     done
     reply=$(api "{\"action\":\"trash\",\"files\":[$body]}")

@@ -167,6 +167,23 @@ cost an extra Vercel build.
   meanwhile); and the address bar now follows the open folder (`?path=`),
   so refresh stays put. Live list shows today's Frozen sends with dupes:
   "Web - Sumarr Frozen" 777 files (≈388 real), "Everyone's Frozen" 1,463.
+  ALSO (18:10, Steve: needs to rename/sort folders without breaking
+  things): **renames/moves on the Mac now follow into Storage without
+  re-uploading.** agent.zsh `upload_pass` builds `GONE_BY_KEY`
+  (size:md5 → old path of tracked files no longer on the Mac); `upload_one`
+  asks `api/mac` `move` (only if this Mac's record + unchanged etag, target
+  free; uses `applyPairs`) before presigning; `collect` forgets the old name,
+  keeps its upload time, builds `DIRMAP` (old folder → new folder). After the
+  uploads, a folder whose photos all went to one new folder and that's gone
+  from the Mac → `merge-folder` (moves everything left in the old Storage
+  folder, e.g. cleared photos, never overwrites; shares/requests follow),
+  then `remove-empty-folder` up the old path; renamed show folders are
+  inferred from their sub-folders. `mirror_gone` now sends `exact:true`
+  (server won't guess a moved copy to trash). Rehearsed with stubs (rename
+  "Frozen - Novmber" → "November" incl. cleared photos). Renamed AND edited
+  files still upload new + trash old. Storage-side renames do NOT follow
+  onto the Mac — advise: sort on the Mac while photos are there; sort in
+  Storage only for shows already cleared off the Mac.
   NEXT: after go live, Steve runs `install.sh --update`; read the tidy
   report with him, then `--request tidy-apply`.
 
