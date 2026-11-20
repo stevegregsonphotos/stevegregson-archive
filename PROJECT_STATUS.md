@@ -214,10 +214,16 @@ cost an extra Vercel build.
   each file separately (8 at a time), then one `applyPairs` pass; agent
   `api_slow` (240 s, no retry) for trash, batches of 25, interrupted
   tidy keeps the report + `tidy-apply-pending` → resumed at the start of
-  `leftovers()` next run. THEN: Steve `install.sh --update`, check log,
-  finish clean-up, then he renames "Sumaar" → "Sumarr" in Finder (first
-  real folder-rename test — check log for "Moved in Storage" +
-  "Folder renamed/moved").
+  `leftovers()` next run. LIVE ~18:52 (Steve said go live); Mac updated
+  19:06. Old run had already finished tidy 19:02 ("moved 1035", rest went
+  through despite timeouts). Checked Storage 19:10: Frozen full res 731
+  (all Full-…), web res/VETR 343, web res/Sumaar 388 Sumarr + 2 old;
+  Reefer root 5 loose (340–343, 382; uploaded mid-rename 11:57, not in
+  history). 19:15 Claude moved those 7 to Deleted files via Backstage API
+  (Steve OK'd). All clean. NEXT: Steve renames "Sumaar" → "Sumarr" in
+  Finder (first real folder-rename — check log for "Moved in Storage" +
+  "Folder renamed/moved" and Storage web res/Sumarr = 388). Status commit
+  NOT pushed (Steve low on Vercel deployments) — goes with the next push.
 
 - **LIVE 20 Nov ~13:30: Pause uploads + faster Transfers when the tab is
   in the background** (Steve: Mac uploads hogged the line so transfers
