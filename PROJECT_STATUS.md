@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 20 November 2026, 17:40 (London)
+Last updated: 20 November 2026, 18:30 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -120,8 +120,8 @@ cost an extra Vercel build.
 ## Waiting / in progress
 
 - **20 Nov ~17:40: Storage duplicates fix + Cancel transfer + real folder
-  counts + Email-to Enter fix — ON TEST BRANCH 18:10 (commit 3fa6c68,
-  preview built OK), WAITING FOR "go live". Steve sent a client a
+  counts + Email-to Enter fix — LIVE 20 Nov ~18:30 (Steve said go live;
+  includes everything below incl. the 18:25 additions). Steve sent a client a
   19 GB folder full of duplicates (Storage said 199 files until Load more).
   CAUSES (from his log): (a) `mirror_gone` safety cap ">300 and >50% gone →
   don't mirror" fired 20 Nov 11:58 when he renamed/moved all of Reefer
@@ -192,8 +192,7 @@ cost an extra Vercel build.
   folder to maisie.laurie.newman@gmail.com OK); GSA Reefer Web/Full 389
   clean but 193 old root copies left in "Reefer Madness - November 2026"
   (not in any transfer) — leftover check will list them.
-  ADDED 18:25 (local, NOT yet on test branch — Steve to OK mockup
-  `storage-still-updating.png`): (1) **TOAD transfer kept failing** when
+  ADDED 18:25 (live with the rest): (1) **TOAD transfer kept failing** when
   picked from the Mac (Vercel Hobby keeps 1 h of logs, so cause unproven):
   a picked file changed after picking (Bridge edit) can't be read → worker
   PUT "network" ×4 → "check your internet" and "Back to try again" reused
