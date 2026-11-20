@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 20 November 2026, 18:30 (London)
+Last updated: 20 November 2026, 19:25 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -220,9 +220,15 @@ cost an extra Vercel build.
   (all Full-…), web res/VETR 343, web res/Sumaar 388 Sumarr + 2 old;
   Reefer root 5 loose (340–343, 382; uploaded mid-rename 11:57, not in
   history). 19:15 Claude moved those 7 to Deleted files via Backstage API
-  (Steve OK'd). All clean. NEXT: Steve renames "Sumaar" → "Sumarr" in
-  Finder (first real folder-rename — check log for "Moved in Storage" +
-  "Folder renamed/moved" and Storage web res/Sumarr = 388). Status commit
+  (Steve OK'd). All clean. 19:18 Steve renamed "Sumaar" → "Sumarr" in
+  Finder: **first real folder rename WORKED** — 371 "Moved in Storage",
+  17 logged "Uploaded" (Storage total bytes identical before/after, so
+  almost certainly the move went through but the reply was slow and the
+  presign then said "done"; `upload_one` logs "Uploaded" even for done —
+  could reword), merge-folder 0/0, old Sumaar removed. Storage web res =
+  Sumarr (388, 1–388) + VETR. Amber banner showed during renames (counts
+  renames as "to do") — expected. Took ~5 min for 388 (moves one by one,
+  8 at a time). Status commit
   NOT pushed (Steve low on Vercel deployments) — goes with the next push.
 
 - **LIVE 20 Nov ~13:30: Pause uploads + faster Transfers when the tab is
