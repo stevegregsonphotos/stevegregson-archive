@@ -255,6 +255,9 @@ export async function listClientArchiveFilesRecursive(path: string, limit = 5000
       if (!item.Key || item.Key === prefix) continue;
       const relative = item.Key.slice((ns() + "/").length);
       const name = relative.split("/").pop() || relative;
+      // ".folder" is Storage's own hidden marker for an empty folder: never a
+      // real file, so it must not end up in transfers or zips.
+      if (name === ".folder") continue;
       files.push({
         name,
         path: relative,

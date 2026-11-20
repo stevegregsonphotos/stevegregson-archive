@@ -157,6 +157,10 @@ cost an extra Vercel build.
   only, 1,000/request) → "389 files · 9.6 GB — showing 200 so far" + **Load
   all**. **Email to**: picking (Enter/click) closes the list and Enter
   moves to Title; list reopens only when typing.
+  ALSO: sending a Storage folder included its hidden `.folder` markers
+  (0 B, seen in Steve's Frozen transfer) — `listClientArchiveFilesRecursive`
+  now skips them. Steve's 16:01 "Full Res - Everyone's Frozen!" transfer
+  (1,463 files incl. old Sumaar names) was already fully downloaded 16:03.
   NEXT: after go live, Steve runs `install.sh --update`; read the tidy
   report with him, then `--request tidy-apply`.
 
