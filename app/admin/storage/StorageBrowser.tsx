@@ -185,7 +185,29 @@ export default function StorageBrowser() {
       setSearchResults(null);
       setQuery("");
       setPreview(null);
+      // Keep the address bar on this folder, so a refresh (or a copied link)
+      // opens the same place.
+      try {
+        const url = new URL(window.location.href);
+        if (path) url.searchParams.set("path", path); else url.searchParams.delete("path");
+        window.history.replaceState(null, "", url.toString());
+      } catch { /* not important */ }
       await refreshTree(path, current);
+      // Bring in the rest of the folder straight away (names only, 200 at a
+      // time), so sorting, "select all" and sending always cover every file —
+      // not just the first page. Very big folders still use Load more.
+      let cursor = current.nextCursor;
+      const total = current.totals ? current.totals.files + current.totals.folders : 0;
+      if (cursor && total <= 3000) {
+        setBusy(false); // the folder is usable while the rest arrives
+        let all = current;
+        while (cursor) {
+          const more: Listing = await fetchListing(path, cursor);
+          all = { ...more, totals: current.totals, folders: [...all.folders, ...more.folders], files: [...all.files, ...more.files] };
+          setListing((shown) => (shown.path === path ? all : shown));
+          cursor = more.nextCursor;
+        }
+      }
     } catch (error) {
       setMessage(errorText(error, "Could not load storage."));
     } finally {

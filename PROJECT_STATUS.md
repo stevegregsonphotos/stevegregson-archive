@@ -161,6 +161,12 @@ cost an extra Vercel build.
   (0 B, seen in Steve's Frozen transfer) — `listClientArchiveFilesRecursive`
   now skips them. Steve's 16:01 "Full Res - Everyone's Frozen!" transfer
   (1,463 files incl. old Sumaar names) was already fully downloaded 16:03.
+  ALSO (Chrome check 17:55): Storage only sorted/selected the first 200
+  loaded (Sumaar showed "199 files", 1, 2, 10, 11…) → `load()` now pulls
+  the remaining pages automatically for folders ≤3,000 items (page usable
+  meanwhile); and the address bar now follows the open folder (`?path=`),
+  so refresh stays put. Live list shows today's Frozen sends with dupes:
+  "Web - Sumarr Frozen" 777 files (≈388 real), "Everyone's Frozen" 1,463.
   NEXT: after go live, Steve runs `install.sh --update`; read the tidy
   report with him, then `--request tidy-apply`.
 
