@@ -90,6 +90,7 @@ export async function toPublicTransfer(
     token: transfer.token,
     title: transfer.title,
     available,
+    cancelled: transfer.status === "disabled",
     locked,
     message: open ? transfer.message : "",
     fileCount: available ? deliverable.length : 0,

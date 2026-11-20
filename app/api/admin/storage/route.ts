@@ -7,6 +7,7 @@ import {
   createClientArchiveViewUrl,
   isClientArchiveKey,
   listClientArchive,
+  countClientArchiveFolder,
   listClientArchiveFilesRecursive,
   searchClientArchive,
   archiveKeyFor,
@@ -81,12 +82,16 @@ async function handleGet(request: Request) {
     })));
     return NextResponse.json({ ok: true, search: { ...results, files } });
   }
-  const listing = await listClientArchive(path, cursor || undefined);
+  const wantTotals = url.searchParams.get("totals") === "1" && !cursor;
+  const [listing, totals] = await Promise.all([
+    listClientArchive(path, cursor || undefined),
+    wantTotals ? countClientArchiveFolder(path) : Promise.resolve(undefined),
+  ]);
   const files = await Promise.all(listing.files.map(async (file) => ({
     ...file,
     ...(file.isImage ? { viewUrl: await createClientArchiveViewUrl(file.objectKey) } : {}),
   })));
-  return NextResponse.json({ ok: true, listing: { ...listing, files } });
+  return NextResponse.json({ ok: true, listing: { ...listing, files, ...(totals ? { totals } : {}) } });
 }
 
 export async function POST(request: Request) {

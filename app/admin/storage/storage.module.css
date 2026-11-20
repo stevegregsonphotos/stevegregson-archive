@@ -812,7 +812,13 @@
 .loadMore {
   display: flex;
   justify-content: center;
+  gap: 0.6rem;
   margin: 1.5rem 0;
+}
+
+.countShowing {
+  font-style: normal;
+  opacity: 0.75;
 }
 
 .hidden {

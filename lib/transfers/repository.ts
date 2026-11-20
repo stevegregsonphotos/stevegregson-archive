@@ -365,6 +365,17 @@ export async function disableTransfer(id: string) {
   await sql.query("UPDATE transfer_records SET status='disabled' WHERE id=$1 AND environment=$2", [id, environment()]);
 }
 
+/** Turns a cancelled transfer back on. False if its files were deleted or it has expired. */
+export async function enableTransfer(id: string) {
+  await ensureSchema();
+  const sql = getSql();
+  const rows = await sql.query(
+    "UPDATE transfer_records SET status='active' WHERE id=$1 AND environment=$2 AND status='disabled' AND files_purged_at IS NULL AND expires_at > now() RETURNING id",
+    [id, environment()],
+  );
+  return (rows as unknown[]).length > 0;
+}
+
 /** Returns false if the transfer's files have already been cleared away. */
 export async function extendTransfer(id: string, expiresAt: string) {
   await ensureSchema();

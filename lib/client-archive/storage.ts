@@ -110,6 +110,64 @@ export async function listClientArchive(path = "", cursor?: string) {
   return { path: clean, folders, files, nextCursor: page.NextContinuationToken, truncated: Boolean(page.IsTruncated) };
 }
 
+/** Files directly inside a folder (not in its sub-folders), every page. */
+export async function listClientArchiveDirectFiles(path: string, limit = 20000) {
+  const clean = cleanPath(path);
+  const prefix = ns() + "/" + (clean ? clean + "/" : "");
+  const files: Array<{ path: string; sizeBytes: number }> = [];
+  let cursor: string | undefined;
+  do {
+    const result = await client().send(new ListObjectsV2Command({
+      Bucket: config().bucketName,
+      Prefix: prefix,
+      Delimiter: "/",
+      MaxKeys: 1000,
+      ContinuationToken: cursor,
+    }));
+    for (const item of result.Contents || []) {
+      if (!item.Key || item.Key === prefix || item.Key.endsWith("/.folder")) continue;
+      files.push({ path: item.Key.slice((ns() + "/").length), sizeBytes: Number(item.Size) || 0 });
+    }
+    cursor = result.IsTruncated ? result.NextContinuationToken : undefined;
+  } while (cursor && files.length < limit);
+  return files;
+}
+
+/**
+ * How many folders and files are directly inside a folder, and their total
+ * size — the real numbers, not just the first page shown on screen. Reads
+ * names only (1,000 per request), so it stays quick even for big shows.
+ */
+export async function countClientArchiveFolder(path = "") {
+  const clean = cleanPath(path);
+  const prefix = ns() + "/" + (clean ? clean + "/" : "");
+  let folders = 0;
+  let files = 0;
+  let bytes = 0;
+  let cursor: string | undefined;
+  for (let page = 0; page < 200; page += 1) {
+    const result = await client().send(new ListObjectsV2Command({
+      Bucket: config().bucketName,
+      Prefix: prefix,
+      Delimiter: "/",
+      MaxKeys: 1000,
+      ContinuationToken: cursor,
+    }));
+    for (const item of result.CommonPrefixes || []) {
+      const relative = (item.Prefix || "").slice((ns() + "/").length).replace(/\/$/, "");
+      if (relative && relative !== TRASH_FOLDER) folders += 1;
+    }
+    for (const item of result.Contents || []) {
+      if (!item.Key || item.Key === prefix || item.Key.endsWith("/.folder")) continue;
+      files += 1;
+      bytes += Number(item.Size) || 0;
+    }
+    if (!result.IsTruncated || !result.NextContinuationToken) break;
+    cursor = result.NextContinuationToken;
+  }
+  return { folders, files, bytes };
+}
+
 export async function createClientArchiveFolder(path: string) {
   assertNotTrash(path);
   const clean = cleanPath(path);

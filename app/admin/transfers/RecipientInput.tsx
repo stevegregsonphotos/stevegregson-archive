@@ -1,23 +1,30 @@
 "use client";
 
-import { useId, useMemo, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
 import styles from "./workspace.module.css";
 
 /**
  * "Email to" box that suggests addresses Steve has sent to before.
  * Several addresses can be typed, separated by commas; suggestions are for
  * the one currently being typed. Tab or Enter picks the highlighted one.
+ * After a pick (Enter or click) the list closes and stays closed, and Enter
+ * moves on to the next box (Title), so a second Enter never adds someone
+ * else's address. The list only opens again when Steve types.
  */
 export default function RecipientInput({
   value,
   onChange,
   knownEmails,
+  onDone,
 }: {
   value: string;
   onChange: (value: string) => void;
   knownEmails: string[];
+  /** Called after an address is picked with Enter, or Enter on a finished address. */
+  onDone?: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
   const [active, setActive] = useState(0);
   const listId = useId();
 
@@ -41,8 +48,20 @@ export default function RecipientInput({
 
   function pick(email: string) {
     const before = cut >= 0 ? value.slice(0, cut + 1).replace(/\s*$/, " ") : "";
-    onChange(before + email + ", ");
+    onChange(before + email);
     setActive(0);
+    setOpen(false);
+  }
+
+  // Move on to the next box (Title): the parent's onDone, else the next input on the page.
+  function moveOn() {
+    setOpen(false);
+    if (onDone) { onDone(); return; }
+    const input = inputRef.current;
+    if (!input) return;
+    const all = Array.from(document.querySelectorAll<HTMLElement>("input, textarea, select"));
+    const next = all[all.indexOf(input) + 1];
+    next?.focus();
   }
 
   return (
@@ -54,18 +73,25 @@ export default function RecipientInput({
         aria-expanded={showing}
         aria-controls={listId}
         aria-autocomplete="list"
+        ref={inputRef}
         value={value}
         placeholder="client@example.com"
-        onFocus={() => setOpen(true)}
+        onFocus={() => { if (!value.trim()) setOpen(true); }}
         onBlur={() => setOpen(false)}
         onChange={(event) => { onChange(event.target.value); setActive(0); setOpen(true); }}
         onKeyDown={(event) => {
-          if (!showing) return;
+          if (!showing) {
+            // List closed: Enter means "done with this box".
+            if (event.key === "Enter") { event.preventDefault(); moveOn(); }
+            else if (event.key === "ArrowDown" && suggestions.length) { event.preventDefault(); setOpen(true); }
+            return;
+          }
           if (event.key === "ArrowDown") { event.preventDefault(); setActive((highlighted + 1) % suggestions.length); }
           else if (event.key === "ArrowUp") { event.preventDefault(); setActive((highlighted - 1 + suggestions.length) % suggestions.length); }
           else if ((event.key === "Enter" || (event.key === "Tab" && typed)) && suggestions[highlighted]) {
             event.preventDefault();
             pick(suggestions[highlighted]);
+            if (event.key === "Enter") moveOn();
           } else if (event.key === "Escape") setOpen(false);
         }}
       />

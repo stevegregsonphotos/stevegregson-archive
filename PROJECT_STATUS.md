@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 20 November 2026, 13:30 (London)
+Last updated: 20 November 2026, 17:40 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -118,6 +118,47 @@ cost an extra Vercel build.
 - **X (Twitter) removed — LIVE 1 Nov:** taken out of the site's hidden profile lists (`SAME_AS` in `app/layout.tsx` and `/llms.txt`), and from the Google Business Profile social links (Google review pending). Steve doesn't use X and can't log in; don't add it back. Went live together with the three 29 Oct items below (People search, Mac folder fix, Storage folder Download), so those are LIVE too.
 
 ## Waiting / in progress
+
+- **20 Nov ~17:40: Storage duplicates fix + Cancel transfer + real folder
+  counts + Email-to Enter fix — COMMITTED LOCALLY, NOT PUSHED** (Steve to OK
+  mockups first, then test branch, then "go live"). Steve sent a client a
+  19 GB folder full of duplicates (Storage said 199 files until Load more).
+  CAUSES (from his log): (a) `mirror_gone` safety cap ">300 and >50% gone →
+  don't mirror" fired 20 Nov 11:58 when he renamed/moved all of Reefer
+  Madness into Web/Full in Bridge (1,307 files) → old copies forgotten;
+  (b) server `trash` failed the WHOLE batch of 50 when one file was missing
+  ("… no longer exists", Frozen 18–19 Nov, `planDelete` throws); (c) an
+  upload committed while the file changed/renamed was never recorded on
+  the Mac (orphan). FIXES: agent.zsh — cap removed; mirror when the file's
+  folder still has files in it or its sub-folders (`HASFILES`), else keep;
+  confirmed uploads always recorded; new history files in the support
+  folder (`uploaded-paths.txt`, `cleared-paths.txt`, seeded once from the
+  log); new **leftover check** (`leftovers()`): Storage files directly in
+  folders that still have Mac files, uploaded by this Mac (history), not on
+  the Mac, not cleared → trash (server re-checks ours + unchanged). Touched
+  folders each run, all daily. FIRST pass only writes the tidy report
+  (`~/Library/Logs/Steve Gregson Storage - tidy report.txt`) + notifies;
+  `--request tidy-apply` trashes it and touches `leftovers-reviewed`, after
+  which it's automatic. Dry run from Steve's real log/folder 20 Nov: ≤2,048
+  old copies (Frozen full res 731, web res 731 + Sumaar 388, Reefer root
+  188, 10 KHT "-Edit.tif" — check those with Steve). API `api/mac`: new
+  `files` action (direct files of a folder), `trash` per file + de-duped.
+  Rehearsed the zsh logic with stubs (rename into sub-folders, empty folder
+  kept, cleared/Backstage-added files untouched, report then auto).
+  **Cancel transfer**: detail page "Cancel transfer" (confirm) → `disable`;
+  red banner with **Turn back on** (`enable`, only if not expired/files
+  kept) and **Delete its files too** (`cancel-delete`: disable + delete
+  uploaded copies + files_purged_at; record kept so the link still says
+  cancelled; Storage files untouched). List pill "Cancelled". Client page:
+  `PublicTransferView.cancelled`; popup "This transfer has been cancelled …
+  Contact Steve / Close" on opening, and download APIs return 410
+  `code: "cancelled"` → same popup if the page was already open.
+  **Storage counts**: GET `?totals=1` → `countClientArchiveFolder` (names
+  only, 1,000/request) → "389 files · 9.6 GB — showing 200 so far" + **Load
+  all**. **Email to**: picking (Enter/click) closes the list and Enter
+  moves to Title; list reopens only when typing.
+  NEXT: after go live, Steve runs `install.sh --update`; read the tidy
+  report with him, then `--request tidy-apply`.
 
 - **LIVE 20 Nov ~13:30: Pause uploads + faster Transfers when the tab is
   in the background** (Steve: Mac uploads hogged the line so transfers

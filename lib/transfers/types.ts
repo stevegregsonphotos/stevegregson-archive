@@ -59,6 +59,8 @@ export type PublicTransferView = {
   token: string;
   title: string;
   available: boolean;
+  /** Steve cancelled it (as opposed to it simply expiring). */
+  cancelled: boolean;
   locked: boolean;
   message: string;
   fileCount: number;

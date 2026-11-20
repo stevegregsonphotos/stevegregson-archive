@@ -454,9 +454,9 @@ export default function TransferWorkspace({ initialTransfers, knownEmails: initi
           {filtered.map((transfer) => {
             const downloaded = transfer.downloads.length > 0;
             const daysLeft = daysUntil(transfer.expiresAt);
-            const state = transfer.filesPurgedAt ? { label: "Files cleared", tone: styles.pillMuted }
+            const state = transfer.status === "disabled" ? { label: transfer.filesPurgedAt ? "Cancelled · files deleted" : "Cancelled", tone: styles.pillMuted }
+              : transfer.filesPurgedAt ? { label: "Files cleared", tone: styles.pillMuted }
               : transfer.status === "expired" ? { label: "Expired", tone: styles.pillMuted }
-              : transfer.status === "disabled" ? { label: "Disabled", tone: styles.pillMuted }
               : downloaded ? { label: "Downloaded", tone: styles.pillGood }
               : { label: "Not downloaded yet", tone: styles.pillWait };
             return (

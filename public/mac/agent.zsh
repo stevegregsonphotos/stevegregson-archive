@@ -303,6 +303,28 @@ while IFS=$'\t' read -r rel size mtime md5 at remote; do
   S_SIZE[$rel]=$size; S_MTIME[$rel]=$mtime; S_MD5[$rel]=$md5; S_AT[$rel]=$at; S_REMOTE[$rel]=$remote
 done < "$STATE"
 
+# ---- History: what this Mac has ever put in Storage, and what it cleared ---
+# One Storage path per line. Used to spot old copies left behind by renames:
+# a file in Storage that this Mac uploaded, that isn't on the Mac any more
+# and that the app didn't clear to save space. Started from the log once.
+HISTORY="$SUPPORT/uploaded-paths.txt"
+CLEARED="$SUPPORT/cleared-paths.txt"
+typeset -A TOUCHED      # folders where something was uploaded or renamed this run
+if [[ ! -f "$SUPPORT/history-from-log" ]]; then
+  if [[ -f "$LOG" ]]; then
+    {
+      grep -F '  Uploaded ' "$LOG" | grep -v ' but it changed while uploading' \
+        | sed -E 's/^[0-9-]+ [0-9:]+  Uploaded //; s/^.* as (.*) \(a different file already had that name\)$/\1/'
+      grep -E '  Brought back .* from Storage\.$' "$LOG" | sed -E 's/^[0-9-]+ [0-9:]+  Brought back //; s/ from Storage\.$//'
+    } >> "$HISTORY" 2>/dev/null
+    {
+      grep -F '  Freed space: ' "$LOG" | sed -E 's/^[0-9-]+ [0-9:]+  Freed space: //; s/ is now only in Storage \(.*\)\.$//'
+      grep -F '  Freed space: ' "$LOG" | sed -E 's/^.* is now only in Storage \((.*)\)\.$/\1/'
+    } >> "$CLEARED" 2>/dev/null
+  fi
+  touch "$HISTORY" "$CLEARED" "$SUPPORT/history-from-log"
+fi
+
 save_state() {
   local tmp="$STATE.tmp" rel
   {
@@ -691,10 +713,17 @@ upload_one() {
     fi
   fi
 
-  # If the file changed while uploading, leave it for the next run.
+  # Storage now holds this version, so ALWAYS record it — even if the file was
+  # changed or renamed while it uploaded (Bridge often renames during a big
+  # upload). Recorded with the size/date it had when sent, so a changed file
+  # is simply sent again next time (replacing this copy) and a renamed one is
+  # mirrored (this copy goes to Deleted files). Before 20 Nov such uploads
+  # were left unrecorded and became untracked duplicates in Storage.
   after=($(file_info "$file"))
   if [[ "${after[1]}" != "$size" || "${after[2]}" != "$mtime" ]]; then
-    finish skip; return
+    log "Uploaded $rel as $remote but it changed while uploading; will check it again."
+    finish "ok"$'\t'"$size"$'\t'"$mtime"$'\t'"$md5"$'\t'"$remote"
+    return
   fi
 
   if [[ "$remote" == "$rel" ]]; then log "Uploaded $rel"; else log "Uploaded $rel as $remote (a different file already had that name)"; fi
@@ -712,6 +741,8 @@ collect() {
   case "${f[1]}" in
     ok)
       S_SIZE[$rel]=${f[2]}; S_MTIME[$rel]=${f[3]}; S_MD5[$rel]=${f[4]}; S_AT[$rel]=$NOW; S_REMOTE[$rel]=${f[5]}
+      print -r -- "${f[5]:-$rel}" >> "$HISTORY"
+      TOUCHED[${rel:h}]=1
       (( uploaded++ ))
       (( uploaded_bytes += f[2] ))
       (( unsaved++ ))
@@ -722,6 +753,7 @@ collect() {
       # Brought back from Storage: it's already there, so no upload needed,
       # and it stays on the Mac for OFFLOAD_DAYS from now.
       S_SIZE[$rel]=${f[2]}; S_MTIME[$rel]=${f[3]}; S_MD5[$rel]=${f[4]}; S_AT[$rel]=$(date +%s); S_REMOTE[$rel]=${f[5]}
+      print -r -- "${f[5]:-$rel}" >> "$HISTORY"
       (( fetched++ ))
       (( fetched_bytes += f[2] ))
       (( unsaved++ ))
@@ -851,6 +883,8 @@ clear_one() {
 
   size=${S_SIZE[$rel]}
   if rm -f -- "$file"; then
+    print -r -- "$rel" >> "$CLEARED"
+    [[ -n "${S_REMOTE[$rel]}" && "${S_REMOTE[$rel]}" != "$rel" ]] && print -r -- "${S_REMOTE[$rel]}" >> "$CLEARED"
     forget "$rel"
     (( freed++ ))
     (( freed_bytes += size ))
@@ -1029,6 +1063,7 @@ tidy_apply() {
     touch "$LOCK" 2>/dev/null
   done
   mv -f "$TIDY_REPORT" "$TIDY_REPORT.done" 2>/dev/null
+  touch "$SUPPORT/leftovers-reviewed"   # from now on leftovers are tidied automatically
   log "Tidy: moved $trashed leftover cop$( (( trashed == 1 )) && print -n y || print -n ies) to Storage's Deleted files (restorable for 30 days)."
   notify "Moved $trashed leftover cop$( (( trashed == 1 )) && print -n y || print -n ies) to Deleted files in Storage (restorable for 30 days)."
 }
@@ -1064,37 +1099,57 @@ process_requests
 [[ "$OFFLOAD_SET" != "$OFFLOAD_DAYS" ]] && log "Days-to-keep setting was '$OFFLOAD_SET'; using $OFFLOAD_DAYS days instead (minimum is 1)."
 cutoff=$(( NOW - OFFLOAD_DAYS * 86400 ))
 
-# ---- Renamed or deleted on the Mac: mirror it, like Dropbox -------------
-# A file this Mac uploaded that's no longer on the Mac was renamed (e.g. in
-# Bridge) or deleted by Steve — files the app clears to save space are
-# forgotten when cleared, so they never get here. Its old copy in Storage
-# goes to Deleted files (restorable for 30 days). New names were uploaded
-# in step 1 above, so nothing is ever without a copy in Storage.
-# Only when the file's folder is still on the Mac (renamed or deleted inside
-# it, as Bridge does). If a whole folder has gone — moved out of the Storage
-# folder, renamed or deleted — Storage keeps everything: it's the archive.
+# ---- What's on the Mac right now -----------------------------------------
+# ONMAC: every file in the Storage folder (by its path, and by the Storage
+# path it went to). HASFILES: every folder that has at least one file in it
+# or in a sub-folder — i.e. folders Steve is still working in.
+typeset -A ONMAC HASFILES
+scan_onmac() {
+  local f rel d
+  ONMAC=(); HASFILES=()
+  while IFS= read -r -d '' f; do
+    rel="${f#$ROOT/}"
+    ONMAC[$rel]=1
+    [[ -n "${S_REMOTE[$rel]}" ]] && ONMAC[${S_REMOTE[$rel]}]=1
+    d="${rel:h}"
+    while [[ "$d" != "." && -n "$d" && -z "${HASFILES[$d]}" ]]; do
+      HASFILES[$d]=1
+      d="${d:h}"
+    done
+  done < <(find "$ROOT" -type f ! -name '.*' ! -path '*/.*' ! -name 'Icon?' -print0 2>/dev/null)
+}
+scan_onmac
+
+# ---- Renamed, moved or deleted on the Mac: mirror it, like Dropbox --------
+# A file this Mac uploaded that's no longer at that name was renamed (e.g. in
+# Bridge), moved into a sub-folder, or deleted by Steve — files the app
+# clears to save space are forgotten when cleared, so they never get here.
+# Its old copy in Storage goes to Deleted files (restorable for 30 days).
+# New names were uploaded in step 1 above, so nothing is ever without a copy.
+#
+# Mirrored when its folder still has files in it (or in its sub-folders):
+# Steve is working in that show. If the whole folder has gone or is now
+# completely empty (moved out of the Storage folder, drive problem…), Storage
+# keeps everything: it's the archive.
+#
+# (Until 20 Nov a safety limit skipped mirroring whenever over 300 files and
+# over half of everything vanished at once — which is exactly what renaming a
+# whole show in Bridge does. That left 1,307 Reefer Madness duplicates.)
 typeset -a gone_list
-gone_folders=0
+gone_kept=0
 for rel in ${(k)S_SIZE}; do
   [[ -f "$ROOT/$rel" ]] && continue
-  if [[ -d "$ROOT/${rel:h}" ]]; then
+  if [[ -n "${HASFILES[${rel:h}]}" ]]; then
     gone_list+=("$rel")
+    TOUCHED[${rel:h}]=1
   else
-    forget "$rel"; (( gone_folders++ ))
+    forget "$rel"; (( gone_kept++ ))
   fi
 done
-(( gone_folders > 0 )) && log "$gone_folders uploaded file(s) are gone from the Mac with their whole folder; Storage keeps them."
+(( gone_kept > 0 )) && log "$gone_kept uploaded file(s) are gone from the Mac along with everything else in their folder; Storage keeps them."
 mirror_gone() {
-  local total=${#S_SIZE} n=${#gone_list} i rel body sep reply trashed=0 done_n=0
+  local n=${#gone_list} i rel body sep reply trashed=0
   (( n == 0 )) && return
-  # Safety: if a huge share of files vanished at once (folder moved away, disk
-  # problem), don't touch Storage; just stop tracking them, as before.
-  if (( n > 300 && n * 2 > total )); then
-    log "Not mirroring: $n of $total uploaded files disappeared from the Mac at once. Storage keeps them all."
-    notify "$n files disappeared from the Storage folder at once, so Storage has kept all its copies. If that was on purpose, delete them in Backstage."
-    for rel in $gone_list; do forget "$rel"; done
-    return
-  fi
   for (( i = 1; i <= n; i += 50 )); do
     body=""; sep=""
     for rel in "${(@)gone_list[i,i+49]}"; do
@@ -1107,8 +1162,9 @@ mirror_gone() {
       break   # offline: keep them tracked and try next run
     fi
     (( trashed += $(jget "$reply" trashed) ))
-    for rel in "${(@)gone_list[i,i+49]}"; do forget "$rel"; (( done_n++ )); done
+    for rel in "${(@)gone_list[i,i+49]}"; do forget "$rel"; done
     touch "$LOCK" 2>/dev/null
+    write_status
   done
   if (( trashed > 0 )); then
     log "Renamed or deleted on the Mac: moved $trashed old cop$( (( trashed == 1 )) && print -n y || print -n ies) to Storage's Deleted files (restorable for 30 days)."
@@ -1116,6 +1172,67 @@ mirror_gone() {
   save_state
 }
 mirror_gone
+
+# ---- Leftover old copies (belt and braces) --------------------------------
+# Any file in Storage that THIS Mac put there (it's in the upload history),
+# in a folder Steve still has files in, that isn't on the Mac any more and
+# wasn't cleared by the app to save space, is an old name left behind (e.g.
+# from a run that was stopped part-way, or older versions of this app). The
+# server double-checks each one was uploaded by this Mac and is unchanged
+# before it goes to Deleted files (restorable for 30 days). Files added in
+# Backstage, by clients, or moved there in Backstage are never touched.
+# Checks folders where something changed this run, and every folder once a day.
+# The very first check only writes a report (nothing moved) so Steve and
+# Claude can look at it first; after that it tidies automatically.
+leftovers() {
+  local -a dirs candidates
+  local -A hist cleared
+  local d p size reply line i body sep trashed=0 total_bytes=0
+  local daily="$SUPPORT/.checked-leftovers" first_marker="$SUPPORT/leftovers-reviewed"
+  if [[ ! -f "$daily" || -n $(find "$daily" -mmin +1440 2>/dev/null) ]]; then
+    dirs=(${(k)HASFILES}); touch "$daily"
+  else
+    for d in ${(k)TOUCHED}; do
+      while [[ "$d" != "." && -n "$d" ]]; do
+        [[ -n "${HASFILES[$d]}" ]] && dirs+=("$d")
+        d="${d:h}"
+      done
+    done
+    dirs=(${(u)dirs})
+  fi
+  (( ${#dirs} == 0 )) && return
+  while IFS= read -r line; do [[ -n "$line" ]] && hist[$line]=1; done < "$HISTORY"
+  while IFS= read -r line; do [[ -n "$line" ]] && cleared[$line]=1; done < "$CLEARED"
+  for d in $dirs; do
+    reply=$(api "{\"action\":\"files\",\"path\":\"$(json_escape "$d")\"}")
+    [[ "$(jget "$reply" ok)" == "true" ]] || continue
+    while IFS=$'\t' read -r p size; do
+      [[ -z "$p" || -n "${ONMAC[$p]}" || -n "${cleared[$p]}" || -z "${hist[$p]}" ]] && continue
+      candidates+=("$p"$'\t'"$size"); (( total_bytes += size ))
+    done <<< "$(jget "$reply" list)"
+    touch "$LOCK" 2>/dev/null
+  done
+  (( ${#candidates} == 0 )) && return
+  if [[ ! -f "$first_marker" ]]; then
+    print -rl -- "${(o)candidates[@]}" > "$TIDY_REPORT"
+    log "Leftover check: found ${#candidates} old cop$( (( ${#candidates} == 1 )) && print -n y || print -n ies) ($(human $total_bytes)) in Storage — listed in $TIDY_REPORT. Nothing changed yet."
+    notify "Found ${#candidates} old copies ($(human $total_bytes)) left in Storage by renames. Nothing has been changed yet."
+    return
+  fi
+  for (( i = 1; i <= ${#candidates}; i += 50 )); do
+    body=""; sep=""
+    for line in "${(@)candidates[i,i+49]}"; do body+="$sep{\"path\":\"$(json_escape "${line%%$'\t'*}")\"}"; sep=","; done
+    reply=$(api "{\"action\":\"trash\",\"files\":[$body]}")
+    [[ "$(jget "$reply" ok)" == "true" ]] || { log "Leftover tidy stopped (will try again): $(jget "$reply" message)"; break; }
+    (( trashed += $(jget "$reply" trashed) ))
+    touch "$LOCK" 2>/dev/null
+  done
+  if (( trashed > 0 )); then
+    log "Leftover check: moved $trashed old cop$( (( trashed == 1 )) && print -n y || print -n ies) to Storage's Deleted files (restorable for 30 days)."
+    notify "Tidied $trashed old cop$( (( trashed == 1 )) && print -n y || print -n ies) left in Storage by renames (in Deleted files for 30 days)."
+  fi
+}
+leftovers
 
 for rel in ${(k)S_SIZE}; do
   [[ -f "$ROOT/$rel" ]] || continue

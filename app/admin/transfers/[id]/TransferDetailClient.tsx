@@ -78,6 +78,34 @@ export default function TransferDetailClient({ initialTransfer, publicUrl }: {
     } finally { setBusy(false); }
   }
 
+  async function cancelTransfer(deleteFiles: boolean) {
+    const question = deleteFiles
+      ? "Cancel this transfer AND delete its uploaded files?\n\nThe link stops working straight away and anyone who opens it is told it was cancelled. This can't be undone (anything sent from Storage stays in Storage)."
+      : "Cancel this transfer?\n\nThe link stops working straight away and anyone who opens it is told it was cancelled and to contact you. You can turn it back on later.";
+    if (!confirm(question)) return;
+    setBusy(true); setMessage("");
+    try {
+      const result = await post({ action: deleteFiles ? "cancel-delete" : "disable", transferId: transfer.id });
+      if (result.transfer) setTransfer(result.transfer);
+      setEditing(false); setDesigning(false);
+      setMessage(deleteFiles ? "Transfer cancelled and its files deleted." : "Transfer cancelled. The link no longer works.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not cancel the transfer.");
+    } finally { setBusy(false); }
+  }
+
+  async function turnBackOn() {
+    setBusy(true); setMessage("");
+    try {
+      const result = await post({ action: "enable", transferId: transfer.id });
+      if (result.transfer) setTransfer(result.transfer);
+      setMessage("Transfer turned back on. The link works again.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not turn the transfer back on.");
+    } finally { setBusy(false); }
+  }
+
+  const cancelled = transfer.status === "disabled";
   const latestDownload = transfer.downloads[0];
   return <main
     className={styles.detail + " " + styles.dropZone + (dragging ? " " + styles.dropActive : "")}
@@ -96,8 +124,26 @@ export default function TransferDetailClient({ initialTransfer, publicUrl }: {
         <button type="button" disabled={!canEdit} title={canEdit ? undefined : "Only live transfers can be edited"} onClick={() => setEditing((value) => !value)}>Edit files</button>
         <button type="button" disabled={!canEdit} onClick={() => setDesigning((value) => !value)}>{designing ? "Close backgrounds" : "Client page backgrounds"}</button>
         <a href={"/transfer/preview?id=" + encodeURIComponent(transfer.id)} target="_blank" rel="noopener">Preview as client ↗</a>
+        {!cancelled && transfer.status === "active" ? (
+          <button type="button" className={styles.dangerButton} disabled={busy} onClick={() => void cancelTransfer(false)}>Cancel transfer</button>
+        ) : null}
       </div>
     </header>
+    {cancelled ? (
+      <div className={styles.cancelledNote} role="status">
+        <strong>This transfer is cancelled.</strong>
+        <span>{transfer.filesPurgedAt
+          ? "Its uploaded files have been deleted. Anyone opening the link is told it was cancelled and to contact you."
+          : "The link no longer works. Anyone opening it is told it was cancelled and to contact you."}</span>
+        {!transfer.filesPurgedAt ? (
+          <span className={styles.cancelledActions}>
+            <button type="button" disabled={busy} onClick={() => void turnBackOn()}>Turn back on</button>
+            <button type="button" className={styles.dangerButton} disabled={busy} onClick={() => void cancelTransfer(true)}>Delete its files too</button>
+          </span>
+        ) : null}
+      </div>
+    ) : null}
+    {message && !editing ? <p className={styles.detailMessage} role="status">{message}</p> : null}
     {designing && canEdit ? <BackgroundPicker transfer={transfer} onChange={setTransfer} /> : null}
     {transfer.filesPurgedAt && <p className={styles.purgedNote}>This transfer expired and its uploaded files were cleared from storage on {date(transfer.filesPurgedAt)}. Anything sent from Storage is still in Storage.</p>}
 

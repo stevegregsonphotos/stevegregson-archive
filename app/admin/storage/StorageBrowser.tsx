@@ -44,7 +44,8 @@ type FileItem = {
   isImage: boolean;
   viewUrl?: string;
 };
-type Listing = { path: string; folders: Folder[]; files: FileItem[]; nextCursor?: string; truncated: boolean };
+type Totals = { folders: number; files: number; bytes: number };
+type Listing = { path: string; folders: Folder[]; files: FileItem[]; nextCursor?: string; truncated: boolean; totals?: Totals };
 type TrashEntry = {
   id: string;
   name: string;
@@ -91,9 +92,9 @@ async function api<T = Record<string, unknown>>(body: Record<string, unknown>): 
   return data as T;
 }
 
-async function fetchListing(path: string, cursor?: string): Promise<Listing> {
+async function fetchListing(path: string, cursor?: string, totals = false): Promise<Listing> {
   const response = await fetch(
-    "/api/admin/storage?path=" + encodeURIComponent(path) + (cursor ? "&cursor=" + encodeURIComponent(cursor) : ""),
+    "/api/admin/storage?path=" + encodeURIComponent(path) + (cursor ? "&cursor=" + encodeURIComponent(cursor) : "") + (totals ? "&totals=1" : ""),
     { cache: "no-store" },
   );
   const data = await response.json().catch(() => ({ ok: false, message: "Storage returned an unexpected response (HTTP " + response.status + ")." }));
@@ -176,7 +177,9 @@ export default function StorageBrowser() {
   const load = useCallback(async (path = "") => {
     setBusy(true);
     try {
-      const current = await fetchListing(path);
+      // totals: the real number of files/folders in here, even before
+      // every page has been loaded onto the screen.
+      const current = await fetchListing(path, undefined, true);
       setMode("files");
       setListing(current);
       setSearchResults(null);
@@ -211,16 +214,22 @@ export default function StorageBrowser() {
     return () => window.clearTimeout(timer);
   }, [load, loadShared]);
 
-  async function loadMore() {
+  async function loadMore(all = false) {
     if (!listing.nextCursor) return;
     setBusy(true);
     try {
-      const more = await fetchListing(listing.path, listing.nextCursor);
-      setListing((current) => ({
-        ...more,
-        folders: [...current.folders, ...more.folders],
-        files: [...current.files, ...more.files],
-      }));
+      let cursor: string | undefined = listing.nextCursor;
+      const path = listing.path;
+      while (cursor) {
+        const more: Listing = await fetchListing(path, cursor);
+        setListing((current) => current.path !== path ? current : ({
+          ...more,
+          totals: current.totals,
+          folders: [...current.folders, ...more.folders],
+          files: [...current.files, ...more.files],
+        }));
+        cursor = all ? more.nextCursor : undefined;
+      }
     } catch (error) {
       setMessage(errorText(error, "Could not load more."));
     } finally {
@@ -694,9 +703,28 @@ export default function StorageBrowser() {
                 </div>
               ) : (
                 <span className={styles.countNote}>
-                  {folders.length ? folders.length + (folders.length === 1 ? " folder" : " folders") : ""}
-                  {folders.length && files.length ? " · " : ""}
-                  {files.length ? files.length + (files.length === 1 ? " file" : " files") : ""}
+                  {(() => {
+                    // Real totals for the whole folder (from the server), not
+                    // just what's been loaded onto the screen so far.
+                    const t = !searchResults && listing.totals ? listing.totals : null;
+                    const folderCount = t ? t.folders : folders.length;
+                    const fileCount = t ? t.files : files.length;
+                    const parts = [
+                      folderCount ? folderCount.toLocaleString("en-GB") + (folderCount === 1 ? " folder" : " folders") : "",
+                      fileCount ? fileCount.toLocaleString("en-GB") + (fileCount === 1 ? " file" : " files") : "",
+                      t && t.bytes ? bytes(t.bytes) : "",
+                    ].filter(Boolean);
+                    const shown = folders.length + files.length;
+                    const total = t ? t.folders + t.files : shown;
+                    return (
+                      <>
+                        {parts.join(" · ")}
+                        {t && listing.nextCursor && shown < total ? (
+                          <em className={styles.countShowing}> — showing {shown.toLocaleString("en-GB")} so far</em>
+                        ) : null}
+                      </>
+                    );
+                  })()}
                 </span>
               )}
               <div className={styles.viewToggle} role="group" aria-label="View">
@@ -858,6 +886,9 @@ export default function StorageBrowser() {
           {mode === "files" && !searchResults && listing.nextCursor ? (
             <div className={styles.loadMore}>
               <button type="button" className={styles.softButton} disabled={busy} onClick={() => void loadMore()}>Load more</button>
+              <button type="button" className={styles.softButton} disabled={busy} onClick={() => void loadMore(true)}>
+                Load all{listing.totals ? " " + (listing.totals.folders + listing.totals.files).toLocaleString("en-GB") : ""}
+              </button>
             </div>
           ) : null}
 

@@ -17,6 +17,9 @@ export async function POST(
 ) {
   const { token } = await context.params;
   const transfer = await getTransferByToken(token);
+  if (transfer?.status === "disabled") {
+    return NextResponse.json({ ok: false, code: "cancelled", message: "This transfer has been cancelled." }, { status: 410 });
+  }
   if (!transfer || transfer.status !== "active") {
     return NextResponse.json({ ok: false, message: "This transfer is no longer available." }, { status: 404 });
   }

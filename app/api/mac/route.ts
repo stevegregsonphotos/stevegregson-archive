@@ -7,6 +7,7 @@ import {
   headArchiveObject,
   listClientArchive,
   listClientArchiveFilesRecursive,
+  listClientArchiveDirectFiles,
 } from "@/lib/client-archive/storage";
 import {
   authenticateMac,
@@ -183,6 +184,18 @@ export async function POST(request: Request) {
       return json({ ok: true, count: lines.length, list: lines.join("\n") });
     }
 
+    if (action === "files") {
+      // Files directly in one folder (not sub-folders), as "path<TAB>size"
+      // lines: used by the Mac to spot old copies left behind by renames.
+      const path = storagePath(body.path);
+      if (!path || path.split("/")[0] === ".trash") return json({ ok: false, message: "Invalid folder." }, 400);
+      const files = await listClientArchiveDirectFiles(path);
+      const lines = files
+        .filter((file) => !file.path.split("/").some((part) => part.startsWith(".")) && !/[\u0000-\u001f]/.test(file.path))
+        .map((file) => file.path + "\t" + file.sizeBytes);
+      return json({ ok: true, count: lines.length, list: lines.join("\n") });
+    }
+
     if (action === "download") {
       // A short-lived link to fetch one file back onto the Mac.
       const path = storagePath(body.path);
@@ -240,16 +253,31 @@ export async function POST(request: Request) {
           results.push({ path: String(item.path), result: "kept" });
           continue;
         }
+        if (toTrash.includes(record.remotePath)) {
+          // Two Mac names pointed at the same Storage file: trash it once.
+          results.push({ path: String(item.path), result: "gone" });
+          continue;
+        }
         toTrash.push(record.remotePath);
         results.push({ path: String(item.path), result: "trashed" });
       }
-      if (toTrash.length) {
-        const pairs = await planDelete(toTrash.map((path) => ({ kind: "file", path })));
-        for (let i = 0; i < pairs.length; i += MAX_PAIRS_PER_APPLY) {
-          await applyPairs(pairs.slice(i, i + MAX_PAIRS_PER_APPLY));
+      // One file at a time, so a file that has just vanished (or any other
+      // hiccup) can't stop the rest of the batch going to Deleted files.
+      let trashed = 0;
+      for (const path of toTrash) {
+        try {
+          const pairs = await planDelete([{ kind: "file", path }]);
+          for (let i = 0; i < pairs.length; i += MAX_PAIRS_PER_APPLY) {
+            await applyPairs(pairs.slice(i, i + MAX_PAIRS_PER_APPLY));
+          }
+          trashed += 1;
+        } catch (error) {
+          console.warn("Mac trash skipped " + path, error);
+          const row = results.find((entry) => entry.result === "trashed" && (entry.path === path || storagePath(entry.path) === path));
+          if (row) row.result = "gone";
         }
       }
-      return json({ ok: true, results, trashed: toTrash.length });
+      return json({ ok: true, results, trashed });
     }
 
     if (action === "verify") {

@@ -40,6 +40,7 @@ function sampleTransfer(backgroundUrls: string[]): PublicTransferView {
     token: "preview",
     title: "Hamlet — Dress rehearsal",
     available: true,
+    cancelled: false,
     locked: false,
     message: "Hi both — here are the edited images from last night's dress. The press selects are in their own folder. Any questions, just shout!\n\nSteve",
     fileCount: names.length,

@@ -6,6 +6,8 @@ import {
   deleteTransferRecord,
   deleteUploadingTransferRecord,
   disableTransfer,
+  enableTransfer,
+  markTransferFilesPurged,
   extendTransfer,
   finalizeTransfer,
   getTransferById,
@@ -398,8 +400,30 @@ async function handlePost(request: Request) {
   }
 
   if (action === "disable") {
-    await disableTransfer(text(body.transferId));
-    return NextResponse.json({ ok: true });
+    // "Cancel transfer": the link stops working straight away and clients see
+    // a polite "cancelled" message. Can be turned back on (action "enable").
+    const transferId = text(body.transferId);
+    await disableTransfer(transferId);
+    return NextResponse.json({ ok: true, transfer: await getTransferById(transferId) });
+  }
+
+  if (action === "enable") {
+    const transferId = text(body.transferId);
+    if (!(await enableTransfer(transferId))) {
+      return NextResponse.json({ ok: false, message: "This transfer can't be turned back on: its files were deleted or it has expired." }, { status: 409 });
+    }
+    return NextResponse.json({ ok: true, transfer: await getTransferById(transferId) });
+  }
+
+  if (action === "cancel-delete") {
+    // Cancel AND delete the uploaded copies. The record stays, so the link
+    // still shows the "cancelled" message rather than a missing page.
+    // Files sent from Storage are only linked, so they stay in Storage.
+    const transferId = text(body.transferId);
+    await disableTransfer(transferId);
+    await deleteTransferObjects(transferId);
+    await markTransferFilesPurged(transferId);
+    return NextResponse.json({ ok: true, transfer: await getTransferById(transferId) });
   }
 
   if (action === "extend") {

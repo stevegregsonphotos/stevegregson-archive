@@ -29,3 +29,12 @@
 .eventWho{color:#b08a4f;font-size:.75rem}
 .fileRow button{color:#b08a4f}
 .purgedNote{border-radius:.6rem}
+/* ---- Cancel transfer (20 Nov) ---- */
+.detailActions .dangerButton,.cancelledActions .dangerButton{border-color:#e7c3bb;color:#a1372a}
+.detailActions .dangerButton:hover,.cancelledActions .dangerButton:hover{background:#fbefec}
+.cancelledNote{display:flex;flex-wrap:wrap;align-items:center;gap:.4rem 1rem;margin:0 0 1.2rem;border:1px solid #e7c3bb;border-radius:.9rem;padding:.9rem 1.1rem;background:#fdf6f4;color:#5b2a22;font-size:.88rem}
+.cancelledNote strong{color:#a1372a}
+.cancelledActions{display:flex;gap:.5rem;margin-left:auto}
+.cancelledActions button{border:1px solid #e8e4de;border-radius:.55rem;padding:.5rem .85rem;background:#fff;color:#1e1919;cursor:pointer;font:inherit;font-size:.82rem;font-weight:600}
+.cancelledActions button:disabled{opacity:.45;cursor:not-allowed}
+.detailMessage{margin:0 0 1.2rem;color:#80602e;font-size:.85rem}

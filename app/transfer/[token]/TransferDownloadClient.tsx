@@ -147,6 +147,16 @@ export default function TransferDownloadClient({ initial, demo = false }: { init
   const [finished, setFinished] = useState(false);
   const [zipMode, setZipMode] = useState(false);
   const [showFiles, setShowFiles] = useState(initial.files.length <= 6);
+  // Polite "cancelled" popup: on opening a cancelled link, or if Steve
+  // cancels while this page is already open and a download is pressed.
+  const [cancelledOpen, setCancelledOpen] = useState(Boolean(initial.cancelled));
+
+  function showCancelled() {
+    setTransfer((current) => ({ ...current, available: false, cancelled: true, locked: false, files: [], fileCount: 0, totalSizeBytes: 0, message: "" }));
+    setProgress(null);
+    setCancelledOpen(true);
+    return new Error("This transfer has been cancelled.");
+  }
 
   const backgrounds = useMemo(() => transfer.backgroundUrls, [transfer.backgroundUrls]);
   const { slides, active, setIndex } = useSlideshow(backgrounds);
@@ -185,9 +195,11 @@ export default function TransferDownloadClient({ initial, demo = false }: { init
           body: JSON.stringify({ fileId, password, r: recipientCode(), partOfAll }),
         });
         const data = await response.json().catch(() => ({}));
+        if (data.code === "cancelled") throw showCancelled();
         if (!data.ok || !data.url) throw new Error(data.message || "Download unavailable.");
         return data.url as string;
       } catch (error) {
+        if (error instanceof Error && error.message === "This transfer has been cancelled.") throw error;
         if (attempt >= 2) {
           throw new Error(
             error instanceof TypeError
@@ -245,6 +257,7 @@ export default function TransferDownloadClient({ initial, demo = false }: { init
       ]);
 
       if (!links.ok) {
+        if (links.code === "cancelled") throw showCancelled();
         if (links.message) throw new Error(links.message);
         await downloadOneByOne(false);
         return;
@@ -326,8 +339,17 @@ export default function TransferDownloadClient({ initial, demo = false }: { init
 
           {!transfer.available ? (
             <div className={styles.notice}>
-              <p>This transfer has expired or is no longer available.</p>
-              <p>If you still need these files, just get in touch and Steve will send them again.</p>
+              {transfer.cancelled ? (
+                <>
+                  <p>This transfer has been cancelled.</p>
+                  <p>Please get in touch with Steve if you need these files.</p>
+                </>
+              ) : (
+                <>
+                  <p>This transfer has expired or is no longer available.</p>
+                  <p>If you still need these files, just get in touch and Steve will send them again.</p>
+                </>
+              )}
               <a className={styles.secondaryButton} href={"mailto:info@stevegregson.com?subject=" + encodeURIComponent("Files: " + transfer.title)}>
                 Email info@stevegregson.com
               </a>
@@ -450,6 +472,32 @@ export default function TransferDownloadClient({ initial, demo = false }: { init
           </div>
         ) : null}
       </footer>
+      {cancelledOpen ? (
+        <div className={styles.cancelBackdrop} role="presentation" onClick={() => setCancelledOpen(false)}>
+          <div
+            className={styles.cancelDialog}
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="cancelled-title"
+            aria-describedby="cancelled-text"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h2 id="cancelled-title">This transfer has been cancelled</h2>
+            <p id="cancelled-text">
+              Sorry, Steve has cancelled this transfer, so these files are no longer available to download.
+              Please get in touch with Steve if you have any questions or still need the files.
+            </p>
+            <div className={styles.cancelActions}>
+              <a className={styles.primaryButton} href={"mailto:info@stevegregson.com?subject=" + encodeURIComponent("Transfer: " + transfer.title)}>
+                Contact Steve
+              </a>
+              <button type="button" className={styles.secondaryButton} onClick={() => setCancelledOpen(false)} autoFocus>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }
