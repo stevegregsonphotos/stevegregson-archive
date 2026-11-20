@@ -3,7 +3,9 @@
 // Built on Steve's Mac by the Storage app (agent.zsh) with Apple's free
 // developer tools; no App Store or developer account needed. It only reads
 // the progress report the uploader writes (status.json) every 2 seconds and
-// never touches any files. "Upload now" starts the uploader straight away.
+// never touches any files. "Upload now" starts the uploader straight away;
+// "Pause uploads" frees the connection (e.g. to send a transfer) and the
+// uploads start again by themselves when the chosen time is up.
 
 import AppKit
 
@@ -14,6 +16,7 @@ let statusURL = supportURL.appendingPathComponent("status.json")
 let rootURL = home.appendingPathComponent(appName)
 let logURL = home.appendingPathComponent("Library/Logs/\(appName).log")
 let uploaderLabel = "com.stevegregson.storage"
+let agentURL = supportURL.appendingPathComponent("agent.zsh")
 
 struct Count {
     var files: Int = 0
@@ -36,6 +39,8 @@ struct Report {
     var onMac = Count()
     var nextClear: TimeInterval = 0
     var offloadDays = 2
+    var paused = false
+    var pausedUntil: TimeInterval = 0   // 0 = until resumed
     var server = "https://www.stevegregson.com"
 }
 
@@ -73,6 +78,8 @@ func readReport() -> Report? {
     r.onMac = count(json["onMac"])
     r.nextClear = TimeInterval(number(json["nextClear"]))
     r.offloadDays = Int(number(json["offloadDays"]))
+    r.paused = (json["paused"] as? Bool ?? false) || r.state == "paused"
+    r.pausedUntil = TimeInterval(number(json["pausedUntil"]))
     if let server = json["server"] as? String, !server.isEmpty { r.server = server }
     return r
 }
@@ -111,7 +118,7 @@ func dateText(_ time: TimeInterval) -> String {
 /// What's shown inside the cloud: nothing, a green tick (all uploaded),
 /// a blue arrow up (uploading) or down (bringing back), or an orange "!".
 enum Badge: Equatable {
-    case plain, offline, tick, up, down, warning
+    case plain, offline, tick, up, down, warning, paused
 }
 
 /// The cloud is drawn in the menu bar's own colour (white or black, like the
@@ -135,6 +142,7 @@ func cloudIcon(_ badge: Badge) -> NSImage? {
     case .up: inside = ("arrow.up", .systemBlue)
     case .down: inside = ("arrow.down", .systemBlue)
     case .warning: inside = ("exclamationmark", .systemOrange)
+    case .paused: inside = ("pause.fill", .systemOrange)
     }
     guard let inside,
           let glyph = NSImage(systemSymbolName: inside.name, accessibilityDescription: nil)?
@@ -203,6 +211,8 @@ final class StatusController: NSObject, NSMenuDelegate {
         if let r = report {
             if stale {
                 badge = .warning
+            } else if r.paused {
+                badge = .paused
             } else if r.state == "offline" || r.state == "disconnected" {
                 badge = .offline
             } else if downloading {
@@ -233,6 +243,7 @@ final class StatusController: NSObject, NSMenuDelegate {
 
     func headline() -> String {
         guard let r = report else { return "No upload report yet" }
+        if r.paused && !stale { return "Uploads paused" }
         if r.state == "offline" { return "Can't reach Storage (offline?)" }
         if r.state == "disconnected" { return "This Mac is disconnected in Backstage" }
         if stale { return "Uploader hasn't checked in since \(dateText(r.updated))" }
@@ -269,7 +280,13 @@ final class StatusController: NSObject, NSMenuDelegate {
         bold.isEnabled = false
         menu.addItem(bold)
 
-        if let r = report {
+        if let r = report, r.paused, !stale {
+            info(pauseEndText(r.pausedUntil))
+            if r.waiting > 0 { info("\(plural(r.waiting, "file")) waiting to upload") }
+            menu.addItem(.separator())
+            action("Resume uploads now", #selector(resumeNow))
+            pauseSubmenu("Pause for longer")
+        } else if let r = report {
             if downloading {
                 info("\(r.downDone.files) of \(r.down.files) brought back · \(size(r.downDone.bytes)) of \(size(r.down.bytes))")
             }
@@ -306,12 +323,64 @@ final class StatusController: NSObject, NSMenuDelegate {
         }
 
         menu.addItem(.separator())
-        action("Upload now", #selector(uploadNow))
+        if !(report?.paused ?? false) || stale {
+            pauseSubmenu("Pause uploads")
+            action("Upload now", #selector(uploadNow))
+        }
         action("Open Storage folder", #selector(openFolder))
         action("Open Storage in Backstage", #selector(openBackstage))
         action("Show upload log", #selector(openLog))
         menu.addItem(.separator())
         action("Hide this icon", #selector(quit))
+    }
+
+    /// "Starts again at 13:56" / "Starts again Sat at 08:00" / "Until you resume".
+    func pauseEndText(_ until: TimeInterval) -> String {
+        if until <= 0 { return "Until you resume them" }
+        let date = Date(timeIntervalSince1970: until)
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_GB")
+        formatter.dateFormat = Calendar.current.isDateInToday(date) ? "'Starts again at' HH:mm" : "'Starts again' EEE 'at' HH:mm"
+        return formatter.string(from: date)
+    }
+
+    func pauseSubmenu(_ title: String) {
+        let parent = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+        let sub = NSMenu()
+        sub.autoenablesItems = false
+        let now = Date()
+        var morning = Calendar.current.date(bySettingHour: 8, minute: 0, second: 0, of: now) ?? now
+        if morning <= now { morning = Calendar.current.date(byAdding: .day, value: 1, to: morning) ?? morning }
+        let choices: [(String, TimeInterval)] = [
+            ("For 1 hour", now.addingTimeInterval(3600).timeIntervalSince1970),
+            ("For 3 hours", now.addingTimeInterval(3 * 3600).timeIntervalSince1970),
+            ("Until tomorrow morning (08:00)", morning.timeIntervalSince1970),
+            ("Until I resume", 0),
+        ]
+        for (text, until) in choices {
+            let entry = NSMenuItem(title: text, action: #selector(pauseChosen(_:)), keyEquivalent: "")
+            entry.target = self
+            entry.representedObject = NSNumber(value: Int64(until))
+            sub.addItem(entry)
+        }
+        parent.submenu = sub
+        menu.addItem(parent)
+    }
+
+    func runAgent(_ arguments: [String]) {
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/bin/zsh")
+        task.arguments = [agentURL.path] + arguments
+        try? task.run()
+    }
+
+    @objc func pauseChosen(_ sender: NSMenuItem) {
+        let until = (sender.representedObject as? NSNumber)?.int64Value ?? 0
+        runAgent(["--pause-until", String(until)])
+    }
+
+    @objc func resumeNow() {
+        runAgent(["--resume"])
     }
 
     func menuNeedsUpdate(_ menu: NSMenu) {

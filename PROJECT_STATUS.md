@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 19 November 2026, 09:25 (London)
+Last updated: 20 November 2026, 13:30 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -118,6 +118,40 @@ cost an extra Vercel build.
 - **X (Twitter) removed — LIVE 1 Nov:** taken out of the site's hidden profile lists (`SAME_AS` in `app/layout.tsx` and `/llms.txt`), and from the Google Business Profile social links (Google review pending). Steve doesn't use X and can't log in; don't add it back. Went live together with the three 29 Oct items below (People search, Mac folder fix, Storage folder Download), so those are LIVE too.
 
 ## Waiting / in progress
+
+- **LIVE 20 Nov ~13:30: Pause uploads + faster Transfers when the tab is
+  in the background** (Steve: Mac uploads hogged the line so transfers
+  failed/crawled; 1.1 GB transfer 34% in 11 min ≈ 0.5 MB/s vs ~10 MB/s line).
+  (1) **Transfers/Storage browser uploads** now run in a dedicated worker
+  (`public/transfer-upload-worker.js`, 6 PUTs at once, progress ≤4/s;
+  `uploadQueue` in `lib/transfers/upload-client.ts` signs the next batch
+  ahead, commits batches in order while later ones upload, re-signs a
+  file after 2 failed tries, max 4; holds a Web Lock). Old in-page path
+  (3 at once) kept as fallback if the worker won't start. Cause: browsers
+  throttle hidden tabs' page code, stretching the gap between files.
+  Tested with a fake storage server in Chromium (57 files, failures,
+  fallback) — not yet timed on Steve's real line/Safari.
+  (2) **Pause** (`agent.zsh --pause-until <epoch|0>` / `--resume`):
+  writes `paused` in the support folder, stops the run + this app's curls,
+  kickstarts a run that reports state `paused` (+ `pausedUntil`, waiting
+  count) and starts `--pause-watch` (own session via perl setsid; every
+  60 s: time up → resume; `api/mac` `pause-check` → Backstage Resume; keeps
+  status.json fresh). Hourly runs also respect/expire it. Menu bar (MB_VERSION
+  6, NOT compiled here — check log for "Menu bar icon" after update):
+  Pause uploads › 1 h / 3 h / until 08:00 / until I resume; paused = orange
+  pause badge, "Resume uploads now", "Pause for longer". Backstage › Storage ›
+  Mac app shows "Uploads paused until …" + **Resume uploads now**
+  (`mac-resume` → `mac_devices.resume_requested_at`, cleared once the Mac
+  isn't paused). DB stays awake while paused (1 call/min). Rehearsed on
+  Linux with shims + fake server: pause, paused run, Backstage resume,
+  timed expiry, manual resume. Steve paused by hand 12:49 with the Terminal
+  `launchctl bootout` command: he must run
+  `launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.stevegregson.storage.plist`
+  (or the Mac's next restart) to get the uploader — and this update — back.
+- **20 Nov: Web exports too big.** Recent Web JPEGs are near-max quality:
+  Reefer Madness (GSA) 3000×2000 ~2.8 MB, Frozen 2048px ~1.8 MB. Told Steve:
+  Lightroom Web preset Quality 75–80, long edge 2048, 72 ppi, Screen/Standard
+  sharpening, sRGB (~0.4–0.7 MB). Full preset unchanged.
 
 - **LIVE 19 Nov ~09:25: Download photos on Productions › Edit**
   (Steve OK'd mockup; a director asked for a show's website photos). Gold

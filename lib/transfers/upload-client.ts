@@ -100,16 +100,207 @@ async function signFiles(transferId: string, items: QueuedFile[]) {
   return signed.jobs;
 }
 
+type Sign<J> = (items: QueuedFile[]) => Promise<J[]>;
+type AfterBatch<J> = (jobs: J[]) => Promise<void>;
+type OnProgress = (progress: UploadProgress) => void;
+
+const WORKER_URL = "/transfer-upload-worker.js";
+
+/** Starts the background upload worker, or returns null if this browser can't. */
+async function startUploadWorker(): Promise<Worker | null> {
+  if (typeof Worker === "undefined") return null;
+  let worker: Worker;
+  try {
+    worker = new Worker(WORKER_URL);
+  } catch {
+    return null;
+  }
+  const ok = await new Promise<boolean>((resolve) => {
+    const timer = setTimeout(() => resolve(false), 4000);
+    worker.onmessage = (event) => {
+      if (event.data?.type === "pong") { clearTimeout(timer); resolve(true); }
+    };
+    worker.onerror = () => { clearTimeout(timer); resolve(false); };
+    worker.postMessage({ type: "ping" });
+  });
+  if (!ok) { worker.terminate(); return null; }
+  return worker;
+}
+
+/** Holding a Web Lock stops Chrome from freezing the tab while uploading. */
+function holdTabAwake<T>(work: () => Promise<T>): Promise<T> {
+  const locks = (typeof navigator !== "undefined" ? (navigator as Navigator & { locks?: LockManager }).locks : undefined);
+  if (!locks?.request) return work();
+  return locks.request("stevegregson-upload-" + Math.random().toString(36).slice(2), () => work()) as Promise<T>;
+}
+
 /**
- * Uploads every queued file: 3 at a time, with live byte progress and up to 3
- * attempts per file (with a fresh upload link on retry). `sign` gets upload
- * links for a batch of up to 20; `afterBatch` runs once each batch is up.
+ * Uploads every queued file with live byte progress. Sending happens in a
+ * background worker (6 at a time) so it keeps full speed when the tab isn't
+ * in front; the next batch of upload links is signed while the current one
+ * uploads. `sign` gets links for a batch of up to 20; `afterBatch` runs once
+ * each batch is up, in order. Falls back to uploading from the page itself.
  */
 export async function uploadQueue<J extends { uploadUrl: string }>(
   queue: QueuedFile[],
-  sign: (items: QueuedFile[]) => Promise<J[]>,
-  afterBatch: (jobs: J[]) => Promise<void>,
-  onProgress: (progress: UploadProgress) => void,
+  sign: Sign<J>,
+  afterBatch: AfterBatch<J>,
+  onProgress: OnProgress,
+) {
+  if (!queue.length) return;
+  return holdTabAwake(async () => {
+    const worker = await startUploadWorker();
+    if (!worker) return uploadQueueInPage(queue, sign, afterBatch, onProgress);
+    try {
+      return await uploadQueueWithWorker(queue, sign, afterBatch, onProgress, worker);
+    } finally {
+      worker.terminate();
+    }
+  });
+}
+
+const WORKER_ROUNDS = 2; // each round = 2 tries in the worker; fresh link between rounds
+
+function uploadQueueWithWorker<J extends { uploadUrl: string }>(
+  queue: QueuedFile[],
+  sign: Sign<J>,
+  afterBatch: AfterBatch<J>,
+  onProgress: OnProgress,
+  worker: Worker,
+) {
+  const totalBytes = queue.reduce((sum, item) => sum + item.file.size, 0);
+  const loaded = new Map<number, number>();
+  const batches = new Map<number, { jobs: J[]; left: number }>();
+  const rounds = new Map<number, number>();
+  let doneFiles = 0;
+  let nextToSign = 0;
+  let nextToCommit = 0;
+  let handedOver = 0;
+  let signing = false;
+  let failed = false;
+  let commitChain = Promise.resolve();
+
+  return new Promise<void>((resolve, reject) => {
+    const fail = (error: unknown) => {
+      if (failed) return;
+      failed = true;
+      reject(error instanceof Error ? error : new Error(String(error)));
+    };
+
+    const report = () => onProgress({
+      doneFiles,
+      totalFiles: queue.length,
+      sentBytes: Array.from(loaded.values()).reduce((a, b) => a + b, 0),
+      totalBytes,
+      current: doneFiles < queue.length ? queue[doneFiles].file.name : "",
+    });
+
+    const hand = (start: number, items: QueuedFile[], jobs: J[]) => {
+      handedOver += items.length;
+      worker.postMessage({
+        type: "jobs",
+        jobs: items.map((item, i) => ({ slot: start + i, url: jobs[i].uploadUrl, file: item.file })),
+      });
+    };
+
+    // Keep about two batches waiting in the worker so it never runs dry.
+    const feed = async () => {
+      if (signing || failed) return;
+      signing = true;
+      try {
+        while (!failed && nextToSign < queue.length && handedOver < BATCH_SIZE * 2) {
+          const start = nextToSign;
+          const items = queue.slice(start, start + BATCH_SIZE);
+          nextToSign += items.length;
+          const jobs = await sign(items);
+          batches.set(start, { jobs, left: items.length });
+          hand(start, items, jobs);
+        }
+      } catch (error) {
+        fail(error);
+      } finally {
+        signing = false;
+      }
+    };
+
+    // Save finished batches in order, while later batches keep uploading.
+    const commitReady = () => {
+      for (;;) {
+        const batch = batches.get(nextToCommit);
+        if (!batch || batch.left > 0) break;
+        batches.delete(nextToCommit);
+        nextToCommit += batch.jobs.length;
+        const last = nextToCommit >= queue.length;
+        commitChain = commitChain
+          .then(() => (failed ? undefined : afterBatch(batch.jobs)))
+          .then(() => {
+            if (last && !failed) {
+              loaded.clear();
+              loaded.set(-1, totalBytes);
+              report();
+              resolve();
+            }
+          })
+          .catch(fail);
+      }
+    };
+
+    const batchStart = (slot: number) => slot - (slot % BATCH_SIZE);
+
+    worker.onmessage = (event) => {
+      if (failed) return;
+      const message = event.data || {};
+      if (message.type === "progress") {
+        for (const [slot, bytes] of message.loaded as [number, number][]) loaded.set(slot, bytes);
+        report();
+      } else if (message.type === "done") {
+        const slot = message.slot as number;
+        loaded.set(slot, queue[slot].file.size);
+        doneFiles += 1;
+        handedOver -= 1;
+        const batch = batches.get(batchStart(slot));
+        if (batch) batch.left -= 1;
+        report();
+        commitReady();
+        void feed();
+      } else if (message.type === "failed") {
+        const slot = message.slot as number;
+        const reason = String(message.reason || "unknown");
+        handedOver -= 1;
+        loaded.set(slot, 0);
+        const round = (rounds.get(slot) || 1) + 1;
+        rounds.set(slot, round);
+        const name = queue[slot].file.name;
+        if (round > WORKER_ROUNDS) {
+          fail(new Error(
+            reason === "network"
+              ? "Couldn't reach file storage while uploading " + name + ". Check your internet connection (or the storage CORS settings) and try again."
+              : "Upload failed for " + name + " (" + reason + ") after " + WORKER_ROUNDS * 2 + " tries.",
+          ));
+          return;
+        }
+        // A fresh link in case the old one expired or was rejected.
+        sign([queue[slot]]).then((jobs) => {
+          if (failed) return;
+          const batch = batches.get(batchStart(slot));
+          if (batch) batch.jobs[slot - batchStart(slot)] = jobs[0];
+          hand(slot, [queue[slot]], jobs);
+        }).catch(fail);
+      }
+    };
+    worker.onerror = () => fail(new Error("The background uploader stopped unexpectedly. Please try again."));
+
+    report();
+    void feed();
+  });
+}
+
+/** The original in-page uploader: 3 at a time. Used if a worker can't start. */
+async function uploadQueueInPage<J extends { uploadUrl: string }>(
+  queue: QueuedFile[],
+  sign: Sign<J>,
+  afterBatch: AfterBatch<J>,
+  onProgress: OnProgress,
 ) {
   const totalBytes = queue.reduce((sum, item) => sum + item.file.size, 0);
   const loaded = new Map<number, number>();

@@ -25,6 +25,8 @@ function ensureSchema() {
     // The Mac's latest progress report (what's uploading, what's left).
     await sql.query("ALTER TABLE mac_devices ADD COLUMN IF NOT EXISTS status jsonb");
     await sql.query("ALTER TABLE mac_devices ADD COLUMN IF NOT EXISTS status_at timestamptz");
+    // Set when Steve presses Resume in Backstage; the paused Mac picks it up.
+    await sql.query("ALTER TABLE mac_devices ADD COLUMN IF NOT EXISTS resume_requested_at timestamptz");
   })();
   return schemaPromise;
 }
@@ -161,6 +163,9 @@ export type MacStatus = {
   onMac: { files: number; bytes: number };
   nextClear: number;
   offloadDays: number;
+  paused: boolean;
+  /** When a pause ends (epoch seconds); 0 = until resumed. */
+  pausedUntil: number;
 };
 
 const num = (value: unknown) => (typeof value === "number" && Number.isFinite(value) ? Math.max(0, Math.round(value)) : 0);
@@ -174,7 +179,7 @@ const shortText = (value: unknown, max = 500) => (typeof value === "string" ? va
 export function cleanMacStatus(input: unknown): MacStatus | undefined {
   if (!input || typeof input !== "object") return undefined;
   const v = input as Record<string, unknown>;
-  const states = ["checking", "uploading", "downloading", "waiting", "tidying", "idle", "offline", "disconnected"];
+  const states = ["checking", "uploading", "downloading", "waiting", "tidying", "idle", "offline", "disconnected", "paused"];
   const state = shortText(v.state, 20);
   return {
     state: states.includes(state) ? state : "idle",
@@ -197,14 +202,17 @@ export function cleanMacStatus(input: unknown): MacStatus | undefined {
     onMac: pair(v.onMac),
     nextClear: num(v.nextClear),
     offloadDays: num(v.offloadDays),
+    paused: v.paused === true || state === "paused",
+    pausedUntil: num(v.pausedUntil),
   };
 }
 
 export async function saveMacStatus(deviceId: string, status: MacStatus) {
   await ensureSchema();
   await getSql().query(
-    "UPDATE mac_devices SET status=$1::jsonb, status_at=now() WHERE id=$2 AND environment=$3",
-    [JSON.stringify(status), deviceId, environment()],
+    // A Resume pressed earlier is forgotten once the Mac is no longer paused.
+    "UPDATE mac_devices SET status=$1::jsonb, status_at=now(), resume_requested_at=CASE WHEN $4::boolean THEN resume_requested_at ELSE NULL END WHERE id=$2 AND environment=$3",
+    [JSON.stringify(status), deviceId, environment(), status.paused],
   );
 }
 
@@ -220,4 +228,28 @@ export async function listMacStatuses() {
     receivedAt: new Date(row.status_at).toISOString(),
     status: row.status,
   }));
+}
+
+/** Backstage › Resume: the paused Mac sees this within a minute. */
+export async function requestMacResume(deviceId: string) {
+  await ensureSchema();
+  await getSql().query(
+    "UPDATE mac_devices SET resume_requested_at=now() WHERE id=$1 AND environment=$2",
+    [deviceId, environment()],
+  );
+}
+
+/**
+ * Called every minute by a paused Mac. Returns true (once) if Resume was
+ * pressed in Backstage, and marks the Mac as still checking in.
+ */
+export async function takeMacResume(deviceId: string) {
+  await ensureSchema();
+  const rows = await getSql().query(
+    "WITH old AS (SELECT resume_requested_at FROM mac_devices WHERE id=$1 AND environment=$2 FOR UPDATE) " +
+      "UPDATE mac_devices m SET status_at=now(), resume_requested_at=NULL FROM old " +
+      "WHERE m.id=$1 AND m.environment=$2 RETURNING (old.resume_requested_at IS NOT NULL) AS resume",
+    [deviceId, environment()],
+  );
+  return Boolean((rows as Array<{ resume: boolean }>)[0]?.resume);
 }

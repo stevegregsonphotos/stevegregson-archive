@@ -23,6 +23,8 @@ type Status = {
   onMac: Pair;
   nextClear: number;
   offloadDays: number;
+  paused?: boolean;
+  pausedUntil?: number;
 };
 type Mac = { id: string; name: string; receivedAt: string; status: Status };
 
@@ -65,6 +67,14 @@ function dateText(epoch: number) {
   return new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/London" }).format(new Date(epoch * 1000));
 }
 
+function pauseEnd(epoch: number, now: number) {
+  if (!epoch) return "until you resume";
+  const date = new Date(epoch * 1000);
+  const sameDay = date.toLocaleDateString("en-GB", { timeZone: "Europe/London" }) === new Date(now || Date.now()).toLocaleDateString("en-GB", { timeZone: "Europe/London" });
+  const time = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/London" }).format(date);
+  return "until " + (sameDay ? time : new Intl.DateTimeFormat("en-GB", { weekday: "short", timeZone: "Europe/London" }).format(date) + " " + time);
+}
+
 function shortPath(path: string) {
   return path.split("/").slice(-2).join(" / ");
 }
@@ -79,6 +89,9 @@ function describe(mac: Mac, now: number) {
   if (stale) {
     headline = "Mac asleep or offline";
     tone = "quiet";
+  } else if (s.state === "paused") {
+    headline = "Uploads paused " + pauseEnd(s.pausedUntil || 0, now);
+    tone = "warn";
   } else if (s.state === "offline") {
     headline = "Mac can't reach Storage";
     tone = "warn";
@@ -101,8 +114,9 @@ function describe(mac: Mac, now: number) {
     headline = plural(s.failed, "file") + " to retry";
     tone = "warn";
   }
+  const paused = !stale && s.state === "paused";
   const percent = uploading && s.total.bytes > 0 ? Math.min(100, Math.round((s.done.bytes / s.total.bytes) * 100)) : null;
-  return { stale, left, uploading, headline, tone, percent };
+  return { stale, left, uploading, paused, headline, tone, percent };
 }
 
 async function fetchProgress(): Promise<Mac[]> {
@@ -166,6 +180,33 @@ export function MacProgressLine() {
   );
 }
 
+function ResumeButton({ id }: { id: string }) {
+  const [state, setState] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  async function resume() {
+    setState("sending");
+    try {
+      const response = await fetch("/api/admin/storage", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "mac-resume", id }),
+      });
+      const data = await response.json().catch(() => ({ ok: false }));
+      setState(data.ok ? "sent" : "error");
+    } catch {
+      setState("error");
+    }
+  }
+  if (state === "sent") return <p className={styles.note}>Starting again: your Mac picks this up within a minute.</p>;
+  return (
+    <div className={styles.resumeRow}>
+      <button type="button" className={styles.resume} onClick={() => void resume()} disabled={state === "sending"}>
+        {state === "sending" ? "Sending…" : "Resume uploads now"}
+      </button>
+      {state === "error" ? <span className={styles.note}>Couldn&rsquo;t send that. Try again.</span> : null}
+    </div>
+  );
+}
+
 /** The full panel on Backstage › Storage › Mac app. */
 export function MacProgressPanel() {
   const { macs, now } = useMacProgress();
@@ -188,6 +229,16 @@ export function MacProgressPanel() {
               </div>
             </div>
 
+            {d.paused ? (
+              <>
+                <p className={styles.numbers}>
+                  {s.waiting > 0 ? plural(s.waiting, "file") + " waiting to upload. " : ""}
+                  Paused from the menu bar icon, so transfers get the whole connection.
+                </p>
+                <ResumeButton id={mac.id} />
+              </>
+            ) : null}
+
             {d.percent !== null ? (
               <>
                 <div className={styles.bar} role="progressbar" aria-valuenow={d.percent} aria-valuemin={0} aria-valuemax={100}>
@@ -206,7 +257,7 @@ export function MacProgressPanel() {
               </div>
             ) : null}
 
-            {s.waiting > 0 && !d.stale ? <p className={styles.note}>{plural(s.waiting, "file")} still copying in.</p> : null}
+            {s.waiting > 0 && !d.stale && !d.paused ? <p className={styles.note}>{plural(s.waiting, "file")} still copying in.</p> : null}
             {s.failed > 0 ? <p className={styles.note}>{plural(s.failed, "file")} didn&rsquo;t upload last time and will be retried.</p> : null}
             {s.tooBig > 0 ? <p className={styles.note}>{plural(s.tooBig, "file")} over 5 GB can&rsquo;t be uploaded yet.</p> : null}
 

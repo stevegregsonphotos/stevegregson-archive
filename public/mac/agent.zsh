@@ -17,6 +17,7 @@
 # Nothing in Storage is ever deleted from here.
 
 emulate -L zsh
+SCRIPT_PATH=${0:A}   # this file (inside functions $0 is the function name)
 setopt pipefail no_nomatch
 
 APP_NAME="Steve Gregson Storage"
@@ -95,6 +96,93 @@ if [[ "$1" == "--request" ]]; then
   exit 0
 fi
 
+# ---- Pause / resume (menu bar icon, Backstage, or Terminal) -------------
+# `agent.zsh --pause-until <epoch>` (0 = until resumed) stops uploads straight
+# away so the connection is free (e.g. to send a transfer); `--resume` starts
+# them again. While paused, a small watcher (`--pause-watch`) checks every
+# minute whether the time is up or Resume was pressed in Backstage.
+PAUSE_FILE="$SUPPORT/paused"
+WATCH_PID="$SUPPORT/pause-watch.pid"
+UPLOADER="gui/$(id -u)/com.stevegregson.storage"
+
+pause_until() { [[ -f "$PAUSE_FILE" ]] && { local u; u=$(<"$PAUSE_FILE"); [[ "$u" == <-> ]] && print -r -- "$u" || print 0; } }
+# True while paused (removes an expired pause).
+is_paused() {
+  [[ -f "$PAUSE_FILE" ]] || return 1
+  local u; u=$(pause_until)
+  if (( u > 0 && u <= $(date +%s) )); then
+    rm -f "$PAUSE_FILE"; log "Pause ended; uploads starting again."
+    return 1
+  fi
+  return 0
+}
+stop_current_run() {
+  launchctl kill TERM "$UPLOADER" >/dev/null 2>&1
+  # Uploads/downloads in progress (only this app's curl uses this time limit).
+  pkill -f -- "--max-time 21600" >/dev/null 2>&1
+  sleep 1
+  rmdir "$SUPPORT/lock" 2>/dev/null
+}
+pause_text() {
+  local u=$1
+  (( u == 0 )) && { print "until you resume"; return; }
+  if [[ "$(date -r "$u" +%F)" == "$(date +%F)" ]]; then print "until $(date -r "$u" +%H:%M)"
+  else print "until $(date -r "$u" '+%a %H:%M')"; fi
+}
+
+if [[ "$1" == "--pause-until" ]]; then
+  u="${2:-0}"; [[ "$u" == <-> ]] || u=0
+  print -r -- "$u" > "$PAUSE_FILE"
+  log "Uploads paused $(pause_text $u)."
+  stop_current_run
+  # A fresh run sees the pause, reports it and starts the watcher.
+  launchctl kickstart "$UPLOADER" >/dev/null 2>&1
+  notify "Uploads paused $(pause_text $u). Anything half-sent will be sent again when they restart."
+  exit 0
+fi
+if [[ "$1" == "--resume" ]]; then
+  if [[ -f "$PAUSE_FILE" ]]; then
+    rm -f "$PAUSE_FILE"
+    log "Uploads resumed${2:+ ($2)}."
+    notify "Uploads started again${2:+ ($2)}."
+  fi
+  [[ -f "$WATCH_PID" ]] && { kill "$(<"$WATCH_PID")" 2>/dev/null; rm -f "$WATCH_PID"; }
+  launchctl kickstart "$UPLOADER" >/dev/null 2>&1
+  exit 0
+fi
+if [[ "$1" == "--pause-watch" ]]; then
+  setopt extended_glob
+  print -r -- $$ > "$WATCH_PID"
+  trap '[[ "$(<"$WATCH_PID" 2>/dev/null)" == "$$" ]] && rm -f "$WATCH_PID"' EXIT
+  tok=$(token)
+  while [[ -f "$PAUSE_FILE" ]]; do
+    if ! is_paused; then
+      launchctl kickstart "$UPLOADER" >/dev/null 2>&1
+      notify "Pause over: uploads started again."
+      exit 0
+    fi
+    # Resume pressed in Backstage? (also tells Backstage the Mac is still here)
+    if [[ -n "$SERVER" && -n "$tok" ]]; then
+      reply=$(curl -sS --max-time 20 -H "Authorization: Bearer $tok" -H "Content-Type: application/json" \
+        -d '{"action":"pause-check"}' "$SERVER/api/mac" 2>/dev/null)
+      if [[ "$reply" == *'"resume":true'* ]]; then
+        rm -f "$PAUSE_FILE"; log "Uploads resumed (from Backstage)."
+        notify "Uploads started again (from Backstage)."
+        launchctl kickstart "$UPLOADER" >/dev/null 2>&1
+        exit 0
+      fi
+    fi
+    # Keep the menu bar icon's report fresh so it doesn't look stuck.
+    if [[ -f "$SUPPORT/status.json" ]]; then
+      s=$(<"$SUPPORT/status.json")
+      s=${s/\"updated\":[0-9]##/"\"updated\":$(date +%s)"}
+      print -r -- "$s" > "$SUPPORT/status.json.tmp" && mv -f "$SUPPORT/status.json.tmp" "$SUPPORT/status.json"
+    fi
+    sleep ${SGS_WATCH_SECONDS:-60}
+  done
+  exit 0
+fi
+
 # One run at a time (the Dock icon can start a run while one is going).
 if ! mkdir "$LOCK" 2>/dev/null; then
   if [[ -n $(find "$LOCK" -maxdepth 0 -mmin +240 2>/dev/null) ]]; then
@@ -154,6 +242,7 @@ down_files=0; down_bytes=0; down_f0=0; down_b0=0   # "Bring back" progress
 uploaded=0; uploaded_bytes=0; freed=0; freed_bytes=0; failed=0; pending=0
 onmac_files=0; onmac_bytes=0; next_clear=0
 last_status_write=0; last_status_send=0
+PAUSED=false; PAUSED_UNTIL=0
 typeset -a too_big RECENT        # RECENT: "epoch<TAB>path", newest last
 typeset -A JOB_REL
 
@@ -185,6 +274,7 @@ write_status() {
   body+=",\"checked\":$checked,\"failed\":$failed,\"waiting\":${pending:-0},\"tooBig\":${#too_big},\"current\":[$cur],\"recent\":[$rec]"
   body+=",\"onMac\":{\"files\":$onmac_files,\"bytes\":$onmac_bytes},\"nextClear\":$next_clear,\"offloadDays\":$OFFLOAD_DAYS"
   body+=",\"down\":{\"files\":$down_files,\"bytes\":$down_bytes,\"doneFiles\":$(( fetched - down_f0 )),\"doneBytes\":$(( fetched_bytes - down_b0 ))}"
+  body+=",\"paused\":$PAUSED,\"pausedUntil\":$PAUSED_UNTIL"
   body+=",\"freed\":{\"files\":$freed,\"bytes\":$freed_bytes},\"server\":\"$(json_escape "$SERVER")\"}"
   print -r -- "$body" > "$STATUS_FILE.tmp" && mv -f "$STATUS_FILE.tmp" "$STATUS_FILE"
   if [[ "$1" == now ]] || (( now - last_status_send >= 15 )); then
@@ -399,7 +489,7 @@ install_quick_actions() {
 # Built here from StatusBar.swift with Apple's free developer tools (the
 # same ones git uses), so there's nothing to buy or sign. It just reads
 # status.json. Bump MB_VERSION to rebuild it after StatusBar.swift changes.
-MB_VERSION=5
+MB_VERSION=6
 MB_LABEL="com.stevegregson.storage.menubar"
 MB_APP="$HOME/Applications/Steve Gregson Storage Progress.app"
 install_menubar() {
@@ -530,6 +620,33 @@ done < <(find "$ROOT" -mindepth 1 -type d ! -name '.*' ! -path '*/.*' -print0 2>
 fetched=0
 fetched_bytes=0
 onmac_stats
+
+# ---- Paused? Report it, keep the watcher going, upload nothing ----------
+start_pause_watch() {
+  [[ -f "$WATCH_PID" ]] && kill -0 "$(<"$WATCH_PID")" 2>/dev/null && return
+  # In its own session, so it outlives this run (launchd ends the run's
+  # whole process group when the run finishes).
+  if [[ -n "$SGS_WATCH_INLINE" ]]; then
+    zsh "$SCRIPT_PATH" --pause-watch >/dev/null 2>&1 &!
+  else
+    /usr/bin/perl -MPOSIX -e 'POSIX::setsid(); exec @ARGV' /bin/zsh "$SCRIPT_PATH" --pause-watch </dev/null >/dev/null 2>&1 &!
+  fi
+}
+if is_paused; then
+  PAUSED=true; PAUSED_UNTIL=$(pause_until)
+  STATUS_STATE="paused"
+  # How many files are waiting (quick: sizes/dates only, nothing uploaded).
+  while IFS= read -r -d '' file; do
+    rel="${file#$ROOT/}"
+    zstat -A st -- "$file" 2>/dev/null || continue
+    [[ -n "${S_SIZE[$rel]}" && "${S_SIZE[$rel]}" == "${st[8]}" && "${S_MTIME[$rel]}" == "${st[10]}" ]] && continue
+    (( pending++ ))
+  done < <(find "$ROOT" -type f ! -name '.*' ! -path '*/.*' ! -name 'Icon?' -print0 2>/dev/null)
+  write_status now
+  start_pause_watch
+  [[ -z "$SGS_NO_MENUBAR" ]] && install_menubar
+  exit 0
+fi
 
 # ---- 1. Upload new or changed files ------------------------------------
 # Each file is uploaded by its own background job (UPLOAD_JOBS at a time).

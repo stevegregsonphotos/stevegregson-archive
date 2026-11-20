@@ -15,6 +15,7 @@ import {
   getMacUpload,
   recordMacUpload,
   saveMacStatus,
+  takeMacResume,
 } from "@/lib/mac/repository";
 import { applyPairs, MAX_PAIRS_PER_APPLY, planDelete } from "@/lib/client-archive/operations";
 
@@ -88,6 +89,11 @@ export async function POST(request: Request) {
       if (!status) return json({ ok: false, message: "Invalid status." }, 400);
       await saveMacStatus(device.id, status);
       return json({ ok: true });
+    }
+
+    if (action === "pause-check") {
+      // A paused Mac asks every minute whether Resume was pressed in Backstage.
+      return json({ ok: true, resume: await takeMacResume(device.id) });
     }
 
     if (action === "folders") {
