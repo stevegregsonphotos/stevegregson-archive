@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 20 November 2026, 20:30 (London)
+Last updated: 21 November 2026, 12:45 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -118,6 +118,30 @@ cost an extra Vercel build.
 - **X (Twitter) removed — LIVE 1 Nov:** taken out of the site's hidden profile lists (`SAME_AS` in `app/layout.tsx` and `/llms.txt`), and from the Google Business Profile social links (Google review pending). Steve doesn't use X and can't log in; don't add it back. Went live together with the three 29 Oct items below (People search, Mac folder fix, Storage folder Download), so those are LIVE too.
 
 ## Waiting / in progress
+
+- **21 Nov: Godspell re-curated STRAIGHT FROM STORAGE (no Mac, no code
+  change).** Old page "Godspell" (static `content/productions/godspell.ts`,
+  18 photos, both casts) → two new imported pages "Godspell - Genesis
+  Company" (40, hero GODSPELL-Genesis-394) and "Godspell - Revelation
+  Company" (40, hero GODSPELL-Revelation-378), Mountview, June 2026, credits
+  from godspell.ts, alt text per photo. Source: Storage
+  `MOUNTVIEW/GODSPELL - June 2026/Web` (797: Genesis 1–403, Revelation
+  1–394, many named `-2`; no duplicates). METHOD (reusable for any show in
+  Storage): in Chrome on Backstage, list the folder via
+  `/api/admin/storage?path=`, show 640px previews
+  (`/api/admin/storage/thumb?key=`) as contact sheets in the page, pick;
+  then on Curated import fetch the picked Web files (storage `download`
+  action → presigned URL), build `Collection/<Production>/final-selection.json`
+  + `metadata-research.json` + `metadata-proposed.txt` +
+  `selected-web-staging/NNN__NNNN__<name>.jpg` as File objects
+  (defineProperty `webkitRelativePath`), put them on the folder input via
+  DataTransfer + `change` event, then Import all ready (override
+  `window.confirm` first: native dialogs freeze the Chrome extension).
+  LIVE 21 Nov ~12:45: imported 2, failed 0; pages
+  `/productions/godspell-genesis-company-mountview-june-2026` and
+  `…-revelation-company-…` (hero + 39 each, credits + alts checked).
+  Steve to: check both pages, then delete the old 18-photo "Godspell"
+  (`/productions/godspell`, listed in Backstage › Productions) himself.
 
 - **LIVE 20 Nov ~20:30: stuck "Still updating from your Mac" banner fixed.**
   After the 19:18 rename the banner + "371 files left" stayed for an hour
