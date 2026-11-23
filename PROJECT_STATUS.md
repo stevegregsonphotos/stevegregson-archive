@@ -131,6 +131,15 @@ cost an extra Vercel build.
   (`normaliseItems` cap). Now `planInBatches` in StorageBrowser plans +
   applies 100 items at a time with "Moving N of M" progress (move and
   delete); a retry after a stop skips items already moved.
+  **14:50 test branch, waiting go live:** (1) moving 714 was very slow and
+  seemed to stall after 100: `planMove`/`planDelete` checked each file one
+  after another (~4 B2 calls each + a folder-marker PUT per file). Now 8 at
+  a time (`eachLimit`), marker once per folder; `applyPairs` 5 → 8 at once.
+  (2) Select all missed hundreds: it only took what had loaded so far
+  (rest of the folder arrives 200 at a time in the background). Now ticking
+  it while loading sets `wantAll` (ref + state): each arriving page is added
+  to the selection; bar says "still loading the rest (N in all)…" and
+  Move/Delete/Send wait until it's all there.
 
 - **21 Nov: Godspell re-curated STRAIGHT FROM STORAGE (no Mac, no code
   change).** Old page "Godspell" (static `content/productions/godspell.ts`,

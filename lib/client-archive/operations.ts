@@ -86,26 +86,50 @@ async function pairsFor(item: StorageItem, target: string): Promise<{ pairs: Mov
   };
 }
 
+/** Runs work over a list, a few at a time (storage calls are slow one by one). */
+async function eachLimit<T>(list: T[], limit: number, work: (item: T, index: number) => Promise<void>) {
+  let next = 0;
+  const worker = async () => {
+    while (next < list.length) {
+      const index = next++;
+      await work(list[index], index);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, list.length) }, worker));
+}
+
 export async function planMove(rawItems: unknown, rawDestination: unknown) {
   const items = normaliseItems(rawItems);
   const destination = clean(typeof rawDestination === "string" ? rawDestination : "");
   if (destination.split("/")[0] === TRASH_FOLDER) throw new Error("Invalid destination.");
-  const pairs: MovePair[] = [];
+  const toMove: StorageItem[] = [];
+  const targets = new Set<string>();
   for (const item of items) {
     if (item.kind === "folder" && (destination === item.path || destination.startsWith(item.path + "/"))) {
       throw new Error("A folder can't be moved inside itself.");
     }
     if (parentOf(item.path) === destination) continue;
     const target = join(destination, baseOf(item.path));
+    if (targets.has(target.toLowerCase())) throw new Error("Two items called \"" + baseOf(item.path) + "\" can't go in the same folder.");
+    targets.add(target.toLowerCase());
+    toMove.push(item);
+  }
+  // Check and plan 8 at a time; keep the original order in the result.
+  const planned: MovePair[][] = new Array(toMove.length);
+  await eachLimit(toMove, 8, async (item, index) => {
+    const target = join(destination, baseOf(item.path));
     if (await archivePathTaken(target)) {
       throw new Error("Something called \"" + baseOf(item.path) + "\" is already in that folder.");
     }
-    pairs.push(...(await pairsFor(item, target)).pairs);
-    await ensureArchiveFolderMarker(parentOf(item.path));
-    // Client shares follow the folder to its new home.
-    if (item.kind === "folder") await followFolder(item.path, target);
+    planned[index] = (await pairsFor(item, target)).pairs;
+  });
+  // Keep each emptied folder showing (once per folder, not once per file).
+  for (const parent of new Set(toMove.map((item) => parentOf(item.path)))) await ensureArchiveFolderMarker(parent);
+  // Client shares follow the folder to its new home.
+  for (const item of toMove) {
+    if (item.kind === "folder") await followFolder(item.path, join(destination, baseOf(item.path)));
   }
-  return pairs;
+  return planned.flat();
 }
 
 export async function planRename(rawItem: unknown, rawName: unknown) {
@@ -125,26 +149,26 @@ export async function planRename(rawItem: unknown, rawName: unknown) {
 /** Moves items into Deleted Files, one restorable entry per item. */
 export async function planDelete(rawItems: unknown) {
   const items = normaliseItems(rawItems);
-  const pairs: MovePair[] = [];
-  for (const item of items) {
+  const planned: MovePair[][] = new Array(items.length);
+  await eachLimit(items, 8, async (item, index) => {
     const id = crypto.randomUUID();
     const name = baseOf(item.path);
-    const planned = await pairsFor(item, join(TRASH_FOLDER, id, name));
+    const result = await pairsFor(item, join(TRASH_FOLDER, id, name));
     await addTrashEntry({
       id,
       name,
       kind: item.kind,
       originalParent: parentOf(item.path),
-      itemCount: planned.count,
-      sizeBytes: planned.bytes,
+      itemCount: result.count,
+      sizeBytes: result.bytes,
     });
-    await ensureArchiveFolderMarker(parentOf(item.path));
     // A shared folder in Deleted Files stops being available to the client
     // until it's restored (when its share comes back with it).
     if (item.kind === "folder") await followFolder(item.path, join(TRASH_FOLDER, id, name));
-    pairs.push(...planned.pairs);
-  }
-  return pairs;
+    planned[index] = result.pairs;
+  });
+  for (const parent of new Set(items.map((item) => parentOf(item.path)))) await ensureArchiveFolderMarker(parent);
+  return planned.flat();
 }
 
 function restoredName(name: string, kind: StorageItem["kind"], attempt: number) {
@@ -197,7 +221,7 @@ export async function applyPairs(rawPairs: unknown) {
       }
     }
   };
-  await Promise.all(Array.from({ length: Math.min(5, pairs.length) }, worker));
+  await Promise.all(Array.from({ length: Math.min(8, pairs.length) }, worker));
 
   await updateArchiveObjectKeys(pairs.map((pair) => ({ from: archiveKeyFor(pair.from), to: archiveKeyFor(pair.to) })));
   // The Mac app looks files up by path before freeing space, so keep it in step.

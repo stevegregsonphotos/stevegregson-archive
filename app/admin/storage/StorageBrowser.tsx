@@ -144,6 +144,11 @@ export default function StorageBrowser() {
   const [macBusy, setMacBusy] = useState<MacBusy | null>(null);
   const [busy, setBusy] = useState(false);
   const [selected, setSelected] = useState<Item[]>([]);
+  // "Select all" ticked while the rest of a big folder is still arriving:
+  // keep adding the new pages to the selection until it's all here.
+  const [wantAll, setWantAllState] = useState(false);
+  const wantAllRef = useRef(false);
+  const setWantAll = useCallback((value: boolean) => { wantAllRef.current = value; setWantAllState(value); }, []);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [preview, setPreview] = useState<number | null>(null);
   const [mover, setMover] = useState<{ items: Item[]; path: string; folders: Folder[]; loading: boolean } | null>(null);
@@ -179,6 +184,7 @@ export default function StorageBrowser() {
 
   const load = useCallback(async (path = "") => {
     setBusy(true);
+    setWantAll(false);
     try {
       // totals: the real number of files/folders in here, even before
       // every page has been loaded onto the screen.
@@ -208,15 +214,22 @@ export default function StorageBrowser() {
           const more: Listing = await fetchListing(path, cursor);
           all = { ...more, totals: current.totals, folders: [...all.folders, ...more.folders], files: [...all.files, ...more.files] };
           setListing((shown) => (shown.path === path ? all : shown));
+          if (wantAllRef.current) {
+            setSelected([
+              ...all.folders.map((f): Item => ({ kind: "folder", path: f.path, name: f.name })),
+              ...all.files.map((f): Item => ({ kind: "file", path: f.path, name: f.name, objectKey: f.objectKey })),
+            ]);
+          }
           cursor = more.nextCursor;
         }
       }
     } catch (error) {
       setMessage(errorText(error, "Could not load storage."));
     } finally {
+      setWantAll(false);
       setBusy(false);
     }
-  }, [refreshTree]);
+  }, [refreshTree, setWantAll]);
 
   const loadShared = useCallback(async () => {
     try {
@@ -625,8 +638,18 @@ export default function StorageBrowser() {
   const crumbs = listing.path ? listing.path.split("/") : [];
   const allSelected = files.length + folders.length > 0 && selected.length === files.length + folders.length;
 
+  // More of this folder is still loading in the background (≤3,000 items).
+  const stillLoading = !searchResults && Boolean(listing.nextCursor) && Boolean(listing.totals) &&
+    (listing.totals ? listing.totals.files + listing.totals.folders : 0) <= 3000;
+
   function toggleAll() {
-    setSelected(allSelected ? [] : [...folders.map(folderItem), ...files.map(fileItem)]);
+    if (allSelected || wantAll) {
+      setWantAll(false);
+      setSelected([]);
+      return;
+    }
+    setSelected([...folders.map(folderItem), ...files.map(fileItem)]);
+    if (stillLoading) setWantAll(true);
   }
 
   function itemMenu(item: Item, file?: FileItem) {
@@ -770,11 +793,14 @@ export default function StorageBrowser() {
             <div className={styles.subbar}>
               {selected.length > 0 ? (
                 <div className={styles.selectionBar}>
-                  <strong>{selected.length} selected</strong>
-                  <button type="button" disabled={busy} onClick={sendSelection}>Send as transfer</button>
-                  <button type="button" disabled={busy} onClick={() => void openMover(selected)}>Move</button>
-                  <button type="button" disabled={busy} onClick={() => void remove(selected)}>Delete</button>
-                  <button type="button" className={styles.clearSelection} onClick={() => setSelected([])}>Clear</button>
+                  <strong>
+                    {selected.length.toLocaleString("en-GB")} selected
+                    {wantAll && listing.totals ? " — still loading the rest (" + (listing.totals.files + listing.totals.folders).toLocaleString("en-GB") + " in all)…" : ""}
+                  </strong>
+                  <button type="button" disabled={busy || wantAll} onClick={sendSelection}>Send as transfer</button>
+                  <button type="button" disabled={busy || wantAll} onClick={() => void openMover(selected)}>Move</button>
+                  <button type="button" disabled={busy || wantAll} onClick={() => void remove(selected)}>Delete</button>
+                  <button type="button" className={styles.clearSelection} onClick={() => { setWantAll(false); setSelected([]); }}>Clear</button>
                 </div>
               ) : (
                 <span className={styles.countNote}>
@@ -855,7 +881,7 @@ export default function StorageBrowser() {
             <div className={styles.table}>
               <div className={styles.headRow + " " + styles.listCols}>
                 <span className={styles.checkCell}>
-                  <input type="checkbox" aria-label="Select all" checked={allSelected} onChange={toggleAll} />
+                  <input type="checkbox" aria-label="Select all" checked={allSelected || wantAll} onChange={toggleAll} />
                 </span>
                 <button type="button" className={styles.sortButton} onClick={() => sortBy("name")}>Name {sortMark("name")}</button>
                 <button type="button" className={styles.sortButton} onClick={() => sortBy("modified")}>Last modified {sortMark("modified")}</button>
