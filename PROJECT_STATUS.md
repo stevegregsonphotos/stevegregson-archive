@@ -131,7 +131,7 @@ cost an extra Vercel build.
   (`normaliseItems` cap). Now `planInBatches` in StorageBrowser plans +
   applies 100 items at a time with "Moving N of M" progress (move and
   delete); a retry after a stop skips items already moved.
-  **14:50 test branch, waiting go live:** (1) moving 714 was very slow and
+  **LIVE 23 Nov ~14:52:** (1) moving 714 was very slow and
   seemed to stall after 100: `planMove`/`planDelete` checked each file one
   after another (~4 B2 calls each + a folder-marker PUT per file). Now 8 at
   a time (`eachLimit`), marker once per folder; `applyPairs` 5 → 8 at once.
