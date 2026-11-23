@@ -379,6 +379,26 @@ export default function StorageBrowser() {
     }
   }
 
+  /**
+   * Moves/deletes a big selection in groups of 100 (the server takes at most
+   * 500 items per request, and checks each file one by one). Each group is
+   * planned and applied before the next, so a stop part-way leaves every
+   * file in one place or the other — never lost. Returns how many moved.
+   */
+  async function planInBatches(items: Item[], verb: string, plan: (batch: Item[]) => Promise<{ pairs: Pair[] }>) {
+    let total = 0;
+    for (let start = 0; start < items.length; start += 100) {
+      const batch = items.slice(start, start + 100);
+      if (items.length > 100) setMessage(verb + " " + Math.min(start + 100, items.length) + " of " + items.length + " items…");
+      const { pairs } = await plan(batch);
+      for (let at = 0; at < pairs.length; at += 100) {
+        await api({ action: "apply", pairs: pairs.slice(at, at + 100) });
+      }
+      total += pairs.length;
+    }
+    return total;
+  }
+
   async function withWork(label: string, work: () => Promise<string | void>) {
     setBusy(true);
     setMessage(label);
@@ -421,8 +441,7 @@ export default function StorageBrowser() {
     const label = items.length === 1 ? "“" + items[0].name + "”" : items.length + " items";
     if (!window.confirm("Move " + label + " to Deleted Files? You can restore it for 30 days." + warning)) return;
     await withWork("Deleting…", async () => {
-      const { pairs } = await api<{ pairs: Pair[] }>({ action: "plan-delete", items });
-      await runPairs(pairs, "Deleting");
+      await planInBatches(items, "Deleting", (batch) => api<{ pairs: Pair[] }>({ action: "plan-delete", items: batch }));
       setSelected([]);
       await load(listing.path);
       return "Moved " + label + " to Deleted Files.";
@@ -461,11 +480,10 @@ export default function StorageBrowser() {
     const { items, path } = mover;
     setMover(null);
     await withWork("Moving…", async () => {
-      const { pairs } = await api<{ pairs: Pair[] }>({ action: "plan-move", items, destination: path });
-      await runPairs(pairs, "Moving");
+      const moved = await planInBatches(items, "Moving", (batch) => api<{ pairs: Pair[] }>({ action: "plan-move", items: batch, destination: path }));
       setSelected([]);
       await load(listing.path);
-      return pairs.length ? "Moved to " + (path || "All files") + "." : "Already in that folder.";
+      return moved ? "Moved to " + (path || "All files") + "." : "Already in that folder.";
     });
   }
 

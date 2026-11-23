@@ -127,6 +127,10 @@ cost an extra Vercel build.
   folder sorting after "DickWhit…" never showed. `browseMover` now follows
   `nextCursor` for all pages. Workaround on live until then: name the
   folder so it sorts first (e.g. starting with a number).
+  ALSO: moving/deleting 714 at once failed "Choose 500 items or fewer"
+  (`normaliseItems` cap). Now `planInBatches` in StorageBrowser plans +
+  applies 100 items at a time with "Moving N of M" progress (move and
+  delete); a retry after a stop skips items already moved.
 
 - **21 Nov: Godspell re-curated STRAIGHT FROM STORAGE (no Mac, no code
   change).** Old page "Godspell" (static `content/productions/godspell.ts`,
