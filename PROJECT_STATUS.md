@@ -119,7 +119,7 @@ cost an extra Vercel build.
 
 ## Waiting / in progress
 
-- **23 Nov: Storage "Move to" missed folders (test branch, waiting go live).**
+- **LIVE 23 Nov ~14:05: Storage "Move to" missed folders + 500-item limit.**
   Kings Head › Dick Whittington Panto › Promo Shoot has 714 loose photos
   (uploaded 13 Nov, cleared off the Mac 2 days later as designed — Steve's
   old proofing export, not needed). Steve made a new folder to move them
