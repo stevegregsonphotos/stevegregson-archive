@@ -438,8 +438,18 @@ export default function StorageBrowser() {
   async function browseMover(path: string, items?: Item[]) {
     setMover((current) => (current ? { ...current, path, loading: true } : current));
     try {
+      // Read every page: folders and files are listed A–Z together, 200 at a
+      // time, so a folder named after a lot of photos (e.g. "Proofing…" after
+      // 714 "DickWhit…" files) would otherwise never appear here.
       const result = await fetchListing(path);
-      setMover((current) => current ? { items: items ?? current.items, path, folders: result.folders, loading: false } : current);
+      const folders = [...result.folders];
+      let cursor = result.nextCursor;
+      while (cursor) {
+        const more: Listing = await fetchListing(path, cursor);
+        folders.push(...more.folders);
+        cursor = more.nextCursor;
+      }
+      setMover((current) => current ? { items: items ?? current.items, path, folders, loading: false } : current);
     } catch (error) {
       setMessage(errorText(error, "Could not load folders."));
       setMover(null);

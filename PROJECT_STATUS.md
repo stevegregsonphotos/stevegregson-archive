@@ -119,6 +119,15 @@ cost an extra Vercel build.
 
 ## Waiting / in progress
 
+- **23 Nov: Storage "Move to" missed folders (test branch, waiting go live).**
+  Kings Head › Dick Whittington Panto › Promo Shoot has 714 loose photos
+  (uploaded 13 Nov, cleared off the Mac 2 days later as designed — Steve's
+  old proofing export, not needed). Steve made a new folder to move them
+  into, but Move only read the first 200 items (folders + files A–Z), so a
+  folder sorting after "DickWhit…" never showed. `browseMover` now follows
+  `nextCursor` for all pages. Workaround on live until then: name the
+  folder so it sorts first (e.g. starting with a number).
+
 - **21 Nov: Godspell re-curated STRAIGHT FROM STORAGE (no Mac, no code
   change).** Old page "Godspell" (static `content/productions/godspell.ts`,
   18 photos, both casts) → two new imported pages "Godspell - Genesis
