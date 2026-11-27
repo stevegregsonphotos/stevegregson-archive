@@ -130,6 +130,18 @@ cost an extra Vercel build.
   Files: `TransferWorkspace.tsx`, `RecipientInput.tsx`, `workspace.module.css`.
   tsc + eslint clean. No visible change apart from the popup going.
 
+- **27 Nov: "Client page photos" picker now works for Storage sends —
+  WAITING TO PUSH (same as above, not on test branch yet).** Sending
+  straight from Storage never showed the picker (it only listed Mac-added
+  files). New `api/admin/transfers` actions: `archive-images` (photos in the
+  Storage selection, JPEG/PNG/WebP, sorted) and `backdrop-source` (view URL
+  for a transfer photo while still "uploading"). Send page: picks are tokens
+  `q:<queue index>` / `s:<storage key>`, Storage photos show their 640px
+  Storage thumb; on send, attach-archive's returned files map key → file id,
+  then `set-backgrounds` in pick order + web-sized copies (Storage ones read
+  via presigned URL; if B2 blocks the browser read, original is used). Same
+  look as before; the section just appears for Storage sends too.
+
 - **LIVE 23 Nov ~14:05: Storage "Move to" missed folders + 500-item limit.**
   Kings Head › Dick Whittington Panto › Promo Shoot has 714 loose photos
   (uploaded 13 Nov, cleared off the Mac 2 days later as designed — Steve's

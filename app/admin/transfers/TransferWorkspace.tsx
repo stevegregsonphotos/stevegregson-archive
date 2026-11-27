@@ -17,7 +17,7 @@ import {
   type QueuedFile,
 } from "@/lib/transfers/upload-client";
 import { useFileDrop } from "@/lib/transfers/use-file-drop";
-import { canMakeBackdrop, uploadTransferBackdrop } from "@/lib/transfers/backdrop-client";
+import { canMakeBackdrop, uploadTransferBackdrop, uploadTransferBackdropFromUrl } from "@/lib/transfers/backdrop-client";
 import { MAX_BACKGROUNDS } from "@/lib/transfers/backgrounds";
 import RequestsPanel from "./RequestsPanel";
 import RecipientInput from "./RecipientInput";
@@ -79,8 +79,12 @@ export default function TransferWorkspace({ initialTransfers, knownEmails: initi
   // While sending, the gold Transfer button fills up and shows the status.
   const [percent, setPercent] = useState<number | null>(null);
   const [resultUrl, setResultUrl] = useState("");
-  // Queue positions of photos picked as client-page backgrounds (in pick order).
-  const [backgroundPicks, setBackgroundPicks] = useState<number[]>([]);
+  // Photos picked as client-page backgrounds, in pick order:
+  // "q:<queue position>" for files from the Mac, "s:<Storage key>" for Storage files.
+  const [backgroundPicks, setBackgroundPicks] = useState<string[]>([]);
+  // Photos inside the Storage selection (for the picker), tagged with the
+  // selection they belong to so a stale list is never shown.
+  const [archiveImages, setArchiveImages] = useState<{ forSelection: string; images: { objectKey: string; name: string }[] }>({ forSelection: "", images: [] });
   // Which page of photos the picker is showing (all queued photos, in pages).
   const [pickPage, setPickPage] = useState(0);
   // Upload numbers for the strip at the top of the page.
@@ -101,6 +105,23 @@ export default function TransferWorkspace({ initialTransfers, knownEmails: initi
     return () => window.clearTimeout(timer);
   }, []);
 
+  // List the photos in the Storage selection so they can be picked too.
+  const selectionId = archiveSelection.objectKeys.length || archiveSelection.folderPaths.length
+    ? JSON.stringify(archiveSelection) : "";
+  useEffect(() => {
+    if (!selectionId) return;
+    let cancelled = false;
+    const selection = JSON.parse(selectionId) as { objectKeys: string[]; folderPaths: string[] };
+    postTransferAction<{ images: { objectKey: string; name: string }[] }>({ action: "archive-images", ...selection })
+      .then((data) => { if (!cancelled) setArchiveImages({ forSelection: selectionId, images: data.images }); })
+      .catch(() => { /* picker just won't show Storage photos */ });
+    return () => { cancelled = true; };
+  }, [selectionId]);
+  const storageImages = useMemo(
+    () => (selectionId && archiveImages.forSelection === selectionId ? archiveImages.images : []),
+    [selectionId, archiveImages],
+  );
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return transfers;
@@ -115,30 +136,44 @@ export default function TransferWorkspace({ initialTransfers, knownEmails: initi
   // Every queued photo can be picked; previews are made one page at a time
   // so hundreds of photos don't all load at once.
   const pickableAll = useMemo(
-    () => queue
-      .map((item, index) => ({ index, item }))
-      .filter(({ item }) => canMakeBackdrop(item.file)),
-    [queue],
+    () => [
+      ...queue
+        .map((item, index) => ({ token: "q:" + index, name: item.relativePath, file: item.file as File | null, objectKey: "" }))
+        .filter(({ file }) => file && canMakeBackdrop(file)),
+      ...storageImages.map((image) => ({ token: "s:" + image.objectKey, name: image.name, file: null as File | null, objectKey: image.objectKey })),
+    ],
+    [queue, storageImages],
   );
   const pickPages = Math.max(1, Math.ceil(pickableAll.length / PICK_PAGE_SIZE));
   const page = Math.min(pickPage, pickPages - 1);
   const pickable = useMemo(
     () => pickableAll
       .slice(page * PICK_PAGE_SIZE, (page + 1) * PICK_PAGE_SIZE)
-      .map(({ index, item }) => ({ index, name: item.relativePath, url: URL.createObjectURL(item.file) })),
+      .map(({ token, name, file, objectKey }) => ({
+        token, name, local: Boolean(file),
+        // Storage photos use their small Storage preview.
+        url: file ? URL.createObjectURL(file) : "/api/admin/storage/thumb?key=" + encodeURIComponent(objectKey),
+      })),
     [pickableAll, page],
   );
-  useEffect(() => () => pickable.forEach((p) => URL.revokeObjectURL(p.url)), [pickable]);
+  useEffect(() => () => pickable.forEach((p) => { if (p.local) URL.revokeObjectURL(p.url); }), [pickable]);
 
-  function togglePick(index: number) {
-    setBackgroundPicks((current) => current.includes(index)
-      ? current.filter((i) => i !== index)
-      : current.length >= MAX_BACKGROUNDS ? current : [...current, index]);
+  function togglePick(token: string) {
+    setBackgroundPicks((current) => current.includes(token)
+      ? current.filter((t) => t !== token)
+      : current.length >= MAX_BACKGROUNDS ? current : [...current, token]);
   }
 
   function clearQueue() {
     setQueue([]);
-    setBackgroundPicks([]);
+    setBackgroundPicks((current) => current.filter((t) => !t.startsWith("q:")));
+    setPickPage(0);
+  }
+
+  function removeArchiveSelection() {
+    setArchiveSelection(EMPTY_SELECTION);
+    clearArchiveSelection();
+    setBackgroundPicks((current) => current.filter((t) => !t.startsWith("s:")));
     setPickPage(0);
   }
 
@@ -202,28 +237,48 @@ export default function TransferWorkspace({ initialTransfers, knownEmails: initi
       });
       transferId = created.transfer.id;
 
+      // Storage key → this transfer's file id, for photos picked from Storage.
+      const archiveIds = new Map<string, string>();
       if (archiveSelection.objectKeys.length || archiveSelection.folderPaths.length) {
         setProgress("Attaching files from Storage…");
-        await postTransferAction({
+        const attached = await postTransferAction<{ transfer?: TransferRecord | null }>({
           action: "attach-archive", transferId,
           objectKeys: archiveSelection.objectKeys,
           folderPaths: archiveSelection.folderPaths,
         });
+        for (const file of attached.transfer?.files ?? []) {
+          if (file.source === "archive") archiveIds.set(file.objectKey, file.id);
+        }
       }
 
+      let uploadedIds: string[] = [];
       if (queue.length) {
-        const uploadedIds = await uploadFilesToTransfer(transferId, queue, (p) => {
+        uploadedIds = await uploadFilesToTransfer(transferId, queue, (p) => {
           setPercent(p.totalBytes ? Math.floor((p.sentBytes / p.totalBytes) * 100) : 0);
           setCounts({ done: p.doneFiles, total: p.totalFiles, sent: p.sentBytes, size: p.totalBytes });
           setProgress(describeProgress(p));
         });
-        const picks = backgroundPicks.filter((index) => uploadedIds[index]);
-        if (picks.length) {
-          await postTransferAction({ action: "set-backgrounds", transferId, fileIds: picks.map((index) => uploadedIds[index]) });
-          // Light, web-sized copies so the client page opens quickly. Not fatal if one fails.
-          for (let i = 0; i < picks.length; i += 1) {
-            setProgress("Preparing the client page background " + (i + 1) + " of " + picks.length + "…");
-            await uploadTransferBackdrop(transferId, uploadedIds[picks[i]], queue[picks[i]].file).catch(() => {});
+      }
+
+      // Client page backgrounds, from the Mac and/or Storage, in pick order.
+      const picks = backgroundPicks
+        .map((token) => token.startsWith("q:")
+          ? { fileId: uploadedIds[Number(token.slice(2))], file: queue[Number(token.slice(2))]?.file ?? null }
+          : { fileId: archiveIds.get(token.slice(2)), file: null })
+        .filter((pick): pick is { fileId: string; file: File | null } => Boolean(pick.fileId));
+      if (picks.length) {
+        await postTransferAction({ action: "set-backgrounds", transferId, fileIds: picks.map((pick) => pick.fileId) });
+        // Light, web-sized copies so the client page opens quickly. Not fatal if
+        // one fails (the client page then uses the original photo).
+        for (let i = 0; i < picks.length; i += 1) {
+          setProgress("Preparing the client page background " + (i + 1) + " of " + picks.length + "…");
+          const { fileId, file } = picks[i];
+          if (file) {
+            await uploadTransferBackdrop(transferId, fileId, file).catch(() => {});
+          } else {
+            await postTransferAction<{ url: string }>({ action: "backdrop-source", transferId, fileId })
+              .then(({ url }) => uploadTransferBackdropFromUrl(transferId, fileId, url))
+              .catch(() => {});
           }
         }
       }
@@ -235,7 +290,7 @@ export default function TransferWorkspace({ initialTransfers, knownEmails: initi
       }>({ action: "finalize", transferId });
       transferId = "";
       setResultUrl(finish.publicUrl);
-      clearQueue(); setArchiveSelection(EMPTY_SELECTION); clearArchiveSelection(); setTitle(""); setMessage(""); setPassword("");
+      clearQueue(); removeArchiveSelection(); setBackgroundPicks([]); setTitle(""); setMessage(""); setPassword("");
       setOutcome({ tone: finish.email?.failed.length ? "warn" : "done", title: sendTitle });
       if (finish.email?.previewSuppressed) setProgress("Ready · emails aren't sent from previews, so copy the link below.");
       else if (finish.email?.failed.length) setProgress("Transfer is live, but the email to " + finish.email.failed.join(", ") + " didn't send. Copy the link below and send it yourself.");
@@ -367,7 +422,7 @@ export default function TransferWorkspace({ initialTransfers, knownEmails: initi
             {(archiveSelection.objectKeys.length > 0 || archiveSelection.folderPaths.length > 0) && (
               <div className={styles.chip}>
                 <span><strong>From Storage</strong> {archiveSelection.objectKeys.length} files · {archiveSelection.folderPaths.length} folders</span>
-                <button type="button" onClick={() => { setArchiveSelection(EMPTY_SELECTION); clearArchiveSelection(); }}>Remove</button>
+                <button type="button" onClick={removeArchiveSelection}>Remove</button>
               </div>
             )}
 
@@ -391,9 +446,9 @@ export default function TransferWorkspace({ initialTransfers, knownEmails: initi
                 </p>
                 <div className={styles.pickGrid}>
                   {pickable.map((photo) => {
-                    const position = backgroundPicks.indexOf(photo.index);
+                    const position = backgroundPicks.indexOf(photo.token);
                     return (
-                      <button type="button" key={photo.index} aria-pressed={position >= 0} title={photo.name} onClick={() => togglePick(photo.index)} disabled={sending}>
+                      <button type="button" key={photo.token} aria-pressed={position >= 0} title={photo.name} onClick={() => togglePick(photo.token)} disabled={sending}>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={photo.url} alt="" loading="lazy" decoding="async" />
                         {position >= 0 ? <em>{position + 1}</em> : null}

@@ -335,6 +335,43 @@ async function handlePost(request: Request) {
     return NextResponse.json({ ok: true });
   }
 
+  // Photos inside a Storage selection, so the send page can offer them as
+  // client page backgrounds before the transfer exists. Same expansion as
+  // "attach-archive"; only browser-friendly photos.
+  if (action === "archive-images") {
+    const objectKeys = Array.isArray(body.objectKeys) ? body.objectKeys.map(text).filter(Boolean) : [];
+    const folderPaths = Array.isArray(body.folderPaths) ? body.folderPaths.map(text).filter(Boolean) : [];
+    try {
+      const direct = await getClientArchiveFilesByKeys(objectKeys);
+      const nested = [];
+      for (const folderPath of folderPaths) nested.push(...await listClientArchiveFilesRecursive(folderPath, 5000));
+      const unique = [...new Map([...direct, ...nested].map((file) => [file.objectKey, file])).values()];
+      const images = unique
+        .filter((file) => isWebImage({ originalName: file.name, contentType: file.contentType }))
+        .sort((a, b) => a.path.localeCompare(b.path, "en-GB", { numeric: true }))
+        .map((file) => ({ objectKey: file.objectKey, name: file.path }));
+      return NextResponse.json({ ok: true, images });
+    } catch (error) {
+      return NextResponse.json({ ok: false, message: error instanceof Error ? error.message : "Couldn't list those Storage photos." }, { status: 400 });
+    }
+  }
+
+  // Where to read one transfer photo from, to make its web-sized background
+  // copy while the transfer is still being sent.
+  if (action === "backdrop-source") {
+    const transferId = text(body.transferId);
+    const fileId = text(body.fileId);
+    const transfer = await getTransferById(transferId);
+    const file = transfer?.files.find((candidate) => candidate.id === fileId && isTransferImage(candidate));
+    if (!transfer || !file || !["uploading", "active"].includes(transfer.status)) {
+      return NextResponse.json({ ok: false, message: "Image not found." }, { status: 404 });
+    }
+    const url = file.source === "archive"
+      ? await (await import("@/lib/client-archive/storage")).createClientArchiveViewUrl(file.objectKey)
+      : await createTransferViewUrl(file.objectKey);
+    return NextResponse.json({ ok: true, url });
+  }
+
   if (action === "attach-archive") {
     const transferId = text(body.transferId);
     const objectKeys = Array.isArray(body.objectKeys) ? body.objectKeys.map(text).filter(Boolean) : [];
