@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 27 November 2026, 14:15 (London)
+Last updated: 27 November 2026, 14:45 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -119,8 +119,7 @@ cost an extra Vercel build.
 
 ## Waiting / in progress
 
-- **27 Nov: Transfers page Apple Passwords popup — WAITING TO PUSH (not on
-  test branch yet; this chat had read-only GitHub access).** Every time the
+- **LIVE 27 Nov ~14:45: Transfers page Apple Passwords popup fix.** Every time the
   Transfers page opened, Safari's Apple Passwords offered Steve's saved
   "steve / stevegregson.com" login on "Email to". Cause: the optional
   transfer Password box was `type="password"`, so Safari treated the form as
@@ -130,8 +129,11 @@ cost an extra Vercel build.
   Files: `TransferWorkspace.tsx`, `RecipientInput.tsx`, `workspace.module.css`.
   tsc + eslint clean. No visible change apart from the popup going.
 
-- **27 Nov: "Client page photos" picker now works for Storage sends —
-  WAITING TO PUSH (same as above, not on test branch yet).** Sending
+- **LIVE 27 Nov ~14:45: "Client page photos" picker now works for Storage
+  sends.** Steve went live without checking the preview; he'll test on live.
+  STILL UNKNOWN: whether the light copies get made for Storage photos (B2
+  browser read). If his live test shows defaults instead of his picks, the
+  light copy failed — check B2 CORS allows GET from www.stevegregson.com. Sending
   straight from Storage never showed the picker (it only listed Mac-added
   files). New `api/admin/transfers` actions: `archive-images` (photos in the
   Storage selection, JPEG/PNG/WebP, sorted) and `backdrop-source` (view URL
