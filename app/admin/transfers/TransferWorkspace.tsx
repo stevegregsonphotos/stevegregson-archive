@@ -418,9 +418,11 @@ export default function TransferWorkspace({ initialTransfers, knownEmails: initi
               <label className={styles.field}><span>Message <em>optional</em></span><textarea rows={2} value={message} onChange={(e) => setMessage(e.target.value)} /></label>
               <div className={styles.row2}>
                 <label className={styles.field}><span>Expires after</span><select value={expiryDays} onChange={(e) => setExpiryDays(e.target.value)}><option value="7">7 days</option><option value="14">14 days</option><option value="30">30 days</option><option value="60">60 days</option><option value="90">90 days</option></select></label>
-                <label className={styles.field}><span>Password <em>optional</em></span><input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="None" /></label>
+                <label className={styles.field}><span>Password <em>optional</em></span>{/* Not type="password": a password box makes Safari/Chrome treat this form as a
+                    login and pop up saved-password suggestions on the email boxes. Dots via CSS. */}
+                <input type="text" className={password ? styles.masked : undefined} autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} data-1p-ignore="" data-lpignore="true" data-form-type="other" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="None" /></label>
               </div>
-              <label className={styles.field}><span>Your email</span><input value={senderEmail} onChange={(e) => setSenderEmail(e.target.value)} /></label>
+              <label className={styles.field}><span>Your email</span><input autoComplete="off" data-1p-ignore="" data-lpignore="true" data-form-type="other" value={senderEmail} onChange={(e) => setSenderEmail(e.target.value)} /></label>
             </div>
           </div>
 

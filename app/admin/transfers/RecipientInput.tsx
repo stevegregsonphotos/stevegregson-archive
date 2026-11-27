@@ -69,6 +69,9 @@ export default function RecipientInput({
       <input
         inputMode="email"
         autoComplete="off"
+        data-1p-ignore=""
+        data-lpignore="true"
+        data-form-type="other"
         role="combobox"
         aria-expanded={showing}
         aria-controls={listId}

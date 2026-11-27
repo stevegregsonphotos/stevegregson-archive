@@ -1016,3 +1016,10 @@
 .panelAgain {
   margin-top: 0.9rem;
 }
+
+/* Transfer password: shown as dots without being a real password box
+   (a real one triggers the browser's saved-login popup on this page). */
+.masked {
+  -webkit-text-security: disc;
+  text-security: disc;
+}

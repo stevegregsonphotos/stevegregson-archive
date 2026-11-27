@@ -1,6 +1,6 @@
 # Steve Gregson Archive — Project Status (handover)
 
-Last updated: 21 November 2026, 12:45 (London)
+Last updated: 27 November 2026, 14:15 (London)
 
 This is the short handover a new chat should read first. Keep it short:
 it is read at the start of every chat, so length costs usage. Older, longer
@@ -118,6 +118,17 @@ cost an extra Vercel build.
 - **X (Twitter) removed — LIVE 1 Nov:** taken out of the site's hidden profile lists (`SAME_AS` in `app/layout.tsx` and `/llms.txt`), and from the Google Business Profile social links (Google review pending). Steve doesn't use X and can't log in; don't add it back. Went live together with the three 29 Oct items below (People search, Mac folder fix, Storage folder Download), so those are LIVE too.
 
 ## Waiting / in progress
+
+- **27 Nov: Transfers page Apple Passwords popup — WAITING TO PUSH (not on
+  test branch yet; this chat had read-only GitHub access).** Every time the
+  Transfers page opened, Safari's Apple Passwords offered Steve's saved
+  "steve / stevegregson.com" login on "Email to". Cause: the optional
+  transfer Password box was `type="password"`, so Safari treated the form as
+  a login. Fix: that box is now `type="text"` shown as dots via CSS
+  (`.masked`, `-webkit-text-security: disc`), plus `autoComplete="off"` and
+  password-manager ignore attributes on Email to / Your email / Password.
+  Files: `TransferWorkspace.tsx`, `RecipientInput.tsx`, `workspace.module.css`.
+  tsc + eslint clean. No visible change apart from the popup going.
 
 - **LIVE 23 Nov ~14:05: Storage "Move to" missed folders + 500-item limit.**
   Kings Head › Dick Whittington Panto › Promo Shoot has 714 loose photos
