@@ -139,7 +139,8 @@ cost an extra Vercel build.
   `q:<queue index>` / `s:<storage key>`, Storage photos show their 640px
   Storage thumb; on send, attach-archive's returned files map key → file id,
   then `set-backgrounds` in pick order + web-sized copies (Storage ones read
-  via presigned URL; if B2 blocks the browser read, original is used). Same
+  via presigned URL). Steve: must never slow the client page, so a Storage
+  pick is only used if its light copy was made; else left out (defaults). Same
   look as before; the section just appears for Storage sends too.
 
 - **LIVE 23 Nov ~14:05: Storage "Move to" missed folders + 500-item limit.**

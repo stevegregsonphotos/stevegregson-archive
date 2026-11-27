@@ -267,20 +267,25 @@ export default function TransferWorkspace({ initialTransfers, knownEmails: initi
           : { fileId: archiveIds.get(token.slice(2)), file: null })
         .filter((pick): pick is { fileId: string; file: File | null } => Boolean(pick.fileId));
       if (picks.length) {
-        await postTransferAction({ action: "set-backgrounds", transferId, fileIds: picks.map((pick) => pick.fileId) });
-        // Light, web-sized copies so the client page opens quickly. Not fatal if
-        // one fails (the client page then uses the original photo).
+        // Light, web-sized copies so the client page opens quickly. A Storage
+        // photo is only used if its light copy was made: otherwise the client
+        // page would load the full-size original (slow), so it's left out and
+        // the defaults fill in instead.
+        const usable: string[] = [];
         for (let i = 0; i < picks.length; i += 1) {
           setProgress("Preparing the client page background " + (i + 1) + " of " + picks.length + "…");
           const { fileId, file } = picks[i];
           if (file) {
             await uploadTransferBackdrop(transferId, fileId, file).catch(() => {});
+            usable.push(fileId);
           } else {
-            await postTransferAction<{ url: string }>({ action: "backdrop-source", transferId, fileId })
+            const made = await postTransferAction<{ url: string }>({ action: "backdrop-source", transferId, fileId })
               .then(({ url }) => uploadTransferBackdropFromUrl(transferId, fileId, url))
-              .catch(() => {});
+              .then(() => true, () => false);
+            if (made) usable.push(fileId);
           }
         }
+        if (usable.length) await postTransferAction({ action: "set-backgrounds", transferId, fileIds: usable });
       }
 
       setProgress("Finishing transfer…");
